@@ -1,0 +1,17 @@
+{
+  "name": "hp-scan",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "^4.13.0",
+    "mocha": "^4.0.1",
+    "xml2js": "^0.4.19"
+  },
+  "dependencies": {}
+}
