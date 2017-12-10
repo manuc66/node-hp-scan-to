@@ -26,6 +26,41 @@ class HPApi {
             });
         request.end();
     }
+
+    /**
+     *
+     * @param {Destination} destination
+     * @param callback
+     */
+    static registerDestination(destination, callback) {
+        destination.toXML((err, xml) => {
+
+            let request = http.request(
+                {
+                    hostname: printerIP,
+                    method: "POST",
+                    path: "/WalkupScan/WalkupScanDestinations",
+                    headers: {
+                        'Content-Type': 'text/xml',
+                    }
+                }, response => {
+                    if (response.statusCode === 201) {
+
+                            callback(null, response.headers.location);
+                    }
+                    else {
+                        console.error(response.statusMessage);
+
+                            callback({statusCode: response.statusCode, statusMessage: response.statusMessage}, null);
+
+                    }
+                    request.abort();
+                });
+            request.write(xml);
+            request.end();
+
+        });
+    }
 }
 
 function waitForEvent() {
@@ -81,12 +116,12 @@ class Destination {
  * @param {Destination} destination
  */
 function registerMeAsADestination(destination) {
-    destination.toXML((err, xml) => {
-        if (err) {
-            console.error(err);
+    HPApi.registerDestination(destination, (err, location) => {
+        if(err) {
+            console.error(JSON.stringify(err));
         }
         else {
-            console.log(xml);
+            console.log(location);
         }
     });
 }
