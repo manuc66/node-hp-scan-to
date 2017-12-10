@@ -5,7 +5,7 @@ const xml2js = require('xml2js');
 const parser = new xml2js.Parser();
 
 const printerIP = "192.168.1.7";
-const destinationName = "node-scan-watch"
+const destinationName = "node-scan-watch";
 
 function getWalkupScanDestinations(callback) {
     let wlkDsts = '';
@@ -27,11 +27,11 @@ function getWalkupScanDestinations(callback) {
 }
 
 function waitForEvent() {
-    console.log("need watch for event")
+    console.log("need watch for event");
 }
 
 function registerMeAsADestination() {
-    console.log("need to register")
+    console.log("need to register");
 }
 
 /**
@@ -41,20 +41,20 @@ function registerMeAsADestination() {
  * @returns {boolean}
  */
 function hasDestination(walkupScanDestinations, destinationName) {
-    return walkupScanDestinations["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"].some(x => x["dd:Name"].some(name => name === destinationName ))
+    return walkupScanDestinations["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"].some(x => x["dd:Name"].some(name => name === destinationName ));
 }
 
 function init() {
     getWalkupScanDestinations((err, result) => {
         if (err) {
-            setTimeout(init, 1000)
+            setTimeout(init, 1000);
         }
         else {
             if (hasDestination(result, destinationName)) {
                 waitForEvent();
             }
             else {
-                registerMeAsADestination()
+                registerMeAsADestination();
             }
         }
     });
