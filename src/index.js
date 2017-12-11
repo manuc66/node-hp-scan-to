@@ -8,57 +8,81 @@ const printerIP = "192.168.1.7";
 const destinationName = "node-scan-watch";
 
 class HPApi {
-    static getWalkupScanDestinations(callback) {
-        let wlkDsts = '';
-        let request = http.request(
-            {
-                "hostname": printerIP,
-                "path": "/WalkupScan/WalkupScanDestinations"
-            }, (response) => {
 
-                response.on("data", chunk => {
-                    wlkDsts += chunk.toString();
-                });
 
-                response.on("end", () => {
-                    parser.parseString(wlkDsts, callback);
+    /**
+     * @returns {Promise.<String|Error>}
+     */
+    static getWalkupScanDestinations() {
+        return new Promise((resolve, reject) => {
+            let wlkDsts = '';
+            let request = http.request(
+                {
+                    "hostname": printerIP,
+                    "path": "/WalkupScan/WalkupScanDestinations"
+                }, (response) => {
+                    response.on("data", chunk => {
+                        wlkDsts += chunk.toString();
+                    });
+
+                    if (response.statusCode === 200) {
+                        response.on("end", () => {
+                            parser.parseString(wlkDsts, (err, result) => {
+                                if (err) {
+                                    reject(err);
+                                }
+                                else {
+                                    resolve(result);
+                                }
+                            });
+                        });
+                    }
+                    else {
+                        response.on('end', reject)
+                    }
                 });
-            });
-        request.end();
+            request.end();
+        })
     }
 
     /**
      *
-     * @param {Destination} destination
-     * @param callback
+     * @ {Promise.<String|Error>}
      */
-    static registerDestination(destination, callback) {
-        destination.toXML((err, xml) => {
-            let request = http.request(
-                {
-                    hostname: printerIP,
-                    method: "POST",
-                    path: "/WalkupScan/WalkupScanDestinations",
-                    headers: {
-                        'Content-Type': 'text/xml',
-                    }
-                }, response => {
-                    let cb;
-                    if (response.statusCode === 201) {
+    static registerDestination(destination) {
+        return new Promise((resolve, reject) => {
+            destination.toXML()
+                .catch(reason => reject(reason))
+                .then(xml => {
+                    let request = http.request(
+                        {
+                            hostname: printerIP,
+                            method: "POST",
+                            path: "/WalkupScan/WalkupScanDestinations",
+                            headers: {
+                                'Content-Type': 'text/xml',
+                            }
+                        }, response => {
+                            response.on('data', () => true);
 
-                        cb = () => callback(null, response.headers.location);
-                    }
-                    else {
-                        console.error(response.statusMessage);
+                            let cb;
+                            if (response.statusCode === 201) {
+                                cb = () => resolve(response.headers.location);
+                            }
+                            else {
+                                console.error(response.statusMessage);
 
-                        cb = () => callback({statusCode: response.statusCode, statusMessage: response.statusMessage}, null);
-                    }
+                                cb = () => reject({
+                                    statusCode: response.statusCode,
+                                    statusMessage: response.statusMessage
+                                });
+                            }
 
-                    response.on('data', () => true);
-                    response.on('end', cb);
-                });
-            request.write(xml);
-            request.end();
+                            response.on('end', cb);
+                        });
+                    request.write(xml);
+                    request.end();
+                })
         });
     }
 }
@@ -84,8 +108,9 @@ class Destination {
     /**
      * Do something.
      * @param {Destination~toXmlCallback} cb - Called on success.
+     * @returns {Promise.<String|Error>}
      */
-    toXML(cb) {
+    toXML() {
         let rawDestination = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<WalkupScanDestination xmlns=\"http://www.hp.com/schemas/imaging/con/rest/walkupscan/2009/09/21\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" \n" +
             "xsi:schemaLocation=\"http://www.hp.com/schemas/imaging/con/rest/walkupscan/2009/09/21 WalkupScanDestinations.xsd\">\n" +
@@ -94,19 +119,22 @@ class Destination {
             "<LinkType>Network</LinkType>\n" +
             "</WalkupScanDestination>";
 
-        parser.parseString(rawDestination, (err, parsed) => {
-            if (err) {
-                cb(err, null);
-            }
-            else {
-                parsed.WalkupScanDestination.Hostname[0]._ = this.name;
-                parsed.WalkupScanDestination.Name[0]._ = this.hostname;
-                parsed.WalkupScanDestination.LinkType[0] = this.linkType;
 
-                let builder = new xml2js.Builder();
-                let xml = builder.buildObject(parsed);
-                cb(err, xml);
-            }
+        return new Promise((resolve, reject) => {
+            parser.parseString(rawDestination, (err, parsed) => {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    parsed.WalkupScanDestination.Hostname[0]._ = this.name;
+                    parsed.WalkupScanDestination.Name[0]._ = this.hostname;
+                    parsed.WalkupScanDestination.LinkType[0] = this.linkType;
+
+                    let builder = new xml2js.Builder();
+                    let xml = builder.buildObject(parsed);
+                    resolve(xml);
+                }
+            });
         });
     }
 }
@@ -116,14 +144,9 @@ class Destination {
  * @param {Destination} destination
  */
 function registerMeAsADestination(destination) {
-    HPApi.registerDestination(destination, (err, location) => {
-        if (err) {
-            console.error(JSON.stringify(err));
-        }
-        else {
-            console.log(location);
-        }
-    });
+    HPApi.registerDestination(destination)
+        .catch(reason => console.error(reason))
+        .then(location => console.log(location))
 }
 
 /**
@@ -141,19 +164,19 @@ function getHostname() {
 }
 
 function init() {
-    HPApi.getWalkupScanDestinations((err, result) => {
-        if (err) {
+    HPApi.getWalkupScanDestinations()
+        .catch(reason => {
+            console.error(reason);
             setTimeout(init, 1000);
-        }
-        else {
-            if (hasDestination(result, destinationName)) {
+        })
+        .then(value => {
+            if (hasDestination(value, destinationName)) {
                 waitForEvent();
             }
             else {
                 registerMeAsADestination(new Destination("TEST", getHostname()));
             }
-        }
-    });
+        });
 }
 
 init();
