@@ -34,7 +34,6 @@ class HPApi {
      */
     static registerDestination(destination, callback) {
         destination.toXML((err, xml) => {
-
             let request = http.request(
                 {
                     hostname: printerIP,
@@ -44,21 +43,22 @@ class HPApi {
                         'Content-Type': 'text/xml',
                     }
                 }, response => {
+                    let cb;
                     if (response.statusCode === 201) {
 
-                            callback(null, response.headers.location);
+                        cb = () => callback(null, response.headers.location);
                     }
                     else {
                         console.error(response.statusMessage);
 
-                            callback({statusCode: response.statusCode, statusMessage: response.statusMessage}, null);
-
+                        cb = () => callback({statusCode: response.statusCode, statusMessage: response.statusMessage}, null);
                     }
-                    request.abort();
+
+                    response.on('data', () => true);
+                    response.on('end', cb);
                 });
             request.write(xml);
             request.end();
-
         });
     }
 }
@@ -117,7 +117,7 @@ class Destination {
  */
 function registerMeAsADestination(destination) {
     HPApi.registerDestination(destination, (err, location) => {
-        if(err) {
+        if (err) {
             console.error(JSON.stringify(err));
         }
         else {
