@@ -4,6 +4,10 @@ const http = require("http");
 const xml2js = require('xml2js');
 const parser = new xml2js.Parser();
 const url = require('url');
+const axios = require('axios');
+const Promise = require('promise');
+
+const parseString = Promise.denodeify(parser.parseString);
 
 const printerIP = "192.168.1.7";
 const destinationName = "node-scan-watch";
@@ -47,61 +51,53 @@ class HPApi {
      * @returns {Promise.<WalkupScanDestinations>}
      */
     static getWalkupScanDestinations() {
-        return new Promise((resolve, reject) => {
-            let wlkDsts = '';
-            let request = http.request(
-                {
-                    "hostname": printerIP,
-                    "path": "/WalkupScan/WalkupScanDestinations"
-                }, (response) => {
-                    response.on("data", chunk => {
-                        wlkDsts += chunk.toString();
-                    });
+        return axios(
+            {
+                baseURL: `http://${printerIP}`,
+                url: "/WalkupScan/WalkupScanDestinations",
+                method: 'GET',
+                responseType: 'text'
+            })
+            .then(response => {
+                return new Promise((resolve, reject) => {
 
-                    if (response.statusCode === 200) {
-                        response.on("end", () => {
-                            parser.parseString(wlkDsts, (err, result) => {
-                                if (err) {
-                                    reject(err);
-                                }
-                                else {
-                                    resolve(Object.assign(WalkupScanDestinations.prototype, result));
-                                }
-                            });
-                        });
+                    if (response.status !== 200) {
+                        reject(response.statusMessage);
                     }
                     else {
-                        response.on('end', reject)
+                        return parseString(response.data)
+                            .then((parsed) => {
+                                resolve(Object.assign(WalkupScanDestinations.prototype, parsed));
+                            });
                     }
                 });
-            request.end();
-        })
+            });
     }
 
     /**
      * @params {WalkupScanDestination} walkupScanDestination
-     * @returns {Promise.<String|Error>}
+     * @returns {Promise.<boolean|Error>}
      */
     static removeDestination(walkupScanDestination) {
         let urlInfo = url.parse(walkupScanDestination.resourceURI);
-        return new Promise((resolve, reject) => {
-            let request = http.request(
-                {
-                    "hostname": printerIP,
-                    method: "DELETE",
-                    "path": urlInfo.pathname
-                }, (response) => {
-                    response.on("data", () => true);
 
-                    if (response.statusCode === 204) {
-                        response.on("end", () => resolve(true));
+        return axios(
+            {
+                baseURL: `http://${printerIP}`,
+                url: urlInfo.pathname,
+                method: 'DELETE',
+                responseType: 'text'
+            })
+            .then(response => {
+                return new Promise((resolve, reject) => {
+                    if (response.status === 204) {
+                        resolve(true);
                     }
                     else {
-                        response.on('end', reject)
+                        reject(response.statusText);
                     }
                 });
-            request.end();
-        })
+            });
     }
 
     /**
@@ -109,45 +105,37 @@ class HPApi {
      * @ {Promise.<String|Error>}
      */
     static registerDestination(destination) {
-        return new Promise((resolve, reject) => {
-            destination.toXML()
-                .catch(reason => reject(reason))
-                .then(xml => {
-                    let request = http.request(
-                        {
-                            hostname: printerIP,
-                            method: "POST",
-                            path: "/WalkupScan/WalkupScanDestinations",
-                            headers: {
-                                'Content-Type': 'text/xml',
-                            }
-                        }, response => {
-                            response.on('data', () => true);
-
-                            let cb;
-                            if (response.statusCode === 201) {
-                                cb = () => resolve(response.headers.location);
+        return destination.toXML()
+            .then(xml => {
+                return axios(
+                    {
+                        baseURL: `http://${printerIP}`,
+                        url: "/WalkupScan/WalkupScanDestinations",
+                        method: 'POST',
+                        headers: {'Content-Type': 'text/xml'},
+                        data: xml,
+                        responseType: 'text'
+                    })
+                    .then(response => {
+                        return new Promise((resolve, reject) => {
+                            if (response.status === 201) {
+                                resolve(response.headers.location);
                             }
                             else {
-                                console.error(response.statusMessage);
-
-                                cb = () => reject({
-                                    statusCode: response.statusCode,
-                                    statusMessage: response.statusMessage
-                                });
+                                reject(response.statusText);
                             }
-
-                            response.on('end', cb);
                         });
-                    request.write(xml);
-                    request.end();
-                })
-        });
+                    });
+            });
     }
 }
 
-function waitForEvent() {
-    console.log("need watch for event");
+/**
+ *
+ * @param {WalkupScanDestination} destination
+ */
+function waitForEvent(destination) {
+    console.log("Destination:", destination.name, "is ready");
 }
 
 class Destination {
@@ -166,7 +154,6 @@ class Destination {
 
     /**
      * Do something.
-     * @param {Destination~toXmlCallback} cb - Called on success.
      * @returns {Promise.<String|Error>}
      */
     toXML() {
@@ -205,17 +192,17 @@ class Destination {
 function registerMeAsADestination(destination) {
     HPApi.registerDestination(destination)
         .catch(reason => console.error(reason))
-        .then(location => console.log(location))
+        .then(location => console.log("New destination registered: " + location));
 }
 
 /**
  *
  * @param {WalkupScanDestinations} walkupScanDestinations
  * @param {String} destinationName
- * @returns {boolean}
+ * @returns {WalkupScanDestination}
  */
-function hasDestination(walkupScanDestinations, destinationName) {
-    return walkupScanDestinations.destinations.some(x => x.name === destinationName)
+function getDestination(walkupScanDestinations, destinationName) {
+    return walkupScanDestinations.destinations.find(x => x.name === destinationName);
 }
 
 function getHostname() {
@@ -231,21 +218,22 @@ function init() {
         .then(value => {
 
 
+            let destination = getDestination(value, destinationName);
+            if (destination) {
+                waitForEvent(destination);
+            }
+            else {
+                registerMeAsADestination(new Destination(destinationName, getHostname()));
+            }
+
+
             // cleanup all dests
-            /*
             value.destinations.map(x => {
                 HPApi.removeDestination(x)
                     .catch(reason => console.error(reason))
-                    .then(value2 => console.log(value2))
+                    .then(value2 => console.log(value2));
             });
-            */
 
-            if (hasDestination(value, destinationName)) {
-                waitForEvent();
-            }
-            else {
-                registerMeAsADestination(new Destination("TEST", getHostname()));
-            }
         });
 }
 

@@ -9,8 +9,10 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "axios": "^0.17.1",
     "eslint": "^4.13.0",
     "mocha": "^4.0.1",
+    "promise": "^8.0.1",
     "xml2js": "^0.4.19"
   },
   "dependencies": {}
