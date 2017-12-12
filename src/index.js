@@ -3,15 +3,48 @@
 const http = require("http");
 const xml2js = require('xml2js');
 const parser = new xml2js.Parser();
+const url = require('url');
 
 const printerIP = "192.168.1.7";
 const destinationName = "node-scan-watch";
 
-class HPApi {
 
+class WalkupScanDestination {
+    get name() {
+        return this["dd:Name"][0];
+    }
+
+    get hostname() {
+        return this["dd:ResourceURI"][0];
+    }
+
+    get resourceURI() {
+        return this["dd:ResourceURI"][0];
+    }
+}
+
+class WalkupScanDestinations {
 
     /**
-     * @returns {Promise.<String|Error>}
+     *
+     * @returns {WalkupScanDestination[]}
+     */
+    get destinations() {
+        let walkupScanDestinations = this["wus:WalkupScanDestinations"];
+        if (walkupScanDestinations.hasOwnProperty("wus:WalkupScanDestination")) {
+            return walkupScanDestinations["wus:WalkupScanDestination"].map(x => Object.assign(WalkupScanDestination.prototype, x));
+        }
+        else {
+            return [];
+        }
+
+    }
+}
+
+class HPApi {
+
+    /**
+     * @returns {Promise.<WalkupScanDestinations>}
      */
     static getWalkupScanDestinations() {
         return new Promise((resolve, reject) => {
@@ -32,10 +65,36 @@ class HPApi {
                                     reject(err);
                                 }
                                 else {
-                                    resolve(result);
+                                    resolve(Object.assign(WalkupScanDestinations.prototype, result));
                                 }
                             });
                         });
+                    }
+                    else {
+                        response.on('end', reject)
+                    }
+                });
+            request.end();
+        })
+    }
+
+    /**
+     * @params {WalkupScanDestination} walkupScanDestination
+     * @returns {Promise.<String|Error>}
+     */
+    static removeDestination(walkupScanDestination) {
+        let urlInfo = url.parse(walkupScanDestination.resourceURI);
+        return new Promise((resolve, reject) => {
+            let request = http.request(
+                {
+                    "hostname": printerIP,
+                    method: "DELETE",
+                    "path": urlInfo.pathname
+                }, (response) => {
+                    response.on("data", () => true);
+
+                    if (response.statusCode === 204) {
+                        response.on("end", () => resolve(true));
                     }
                     else {
                         response.on('end', reject)
@@ -126,8 +185,8 @@ class Destination {
                     reject(err);
                 }
                 else {
-                    parsed.WalkupScanDestination.Hostname[0]._ = this.name;
-                    parsed.WalkupScanDestination.Name[0]._ = this.hostname;
+                    parsed.WalkupScanDestination.Hostname[0]._ = this.hostname;
+                    parsed.WalkupScanDestination.Name[0]._ = this.name;
                     parsed.WalkupScanDestination.LinkType[0] = this.linkType;
 
                     let builder = new xml2js.Builder();
@@ -156,7 +215,7 @@ function registerMeAsADestination(destination) {
  * @returns {boolean}
  */
 function hasDestination(walkupScanDestinations, destinationName) {
-    return walkupScanDestinations["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"].some(x => x["dd:Name"].some(name => name === destinationName));
+    return walkupScanDestinations.destinations.some(x => x.name === destinationName)
 }
 
 function getHostname() {
@@ -170,6 +229,17 @@ function init() {
             setTimeout(init, 1000);
         })
         .then(value => {
+
+
+            // cleanup all dests
+            /*
+            value.destinations.map(x => {
+                HPApi.removeDestination(x)
+                    .catch(reason => console.error(reason))
+                    .then(value2 => console.log(value2))
+            });
+            */
+
             if (hasDestination(value, destinationName)) {
                 waitForEvent();
             }
