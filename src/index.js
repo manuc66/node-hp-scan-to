@@ -14,29 +14,36 @@ const destinationName = "node-scan-watch";
 
 
 class WalkupScanDestination {
+    constructor(data) {
+        this.data = data;
+    }
+
     get name() {
-        return this["dd:Name"][0];
+        return this.data["dd:Name"][0];
     }
 
     get hostname() {
-        return this["dd:ResourceURI"][0];
+        return this.data["dd:ResourceURI"][0];
     }
 
     get resourceURI() {
-        return this["dd:ResourceURI"][0];
+        return this.data["dd:ResourceURI"][0];
     }
 }
 
 class WalkupScanDestinations {
+    constructor(data) {
+        this.data = data;
+    }
 
     /**
      *
      * @returns {WalkupScanDestination[]}
      */
     get destinations() {
-        let walkupScanDestinations = this["wus:WalkupScanDestinations"];
+        let walkupScanDestinations = this.data["wus:WalkupScanDestinations"];
         if (walkupScanDestinations.hasOwnProperty("wus:WalkupScanDestination")) {
-            return walkupScanDestinations["wus:WalkupScanDestination"].map(x => Object.assign(WalkupScanDestination.prototype, x));
+            return walkupScanDestinations["wus:WalkupScanDestination"].map(x => new WalkupScanDestination(x));
         }
         else {
             return [];
@@ -67,7 +74,7 @@ class HPApi {
                     else {
                         return parseString(response.data)
                             .then((parsed) => {
-                                resolve(Object.assign(WalkupScanDestinations.prototype, parsed));
+                                resolve(new WalkupScanDestinations(parsed));
                             });
                     }
                 });
@@ -128,7 +135,30 @@ class HPApi {
                     });
             });
     }
+
+    static getEvents() {
+        return axios(
+            {
+                baseURL: `http://${printerIP}`,
+                url: "/EventMgmt/EventTable", //?timeout=1200
+                method: 'GET',
+                responseType: 'text'
+            })
+            .then(response => {
+                return new Promise((resolve, reject) => {
+
+                    if (response.status !== 200) {
+                        reject(response.statusMessage);
+                    }
+                    else {
+                        return parseString(response.data)
+                            .then((parsed) => resolve(new EventTable(parsed)));
+                    }
+                });
+            });
+    }
 }
+
 
 /**
  *
@@ -136,7 +166,65 @@ class HPApi {
  */
 function waitForEvent(destination) {
     console.log("Destination:", destination.name, "is ready");
+
+    return HPApi.getEvents()
+        .then(eventTable => {
+            let scanEvent = eventTable.events.find(ev => ev.isScanEvent);
+
+            if (scanEvent) {
+                console.log(JSON.stringify(scanEvent));
+            }
+            else {
+                console.log("no scan event right now");
+            }
+            return scanEvent;
+        });
 }
+
+class EventTable {
+
+    constructor(data) {
+        this.data = data;
+    }
+
+    /**
+     *
+     * @returns {Event[]}
+     */
+    get events() {
+        let eventTable = this.data["ev:EventTable"];
+        if (eventTable.hasOwnProperty("ev:Event")) {
+            return eventTable["ev:Event"].map(x => new Event(x));
+        }
+        else {
+            return [];
+        }
+
+    }
+}
+
+class Event {
+    constructor(data) {
+        this.data = data;
+    }
+
+    /**
+     *
+     * @returns {String}
+     */
+    get unqualifiedEventCategory() {
+        return this.data["dd:UnqualifiedEventCategory"][0];
+    }
+
+    /**
+     *
+     * @returns {boolean}
+     */
+    get isScanEvent() {
+        return this.unqualifiedEventCategory === "ScanEvent";
+    }
+}
+
 
 class Destination {
     constructor(name, hostname) {
@@ -220,19 +308,20 @@ function init() {
 
             let destination = getDestination(value, destinationName);
             if (destination) {
-                waitForEvent(destination);
+                waitForEvent(destination).then(x => console.log(x));
             }
             else {
                 registerMeAsADestination(new Destination(destinationName, getHostname()));
             }
 
-
-            // cleanup all dests
-            value.destinations.map(x => {
-                HPApi.removeDestination(x)
-                    .catch(reason => console.error(reason))
-                    .then(value2 => console.log(value2));
-            });
+            /*
+                        // cleanup all dests
+                        value.destinations.map(x => {
+                            HPApi.removeDestination(x)
+                                .catch(reason => console.error(reason))
+                                .then(value2 => console.log(value2));
+                        });
+                        */
 
         });
 }
