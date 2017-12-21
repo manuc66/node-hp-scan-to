@@ -6,11 +6,11 @@ const parser = new xml2js.Parser();
 const url = require('url');
 const axios = require('axios');
 const Promise = require('promise');
+const os = require("os");
 
 const parseString = Promise.denodeify(parser.parseString);
 
 const printerIP = "192.168.1.7";
-const destinationName = "node-scan-watch";
 
 
 class WalkupScanDestination {
@@ -293,25 +293,21 @@ function getDestination(walkupScanDestinations, destinationName) {
     return walkupScanDestinations.destinations.find(x => x.name === destinationName);
 }
 
-function getHostname() {
-    return "192.168.1.12";
-}
-
 function init() {
     HPApi.getWalkupScanDestinations()
         .catch(reason => {
             console.error(reason);
             setTimeout(init, 1000);
         })
-        .then(value => {
+        .then(walkupScanDestinations => {
 
 
-            let destination = getDestination(value, destinationName);
+            let destination = getDestination(walkupScanDestinations, os.hostname());
             if (destination) {
                 waitForEvent(destination).then(x => console.log(x));
             }
             else {
-                registerMeAsADestination(new Destination(destinationName, getHostname()));
+                registerMeAsADestination(new Destination(os.hostname(), os.hostname()));
             }
 
             /*
