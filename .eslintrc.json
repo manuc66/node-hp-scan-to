@@ -4,6 +4,13 @@
     "sourceType": "module"
   },
   "rules": {
-    "semi": 2
+    "semi": [
+      "error",
+      "always"
+    ],
+    "quotes": [
+      "error",
+      "double"
+    ]
   }
 }

@@ -1,11 +1,11 @@
 "use strict";
 
 const http = require("http");
-const xml2js = require('xml2js');
+const xml2js = require("xml2js");
 const parser = new xml2js.Parser();
-const url = require('url');
-const axios = require('axios');
-const Promise = require('promise');
+const url = require("url");
+const axios = require("axios");
+const Promise = require("promise");
 const os = require("os");
 
 const parseString = Promise.denodeify(parser.parseString);
@@ -62,8 +62,8 @@ class HPApi {
             {
                 baseURL: `http://${printerIP}`,
                 url: "/WalkupScan/WalkupScanDestinations",
-                method: 'GET',
-                responseType: 'text'
+                method: "GET",
+                responseType: "text"
             })
             .then(response => {
                 return new Promise((resolve, reject) => {
@@ -92,8 +92,8 @@ class HPApi {
             {
                 baseURL: `http://${printerIP}`,
                 url: urlInfo.pathname,
-                method: 'DELETE',
-                responseType: 'text'
+                method: "DELETE",
+                responseType: "text"
             })
             .then(response => {
                 return new Promise((resolve, reject) => {
@@ -118,10 +118,10 @@ class HPApi {
                     {
                         baseURL: `http://${printerIP}`,
                         url: "/WalkupScan/WalkupScanDestinations",
-                        method: 'POST',
-                        headers: {'Content-Type': 'text/xml'},
+                        method: "POST",
+                        headers: {"Content-Type": "text/xml"},
                         data: xml,
-                        responseType: 'text'
+                        responseType: "text"
                     })
                     .then(response => {
                         return new Promise((resolve, reject) => {
@@ -141,8 +141,8 @@ class HPApi {
             {
                 baseURL: `http://${printerIP}`,
                 url: "/EventMgmt/EventTable", //?timeout=1200
-                method: 'GET',
-                responseType: 'text'
+                method: "GET",
+                responseType: "text"
             })
             .then(response => {
                 return new Promise((resolve, reject) => {
