@@ -303,12 +303,13 @@ function init() {
 
 
             let destination = getDestination(walkupScanDestinations, os.hostname());
-            if (destination) {
-                waitForEvent(destination).then(x => console.log(x));
-            }
-            else {
+
+            if (!destination) {
                 registerMeAsADestination(new Destination(os.hostname(), os.hostname()));
+                destination = getDestination(walkupScanDestinations, os.hostname());
             }
+
+            waitForEvent(destination).then(x => console.log(x));
 
             /*
                         // cleanup all dests
