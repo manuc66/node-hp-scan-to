@@ -37,6 +37,9 @@
 ## Recorded Sequence
 
 ### `GET /WalkupScan/WalkupScanDestinations`
+
+Lookup if a destination is registered on the printer for: `LAPTOP-BSHRTBV8` (it doesn't)
+
 _Request_
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
@@ -68,6 +71,11 @@ Pragma: no-cache
 </wus:WalkupScanDestinations>
 ```
 ### `POST /WalkupScan/WalkupScanDestinations`
+
+Register a new `LAPTOP-BSHRTBV8` destination.
+
+Notice the `Location` header correspond to it.
+
 _Request_
 ```http
 POST /WalkupScan/WalkupScanDestinations HTTP/1.1
@@ -92,12 +100,17 @@ Pragma: no-cache
 Content-Length: 0
 ```
 ### `GET /EventMgmt/EventTable`
+
+Query for event and collect the received `ETag`: `164-11`
+
 _Request_
 ```http
 GET /EventMgmt/EventTable HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
 _Response_
+
+```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
 Content-Type: text/xml
@@ -129,9 +142,15 @@ Content-Length: 1479
     <dd:AgingStamp>164-11</dd:AgingStamp>
   </ev:Event>
 </ev:EventTable>
-```http
 ```
 ### `GET /EventMgmt/EventTable?timeout=1200`
+
+Poll for new events with a conditional get on the previously received `ETag` value.
+
+The `timeout` parameter is an amount of time during which this query __MAY__ block.
+
+In this response a new `ScanEvent` has been triggered. This event belongs to the destination URI: `http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113` (which is the one that has just been registered)
+
 _Request_
 ```http
 GET /EventMgmt/EventTable?timeout=1200 HTTP/1.1
@@ -164,6 +183,7 @@ Content-Length: 1263
 </ev:EventTable>
 ```
 ### `GET /WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`
+
 _Request_
 ```http
 GET /WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 HTTP/1.1
@@ -196,6 +216,9 @@ Pragma: no-cache
 </wus:WalkupScanDestinations>
 ```
 ### `GET /DevMgmt/DiscoveryTree.xml`
+
+Get a ?`DiscoveryTree`?
+
 _Request_
 ```http
 GET /DevMgmt/DiscoveryTree.xml HTTP/1.1
@@ -449,6 +472,9 @@ Pragma: no-cache
 </ledm:DiscoveryTree>
 ```
 ### `GET /WalkupScanToComp/WalkupScanToCompCaps`
+
+It query this resource that is not found... (I do no know the reason why)
+
 _Request_
 ```http
 GET /WalkupScanToComp/WalkupScanToCompCaps HTTP/1.1
@@ -463,6 +489,9 @@ Cache-Control: must-revalidate, max-age=0
 Pragma: no-cache
 ```
 ### `GET /Scan/ScanCaps.xml`
+
+Getting `ScanCaps.xml` (?Scanner capabilities?)
+
 _Request_
 ```http
 GET /Scan/ScanCaps.xml HTTP/1.1
@@ -699,6 +728,9 @@ Content-Length: 6458
 </ScanCaps>
 ```
 ### `GET /Scan/Status`
+
+Getting the scanner status: `Idle` and `Loaded`
+
 _Request_
 ```http
 GET /Scan/Status HTTP/1.1
@@ -721,6 +753,9 @@ Content-Length: 283
 </ScanStatus>
 ```
 ### `GET /WalkupScan/WalkupScanDestinations`
+
+Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?
+
 _Request_
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
@@ -758,6 +793,9 @@ Pragma: no-cache
 </wus:WalkupScanDestinations>
 ```
 ### `GET  http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`
+
+Query `/WalkupScan/WalkupScanDestinations/WalkupScanDestination/{id}`. Why? (the response is the same)
+
 _Request_
 ```http
 GET http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 HTTP/1.1
@@ -790,6 +828,9 @@ Pragma: no-cache
 </wus:WalkupScanDestinations>
 ```
 ### `GET /WalkupScan/WalkupScanDestinations`
+
+Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?
+
 _Request_
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
@@ -827,6 +868,9 @@ Pragma: no-cache
 </wus:WalkupScanDestinations>
 ```
 ### `GET /EventMgmt/EventTable`
+
+Query one more time the `/EventMgmt/EventTable`. Why ?
+
 _Request_
 ```http
 GET /EventMgmt/EventTable HTTP/1.1
@@ -897,6 +941,9 @@ Content-Length: 283
 </ScanStatus>
 ```
 ### `GET /WalkupScan/WalkupScanDestinations`
+
+Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?
+
 _Request_
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
@@ -934,6 +981,9 @@ Pragma: no-cache
 </wus:WalkupScanDestinations>
 ```
 ### `GET http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`
+
+Query `/WalkupScan/WalkupScanDestinations/WalkupScanDestination/{id}`. Why? (the response is the same)
+
 _Request_
 ```http
 GET http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 HTTP/1.1
@@ -966,6 +1016,9 @@ Pragma: no-cache
 </wus:WalkupScanDestinations>
 ```
 ### `GET /WalkupScan/WalkupScanDestinations`
+
+Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?
+
 _Request_
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
@@ -1003,6 +1056,9 @@ Pragma: no-cache
 </wus:WalkupScanDestinations>
 ```
 ### `GET /EventMgmt/EventTable`
+
+Query one more time the `/EventMgmt/EventTable`. Why ?
+
 _Request_
 ```http
 GET /EventMgmt/EventTable HTTP/1.1
@@ -1050,6 +1106,7 @@ Content-Length: 1866
   </ev:Event>
 </ev:EventTable>
 ```
+
 ### `GET /Scan/Status (4 times)`
 _Request_
 ```http
@@ -1073,6 +1130,9 @@ Content-Length: 283
 </ScanStatus>
 ```
 ### `POST /Scan/Jobs`
+
+Post a scan job.The `Location` header point to the newly created job.
+
 _Request_
 ```http
 POST /Scan/Jobs HTTP/1.1
@@ -1117,6 +1177,9 @@ Cache-Control: must-revalidate, max-age=0
 Pragma: no-cache
 ```
 ### `GET /Jobs/JobList/2 (55 times)`
+
+Get the created job. The `BinaryURL` will helps to fetch the scanned document.
+
 _Request_
 ```http
 GET /Jobs/JobList/2 HTTP/1.1
@@ -1227,6 +1290,9 @@ Content-Length: 1620
 
 
 ### `GET /Scan/Jobs/2/Pages/1`
+
+Fetch the `BinaryURL`
+
 _Request_
 ```http
 GET /Scan/Jobs/2/Pages/1 HTTP/1.1
@@ -1251,6 +1317,12 @@ Transfer-Encoding: chunked
 .....%&'()*456789:CDEFGHIJSTUVWXYZcdefghijstuvwxyz <content trunked>
 ```
 ### `GET /Jobs/JobList/2 (2 times)`
+
+Re-query the job. A single sheet was in the dray so there is nothing more to proceed. 
+- `JobState`: `Completed`
+- `PageState`: `UploadCompleted`
+- `PageNumber`: `1`
+
 _Request_
 ```http
 GET /Jobs/JobList/2 HTTP/1.1
@@ -1282,7 +1354,7 @@ Content-Length: 892
 </j:Job>
 ```
 
-
+Another time with the same data, I don't know why.
 _Request_
 ```http
 GET /Jobs/JobList/2 HTTP/1.1
@@ -1315,6 +1387,9 @@ Content-Length: 892
 </j:Job>
 ```
 ### `GET /Scan/Status`
+
+Get the scan status. It's back to `Idle` and the `AdfState` is `Empty`.
+
 _Request_
 ```http
 GET /Scan/Status HTTP/1.1
@@ -1337,6 +1412,9 @@ Content-Length: 282
 </ScanStatus>
 ```
 ### `GET /EventMgmt/EventTable?timeout=1200`
+
+THe job is finished so, the `EventTable` is polled again.
+
 _Request_
 ```http
 GET /EventMgmt/EventTable?timeout=1200 HTTP/1.1
@@ -1366,6 +1444,9 @@ Content-Length: 1020
 </ev:EventTable>
 ```
 ### `GET /EventMgmt/EventTable?timeout=1192`
+
+Polling continues.. The timeout has decreased to `1192` (why?)
+
 _Request_
 ```http
 GET /EventMgmt/EventTable?timeout=1192 HTTP/1.1
