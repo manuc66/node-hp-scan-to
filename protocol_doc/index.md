@@ -34,7 +34,13 @@
 
 # Protocol
 
+Scan to computer for `HP Officejet 6500 E710n-z` recorder on a Windows 10 computer.
+
 ## Recorded Sequence
+
+A single sheet was prepared in the tray. The `scan to computer` has never been activated on the host.
+
+Rapidly after launching the desktop application a `Scan to PDF` was triggered from the printer's screen.
 
 ### `GET /WalkupScan/WalkupScanDestinations`
 
