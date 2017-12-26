@@ -1,15 +1,12 @@
 "use strict";
 
-const http = require("http");
 const xml2js = require("xml2js");
 const parser = new xml2js.Parser();
 const url = require("url");
 const axios = require("axios");
 const Promise = require("promise");
-const os = require("os");
 
 const parseString = Promise.denodeify(parser.parseString);
-
 const printerIP = "192.168.1.7";
 
 
@@ -202,40 +199,6 @@ class HPApi {
     }
 }
 
-
-/**
- *
- * @param {String} resourceURI
- * @returns {Promise<Event>}
- */
-function waitScanEvent(resourceURI) {
-    return HPApi.getEvents()
-        .then(eventTable => {
-            return waitForScanEvent(resourceURI, eventTable.etag);
-        });
-}
-
-/**
- *
- * @param resourceURI
- * @param etag
- * @returns {Promise<Event>}
- */
-function waitForScanEvent(resourceURI, etag) {
-    return HPApi.getEvents(etag, 1200)
-        .then(eventTable => {
-            let scanEvent = eventTable.eventTable.events.find(ev => ev.isScanEvent);
-
-            if (scanEvent.resourceURI === resourceURI) {
-                return scanEvent;
-            }
-            else {
-                console.log("No scan event right now: " + eventTable.etag);
-                return waitForScanEvent(resourceURI, eventTable.etag);
-            }
-        });
-}
-
 class EventTable {
 
     constructor(data) {
@@ -284,7 +247,6 @@ class Event {
     }
 }
 
-
 class Destination {
     constructor(name, hostname) {
         this.name = name;
@@ -332,51 +294,5 @@ class Destination {
     }
 }
 
-/**
- *
- * @param {Destination} destination
- * @return {Promise}
- */
-function registerMeAsADestination(destination) {
-    return HPApi.registerDestination(destination)
-        .catch(reason => console.error(reason));
-}
-
-/**
- *
- * @param {WalkupScanDestinations} walkupScanDestinations
- * @param {String} destinationName
- * @returns {WalkupScanDestination}
- */
-function getDestination(walkupScanDestinations, destinationName) {
-    return walkupScanDestinations.destinations.find(x => x.name === destinationName);
-}
-
-function init() {
-    HPApi.getWalkupScanDestinations()
-        .catch(reason => {
-            console.error(reason);
-            setTimeout(init, 1000);
-        })
-        .then(walkupScanDestinations => {
-            let destination = getDestination(walkupScanDestinations, os.hostname());
-
-            if (destination) {
-                return destination.resourceURI;
-            }
-
-            return registerMeAsADestination(new Destination(os.hostname(), os.hostname()));
-        })
-        .then((resourceURI) => {
-            waitScanEvent(resourceURI)
-                .then(event => {
-                    return HPApi.getDestination(event.resourceURI);
-                })
-                .then(dest => {
-                    console.log(dest);
-                });
-        });
-}
-
-init();
-
+module.exports.HPApi = HPApi;
+module.exports.Destination = Destination;
