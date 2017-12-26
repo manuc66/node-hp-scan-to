@@ -68,8 +68,7 @@ function init() {
                     return HPApi.getDestination(event.resourceURI);
                 })
                 .then(dest => {
-
-                    console.log(dest);
+                    console.log("Selected shortcut: " + dest.shortcut);
                 });
         })
         .catch(reason => {
