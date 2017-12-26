@@ -136,14 +136,55 @@ class HPApi {
             });
     }
 
-    static getEvents() {
+    /**
+     *
+     * @returns {Promise<{etag: string, eventTable: EventTable}>}
+     */
+    static getEvents(etag = "", timeout = 0) {
+
+        let url = "/EventMgmt/EventTable";
+        if (timeout > 0) {
+            url += "?timeout=" + (timeout ? timeout : 1200);
+        }
+
+        let headers = {};
+        if (etag !== "") {
+            headers = {
+                "If-None-Match": etag
+            };
+        }
+
         return axios(
             {
                 baseURL: `http://${printerIP}`,
-                url: "/EventMgmt/EventTable", //?timeout=1200
+                url: url,
+                method: "GET",
+                responseType: "text",
+                headers: headers,
+
+            })
+            .catch(reason => console.error(reason))
+            .then(response => {
+                return new Promise((resolve, reject) => {
+                    if (response.status !== 200) {
+                        reject(response.statusMessage);
+                    }
+                    else {
+                        return parseString(response.data)
+                            .then((parsed) => resolve({etag: response.headers["ETag"], eventTable: new EventTable(parsed)}));
+                    }
+                });
+            });
+    }
+
+    static getDestination(resourceURI) {
+        return axios(
+            {
+                url: resourceURI,
                 method: "GET",
                 responseType: "text"
             })
+            .catch(reason => console.error(reason))
             .then(response => {
                 return new Promise((resolve, reject) => {
 
@@ -152,7 +193,9 @@ class HPApi {
                     }
                     else {
                         return parseString(response.data)
-                            .then((parsed) => resolve(new EventTable(parsed)));
+                            .then((parsed) => {
+                                resolve(new WalkupScanDestination(parsed));
+                            });
                     }
                 });
             });
@@ -162,22 +205,34 @@ class HPApi {
 
 /**
  *
- * @param {WalkupScanDestination} destination
+ * @param {String} resourceURI
+ * @returns {Promise<Event>}
  */
-function waitForEvent(destination) {
-    console.log("Destination:", destination.name, "is ready");
-
+function waitScanEvent(resourceURI) {
     return HPApi.getEvents()
         .then(eventTable => {
-            let scanEvent = eventTable.events.find(ev => ev.isScanEvent);
+            return waitForScanEvent(resourceURI, eventTable.etag);
+        });
+}
 
-            if (scanEvent) {
-                console.log(JSON.stringify(scanEvent));
+/**
+ *
+ * @param resourceURI
+ * @param etag
+ * @returns {Promise<Event>}
+ */
+function waitForScanEvent(resourceURI, etag) {
+    return HPApi.getEvents(etag, 1200)
+        .then(eventTable => {
+            let scanEvent = eventTable.eventTable.events.find(ev => ev.isScanEvent);
+
+            if (scanEvent.resourceURI === resourceURI) {
+                return scanEvent;
             }
             else {
-                console.log("no scan event right now");
+                console.log("No scan event right now: " + eventTable.etag);
+                return waitForScanEvent(resourceURI, eventTable.etag);
             }
-            return scanEvent;
         });
 }
 
@@ -214,6 +269,10 @@ class Event {
      */
     get unqualifiedEventCategory() {
         return this.data["dd:UnqualifiedEventCategory"][0];
+    }
+
+    get resourceURI() {
+        return this.data["ev:Payload"]["0"]["dd:ResourceURI"]["0"];
     }
 
     /**
@@ -276,11 +335,11 @@ class Destination {
 /**
  *
  * @param {Destination} destination
+ * @return {Promise}
  */
 function registerMeAsADestination(destination) {
-    HPApi.registerDestination(destination)
-        .catch(reason => console.error(reason))
-        .then(location => console.log("New destination registered: " + location));
+    return HPApi.registerDestination(destination)
+        .catch(reason => console.error(reason));
 }
 
 /**
@@ -300,26 +359,22 @@ function init() {
             setTimeout(init, 1000);
         })
         .then(walkupScanDestinations => {
-
-
             let destination = getDestination(walkupScanDestinations, os.hostname());
 
-            if (!destination) {
-                registerMeAsADestination(new Destination(os.hostname(), os.hostname()));
-                destination = getDestination(walkupScanDestinations, os.hostname());
+            if (destination) {
+                return destination.resourceURI;
             }
 
-            waitForEvent(destination).then(x => console.log(x));
-
-            /*
-                        // cleanup all dests
-                        value.destinations.map(x => {
-                            HPApi.removeDestination(x)
-                                .catch(reason => console.error(reason))
-                                .then(value2 => console.log(value2));
-                        });
-                        */
-
+            return registerMeAsADestination(new Destination(os.hostname(), os.hostname()));
+        })
+        .then((resourceURI) => {
+            waitScanEvent(resourceURI)
+                .then(event => {
+                    return HPApi.getDestination(event.resourceURI);
+                })
+                .then(dest => {
+                    console.log(dest);
+                });
         });
 }
 
