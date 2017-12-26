@@ -190,6 +190,8 @@ Content-Length: 1263
 ```
 ### `GET /WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`
 
+This query is made to fetch the option selected ton the panel. In this case it's `SaveJPEG` but it could also be `SaveJPEG`.
+
 _Request_
 ```http
 GET /WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 HTTP/1.1
