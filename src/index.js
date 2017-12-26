@@ -10,8 +10,10 @@ const os = require("os");
  * @returns {Promise<Event>}
  */
 function waitScanEvent(resourceURI) {
+    console.log("Fetching old events");
     return HPApi.getEvents()
         .then(eventTable => {
+            console.log("Start listening for new ScanEvent");
             return waitForScanEvent(resourceURI, eventTable.etag);
         });
 }
@@ -37,34 +39,36 @@ function waitForScanEvent(resourceURI, etag) {
         });
 }
 
-/**
- *
- * @param {Destination} destination
- * @return {Promise}
- */
-function registerMeAsADestination(destination) {
-    return HPApi.registerDestination(destination)
-        .catch(reason => console.error(reason));
-}
-
 function init() {
     HPApi.getWalkupScanDestinations()
         .then(walkupScanDestinations => {
             const hostname = os.hostname();
 
-            let destination = walkupScanDestinations.destinations.find(x => x.name === hostname);
+            let destinations = walkupScanDestinations.destinations;
+
+            console.log("Destination fetched:", destinations.map(d => d.name));
+
+            let destination = destinations.find(x => x.name === hostname);
             if (destination) {
+                console.log(`Re-using existing destination: ${hostname} - ${destination.resourceURI}`);
                 return destination.resourceURI;
             }
 
-            return registerMeAsADestination(new Destination(hostname, hostname));
+            return HPApi.registerDestination(new Destination(hostname, hostname)).then(resourceURI => {
+                console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
+                return resourceURI;
+            });
         })
-        .then((resourceURI) => {
+        .then(resourceURI => {
+            console.log("Waiting scan event for:", resourceURI);
+
             waitScanEvent(resourceURI)
                 .then(event => {
+                    console.log("Scan event captured");
                     return HPApi.getDestination(event.resourceURI);
                 })
                 .then(dest => {
+
                     console.log(dest);
                 });
         })
