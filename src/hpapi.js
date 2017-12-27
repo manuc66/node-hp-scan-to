@@ -301,9 +301,11 @@ class HPApi {
                 responseType: "stream"
             })
             .then(function (response) {
+                response.data
+                    .pipe(fs.createWriteStream(destination));
+
                 return new Promise((resolve, reject) => {
                     response.data
-                        .pipe(fs.createWriteStream(destination))
                         .on("end", () => resolve(destination))
                         .on("error", reject);
                 });

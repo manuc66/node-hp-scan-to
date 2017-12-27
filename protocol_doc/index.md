@@ -1477,3 +1477,4 @@ _Response_
 
 - https://github.com/arminha/covet
 - https://github.com/xcsrz/hp-scan
+- https://github.com/heisice/node-hpscan
