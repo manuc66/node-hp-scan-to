@@ -5,6 +5,7 @@ const parser = new xml2js.Parser();
 const url = require("url");
 const axios = require("axios");
 const Promise = require("promise");
+const fs = require("fs");
 
 const parseString = Promise.denodeify(parser.parseString);
 const printerIP = "192.168.1.7";
@@ -50,6 +51,33 @@ class WalkupScanDestinations {
             return [];
         }
 
+    }
+}
+
+
+class Job {
+    constructor(data) {
+        this.data = data;
+    }
+
+    get pageNumber() {
+        return this.data["j:Job"].ScanJob["0"].PreScanPage["0"].PageNumber["0"];
+    }
+
+    get jobState() {
+        return this.data["j:Job"]["j:JobState"][0];
+    }
+
+    get pageState() {
+        return this.data["j:Job"].ScanJob["0"].PreScanPage["0"].PageState["0"];
+    }
+
+    get binaryURL() {
+        return this.data["j:Job"].ScanJob["0"].PreScanPage["0"].BinaryURL["0"];
+    }
+
+    get shortcut() {
+        return this.data["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"]["0"]["wus:WalkupScanSettings"]["0"]["wus:Shortcut"][0];
     }
 }
 
@@ -178,10 +206,10 @@ class HPApi {
             });
     }
 
-    static getDestination(resourceURI) {
+    static getDestination(destinationURL) {
         return axios(
             {
-                url: resourceURI,
+                url: destinationURL,
                 method: "GET",
                 responseType: "text"
             })
@@ -198,6 +226,86 @@ class HPApi {
                                 resolve(new WalkupScanDestination(parsed));
                             });
                     }
+                });
+            });
+    }
+
+
+    static delay(t) {
+        return new Promise(function (resolve) {
+            setTimeout(resolve, t);
+        });
+    }
+
+    /**
+     *
+     * @param {ScanJobSettings} job
+     * @return {*|Promise<String | Error>}
+     */
+    static postJob(job) {
+        return HPApi.delay(500)
+            .then(() => job.toXML())
+            .then(xml => {
+                return axios(
+                    {
+                        baseURL: `http://${printerIP}:8080`,
+                        url: "/Scan/Jobs",
+                        method: "POST",
+                        headers: {"Content-Type": "text/xml"},
+                        data: xml,
+                        responseType: "text"
+                    })
+                    .then(response => {
+                        return new Promise((resolve, reject) => {
+                            if (response.status === 201) {
+                                resolve(response.headers.location);
+                            }
+                            else {
+                                reject(response.statusText);
+                            }
+                        });
+                    });
+            });
+    }
+
+    static getJob(jobURL) {
+        return axios(
+            {
+                url: jobURL,
+                method: "GET",
+                responseType: "text"
+            })
+            .catch(reason => console.error(reason))
+            .then(response => {
+                return new Promise((resolve, reject) => {
+
+                    if (response.status !== 200) {
+                        reject(response.statusMessage);
+                    }
+                    else {
+                        return parseString(response.data)
+                            .then(parsed => {
+                                resolve(new Job(parsed));
+                            });
+                    }
+                });
+            });
+    }
+
+    static downloadPage(binaryURL, destination) {
+        return axios(
+            {
+                baseURL: `http://${printerIP}:8080`,
+                url: binaryURL,
+                method: "GET",
+                responseType: "stream"
+            })
+            .then(function (response) {
+                return new Promise((resolve, reject) => {
+                    response.data
+                        .pipe(fs.createWriteStream(destination))
+                        .on("end", () => resolve(destination))
+                        .on("error", reject);
                 });
             });
     }
@@ -298,5 +406,60 @@ class Destination {
     }
 }
 
+class ScanJobSettings {
+
+    /**
+     * Do something.
+     * @returns {Promise.<String|Error>}
+     */
+    toXML() {
+        let rawJob = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<ScanSettings xmlns=\"http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19 Scan Schema - 0.26.xsd\">\n" +
+            "\t<XResolution>200</XResolution>\n" +
+            "\t<YResolution>200</YResolution>\n" +
+            "\t<XStart>33</XStart>\n" +
+            "\t<YStart>0</YStart>\n" +
+            "\t<Width>2481</Width>\n" +
+            "\t<Height>3507</Height>\n" +
+            "\t<Format>Jpeg</Format>\n" +
+            "\t<CompressionQFactor>0</CompressionQFactor>\n" +
+            "\t<ColorSpace>Color</ColorSpace>\n" +
+            "\t<BitDepth>8</BitDepth>\n" +
+            "\t<InputSource>Adf</InputSource>\n" +
+            "\t<GrayRendering>NTSC</GrayRendering>\n" +
+            "\t<ToneMap>\n" +
+            "\t\t<Gamma>1000</Gamma>\n" +
+            "\t\t<Brightness>1000</Brightness>\n" +
+            "\t\t<Contrast>1000</Contrast>\n" +
+            "\t\t<Highlite>179</Highlite>\n" +
+            "\t\t<Shadow>25</Shadow>\n" +
+            "\t\t<Threshold>0</Threshold>\n" +
+            "\t</ToneMap>\n" +
+            "\t<SharpeningLevel>128</SharpeningLevel>\n" +
+            "\t<NoiseRemoval>0</NoiseRemoval>\n" +
+            "\t<ContentType>Document</ContentType>\n" +
+            "</ScanSettings>";
+
+
+        return new Promise((resolve, reject) => {
+            parser.parseString(rawJob, (err, parsed) => {
+                if (err) {
+                    reject(err);
+                }
+                else {
+
+
+                    let builder = new xml2js.Builder({
+                        xmldec: {"version": "1.0", "encoding": "UTF-8", "standalone": null},
+                        renderOpts: {"pretty": true, "indent": "\t", "newline": "\n"}
+                    });
+                    resolve(builder.buildObject(parsed));
+                }
+            });
+        });
+    }
+}
+
 module.exports.HPApi = HPApi;
 module.exports.Destination = Destination;
+module.exports.ScanJobSettings = ScanJobSettings;

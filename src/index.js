@@ -1,8 +1,14 @@
 "use strict";
 
-const {HPApi, Destination} = require("./hpapi");
+const {HPApi, Destination, ScanJobSettings} = require("./hpapi");
 const Promise = require("promise");
 const os = require("os");
+
+function delay(t) {
+    return new Promise(function (resolve) {
+        setTimeout(resolve, t);
+    });
+}
 
 /**
  *
@@ -39,6 +45,19 @@ function waitForScanEvent(resourceURI, etag) {
         });
 }
 
+function waitPrinterUntilItIsReadyToUpload(jobUrl) {
+    return delay(200)
+        .then(() => HPApi.getJob(jobUrl))
+        .then(job => {
+            if (job.pageState === "ReadyToUpload") {
+                return job;
+            }
+
+            return delay(200)
+                .then(() => waitPrinterUntilItIsReadyToUpload(jobUrl));
+        });
+}
+
 function init() {
     HPApi.getWalkupScanDestinations()
         .then(walkupScanDestinations => {
@@ -62,6 +81,7 @@ function init() {
         .then(resourceURI => {
             console.log("Waiting scan event for:", resourceURI);
 
+            let scanType;
             waitScanEvent(resourceURI)
                 .then(event => {
                     console.log("Scan event captured");
@@ -69,6 +89,24 @@ function init() {
                 })
                 .then(dest => {
                     console.log("Selected shortcut: " + dest.shortcut);
+                    return dest.shortcut;
+                })
+                .then(shortcut => {
+                    scanType = shortcut;
+                    return HPApi.postJob(new ScanJobSettings());
+                })
+                .then(jobUrl => {
+                    console.log("New job created:", jobUrl);
+
+                    return waitPrinterUntilItIsReadyToUpload(jobUrl);
+                })
+                .then(job => {
+                    console.log("Ready to download:", job.binaryURL);
+
+                    return HPApi.downloadPage(job.binaryURL, "/tmp/scanPage1.jpg");
+                })
+                .then(filePath => {
+                    console.log("Page downloaded to:", filePath);
                 });
         })
         .catch(reason => {

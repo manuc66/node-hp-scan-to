@@ -1,6 +1,6 @@
 <!-- TOC -->
 
-- [Protocol](#protocol)
+- [Protocol]downgraded)
     - [Recorded Sequence](#recorded-sequence)
         - [`GET /WalkupScan/WalkupScanDestinations`](#get-walkupscanwalkupscandestinations)
         - [`POST /WalkupScan/WalkupScanDestinations`](#post-walkupscanwalkupscandestinations)
@@ -1242,7 +1242,11 @@ Content-Length: 1620
 ```
 ....
 
-The last time
+
+
+The last time:
+`PageState` pass from  `PreparingScan` to `ReadyToUpload`
+
 _Request_
 ```http
 GET /Jobs/JobList/2 HTTP/1.1
