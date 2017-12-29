@@ -737,7 +737,7 @@ Content-Length: 6458
 ```
 ### `GET /Scan/Status`
 
-Getting the scanner status: `Idle` and `Loaded`
+Getting the scanner status: `Idle` and Afd `Loaded` (It could be `Empty`)
 
 _Request_
 ```http
@@ -1140,6 +1140,10 @@ Content-Length: 283
 ### `POST /Scan/Jobs`
 
 Post a scan job.The `Location` header point to the newly created job.
+
+The `Afd` was `Loaded` so the `InputSource` is `Afd`. If `AdfState` was empty, the `InputSource` would be `Platen`.
+
+THe `Shortcut` `SavePDF` generated a `ContentType` to `Document` if it was `SaveJPEG` then it would be `Photo`.
 
 _Request_
 ```http
