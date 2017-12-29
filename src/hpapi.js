@@ -54,6 +54,19 @@ class WalkupScanDestinations {
     }
 }
 
+class ScanStatus {
+    constructor(data) {
+        this.data = data;
+    }
+
+    get scannerState() {
+        return this.data["ScanStatus"].ScannerState["0"];
+    }
+
+    get adfState() {
+        return this.data["ScanStatus"].AdfState["0"];
+    }
+}
 
 class Job {
     constructor(data) {
@@ -74,10 +87,6 @@ class Job {
 
     get binaryURL() {
         return this.data["j:Job"].ScanJob["0"].PreScanPage["0"].BinaryURL["0"];
-    }
-
-    get shortcut() {
-        return this.data["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"]["0"]["wus:WalkupScanSettings"]["0"]["wus:Shortcut"][0];
     }
 }
 
@@ -224,6 +233,32 @@ class HPApi {
                         return parseString(response.data)
                             .then(parsed => {
                                 resolve(new WalkupScanDestination(parsed));
+                            });
+                    }
+                });
+            });
+    }
+
+
+    static getScanStatus() {
+        return axios(
+            {
+                baseURL: `http://${printerIP}`,
+                url: "/Scan/Status",
+                method: "GET",
+                responseType: "text"
+            })
+            .catch(reason => console.error(reason))
+            .then(response => {
+                return new Promise((resolve, reject) => {
+
+                    if (response.status !== 200) {
+                        reject(response.statusMessage);
+                    }
+                    else {
+                        return parseString(response.data)
+                            .then(parsed => {
+                                resolve(new ScanStatus(parsed));
                             });
                     }
                 });
@@ -410,6 +445,12 @@ class Destination {
 
 class ScanJobSettings {
 
+
+    constructor(inputSource, contentType) {
+        this.inputSource = inputSource;
+        this.contentType = contentType;
+    }
+
     /**
      * Do something.
      * @returns {Promise.<String|Error>}
@@ -450,6 +491,8 @@ class ScanJobSettings {
                 }
                 else {
 
+                    parsed.ScanSettings.InputSource[0] = this.inputSource;
+                    parsed.ScanSettings.ContentType[0] = this.contentType;
 
                     let builder = new xml2js.Builder({
                         xmldec: {"version": "1.0", "encoding": "UTF-8", "standalone": null},

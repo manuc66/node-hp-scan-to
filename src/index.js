@@ -89,11 +89,15 @@ function init() {
                 })
                 .then(dest => {
                     console.log("Selected shortcut: " + dest.shortcut);
-                    return dest.shortcut;
+                    scanType = dest.shortcut;
+                    return HPApi.getScanStatus();
                 })
-                .then(shortcut => {
-                    scanType = shortcut;
-                    return HPApi.postJob(new ScanJobSettings());
+                .then(scanStatus => {
+                    console.log("Afd is : " + scanStatus.adfState);
+                    let inputSource = scanStatus.adfState === "Loaded" ? "Adf" : "Platen";
+                    let contentType = scanType === "SavePDF" ? "Document" : "Photo";
+                    let scanJobSettings = new ScanJobSettings(inputSource, contentType);
+                    return HPApi.postJob(scanJobSettings);
                 })
                 .then(jobUrl => {
                     console.log("New job created:", jobUrl);
