@@ -6,6 +6,7 @@ const url = require("url");
 const axios = require("axios");
 const Promise = require("promise");
 const fs = require("fs");
+const console = require("console");
 
 const parseString = Promise.denodeify(parser.parseString);
 const printerIP = "192.168.1.7";
@@ -209,7 +210,10 @@ class HPApi {
                     }
                     else {
                         return parseString(response.data)
-                            .then((parsed) => resolve({etag: response.headers["ETag"], eventTable: new EventTable(parsed)}));
+                            .then((parsed) => resolve({
+                                etag: response.headers["ETag"],
+                                eventTable: new EventTable(parsed)
+                            }));
                     }
                 });
             });

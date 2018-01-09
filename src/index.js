@@ -3,6 +3,7 @@
 const {HPApi, Destination, ScanJobSettings} = require("./hpapi");
 const Promise = require("promise");
 const os = require("os");
+const console = require("console");
 
 function delay(t) {
     return new Promise(function (resolve) {
