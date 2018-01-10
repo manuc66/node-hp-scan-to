@@ -17,6 +17,14 @@
     "quotes": [
       "error",
       "double"
+    ],
+    "complexity": [
+      "error",
+      3
+    ],
+    "max-depth": [
+      "error",
+      2
     ]
   }
 }

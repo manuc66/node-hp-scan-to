@@ -59,6 +59,24 @@ function waitPrinterUntilItIsReadyToUpload(jobUrl) {
         });
 }
 
+/**
+ *
+ * @param {WalkupScanDestination} destination
+ * @return {string}
+ */
+function getContentType(destination) {
+    return destination.shortcut === "SavePDF" ? "Document" : "Photo";
+}
+
+/**
+ *
+ * @param {ScanStatus} scanStatus
+ * @return {string}
+ */
+function getInputSource(scanStatus) {
+    return scanStatus.adfState === "Loaded" ? "Adf" : "Platen";
+}
+
 function init() {
     HPApi.getWalkupScanDestinations()
         .then(walkupScanDestinations => {
@@ -82,7 +100,7 @@ function init() {
         .then(resourceURI => {
             console.log("Waiting scan event for:", resourceURI);
 
-            let scanType;
+            let destination;
             waitScanEvent(resourceURI)
                 .then(event => {
                     console.log("Scan event captured");
@@ -90,13 +108,13 @@ function init() {
                 })
                 .then(dest => {
                     console.log("Selected shortcut: " + dest.shortcut);
-                    scanType = dest.shortcut;
+                    destination = dest;
                     return HPApi.getScanStatus();
                 })
                 .then(scanStatus => {
                     console.log("Afd is : " + scanStatus.adfState);
-                    let inputSource = scanStatus.adfState === "Loaded" ? "Adf" : "Platen";
-                    let contentType = scanType === "SavePDF" ? "Document" : "Photo";
+                    let inputSource = getInputSource(scanStatus);
+                    let contentType = getContentType(destination);
                     let scanJobSettings = new ScanJobSettings(inputSource, contentType);
                     return HPApi.postJob(scanJobSettings);
                 })

@@ -182,16 +182,10 @@ class HPApi {
     static getEvents(etag = "", timeout = 0) {
 
         let url = "/EventMgmt/EventTable";
-        if (timeout > 0) {
-            url += "?timeout=" + (timeout ? timeout : 1200);
-        }
+        url = this.appendTimeout(timeout, url);
 
         let headers = {};
-        if (etag !== "") {
-            headers = {
-                "If-None-Match": etag
-            };
-        }
+        headers = this.placeETagHeader(etag, headers);
 
         return axios(
             {
@@ -217,6 +211,25 @@ class HPApi {
                     }
                 });
             });
+    }
+
+    static placeETagHeader(etag, headers) {
+        if (etag !== "") {
+            headers = {
+                "If-None-Match": etag
+            };
+        }
+        return headers;
+    }
+
+    static appendTimeout(timeout, url) {
+        if (timeout == null) {
+            timeout = 1200;
+        }
+        if (timeout > 0) {
+            url += "?timeout=" + timeout;
+        }
+        return url;
     }
 
     static getDestination(destinationURL) {
