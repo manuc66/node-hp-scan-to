@@ -10,11 +10,10 @@ const xml2js = require("xml2js");
 const parser = new xml2js.Parser();
 const url = require("url");
 const axios = require("axios");
-const Promise = require("promise");
 const fs = require("fs");
-const console = require("console");
+const util = require("util");
 
-const parseString = Promise.denodeify(parser.parseString);
+const parseString = util.promisify(parser.parseString);
 const printerIP = "192.168.1.11";
 
 module.exports = class HPApi {
@@ -31,19 +30,14 @@ module.exports = class HPApi {
                 responseType: "text"
             })
             .then(response => {
-                return new Promise((resolve, reject) => {
-
-                    if (response.status !== 200) {
-                        reject(response.statusMessage);
-                    }
-                    else {
-                        return parseString(response.data)
-                            .then((parsed) => {
-                                resolve(new WalkupScanDestinations(parsed));
-                            });
-                    }
-                });
-            });
+                if (response.status !== 200) {
+                    throw new Error(response.statusMessage);
+                }
+                else {
+                    return parseString(response.data);
+                }
+            })
+            .then(parsed => new WalkupScanDestinations(parsed));
     }
 
     /**
@@ -122,20 +116,17 @@ module.exports = class HPApi {
                 headers: headers,
 
             })
-            .catch(reason => console.error(reason))
             .then(response => {
-                return new Promise((resolve, reject) => {
-                    if (response.status !== 200) {
-                        reject(response.statusMessage);
-                    }
-                    else {
-                        return parseString(response.data)
-                            .then((parsed) => resolve({
-                                etag: response.headers["ETag"],
-                                eventTable: new EventTable(parsed)
-                            }));
-                    }
-                });
+                if (response.status !== 200) {
+                    throw new Error(response.statusMessage);
+                }
+                else {
+                    return parseString(response.data)
+                        .then(parsed => ({
+                            etag: response.headers["ETag"],
+                            eventTable: new EventTable(parsed)
+                        }));
+                }
             });
     }
 
@@ -165,7 +156,6 @@ module.exports = class HPApi {
                 method: "GET",
                 responseType: "text"
             })
-            .catch(reason => console.error(reason))
             .then(response => {
                 return new Promise((resolve, reject) => {
 
@@ -191,7 +181,6 @@ module.exports = class HPApi {
                 method: "GET",
                 responseType: "text"
             })
-            .catch(reason => console.error(reason))
             .then(response => {
                 return new Promise((resolve, reject) => {
 
@@ -232,17 +221,17 @@ module.exports = class HPApi {
                         headers: {"Content-Type": "text/xml"},
                         data: xml,
                         responseType: "text"
-                    })
-                    .then(response => {
-                        return new Promise((resolve, reject) => {
-                            if (response.status === 201) {
-                                resolve(response.headers.location);
-                            }
-                            else {
-                                reject(response.statusText);
-                            }
-                        });
                     });
+            })
+            .then(response => {
+                return new Promise((resolve, reject) => {
+                    if (response.status === 201) {
+                        resolve(response.headers.location);
+                    }
+                    else {
+                        reject(response.statusText);
+                    }
+                });
             });
     }
 
@@ -253,7 +242,6 @@ module.exports = class HPApi {
                 method: "GET",
                 responseType: "text"
             })
-            .catch(reason => console.error(reason))
             .then(response => {
                 return new Promise((resolve, reject) => {
 

@@ -3,7 +3,6 @@
 const Destination = require("./destination");
 const ScanJobSettings = require("./scanJobSettings");
 const HPApi = require("./hpapi");
-const Promise = require("promise");
 const os = require("os");
 const console = require("console");
 
@@ -103,7 +102,7 @@ function init() {
             console.log("Waiting scan event for:", resourceURI);
 
             let destination;
-            waitScanEvent(resourceURI)
+            return waitScanEvent(resourceURI)
                 .then(event => {
                     console.log("Scan event captured");
                     return HPApi.getDestination(event.resourceURI);
@@ -119,20 +118,20 @@ function init() {
                     let contentType = getContentType(destination);
                     let scanJobSettings = new ScanJobSettings(inputSource, contentType);
                     return HPApi.postJob(scanJobSettings);
-                })
-                .then(jobUrl => {
-                    console.log("New job created:", jobUrl);
-
-                    return waitPrinterUntilItIsReadyToUpload(jobUrl);
-                })
-                .then(job => {
-                    console.log("Ready to download:", job.binaryURL);
-
-                    return HPApi.downloadPage(job.binaryURL, "/tmp/scanPage1.jpg");
-                })
-                .then(filePath => {
-                    console.log("Page downloaded to:", filePath);
                 });
+        })
+        .then(jobUrl => {
+            console.log("New job created:", jobUrl);
+
+            return waitPrinterUntilItIsReadyToUpload(jobUrl);
+        })
+        .then(job => {
+            console.log("Ready to download:", job.binaryURL);
+
+            return HPApi.downloadPage(job.binaryURL, "/tmp/scanPage1.jpg");
+        })
+        .then(filePath => {
+            console.log("Page downloaded to:", filePath);
         })
         .catch(reason => {
             console.error(reason);
