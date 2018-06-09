@@ -11,7 +11,7 @@
   "devDependencies": {
     "axios": "^0.17.1",
     "eslint": "^4.15.0",
-    "mocha": "^4.0.1",
+    "mocha": "^4.1.0",
     "promise": "^8.0.1",
     "xml2js": "^0.4.19"
   },

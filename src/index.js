@@ -1,6 +1,8 @@
 "use strict";
 
-const {HPApi, Destination, ScanJobSettings} = require("./hpapi");
+const Destination = require("./destination");
+const ScanJobSettings = require("./scanJobSettings");
+const HPApi = require("./hpapi");
 const Promise = require("promise");
 const os = require("os");
 const console = require("console");
