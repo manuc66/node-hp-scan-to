@@ -87,11 +87,9 @@ module.exports = class HPApi {
    * @returns {Promise<{etag: string, eventTable: ?EventTable}>}
    */
   static async getEvents(etag = "", timeout = 0) {
-    let url = "/EventMgmt/EventTable";
-    url = this.appendTimeout(timeout, url);
+    let url = this.appendTimeout(timeout, "/EventMgmt/EventTable");
 
-    let headers = {};
-    headers = this.placeETagHeader(etag, headers);
+    let headers = this.placeETagHeader(etag, {});
 
     let response;
     try {
@@ -200,6 +198,10 @@ module.exports = class HPApi {
     }
   }
 
+  /**
+   * @param jobURL
+   * @return {Promise<Job|*>}
+   */
   static async getJob(jobURL) {
     const response = await axios({
       url: jobURL,

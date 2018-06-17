@@ -5,8 +5,12 @@ module.exports = class Job {
     this.data = data;
   }
 
-  get pageNumber() {
+  get currentPageNumber() {
     return this.data["j:Job"].ScanJob["0"].PreScanPage["0"].PageNumber["0"];
+  }
+
+  get totalPageNumber() {
+    return this.data["j:Job"].ScanJob["0"].PostScanPage["0"].PageNumber["0"];
   }
 
   get jobState() {

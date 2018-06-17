@@ -1334,7 +1334,7 @@ Transfer-Encoding: chunked
 ```
 ### `GET /Jobs/JobList/2 (2 times)`
 
-Re-query the job. A single sheet was in the dray so there is nothing more to proceed. 
+Re-query the job. A single sheet was in the tray so there is nothing more to proceed. 
 - `JobState`: `Completed`
 - `PageState`: `UploadCompleted`
 - `PageNumber`: `1`

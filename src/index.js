@@ -70,6 +70,10 @@ async function register() {
   return resourceURI;
 }
 
+function getNextFile(job) {
+  return `/tmp/scanPage${job.currentPageNumber}.jpg`;
+}
+
 async function saveScan(event) {
   const destination = await HPApi.getDestination(event.resourceURI);
 
@@ -85,16 +89,16 @@ async function saveScan(event) {
 
   console.log("New job created:", jobUrl);
 
-  const job = await waitPrinterUntilItIsReadyToUpload(jobUrl);
+  let job = await HPApi.getJob(jobUrl);
+  while (job.jobState !== "Completed") {
+    job = await waitPrinterUntilItIsReadyToUpload(jobUrl);
+    console.log("Ready to download:", job.binaryURL);
 
-  console.log("Ready to download:", job.binaryURL);
-
-  const filePath = await HPApi.downloadPage(
-    job.binaryURL,
-    "/tmp/scanPage1.jpg"
-  );
-
-  console.log("Page downloaded to:", filePath);
+    const filePath = await HPApi.downloadPage(job.binaryURL, getNextFile(job));
+    console.log("Page downloaded to:", filePath);
+    job = await HPApi.getJob(jobUrl);
+  }
+  console.log(`Job state: ${job.jobState}, totalPages: ${job.totalPageNumber}`);
 }
 
 async function init() {
