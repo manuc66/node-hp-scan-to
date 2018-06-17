@@ -121,16 +121,27 @@ async function init() {
   }
 }
 
-const bonjour = require("bonjour")();
-bonjour.find({}, service => {
-  if (
-    service.name.startsWith("Officejet 6500 E710n-z") &&
-    service.port === 80 &&
-    service.type === "http"
-  ) {
-    bonjour.destroy();
-    HPApi.setPrinterIP(service.addresses[0]);
-    console.log(`Found: ${service.name}`);
-    init();
-  }
-});
+function findOfficejetIp() {
+  return new Promise(resolve => {
+    const bonjour = require("bonjour")();
+    bonjour.find({}, service => {
+      if (
+        service.name.startsWith("Officejet 6500 E710n-z") &&
+        service.port === 80 &&
+        service.type === "http"
+      ) {
+        bonjour.destroy();
+        console.log(`Found: ${service.name}`);
+        resolve(service.addresses[0]);
+      }
+    });
+  });
+}
+
+async function main() {
+  const ip = await findOfficejetIp();
+  HPApi.setPrinterIP(ip);
+  await init();
+}
+
+main();
