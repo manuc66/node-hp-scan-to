@@ -1,6 +1,6 @@
 "use strict";
 
-const Event = require("./event");
+const Event = require("./Event");
 
 module.exports = class EventTable {
 
@@ -14,7 +14,7 @@ module.exports = class EventTable {
      */
     get events() {
         let eventTable = this.data["ev:EventTable"];
-        if (eventTable.hasOwnProperty("ev:Event")) {
+        if (eventTable != null && eventTable.hasOwnProperty("ev:Event")) {
             return eventTable["ev:Event"].map(x => new Event(x));
         }
         else {

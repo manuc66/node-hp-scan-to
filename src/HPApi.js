@@ -1,10 +1,10 @@
 "use strict";
 
-const WalkupScanDestination = require("./walkupScanDestination");
-const WalkupScanDestinations = require("./walkupScanDestinations");
-const ScanStatus = require("./scanStatus");
-const Job = require("./job");
-const EventTable = require("./eventTable");
+const WalkupScanDestination = require("./WalkupScanDestination");
+const WalkupScanDestinations = require("./WalkupScanDestinations");
+const ScanStatus = require("./ScanStatus");
+const Job = require("./Job");
+const EventTable = require("./EventTable");
 
 const xml2js = require("xml2js");
 const parser = new xml2js.Parser();
@@ -97,9 +97,9 @@ module.exports = class HPApi {
 
     /**
      *
-     * @returns {Promise<{etag: string, eventTable: EventTable}>}
+     * @returns {Promise<{etag: string, eventTable: ?EventTable}>}
      */
-    static getEvents(etag = "", timeout = 0) {
+    static async getEvents(etag = "", timeout = 0) {
 
         let url = "/EventMgmt/EventTable";
         url = this.appendTimeout(timeout, url);
@@ -107,27 +107,35 @@ module.exports = class HPApi {
         let headers = {};
         headers = this.placeETagHeader(etag, headers);
 
-        return axios(
-            {
-                baseURL: `http://${printerIP}`,
-                url: url,
-                method: "GET",
-                responseType: "text",
-                headers: headers,
+        let response;
+        try {
+            response = await axios(
+                {
+                    baseURL: `http://${printerIP}`,
+                    url: url,
+                    method: "GET",
+                    responseType: "text",
+                    headers: headers,
 
-            })
-            .then(response => {
-                if (response.status !== 200) {
-                    throw new Error(response.statusMessage);
-                }
-                else {
-                    return parseString(response.data)
-                        .then(parsed => ({
-                            etag: response.headers["ETag"],
-                            eventTable: new EventTable(parsed)
-                        }));
-                }
-            });
+                });
+
+        }
+        catch (error) {
+            response = error.response;
+            if (response.status === 304) {
+                return ({
+                    etag: etag,
+                    eventTable: new EventTable({})
+                });
+            }
+            throw error;
+        }
+
+        const parsed = await parseString(response.data);
+        return {
+            etag: response.headers["etag"],
+            eventTable: new EventTable(parsed)
+        };
     }
 
     static placeETagHeader(etag, headers) {
@@ -277,4 +285,5 @@ module.exports = class HPApi {
                 });
             });
     }
-};
+}
+;

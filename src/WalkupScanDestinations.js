@@ -1,6 +1,6 @@
 "use strict";
 
-const WalkupScanDestination = require("./walkupScanDestination");
+const WalkupScanDestination = require("./WalkupScanDestination");
 
 module.exports = class WalkupScanDestinations {
     constructor(data) {

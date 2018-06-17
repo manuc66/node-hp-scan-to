@@ -1,8 +1,8 @@
 "use strict";
 
-const Destination = require("./destination");
-const ScanJobSettings = require("./scanJobSettings");
-const HPApi = require("./hpapi");
+const Destination = require("./Destination");
+const ScanJobSettings = require("./ScanJobSettings");
+const HPApi = require("./HPApi");
 const os = require("os");
 const console = require("console");
 
@@ -14,52 +14,34 @@ function delay(t) {
 
 /**
  *
- * @param {String} resourceURI
- * @returns {Promise<Event>}
- */
-function waitScanEvent(resourceURI) {
-    console.log("Fetching old events");
-    return HPApi.getEvents()
-        .then(eventTable => {
-            console.log("Start listening for new ScanEvent");
-            return waitForScanEvent(resourceURI, eventTable.etag);
-        });
-}
-
-let lastHandledAgingStamp = null;
-/**
- *
  * @param resourceURI
- * @param etag
  * @returns {Promise<Event>}
  */
-function waitForScanEvent(resourceURI, etag) {
-    return HPApi.getEvents(etag, 1200)
-        .then(eventTable => {
-            let scanEvent = eventTable.eventTable.events.find(ev => ev.isScanEvent);
+async function waitForScanEvent(resourceURI) {
+    console.log("Start listening for new ScanEvent");
 
-            if (scanEvent.resourceURI === resourceURI && scanEvent.agingStamp !== lastHandledAgingStamp) {
-                lastHandledAgingStamp =  scanEvent.agingStamp;
-                return scanEvent;
-            }
-            else {
-                console.log("No scan event right now: " + eventTable.etag);
-                return waitForScanEvent(resourceURI, eventTable.etag);
-            }
-        });
+    let eventTable = await HPApi.getEvents();
+    let acceptedScanEvent = null;
+    let currentEtag = eventTable.etag;
+    while (acceptedScanEvent == null) {
+        eventTable = await HPApi.getEvents(currentEtag, 1200);
+        currentEtag = eventTable.etag;
+
+        acceptedScanEvent = eventTable.eventTable.events.find(ev => ev.isScanEvent && ev.resourceURI === resourceURI);
+    }
+    return acceptedScanEvent;
 }
 
-function waitPrinterUntilItIsReadyToUpload(jobUrl) {
-    return delay(200)
-        .then(() => HPApi.getJob(jobUrl))
-        .then(job => {
-            if (job.pageState === "ReadyToUpload") {
-                return job;
-            }
+async function waitPrinterUntilItIsReadyToUpload(jobUrl) {
+    let job;
+    let isReadyToUpload = false;
+    while (!isReadyToUpload) {
+        job = await HPApi.getJob(jobUrl);
+        isReadyToUpload = job.pageState === "ReadyToUpload";
 
-            return delay(200)
-                .then(() => waitPrinterUntilItIsReadyToUpload(jobUrl));
-        });
+        await delay(200);
+    }
+    return job;
 }
 
 async function register() {
@@ -115,7 +97,7 @@ async function init() {
             let resourceURI = await register();
 
             console.log("Waiting scan event for:", resourceURI);
-            const event = await waitScanEvent(resourceURI);
+            const event = await waitForScanEvent(resourceURI);
             console.log("Scan event captured");
             await saveScan(event);
         }

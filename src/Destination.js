@@ -1,7 +1,7 @@
 "use strict";
 
-const Promise = require("promise");
 const xml2js = require("xml2js");
+const util = require("util");
 const parser = new xml2js.Parser();
 
 module.exports = class Destination {
@@ -22,7 +22,7 @@ module.exports = class Destination {
      * Do something.
      * @returns {Promise.<String|Error>}
      */
-    toXML() {
+    async toXML() {
         let rawDestination = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<WalkupScanDestination xmlns=\"http://www.hp.com/schemas/imaging/con/rest/walkupscan/2009/09/21\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" \n" +
             "xsi:schemaLocation=\"http://www.hp.com/schemas/imaging/con/rest/walkupscan/2009/09/21 WalkupScanDestinations.xsd\">\n" +
@@ -31,22 +31,14 @@ module.exports = class Destination {
             "<LinkType>Network</LinkType>\n" +
             "</WalkupScanDestination>";
 
+        const parsed = await  util.promisify(parser.parseString)(rawDestination);
 
-        return new Promise((resolve, reject) => {
-            parser.parseString(rawDestination, (err, parsed) => {
-                if (err) {
-                    reject(err);
-                }
-                else {
-                    parsed.WalkupScanDestination.Hostname[0]._ = this.hostname;
-                    parsed.WalkupScanDestination.Name[0]._ = this.name;
-                    parsed.WalkupScanDestination.LinkType[0] = this.linkType;
+        parsed.WalkupScanDestination.Hostname[0]._ = this.hostname;
+        parsed.WalkupScanDestination.Name[0]._ = this.name;
+        parsed.WalkupScanDestination.LinkType[0] = this.linkType;
 
-                    let builder = new xml2js.Builder();
-                    let xml = builder.buildObject(parsed);
-                    resolve(xml);
-                }
-            });
-        });
+        let builder = new xml2js.Builder();
+        return builder.buildObject(parsed);
     }
-};
+}
+;

@@ -1,6 +1,6 @@
 const xml2js = require("xml2js");
 const parser = new xml2js.Parser();
-const Promise = require("promise");
+const util = require("util");
 
 module.exports = class ScanJobSettings {
 
@@ -14,7 +14,7 @@ module.exports = class ScanJobSettings {
      * Do something.
      * @returns {Promise.<String|Error>}
      */
-    toXML() {
+    async toXML() {
         let rawJob = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<ScanSettings xmlns=\"http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19 Scan Schema - 0.26.xsd\">\n" +
             "\t<XResolution>200</XResolution>\n" +
@@ -42,24 +42,16 @@ module.exports = class ScanJobSettings {
             "\t<ContentType>Document</ContentType>\n" +
             "</ScanSettings>";
 
+        const parsed = await   util.promisify(parser.parseString)(rawJob);
 
-        return new Promise((resolve, reject) => {
-            parser.parseString(rawJob, (err, parsed) => {
-                if (err) {
-                    reject(err);
-                }
-                else {
 
-                    parsed.ScanSettings.InputSource[0] = this.inputSource;
-                    parsed.ScanSettings.ContentType[0] = this.contentType;
+        parsed.ScanSettings.InputSource[0] = this.inputSource;
+        parsed.ScanSettings.ContentType[0] = this.contentType;
 
-                    let builder = new xml2js.Builder({
-                        xmldec: {"version": "1.0", "encoding": "UTF-8", "standalone": null},
-                        renderOpts: {"pretty": true, "indent": "\t", "newline": "\n"}
-                    });
-                    resolve(builder.buildObject(parsed));
-                }
-            });
+        let builder = new xml2js.Builder({
+            xmldec: {"version": "1.0", "encoding": "UTF-8", "standalone": null},
+            renderOpts: {"pretty": true, "indent": "\t", "newline": "\n"}
         });
+        return builder.buildObject(parsed);
     }
 };
