@@ -17,245 +17,218 @@ const parseString = util.promisify(parser.parseString);
 let printerIP = "192.168.1.11";
 
 module.exports = class HPApi {
+  static setPrinterIP(ip) {
+    printerIP = ip;
+  }
 
-    static setPrinterIP(ip) {
-        printerIP = ip;
+  /**
+   * @returns {Promise.<WalkupScanDestinations>}
+   */
+  static async getWalkupScanDestinations() {
+    const response = await axios({
+      baseURL: `http://${printerIP}`,
+      url: "/WalkupScan/WalkupScanDestinations",
+      method: "GET",
+      responseType: "text"
+    });
+
+    if (response.status !== 200) {
+      throw new Error(response.statusMessage);
+    } else {
+      const parsed = await parseString(response.data);
+      return new WalkupScanDestinations(parsed);
     }
+  }
 
-    /**
-     * @returns {Promise.<WalkupScanDestinations>}
-     */
-    static async getWalkupScanDestinations() {
-        const response = await axios(
-            {
-                baseURL: `http://${printerIP}`,
-                url: "/WalkupScan/WalkupScanDestinations",
-                method: "GET",
-                responseType: "text"
-            });
+  /**
+   * @params {WalkupScanDestination} walkupScanDestination
+   * @returns {Promise.<boolean|Error>}
+   */
+  static async removeDestination(walkupScanDestination) {
+    let urlInfo = url.parse(walkupScanDestination.resourceURI);
 
-        if (response.status !== 200) {
-            throw new Error(response.statusMessage);
-        }
-        else {
-            const parsed = await parseString(response.data);
-            return new WalkupScanDestinations(parsed);
-        }
+    const response = await axios({
+      baseURL: `http://${printerIP}`,
+      url: urlInfo.pathname,
+      method: "DELETE",
+      responseType: "text"
+    });
+    if (response.status === 204) {
+      return true;
+    } else {
+      throw response;
     }
+  }
 
-    /**
-     * @params {WalkupScanDestination} walkupScanDestination
-     * @returns {Promise.<boolean|Error>}
-     */
-    static async removeDestination(walkupScanDestination) {
-        let urlInfo = url.parse(walkupScanDestination.resourceURI);
+  /**
+   *
+   * @ {Promise.<String|Error>}
+   */
+  static async registerDestination(destination) {
+    const xml = await destination.toXML();
+    const response = await axios({
+      baseURL: `http://${printerIP}`,
+      url: "/WalkupScan/WalkupScanDestinations",
+      method: "POST",
+      headers: { "Content-Type": "text/xml" },
+      data: xml,
+      responseType: "text"
+    });
 
-        const response = await axios(
-            {
-                baseURL: `http://${printerIP}`,
-                url: urlInfo.pathname,
-                method: "DELETE",
-                responseType: "text"
-            });
-        if (response.status === 204) {
-            return true;
-        }
-        else {
-            throw response;
-        }
+    if (response.status === 201) {
+      return response.headers.location;
+    } else {
+      throw response;
     }
+  }
 
-    /**
-     *
-     * @ {Promise.<String|Error>}
-     */
-    static async registerDestination(destination) {
-        const xml = await destination.toXML();
-        const response = await axios(
-            {
-                baseURL: `http://${printerIP}`,
-                url: "/WalkupScan/WalkupScanDestinations",
-                method: "POST",
-                headers: {"Content-Type": "text/xml"},
-                data: xml,
-                responseType: "text"
-            });
+  /**
+   *
+   * @returns {Promise<{etag: string, eventTable: ?EventTable}>}
+   */
+  static async getEvents(etag = "", timeout = 0) {
+    let url = "/EventMgmt/EventTable";
+    url = this.appendTimeout(timeout, url);
 
-        if (response.status === 201) {
-            return response.headers.location;
-        }
-        else {
-            throw response;
-        }
-    }
+    let headers = {};
+    headers = this.placeETagHeader(etag, headers);
 
-
-    /**
-     *
-     * @returns {Promise<{etag: string, eventTable: ?EventTable}>}
-     */
-    static async getEvents(etag = "", timeout = 0) {
-
-        let url = "/EventMgmt/EventTable";
-        url = this.appendTimeout(timeout, url);
-
-        let headers = {};
-        headers = this.placeETagHeader(etag, headers);
-
-        let response;
-        try {
-            response = await
-                axios(
-                    {
-                        baseURL: `http://${printerIP}`,
-                        url: url,
-                        method: "GET",
-                        responseType: "text",
-                        headers: headers,
-
-                    });
-
-        }
-        catch (error) {
-            response = error.response;
-            if (response.status === 304) {
-                return ({
-                    etag: etag,
-                    eventTable: new EventTable({})
-                });
-            }
-            throw error;
-        }
-
-        const parsed = await
-            parseString(response.data);
+    let response;
+    try {
+      response = await axios({
+        baseURL: `http://${printerIP}`,
+        url: url,
+        method: "GET",
+        responseType: "text",
+        headers: headers
+      });
+    } catch (error) {
+      response = error.response;
+      if (response.status === 304) {
         return {
-            etag: response.headers["etag"],
-            eventTable: new EventTable(parsed)
+          etag: etag,
+          eventTable: new EventTable({})
         };
+      }
+      throw error;
     }
 
-    static placeETagHeader(etag, headers) {
-        if (etag !== "") {
-            headers = {
-                "If-None-Match": etag
-            };
-        }
-        return headers;
+    const parsed = await parseString(response.data);
+    return {
+      etag: response.headers["etag"],
+      eventTable: new EventTable(parsed)
+    };
+  }
+
+  static placeETagHeader(etag, headers) {
+    if (etag !== "") {
+      headers = {
+        "If-None-Match": etag
+      };
     }
+    return headers;
+  }
 
-    static appendTimeout(timeout, url) {
-        if (timeout == null) {
-            timeout = 1200;
-        }
-        if (timeout > 0) {
-            url += "?timeout=" + timeout;
-        }
-        return url;
+  static appendTimeout(timeout, url) {
+    if (timeout == null) {
+      timeout = 1200;
     }
-
-    static async getDestination(destinationURL) {
-        const response = await axios(
-            {
-                url: destinationURL,
-                method: "GET",
-                responseType: "text"
-            });
-
-        if (response.status !== 200) {
-            throw response;
-        }
-        else {
-            const parsed = await parseString(response.data);
-            return new WalkupScanDestination(parsed);
-        }
+    if (timeout > 0) {
+      url += "?timeout=" + timeout;
     }
+    return url;
+  }
 
+  static async getDestination(destinationURL) {
+    const response = await axios({
+      url: destinationURL,
+      method: "GET",
+      responseType: "text"
+    });
 
-    static async getScanStatus() {
-        const response = await axios(
-            {
-                baseURL: `http://${printerIP}`,
-                url: "/Scan/Status",
-                method: "GET",
-                responseType: "text"
-            });
-
-        if (response.status !== 200) {
-            throw response;
-        }
-        else {
-            const parsed = await parseString(response.data);
-            return new ScanStatus(parsed);
-        }
+    if (response.status !== 200) {
+      throw response;
+    } else {
+      const parsed = await parseString(response.data);
+      return new WalkupScanDestination(parsed);
     }
+  }
 
+  static async getScanStatus() {
+    const response = await axios({
+      baseURL: `http://${printerIP}`,
+      url: "/Scan/Status",
+      method: "GET",
+      responseType: "text"
+    });
 
-    static delay(t) {
-        return new Promise(function (resolve) {
-            setTimeout(resolve, t);
-        });
+    if (response.status !== 200) {
+      throw response;
+    } else {
+      const parsed = await parseString(response.data);
+      return new ScanStatus(parsed);
     }
+  }
 
-    /**
-     *
-     * @param {ScanJobSettings} job
-     * @return {*|Promise<String | Error>}
-     */
-    static async postJob(job) {
-        await HPApi.delay(500);
-        const xml = await job.toXML();
-        const response = await axios(
-            {
-                baseURL: `http://${printerIP}:8080`,
-                url: "/Scan/Jobs",
-                method: "POST",
-                headers: {"Content-Type": "text/xml"},
-                data: xml,
-                responseType: "text"
-            });
+  static delay(t) {
+    return new Promise(function(resolve) {
+      setTimeout(resolve, t);
+    });
+  }
 
-        if (response.status === 201) {
-            return response.headers.location;
-        }
-        else {
-            throw response;
-        }
+  /**
+   *
+   * @param {ScanJobSettings} job
+   * @return {*|Promise<String | Error>}
+   */
+  static async postJob(job) {
+    await HPApi.delay(500);
+    const xml = await job.toXML();
+    const response = await axios({
+      baseURL: `http://${printerIP}:8080`,
+      url: "/Scan/Jobs",
+      method: "POST",
+      headers: { "Content-Type": "text/xml" },
+      data: xml,
+      responseType: "text"
+    });
+
+    if (response.status === 201) {
+      return response.headers.location;
+    } else {
+      throw response;
     }
+  }
 
-    static async getJob(jobURL) {
-        const response = await axios(
-            {
-                url: jobURL,
-                method: "GET",
-                responseType: "text"
-            });
+  static async getJob(jobURL) {
+    const response = await axios({
+      url: jobURL,
+      method: "GET",
+      responseType: "text"
+    });
 
-        if (response.status !== 200) {
-            throw response;
-        }
-        else {
-            const parsed = await parseString(response.data);
-            return new Job(parsed);
-        }
+    if (response.status !== 200) {
+      throw response;
+    } else {
+      const parsed = await parseString(response.data);
+      return new Job(parsed);
     }
+  }
 
-    static async downloadPage(binaryURL, destination) {
-        const response = await axios(
-            {
-                baseURL: `http://${printerIP}:8080`,
-                url: binaryURL,
-                method: "GET",
-                responseType: "stream"
-            });
+  static async downloadPage(binaryURL, destination) {
+    const response = await axios({
+      baseURL: `http://${printerIP}:8080`,
+      url: binaryURL,
+      method: "GET",
+      responseType: "stream"
+    });
 
-        response.data.pipe(fs.createWriteStream(destination));
+    response.data.pipe(fs.createWriteStream(destination));
 
-        return new Promise((resolve, reject) => {
-            response.data
-                .on("end", () => resolve(destination))
-                .on("error", error => reject(error));
-        });
-    }
-}
-;
+    return new Promise((resolve, reject) => {
+      response.data
+        .on("end", () => resolve(destination))
+        .on("error", error => reject(error));
+    });
+  }
+};

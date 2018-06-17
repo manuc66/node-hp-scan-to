@@ -3,22 +3,22 @@
 const WalkupScanDestination = require("./WalkupScanDestination");
 
 module.exports = class WalkupScanDestinations {
-    constructor(data) {
-        this.data = data;
-    }
+  constructor(data) {
+    this.data = data;
+  }
 
-    /**
-     *
-     * @returns {WalkupScanDestination[]}
-     */
-    get destinations() {
-        let walkupScanDestinations = this.data["wus:WalkupScanDestinations"];
-        if (walkupScanDestinations.hasOwnProperty("wus:WalkupScanDestination")) {
-            return walkupScanDestinations["wus:WalkupScanDestination"].map(x => new WalkupScanDestination(x));
-        }
-        else {
-            return [];
-        }
-
+  /**
+   *
+   * @returns {WalkupScanDestination[]}
+   */
+  get destinations() {
+    let walkupScanDestinations = this.data["wus:WalkupScanDestinations"];
+    if (walkupScanDestinations.hasOwnProperty("wus:WalkupScanDestination")) {
+      return walkupScanDestinations["wus:WalkupScanDestination"].map(
+        x => new WalkupScanDestination(x)
+      );
+    } else {
+      return [];
     }
+  }
 };

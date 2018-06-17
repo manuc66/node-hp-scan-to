@@ -15,10 +15,6 @@
       "error",
       "always"
     ],
-    "quotes": [
-      "error",
-      "double"
-    ],
     "complexity": [
       "error",
       4
