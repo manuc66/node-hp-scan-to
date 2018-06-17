@@ -14,9 +14,13 @@ const fs = require("fs");
 const util = require("util");
 
 const parseString = util.promisify(parser.parseString);
-const printerIP = "192.168.1.11";
+let printerIP = "192.168.1.11";
 
 module.exports = class HPApi {
+
+    static setPrinterIP(ip) {
+        printerIP = ip;
+    }
 
     /**
      * @returns {Promise.<WalkupScanDestinations>}

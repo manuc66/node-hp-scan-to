@@ -114,5 +114,13 @@ async function init() {
     }
 }
 
-init();
+const bonjour = require("bonjour")();
+bonjour.find({}, service => {
+    if (service.name.startsWith("Officejet 6500 E710n-z") && service.port === 80 && service.type === "http") {
+        bonjour.destroy();
+        HPApi.setPrinterIP(service.addresses[0]);
+        console.log(`Found: ${service.name}`);
+        init();
+    }
+});
 
