@@ -21,79 +21,70 @@ module.exports = class HPApi {
     /**
      * @returns {Promise.<WalkupScanDestinations>}
      */
-    static getWalkupScanDestinations() {
-        return axios(
+    static async getWalkupScanDestinations() {
+        const response = await axios(
             {
                 baseURL: `http://${printerIP}`,
                 url: "/WalkupScan/WalkupScanDestinations",
                 method: "GET",
                 responseType: "text"
-            })
-            .then(response => {
-                if (response.status !== 200) {
-                    throw new Error(response.statusMessage);
-                }
-                else {
-                    return parseString(response.data);
-                }
-            })
-            .then(parsed => new WalkupScanDestinations(parsed));
+            });
+
+        if (response.status !== 200) {
+            throw new Error(response.statusMessage);
+        }
+        else {
+            const parsed = await parseString(response.data);
+            return new WalkupScanDestinations(parsed);
+        }
     }
 
     /**
      * @params {WalkupScanDestination} walkupScanDestination
      * @returns {Promise.<boolean|Error>}
      */
-    static removeDestination(walkupScanDestination) {
+    static async removeDestination(walkupScanDestination) {
         let urlInfo = url.parse(walkupScanDestination.resourceURI);
 
-        return axios(
+        const response = await axios(
             {
                 baseURL: `http://${printerIP}`,
                 url: urlInfo.pathname,
                 method: "DELETE",
                 responseType: "text"
-            })
-            .then(response => {
-                return new Promise((resolve, reject) => {
-                    if (response.status === 204) {
-                        resolve(true);
-                    }
-                    else {
-                        reject(response.statusText);
-                    }
-                });
             });
+        if (response.status === 204) {
+            return true;
+        }
+        else {
+            throw response;
+        }
     }
 
     /**
      *
      * @ {Promise.<String|Error>}
      */
-    static registerDestination(destination) {
-        return destination.toXML()
-            .then(xml => {
-                return axios(
-                    {
-                        baseURL: `http://${printerIP}`,
-                        url: "/WalkupScan/WalkupScanDestinations",
-                        method: "POST",
-                        headers: {"Content-Type": "text/xml"},
-                        data: xml,
-                        responseType: "text"
-                    })
-                    .then(response => {
-                        return new Promise((resolve, reject) => {
-                            if (response.status === 201) {
-                                resolve(response.headers.location);
-                            }
-                            else {
-                                reject(response.statusText);
-                            }
-                        });
-                    });
+    static async registerDestination(destination) {
+        const xml = await destination.toXML();
+        const response = await axios(
+            {
+                baseURL: `http://${printerIP}`,
+                url: "/WalkupScan/WalkupScanDestinations",
+                method: "POST",
+                headers: {"Content-Type": "text/xml"},
+                data: xml,
+                responseType: "text"
             });
+
+        if (response.status === 201) {
+            return response.headers.location;
+        }
+        else {
+            throw response;
+        }
     }
+
 
     /**
      *
@@ -109,15 +100,16 @@ module.exports = class HPApi {
 
         let response;
         try {
-            response = await axios(
-                {
-                    baseURL: `http://${printerIP}`,
-                    url: url,
-                    method: "GET",
-                    responseType: "text",
-                    headers: headers,
+            response = await
+                axios(
+                    {
+                        baseURL: `http://${printerIP}`,
+                        url: url,
+                        method: "GET",
+                        responseType: "text",
+                        headers: headers,
 
-                });
+                    });
 
         }
         catch (error) {
@@ -131,7 +123,8 @@ module.exports = class HPApi {
             throw error;
         }
 
-        const parsed = await parseString(response.data);
+        const parsed = await
+            parseString(response.data);
         return {
             etag: response.headers["etag"],
             eventTable: new EventTable(parsed)
@@ -157,52 +150,40 @@ module.exports = class HPApi {
         return url;
     }
 
-    static getDestination(destinationURL) {
-        return axios(
+    static async getDestination(destinationURL) {
+        const response = await axios(
             {
                 url: destinationURL,
                 method: "GET",
                 responseType: "text"
-            })
-            .then(response => {
-                return new Promise((resolve, reject) => {
-
-                    if (response.status !== 200) {
-                        reject(response.statusMessage);
-                    }
-                    else {
-                        return parseString(response.data)
-                            .then(parsed => {
-                                resolve(new WalkupScanDestination(parsed));
-                            });
-                    }
-                });
             });
+
+        if (response.status !== 200) {
+            throw response;
+        }
+        else {
+            const parsed = await parseString(response.data);
+            return new WalkupScanDestination(parsed);
+        }
     }
 
 
-    static getScanStatus() {
-        return axios(
+    static async getScanStatus() {
+        const response = await axios(
             {
                 baseURL: `http://${printerIP}`,
                 url: "/Scan/Status",
                 method: "GET",
                 responseType: "text"
-            })
-            .then(response => {
-                return new Promise((resolve, reject) => {
-
-                    if (response.status !== 200) {
-                        reject(response.statusMessage);
-                    }
-                    else {
-                        return parseString(response.data)
-                            .then(parsed => {
-                                resolve(new ScanStatus(parsed));
-                            });
-                    }
-                });
             });
+
+        if (response.status !== 200) {
+            throw response;
+        }
+        else {
+            const parsed = await parseString(response.data);
+            return new ScanStatus(parsed);
+        }
     }
 
 
@@ -217,73 +198,60 @@ module.exports = class HPApi {
      * @param {ScanJobSettings} job
      * @return {*|Promise<String | Error>}
      */
-    static postJob(job) {
-        return HPApi.delay(500)
-            .then(() => job.toXML())
-            .then(xml => {
-                return axios(
-                    {
-                        baseURL: `http://${printerIP}:8080`,
-                        url: "/Scan/Jobs",
-                        method: "POST",
-                        headers: {"Content-Type": "text/xml"},
-                        data: xml,
-                        responseType: "text"
-                    });
-            })
-            .then(response => {
-                return new Promise((resolve, reject) => {
-                    if (response.status === 201) {
-                        resolve(response.headers.location);
-                    }
-                    else {
-                        reject(response.statusText);
-                    }
-                });
+    static async postJob(job) {
+        await HPApi.delay(500);
+        const xml = await job.toXML();
+        const response = await axios(
+            {
+                baseURL: `http://${printerIP}:8080`,
+                url: "/Scan/Jobs",
+                method: "POST",
+                headers: {"Content-Type": "text/xml"},
+                data: xml,
+                responseType: "text"
             });
+
+        if (response.status === 201) {
+            return response.headers.location;
+        }
+        else {
+            throw response;
+        }
     }
 
-    static getJob(jobURL) {
-        return axios(
+    static async getJob(jobURL) {
+        const response = await axios(
             {
                 url: jobURL,
                 method: "GET",
                 responseType: "text"
-            })
-            .then(response => {
-                return new Promise((resolve, reject) => {
-
-                    if (response.status !== 200) {
-                        reject(response.statusMessage);
-                    }
-                    else {
-                        return parseString(response.data)
-                            .then(parsed => {
-                                resolve(new Job(parsed));
-                            });
-                    }
-                });
             });
+
+        if (response.status !== 200) {
+            throw response;
+        }
+        else {
+            const parsed = await parseString(response.data);
+            return new Job(parsed);
+        }
     }
 
-    static downloadPage(binaryURL, destination) {
-        return axios(
+    static async downloadPage(binaryURL, destination) {
+        const response = await axios(
             {
                 baseURL: `http://${printerIP}:8080`,
                 url: binaryURL,
                 method: "GET",
                 responseType: "stream"
-            })
-            .then(function (response) {
-                response.data
-                    .pipe(fs.createWriteStream(destination));
-
-                return new Promise((resolve, reject) => {
-                    response.data
-                        .on("end", () => resolve(destination))
-                        .on("error", (e) => reject(e));
-                });
             });
+
+        response.data.pipe(fs.createWriteStream(destination));
+
+        return new Promise((resolve, reject) => {
+            response.data
+                .on("end", () => resolve(destination))
+                .on("error", error => reject(error));
+        });
     }
 }
 ;
