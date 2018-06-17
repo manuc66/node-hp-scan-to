@@ -1,6 +1,6 @@
 {
   "parserOptions": {
-    "ecmaVersion": 6,
+    "ecmaVersion": 8,
     "sourceType": "module"
   },
   "extends": [
@@ -21,7 +21,7 @@
     ],
     "complexity": [
       "error",
-      3
+      4
     ],
     "max-depth": [
       "error",

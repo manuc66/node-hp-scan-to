@@ -17,6 +17,10 @@ module.exports = class Event {
         return this.data["ev:Payload"]["0"]["dd:ResourceURI"]["0"];
     }
 
+    get agingStamp() {
+        return this.data["dd:AgingStamp"]["0"];
+    }
+
     /**
      *
      * @returns {boolean}

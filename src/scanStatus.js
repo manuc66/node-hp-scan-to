@@ -2,6 +2,9 @@
 
 module.exports = class ScanStatus {
     constructor(data) {
+        /**
+         * @type {{ScannerState, AdfState} }
+         */
         this.data = data;
     }
 
@@ -11,5 +14,13 @@ module.exports = class ScanStatus {
 
     get adfState() {
         return this.data["ScanStatus"].AdfState["0"];
+    }
+
+    isLoaded() {
+        return this.adfState === "Loaded";
+    }
+
+    getInputSource() {
+        return this.isLoaded() ? "Adf" : "Platen";
     }
 };

@@ -26,6 +26,7 @@ function waitScanEvent(resourceURI) {
         });
 }
 
+let lastHandledAgingStamp = null;
 /**
  *
  * @param resourceURI
@@ -37,7 +38,8 @@ function waitForScanEvent(resourceURI, etag) {
         .then(eventTable => {
             let scanEvent = eventTable.eventTable.events.find(ev => ev.isScanEvent);
 
-            if (scanEvent.resourceURI === resourceURI) {
+            if (scanEvent.resourceURI === resourceURI && scanEvent.agingStamp !== lastHandledAgingStamp) {
+                lastHandledAgingStamp =  scanEvent.agingStamp;
                 return scanEvent;
             }
             else {
@@ -60,83 +62,74 @@ function waitPrinterUntilItIsReadyToUpload(jobUrl) {
         });
 }
 
-/**
- *
- * @param {WalkupScanDestination} destination
- * @return {string}
- */
-function getContentType(destination) {
-    return destination.shortcut === "SavePDF" ? "Document" : "Photo";
+async function register() {
+    const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
+    const hostname = os.hostname();
+
+    let destinations = walkupScanDestinations.destinations;
+
+    console.log("Host destinations fetched:", destinations.map(d => d.name));
+
+    let destination = destinations.find(x => x.name === hostname);
+    let resourceURI;
+    if (destination) {
+        console.log(`Re-using existing destination: ${hostname} - ${destination.resourceURI}`);
+        resourceURI = destination.resourceURI;
+    }
+    else {
+        resourceURI = await HPApi.registerDestination(new Destination(hostname, hostname));
+        console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
+    }
+    return resourceURI;
 }
 
-/**
- *
- * @param {ScanStatus} scanStatus
- * @return {string}
- */
-function getInputSource(scanStatus) {
-    return scanStatus.adfState === "Loaded" ? "Adf" : "Platen";
+async function saveScan(event) {
+    const destination = await HPApi.getDestination(event.resourceURI);
+
+    console.log("Selected shortcut: " + destination.shortcut);
+    const scanStatus = await HPApi.getScanStatus();
+    console.log("Afd is : " + scanStatus.adfState);
+
+    let inputSource = scanStatus.getInputSource();
+    let contentType = destination.getContentType();
+
+    let scanJobSettings = new ScanJobSettings(inputSource, contentType);
+    const jobUrl = await HPApi.postJob(scanJobSettings);
+
+    console.log("New job created:", jobUrl);
+
+    const job = await waitPrinterUntilItIsReadyToUpload(jobUrl);
+
+    console.log("Ready to download:", job.binaryURL);
+
+    const filePath = await HPApi.downloadPage(job.binaryURL, "/tmp/scanPage1.jpg");
+
+    console.log("Page downloaded to:", filePath);
 }
 
-function init() {
-    HPApi.getWalkupScanDestinations()
-        .then(walkupScanDestinations => {
-            const hostname = os.hostname();
+async function init() {
+    let keepActive = true;
+    let errorCount = 0;
+    while (keepActive) {
+        try {
+            let resourceURI = await register();
 
-            let destinations = walkupScanDestinations.destinations;
-
-            console.log("Destination fetched:", destinations.map(d => d.name));
-
-            let destination = destinations.find(x => x.name === hostname);
-            if (destination) {
-                console.log(`Re-using existing destination: ${hostname} - ${destination.resourceURI}`);
-                return destination.resourceURI;
-            }
-
-            return HPApi.registerDestination(new Destination(hostname, hostname)).then(resourceURI => {
-                console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
-                return resourceURI;
-            });
-        })
-        .then(resourceURI => {
             console.log("Waiting scan event for:", resourceURI);
+            const event = await waitScanEvent(resourceURI);
+            console.log("Scan event captured");
+            await saveScan(event);
+        }
+        catch (e) {
+            errorCount++;
+            console.error(e);
+        }
 
-            let destination;
-            return waitScanEvent(resourceURI)
-                .then(event => {
-                    console.log("Scan event captured");
-                    return HPApi.getDestination(event.resourceURI);
-                })
-                .then(dest => {
-                    console.log("Selected shortcut: " + dest.shortcut);
-                    destination = dest;
-                    return HPApi.getScanStatus();
-                })
-                .then(scanStatus => {
-                    console.log("Afd is : " + scanStatus.adfState);
-                    let inputSource = getInputSource(scanStatus);
-                    let contentType = getContentType(destination);
-                    let scanJobSettings = new ScanJobSettings(inputSource, contentType);
-                    return HPApi.postJob(scanJobSettings);
-                });
-        })
-        .then(jobUrl => {
-            console.log("New job created:", jobUrl);
+        if (errorCount === 50) {
+            keepActive = false;
+        }
 
-            return waitPrinterUntilItIsReadyToUpload(jobUrl);
-        })
-        .then(job => {
-            console.log("Ready to download:", job.binaryURL);
-
-            return HPApi.downloadPage(job.binaryURL, "/tmp/scanPage1.jpg");
-        })
-        .then(filePath => {
-            console.log("Page downloaded to:", filePath);
-        })
-        .catch(reason => {
-            console.error(reason);
-            setTimeout(init, 1000);
-        });
+        await delay(1000);
+    }
 }
 
 init();

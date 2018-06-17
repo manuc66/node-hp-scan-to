@@ -273,7 +273,7 @@ module.exports = class HPApi {
                 return new Promise((resolve, reject) => {
                     response.data
                         .on("end", () => resolve(destination))
-                        .on("error", reject);
+                        .on("error", (e) => reject(e));
                 });
             });
     }

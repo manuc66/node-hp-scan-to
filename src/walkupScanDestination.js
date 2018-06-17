@@ -20,4 +20,11 @@ module.exports = class WalkupScanDestination {
     get shortcut() {
         return this.data["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"]["0"]["wus:WalkupScanSettings"]["0"]["wus:Shortcut"][0];
     }
+
+    /**
+     * @return {string}
+     */
+    getContentType() {
+        return this.shortcut === "SavePDF" ? "Document" : "Photo";
+    }
 };
