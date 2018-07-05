@@ -11,7 +11,7 @@
   "devDependencies": {
     "eslint": "5.0.0-rc.0",
     "mocha": "^5.2.0",
-    "prettier": "1.13.5"
+    "prettier": "1.13.7"
   },
   "dependencies": {
     "axios": "^0.18.0",
