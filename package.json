@@ -10,7 +10,7 @@
   "license": "ISC",
   "devDependencies": {
     "eslint": "5.14.1",
-    "mocha": "^5.2.0",
+    "mocha": "^6.0.1",
     "prettier": "1.16.4"
   },
   "dependencies": {
