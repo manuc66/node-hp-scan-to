@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "eslint": "5.15.1",
+    "eslint": "5.15.3",
     "mocha": "^6.0.2",
     "prettier": "1.16.4"
   },
