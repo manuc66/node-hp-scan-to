@@ -1,12 +1,15 @@
 "use strict";
 
-const Destination = require("./Destination");
-const ScanJobSettings = require("./ScanJobSettings");
-const HPApi = require("./HPApi");
-const os = require("os");
-const console = require("console");
+import Destination from "./Destination";
+import ScanJobSettings from "./ScanJobSettings";
+import Event from "./Event";
+import HPApi from "./HPApi";
+import * as os from "os";
+import Job from "./Job";
 
-function delay(t) {
+import Bonjour, { Service } from "bonjour";
+
+function delay(t: number) {
   return new Promise(function(resolve) {
     setTimeout(resolve, t);
   });
@@ -17,7 +20,7 @@ function delay(t) {
  * @param resourceURI
  * @returns {Promise<Event>}
  */
-async function waitForScanEvent(resourceURI) {
+async function waitForScanEvent(resourceURI: string): Promise<Event> {
   console.log("Start listening for new ScanEvent");
 
   let eventTable = await HPApi.getEvents();
@@ -34,15 +37,14 @@ async function waitForScanEvent(resourceURI) {
   return acceptedScanEvent;
 }
 
-async function waitPrinterUntilItIsReadyToUpload(jobUrl) {
-  let job;
+async function waitPrinterUntilItIsReadyToUpload(jobUrl: string): Promise<Job> {
+  let job = null;
   let isReadyToUpload = false;
-  while (!isReadyToUpload) {
+  do {
     job = await HPApi.getJob(jobUrl);
     isReadyToUpload = job.pageState === "ReadyToUpload";
-
     await delay(200);
-  }
+  } while (!isReadyToUpload);
   return job;
 }
 
@@ -70,11 +72,11 @@ async function register() {
   return resourceURI;
 }
 
-function getNextFile(job) {
+function getNextFile(job: Job): string {
   return `/tmp/scanPage${job.currentPageNumber}.jpg`;
 }
 
-async function saveScan(event) {
+async function saveScan(event: Event) {
   const destination = await HPApi.getDestination(event.resourceURI);
 
   console.log("Selected shortcut: " + destination.shortcut);
@@ -125,14 +127,19 @@ async function init() {
   }
 }
 
-function findOfficejetIp() {
+interface OfficeJetBonjourService extends Service {
+  addresses?: string[];
+}
+
+function findOfficejetIp() : Promise<string> {
   return new Promise(resolve => {
-    const bonjour = require("bonjour")();
-    bonjour.find({}, service => {
+    const bonjour = Bonjour();
+    bonjour.find({}, (service: OfficeJetBonjourService) => {
       if (
         service.name.startsWith("Officejet 6500 E710n-z") &&
         service.port === 80 &&
-        service.type === "http"
+        service.type === "http" &&
+        service.addresses != null
       ) {
         bonjour.destroy();
         console.log(`Found: ${service.name}`);

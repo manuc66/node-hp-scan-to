@@ -1,27 +1,28 @@
 "use strict";
 
-const xml2js = require("xml2js");
-const util = require("util");
+import xml2js from "xml2js";
+import * as util from "util";
 const parser = new xml2js.Parser();
 
-module.exports = class Destination {
-  constructor(name, hostname) {
+type WalkupScanDestinationData =  {
+  WalkupScanDestination: {
+    Hostname: { _: string }[];
+    Name: { _: string }[];
+    LinkType: string[];
+  };
+}
+
+export default class Destination {
+  private readonly name: string;
+  private readonly hostname: string;
+  private readonly linkType: string;
+
+  constructor(name: string, hostname: string) {
     this.name = name;
     this.hostname = hostname;
     this.linkType = "Network";
   }
 
-  /**
-   * Callback used by myFunction.
-   * @callback Destination~toXmlCallback
-   * @param {error} err
-   * @param {?string} xml
-   */
-
-  /**
-   * Do something.
-   * @returns {Promise.<String|Error>}
-   */
   async toXML() {
     let rawDestination =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -32,7 +33,7 @@ module.exports = class Destination {
       "<LinkType>Network</LinkType>\n" +
       "</WalkupScanDestination>";
 
-    const parsed = await util.promisify(parser.parseString)(rawDestination);
+    const parsed = await util.promisify(parser.parseString)(rawDestination) as WalkupScanDestinationData;
 
     parsed.WalkupScanDestination.Hostname[0]._ = this.hostname;
     parsed.WalkupScanDestination.Name[0]._ = this.name;
@@ -41,4 +42,4 @@ module.exports = class Destination {
     let builder = new xml2js.Builder();
     return builder.buildObject(parsed);
   }
-};
+}

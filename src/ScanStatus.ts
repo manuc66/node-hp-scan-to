@@ -1,6 +1,6 @@
 "use strict";
 
-module.exports = class ScanStatus {
+export default class ScanStatus {
   constructor(data) {
     /**
      * @type {{ScannerState, AdfState} }
@@ -23,4 +23,4 @@ module.exports = class ScanStatus {
   getInputSource() {
     return this.isLoaded() ? "Adf" : "Platen";
   }
-};
+}

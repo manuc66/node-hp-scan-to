@@ -1,6 +1,6 @@
 "use strict";
 
-module.exports = class WalkupScanDestination {
+export default class WalkupScanDestination {
   constructor(data) {
     this.data = data;
   }
@@ -29,4 +29,4 @@ module.exports = class WalkupScanDestination {
   getContentType() {
     return this.shortcut === "SavePDF" ? "Document" : "Photo";
   }
-};
+}

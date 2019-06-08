@@ -1,30 +1,30 @@
 "use strict";
 
-const WalkupScanDestination = require("./WalkupScanDestination");
-const WalkupScanDestinations = require("./WalkupScanDestinations");
-const ScanStatus = require("./ScanStatus");
-const Job = require("./Job");
-const EventTable = require("./EventTable");
+import WalkupScanDestination from "./WalkupScanDestination";
 
-const xml2js = require("xml2js");
+import util from "util";
+import fs from "fs";
+import axios from "axios";
+import url from "url";
+import xml2js from "xml2js";
+import EventTable, {EventTableData} from "./EventTable";
+import Job from "./Job";
+import ScanStatus from "./ScanStatus";
+import WalkupScanDestinations from "./WalkupScanDestinations";
+import ScanJobSettings from "./ScanJobSettings";
+import Destination from "./Destination";
+
 const parser = new xml2js.Parser();
-const url = require("url");
-const axios = require("axios");
-const fs = require("fs");
-const util = require("util");
-
 const parseString = util.promisify(parser.parseString);
 let printerIP = "192.168.1.11";
 
-module.exports = class HPApi {
-  static setPrinterIP(ip) {
+export default class HPApi {
+  static setPrinterIP(ip: string) {
     printerIP = ip;
   }
 
-  /**
-   * @returns {Promise.<WalkupScanDestinations>}
-   */
-  static async getWalkupScanDestinations() {
+
+  static async getWalkupScanDestinations(): Promise<WalkupScanDestinations> {
     const response = await axios({
       baseURL: `http://${printerIP}`,
       url: "/WalkupScan/WalkupScanDestinations",
@@ -33,18 +33,14 @@ module.exports = class HPApi {
     });
 
     if (response.status !== 200) {
-      throw new Error(response.statusMessage);
+      throw new Error(response.statusText);
     } else {
       const parsed = await parseString(response.data);
       return new WalkupScanDestinations(parsed);
     }
   }
 
-  /**
-   * @params {WalkupScanDestination} walkupScanDestination
-   * @returns {Promise.<boolean|Error>}
-   */
-  static async removeDestination(walkupScanDestination) {
+  static async removeDestination(walkupScanDestination : WalkupScanDestination) {
     let urlInfo = url.parse(walkupScanDestination.resourceURI);
 
     const response = await axios({
@@ -60,11 +56,7 @@ module.exports = class HPApi {
     }
   }
 
-  /**
-   *
-   * @ {Promise.<String|Error>}
-   */
-  static async registerDestination(destination) {
+  static async registerDestination(destination: Destination) {
     const xml = await destination.toXML();
     const response = await axios({
       baseURL: `http://${printerIP}`,
@@ -82,11 +74,7 @@ module.exports = class HPApi {
     }
   }
 
-  /**
-   *
-   * @returns {Promise<{etag: string, eventTable: ?EventTable}>}
-   */
-  static async getEvents(etag = "", timeout = 0) {
+  static async getEvents(etag = "", timeout = 0): Promise<{etag: string, eventTable: EventTable}> {
     let url = this.appendTimeout(timeout, "/EventMgmt/EventTable");
 
     let headers = this.placeETagHeader(etag, {});
@@ -114,11 +102,11 @@ module.exports = class HPApi {
     const parsed = await parseString(response.data);
     return {
       etag: response.headers["etag"],
-      eventTable: new EventTable(parsed)
+      eventTable: new EventTable(parsed as EventTableData)
     };
   }
 
-  static placeETagHeader(etag, headers) {
+  static placeETagHeader(etag: string, headers: object) {
     if (etag !== "") {
       headers = {
         "If-None-Match": etag
@@ -127,7 +115,10 @@ module.exports = class HPApi {
     return headers;
   }
 
-  static appendTimeout(timeout, url) {
+  static appendTimeout(
+    timeout: number | null = null,
+    url: string
+  ) : string {
     if (timeout == null) {
       timeout = 1200;
     }
@@ -137,7 +128,7 @@ module.exports = class HPApi {
     return url;
   }
 
-  static async getDestination(destinationURL) {
+  static async getDestination(destinationURL : string) {
     const response = await axios({
       url: destinationURL,
       method: "GET",
@@ -168,18 +159,13 @@ module.exports = class HPApi {
     }
   }
 
-  static delay(t) {
+  static delay(t: number) {
     return new Promise(function(resolve) {
       setTimeout(resolve, t);
     });
   }
 
-  /**
-   *
-   * @param {ScanJobSettings} job
-   * @return {*|Promise<String | Error>}
-   */
-  static async postJob(job) {
+  static async postJob(job : ScanJobSettings) {
     await HPApi.delay(500);
     const xml = await job.toXML();
     const response = await axios({
@@ -202,7 +188,7 @@ module.exports = class HPApi {
    * @param jobURL
    * @return {Promise<Job|*>}
    */
-  static async getJob(jobURL) {
+  static async getJob(jobURL :string) {
     const response = await axios({
       url: jobURL,
       method: "GET",
@@ -217,7 +203,7 @@ module.exports = class HPApi {
     }
   }
 
-  static async downloadPage(binaryURL, destination) {
+  static async downloadPage(binaryURL: string, destination: string) {
     const response = await axios({
       baseURL: `http://${printerIP}:8080`,
       url: binaryURL,
@@ -230,7 +216,7 @@ module.exports = class HPApi {
     return new Promise((resolve, reject) => {
       response.data
         .on("end", () => resolve(destination))
-        .on("error", error => reject(error));
+        .on("error", (error: Error) => reject(error));
     });
   }
-};
+}

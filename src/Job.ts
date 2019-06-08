@@ -1,6 +1,6 @@
 "use strict";
 
-module.exports = class Job {
+export default class Job {
   constructor(data) {
     this.data = data;
   }
@@ -24,4 +24,4 @@ module.exports = class Job {
   get binaryURL() {
     return this.data["j:Job"].ScanJob["0"].PreScanPage["0"].BinaryURL["0"];
   }
-};
+}

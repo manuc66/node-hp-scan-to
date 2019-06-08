@@ -2,7 +2,7 @@ const xml2js = require("xml2js");
 const parser = new xml2js.Parser();
 const util = require("util");
 
-module.exports = class ScanJobSettings {
+export default class ScanJobSettings {
   constructor(inputSource, contentType) {
     this.inputSource = inputSource;
     this.contentType = contentType;
@@ -53,4 +53,4 @@ module.exports = class ScanJobSettings {
 
     return builder.buildObject(parsed);
   }
-};
+}
