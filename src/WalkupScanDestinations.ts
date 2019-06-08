@@ -1,17 +1,13 @@
 "use strict";
 
-const WalkupScanDestination = require("./WalkupScanDestination");
+import WalkupScanDestination from "./WalkupScanDestination";
 
-module.exports = class WalkupScanDestinations {
+export default class WalkupScanDestinations {
   constructor(data) {
     this.data = data;
   }
 
-  /**
-   *
-   * @returns {WalkupScanDestination[]}
-   */
-  get destinations() {
+  get destinations() : WalkupScanDestination[] {
     let walkupScanDestinations = this.data["wus:WalkupScanDestinations"];
     if (walkupScanDestinations.hasOwnProperty("wus:WalkupScanDestination")) {
       return walkupScanDestinations["wus:WalkupScanDestination"].map(
@@ -21,4 +17,4 @@ module.exports = class WalkupScanDestinations {
       return [];
     }
   }
-};
+}
