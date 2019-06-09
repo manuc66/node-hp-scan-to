@@ -10,9 +10,6 @@ export interface ScanStatusData {
 export default class ScanStatus {
   private readonly data: ScanStatusData;
   constructor(data: ScanStatusData) {
-    /**
-     * @type {{ScannerState, AdfState} }
-     */
     this.data = data;
   }
 

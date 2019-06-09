@@ -11,11 +11,7 @@ export default class ScanJobSettings {
     this.contentType = contentType;
   }
 
-  /**
-   * Do something.
-   * @returns {Promise.<String|Error>}
-   */
-  async toXML() {
+  async toXML(): Promise<string> {
     let rawJob =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       '<ScanSettings xmlns="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19 Scan Schema - 0.26.xsd">\n' +

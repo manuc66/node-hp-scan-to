@@ -1,16 +1,18 @@
+#!/usr/bin/env node
 "use strict";
+
+import os from "os";
+import fs from "fs";
+import path from "path";
+import util from "util";
+
+import Bonjour, { Service } from "bonjour";
 
 import Destination from "./Destination";
 import ScanJobSettings from "./ScanJobSettings";
 import Event from "./Event";
 import HPApi from "./HPApi";
-import * as os from "os";
-import * as path from "path";
 import Job from "./Job";
-
-import Bonjour, { Service } from "bonjour";
-
-import { mkdtemp } from "fs";
 
 function delay(t: number) {
   return new Promise(function(resolve) {
@@ -18,11 +20,6 @@ function delay(t: number) {
   });
 }
 
-/**
- *
- * @param resourceURI
- * @returns {Promise<Event>}
- */
 async function waitForScanEvent(resourceURI: string): Promise<Event> {
   console.log("Start listening for new ScanEvent");
 
@@ -62,7 +59,7 @@ async function register() {
 
   console.log(
     "Host destinations fetched:",
-    destinations.map(d => d.name).join()
+    destinations.map(d => d.name).join(", ")
   );
 
   let destination = destinations.find(x => x.name === hostname);
@@ -91,13 +88,9 @@ async function getNextFile(
 async function saveScan(event: Event) {
   const destination = await HPApi.getDestination(event.resourceURI);
 
-  const folder = await new Promise<string>((resolve, reject) => {
-    mkdtemp(
-      path.join(os.tmpdir(), "scan-to-pc"),
-      (err: NodeJS.ErrnoException | null, folder: string) =>
-        err ? reject(err) : resolve(folder)
-    );
-  });
+  const folder = await util.promisify(fs.mkdtemp)(
+    path.join(os.tmpdir(), "scan-to-pc")
+  );
   console.log(`Target folder: ${folder}`);
 
   console.log("Selected shortcut: " + destination.shortcut);
