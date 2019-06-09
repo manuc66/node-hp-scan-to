@@ -1,7 +1,7 @@
 {
-  "name": "hp-scan-to",
+  "name": "node-hp-scan-to",
   "version": "1.0.0",
-  "description": "",
+  "description": "Scan document to Computer for HP Officejet 6500A Plus",
   "main": "src/index.ts",
   "scripts": {
     "test": "mocha test/*.js",
@@ -10,8 +10,18 @@
   "engines": {
     "node": ">=10.15.3"
   },
-  "author": "",
-  "license": "ISC",
+  "author": {
+    "email": "manuc66@gmail.com",
+    "name": "Emmanuel Counasse",
+    "url": "https://github.com/manuc66"
+  },
+  "homepage": "https://github.com/manuc66/node-hp-scan-to",
+  "bugs": "https://github.com/manuc66/node-hp-scan-to/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manuc66/node-hp-scan-to.git"
+  },
+  "license": "MIT",
   "devDependencies": {
     "@types/bonjour": "^3.5.5",
     "@types/node": "^12.0.7",
