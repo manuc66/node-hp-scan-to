@@ -3,7 +3,10 @@ const parser = new xml2js.Parser();
 const util = require("util");
 
 export default class ScanJobSettings {
-  constructor(inputSource, contentType) {
+  private readonly inputSource: string;
+  private readonly contentType: string;
+
+  constructor(inputSource: string, contentType: string) {
     this.inputSource = inputSource;
     this.contentType = contentType;
   }
@@ -47,7 +50,7 @@ export default class ScanJobSettings {
     parsed.ScanSettings.ContentType[0] = this.contentType;
 
     let builder = new xml2js.Builder({
-      xmldec: { version: "1.0", encoding: "UTF-8", standalone: null },
+      xmldec: { version: "1.0", encoding: "UTF-8", standalone: false },
       renderOpts: { pretty: true, indent: "\t", newline: "\n" }
     });
 

@@ -131,10 +131,12 @@ interface OfficeJetBonjourService extends Service {
   addresses?: string[];
 }
 
-function findOfficejetIp() : Promise<string> {
+function findOfficejetIp(): Promise<string> {
   return new Promise(resolve => {
     const bonjour = Bonjour();
+    console.log("Searching printer...");
     bonjour.find({}, (service: OfficeJetBonjourService) => {
+      console.log(".");
       if (
         service.name.startsWith("Officejet 6500 E710n-z") &&
         service.port === 80 &&
