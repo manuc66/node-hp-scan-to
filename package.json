@@ -22,6 +22,7 @@
   "files": [
     "dist",
     "src",
+    "tsconfig.json",
     "nodemon.json",
     "README.md"
   ],
