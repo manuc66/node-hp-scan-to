@@ -5,9 +5,12 @@ import ScanJobSettings from "./ScanJobSettings";
 import Event from "./Event";
 import HPApi from "./HPApi";
 import * as os from "os";
+import * as path from "path";
 import Job from "./Job";
 
 import Bonjour, { Service } from "bonjour";
+
+import { mkdtemp } from "fs";
 
 function delay(t: number) {
   return new Promise(function(resolve) {
@@ -37,12 +40,15 @@ async function waitForScanEvent(resourceURI: string): Promise<Event> {
   return acceptedScanEvent;
 }
 
-async function waitPrinterUntilItIsReadyToUpload(jobUrl: string): Promise<Job> {
+async function waitPrinterUntilItIsReadyToUploadOrCompleted(
+  jobUrl: string
+): Promise<Job> {
   let job = null;
   let isReadyToUpload = false;
   do {
     job = await HPApi.getJob(jobUrl);
-    isReadyToUpload = job.pageState === "ReadyToUpload";
+    isReadyToUpload =
+      job.pageState === "ReadyToUpload" || job.jobState === "Completed";
     await delay(200);
   } while (!isReadyToUpload);
   return job;
@@ -54,7 +60,10 @@ async function register() {
 
   let destinations = walkupScanDestinations.destinations;
 
-  console.log("Host destinations fetched:", destinations.map(d => d.name));
+  console.log(
+    "Host destinations fetched:",
+    destinations.map(d => d.name).join()
+  );
 
   let destination = destinations.find(x => x.name === hostname);
   let resourceURI;
@@ -72,12 +81,24 @@ async function register() {
   return resourceURI;
 }
 
-function getNextFile(job: Job): string {
-  return `/tmp/scanPage${job.currentPageNumber}.jpg`;
+async function getNextFile(
+  folder: string,
+  currentPageNumber: string
+): Promise<string> {
+  return path.join(folder, `scanPage${currentPageNumber}.jpg`);
 }
 
 async function saveScan(event: Event) {
   const destination = await HPApi.getDestination(event.resourceURI);
+
+  const folder = await new Promise<string>((resolve, reject) => {
+    mkdtemp(
+      path.join(os.tmpdir(), "scan-to-pc"),
+      (err: NodeJS.ErrnoException | null, folder: string) =>
+        err ? reject(err) : resolve(folder)
+    );
+  });
+  console.log(`Target folder: ${folder}`);
 
   console.log("Selected shortcut: " + destination.shortcut);
   const scanStatus = await HPApi.getScanStatus();
@@ -93,12 +114,36 @@ async function saveScan(event: Event) {
 
   let job = await HPApi.getJob(jobUrl);
   while (job.jobState !== "Completed") {
-    job = await waitPrinterUntilItIsReadyToUpload(jobUrl);
-    console.log("Ready to download:", job.binaryURL);
+    job = await waitPrinterUntilItIsReadyToUploadOrCompleted(jobUrl);
 
-    const filePath = await HPApi.downloadPage(job.binaryURL, getNextFile(job));
-    console.log("Page downloaded to:", filePath);
-    job = await HPApi.getJob(jobUrl);
+    if (job.jobState == "Completed") {
+      continue;
+    }
+
+    if (job.jobState === "Processing") {
+      if (
+        job.pageState == "ReadyToUpload" &&
+        job.binaryURL != null &&
+        job.currentPageNumber != null
+      ) {
+        console.log(
+          `Ready to download page ${job.currentPageNumber} at:`,
+          job.binaryURL
+        );
+
+        const filePath = await HPApi.downloadPage(
+          job.binaryURL,
+          await getNextFile(folder, job.currentPageNumber)
+        );
+        console.log("Page downloaded to:", filePath);
+      } else {
+        console.log(`Unknown pageState: ${job.pageState}`);
+        await delay(200);
+      }
+    } else {
+      console.log(`Unknown jobState: ${job.jobState}`);
+      await delay(200);
+    }
   }
   console.log(`Job state: ${job.jobState}, totalPages: ${job.totalPageNumber}`);
 }
@@ -135,19 +180,26 @@ function findOfficejetIp(): Promise<string> {
   return new Promise(resolve => {
     const bonjour = Bonjour();
     console.log("Searching printer...");
-    bonjour.find({}, (service: OfficeJetBonjourService) => {
-      console.log(".");
-      if (
-        service.name.startsWith("Officejet 6500 E710n-z") &&
-        service.port === 80 &&
-        service.type === "http" &&
-        service.addresses != null
-      ) {
-        bonjour.destroy();
-        console.log(`Found: ${service.name}`);
-        resolve(service.addresses[0]);
+    let browser = bonjour.find(
+      {
+        type: "http"
+      },
+      (service: OfficeJetBonjourService) => {
+        console.log(".");
+        if (
+          service.name.startsWith("Officejet 6500 E710n-z") &&
+          service.port === 80 &&
+          service.type === "http" &&
+          service.addresses != null
+        ) {
+          browser.stop();
+          bonjour.destroy();
+          console.log(`Found: ${service.name}`);
+          resolve(service.addresses[0]);
+        }
       }
-    });
+    );
+    browser.start();
   });
 }
 

@@ -3,32 +3,16 @@
 export interface JobData {
   "j:Job": {
     ScanJob: {
-      "0": {
-        PreScanPage: {
-          "0": {
-            PageState: {
-              "0": string;
-            };
-            BinaryURL: {
-              "0": string;
-            };
-            PageNumber: {
-              "0": string | number;
-            };
-          };
-        };
-        PostScanPage: {
-          "0": {
-            PageNumber: {
-              "0": string | number;
-            };
-          };
-        };
-      };
-    };
-    "j:JobState": {
-      "0": string;
-    };
+      PreScanPage?: {
+        PageState: string[];
+        BinaryURL: string[];
+        PageNumber: string[];
+      }[];
+      PostScanPage: {
+        PageNumber: string[];
+      }[];
+    }[];
+    "j:JobState": string[];
   };
 }
 
@@ -38,23 +22,41 @@ export default class Job {
     this.data = data;
   }
 
-  get currentPageNumber(): string | number {
-    return this.data["j:Job"].ScanJob["0"].PreScanPage["0"].PageNumber["0"];
+  get currentPageNumber(): string | null {
+    let preScanPage = this.data["j:Job"].ScanJob[0].PreScanPage;
+    if (preScanPage) {
+      return preScanPage[0].PageNumber[0];
+    } else {
+      return null;
+    }
   }
 
-  get totalPageNumber(): string | number {
-    return this.data["j:Job"].ScanJob["0"].PostScanPage["0"].PageNumber["0"];
+  get totalPageNumber(): number {
+    return parseInt(
+      this.data["j:Job"].ScanJob[0].PostScanPage[0].PageNumber[0],
+      10
+    );
   }
 
-  get jobState(): string {
+  get jobState(): "Completed" | "Processing" | "ReadyToUpload" | string {
     return this.data["j:Job"]["j:JobState"][0];
   }
 
   get pageState(): string {
-    return this.data["j:Job"].ScanJob["0"].PreScanPage["0"].PageState["0"];
+    let preScanPage = this.data["j:Job"].ScanJob[0].PreScanPage;
+    if (preScanPage) {
+      return preScanPage[0].PageState[0];
+    } else {
+      return "";
+    }
   }
 
-  get binaryURL(): string {
-    return this.data["j:Job"].ScanJob["0"].PreScanPage["0"].BinaryURL["0"];
+  get binaryURL(): string | null {
+    let preScanPage = this.data["j:Job"].ScanJob[0].PreScanPage;
+    if (preScanPage) {
+      return preScanPage[0].BinaryURL[0];
+    } else {
+      return null;
+    }
   }
 }
