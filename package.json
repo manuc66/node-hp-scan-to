@@ -4,7 +4,8 @@
   "description": "",
   "main": "src/index.ts",
   "scripts": {
-    "test": "mocha test/*.js"
+    "test": "mocha test/*.js",
+    "start": "ts-node src/index.ts"
   },
   "author": "",
   "license": "ISC",
@@ -15,6 +16,7 @@
     "eslint": "5.16.0",
     "mocha": "^6.1.4",
     "prettier": "1.18.0",
+    "ts-node": "^8.2.0",
     "typescript": "^3.5.1"
   },
   "dependencies": {

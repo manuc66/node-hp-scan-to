@@ -1,9 +1,16 @@
 "use strict";
 
-import WalkupScanDestination from "./WalkupScanDestination";
+import WalkupScanDestination, {WalkupScanDestinationData} from "./WalkupScanDestination";
+
+export interface WalkupScanDestinationsData {
+  "wus:WalkupScanDestinations": {
+    "wus:WalkupScanDestination": WalkupScanDestinationData[]
+  }
+}
 
 export default class WalkupScanDestinations {
-  constructor(data) {
+  private readonly data: WalkupScanDestinationsData;
+  constructor(data: WalkupScanDestinationsData) {
     this.data = data;
   }
 

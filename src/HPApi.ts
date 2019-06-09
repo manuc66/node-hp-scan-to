@@ -1,6 +1,6 @@
 "use strict";
 
-import WalkupScanDestination from "./WalkupScanDestination";
+import WalkupScanDestination, {WalkupScanDestinationData} from "./WalkupScanDestination";
 
 import util from "util";
 import fs from "fs";
@@ -8,9 +8,9 @@ import axios from "axios";
 import url from "url";
 import xml2js from "xml2js";
 import EventTable, {EventTableData} from "./EventTable";
-import Job from "./Job";
-import ScanStatus from "./ScanStatus";
-import WalkupScanDestinations from "./WalkupScanDestinations";
+import Job, {JobData} from "./Job";
+import ScanStatus, {ScanStatusData} from "./ScanStatus";
+import WalkupScanDestinations, {WalkupScanDestinationsData} from "./WalkupScanDestinations";
 import ScanJobSettings from "./ScanJobSettings";
 import Destination from "./Destination";
 
@@ -35,7 +35,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw new Error(response.statusText);
     } else {
-      const parsed = await parseString(response.data);
+      const parsed = await parseString(response.data) as WalkupScanDestinationsData;
       return new WalkupScanDestinations(parsed);
     }
   }
@@ -138,7 +138,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      const parsed = await parseString(response.data);
+      const parsed = await parseString(response.data) as WalkupScanDestinationData;
       return new WalkupScanDestination(parsed);
     }
   }
@@ -154,7 +154,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      const parsed = await parseString(response.data);
+      const parsed = await parseString(response.data) as ScanStatusData;
       return new ScanStatus(parsed);
     }
   }
@@ -198,7 +198,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      const parsed = await parseString(response.data);
+      const parsed = await parseString(response.data) as JobData;
       return new Job(parsed);
     }
   }

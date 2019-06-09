@@ -1,26 +1,34 @@
 "use strict";
 
+export interface ScanStatusData {
+  ScanStatus: {
+    ScannerState: { "0": string };
+    AdfState: { "0": string };
+  };
+}
+
 export default class ScanStatus {
-  constructor(data) {
+  private readonly data: ScanStatusData;
+  constructor(data: ScanStatusData) {
     /**
      * @type {{ScannerState, AdfState} }
      */
     this.data = data;
   }
 
-  get scannerState() {
+  get scannerState(): string {
     return this.data["ScanStatus"].ScannerState["0"];
   }
 
-  get adfState() {
+  get adfState(): string {
     return this.data["ScanStatus"].AdfState["0"];
   }
 
-  isLoaded() {
+  isLoaded(): boolean {
     return this.adfState === "Loaded";
   }
 
-  getInputSource() {
+  getInputSource(): string {
     return this.isLoaded() ? "Adf" : "Platen";
   }
 }
