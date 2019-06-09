@@ -1,4 +1,4 @@
-anguage: node_js
+language: node_js
 node_js:
   - "10.15.3"
 env:
