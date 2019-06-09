@@ -1,7 +1,6 @@
 anguage: node_js
 node_js:
-  - "10"
-  - "node"
+  - "10.15.3"
 env:
   - NODE_ENV=TEST
 cache:
