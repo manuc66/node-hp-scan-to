@@ -2,7 +2,7 @@
   "compilerOptions": {
     "outDir": "dist",
     "module": "commonjs",
-    "target": "es5",
+    "target": "es6",
     "noImplicitAny": true,
     "sourceMap": true,
     "inlineSources": true,
@@ -16,15 +16,21 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "preserve"
+
+    "jsx": "preserve",
+    "baseUrl": ".",
+	"paths": {
+		"*": [
+			"node_modules/*",
+			"src/types/*"
+		]
+    }
   },
   "exclude": [
     "node_modules",
     "dist"
+  ],
+  "include": [
+    "src"
   ]
-//  "include": [
-//    "src",
-//    "test"
-//  ]
 }
