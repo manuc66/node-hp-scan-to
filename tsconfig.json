@@ -2,11 +2,10 @@
   "compilerOptions": {
     "outDir": "dist",
     "module": "commonjs",
-    "target": "es6",
+    "target": "es5",
     "noImplicitAny": true,
     "sourceMap": true,
     "inlineSources": true,
-    "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -15,8 +14,7 @@
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "isolatedModules": true,
-
+    "declaration": true,
     "jsx": "preserve",
     "baseUrl": ".",
 	"paths": {

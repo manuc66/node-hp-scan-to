@@ -2,10 +2,21 @@
   "name": "node-hp-scan-to",
   "version": "1.0.0",
   "description": "Scan document to Computer for HP Officejet 6500A Plus",
-  "main": "src/index.ts",
+  "keywords": [
+    "Officejet",
+    "scan",
+    "cli",
+    "computer"
+  ],
+  "main": "dist/index.js",
+  "bin": {
+    "node-hp-scan-to": "dist/index.js"
+  },
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "mocha test/*.js",
-    "start": "ts-node src/index.ts"
+    "start": "ts-node src/index.ts",
+    "build": "tsc -p .",
+    "start-dev": "nodemon"
   },
   "engines": {
     "node": ">=10.15.3"
@@ -26,7 +37,7 @@
     "@types/bonjour": "^3.5.5",
     "@types/node": "^12.0.7",
     "@types/xml2js": "^0.4.4",
-    "mocha": "^6.1.4",
+    "nodemon": "^1.19.1",
     "prettier": "^1.18.0",
     "ts-node": "^8.2.0",
     "typescript": "^3.5.1"
