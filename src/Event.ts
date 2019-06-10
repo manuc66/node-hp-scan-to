@@ -5,9 +5,9 @@ export type EventData = {
   "ev:Payload": {
     "0": {
       "dd:ResourceURI": {
-        "0": string
+        "0": string;
       };
-    }
+    };
   };
 };
 

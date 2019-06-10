@@ -14,7 +14,7 @@ import Event from "./Event";
 import HPApi from "./HPApi";
 import Job from "./Job";
 
-function delay(t: number) {
+function delay(t: number): Promise<void> {
   return new Promise(function(resolve) {
     setTimeout(resolve, t);
   });
@@ -51,7 +51,7 @@ async function waitPrinterUntilItIsReadyToUploadOrCompleted(
   return job;
 }
 
-async function register() {
+async function register(): Promise<string> {
   const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
   const hostname = os.hostname();
 
@@ -85,7 +85,7 @@ async function getNextFile(
   return path.join(folder, `scanPage${currentPageNumber}.jpg`);
 }
 
-async function saveScan(event: Event) {
+async function saveScan(event: Event): Promise<void> {
   const destination = await HPApi.getDestination(event.resourceURI);
 
   const folder = await util.promisify(fs.mkdtemp)(
@@ -124,9 +124,13 @@ async function saveScan(event: Event) {
           job.binaryURL
         );
 
+        const destinationFilePath = await getNextFile(
+          folder,
+          job.currentPageNumber
+        );
         const filePath = await HPApi.downloadPage(
           job.binaryURL,
-          await getNextFile(folder, job.currentPageNumber)
+          destinationFilePath
         );
         console.log("Page downloaded to:", filePath);
       } else {

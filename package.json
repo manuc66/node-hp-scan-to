@@ -17,7 +17,8 @@
     "start": "ts-node src/index.ts",
     "build": "tsc -p .",
     "start-dev": "nodemon",
-    "prepublishOnly": "tsc -p ./ --outDir dist/"
+    "prepublishOnly": "tsc -p ./ --outDir dist/",
+    "prettier": "prettier --write \"src/**/*.ts\""
   },
   "files": [
     "dist",

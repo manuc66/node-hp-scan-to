@@ -1,17 +1,19 @@
 "use strict";
 
 export interface WalkupScanDestinationData {
-  "dd:Name": string[]
-  "dd:ResourceURI": string[]
+  "dd:Name": string[];
+  "dd:ResourceURI": string[];
   "wus:WalkupScanDestinations": {
     "wus:WalkupScanDestination": {
       "0": {
-        "wus:WalkupScanSettings":{"0": {
-            "wus:Shortcut": string[]
-          }}
-      }
-    }
-  }
+        "wus:WalkupScanSettings": {
+          "0": {
+            "wus:Shortcut": string[];
+          };
+        };
+      };
+    };
+  };
 }
 
 export default class WalkupScanDestination {
@@ -20,7 +22,7 @@ export default class WalkupScanDestination {
     this.data = data;
   }
 
-  get name() : string {
+  get name(): string {
     return this.data["dd:Name"][0];
   }
 
