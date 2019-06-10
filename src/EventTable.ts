@@ -1,11 +1,11 @@
 "use strict";
 
-import Event, {EventData} from "./Event";
+import Event, { EventData } from "./Event";
 
 export interface EventTableData {
-  "ev:EventTable"? : {
-    "ev:Event"?: EventData[]
-  }
+  "ev:EventTable"?: {
+    "ev:Event"?: EventData[];
+  };
 }
 
 export default class EventTable {

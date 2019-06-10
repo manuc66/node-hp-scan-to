@@ -1,18 +1,23 @@
 "use strict";
 
-import WalkupScanDestination, {WalkupScanDestinationData} from "./WalkupScanDestination";
+import WalkupScanDestination, {
+  WalkupScanDestinationData
+} from "./WalkupScanDestination";
 
 import util from "util";
 import fs from "fs";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import url from "url";
 import xml2js from "xml2js";
-import EventTable, {EventTableData} from "./EventTable";
-import Job, {JobData} from "./Job";
-import ScanStatus, {ScanStatusData} from "./ScanStatus";
-import WalkupScanDestinations, {WalkupScanDestinationsData} from "./WalkupScanDestinations";
+import EventTable, { EventTableData } from "./EventTable";
+import Job, { JobData } from "./Job";
+import ScanStatus, { ScanStatusData } from "./ScanStatus";
+import WalkupScanDestinations, {
+  WalkupScanDestinationsData
+} from "./WalkupScanDestinations";
 import ScanJobSettings from "./ScanJobSettings";
 import Destination from "./Destination";
+import { Stream } from "stream";
 
 const parser = new xml2js.Parser();
 const parseString = util.promisify(parser.parseString);
@@ -22,7 +27,6 @@ export default class HPApi {
   static setPrinterIP(ip: string) {
     printerIP = ip;
   }
-
 
   static async getWalkupScanDestinations(): Promise<WalkupScanDestinations> {
     const response = await axios({
@@ -35,12 +39,14 @@ export default class HPApi {
     if (response.status !== 200) {
       throw new Error(response.statusText);
     } else {
-      const parsed = await parseString(response.data) as WalkupScanDestinationsData;
+      const parsed = (await parseString(
+        response.data
+      )) as WalkupScanDestinationsData;
       return new WalkupScanDestinations(parsed);
     }
   }
 
-  static async removeDestination(walkupScanDestination : WalkupScanDestination) {
+  static async removeDestination(walkupScanDestination: WalkupScanDestination) {
     let urlInfo = url.parse(walkupScanDestination.resourceURI);
 
     const response = await axios({
@@ -74,7 +80,10 @@ export default class HPApi {
     }
   }
 
-  static async getEvents(etag = "", timeout = 0): Promise<{etag: string, eventTable: EventTable}> {
+  static async getEvents(
+    etag = "",
+    timeout = 0
+  ): Promise<{ etag: string; eventTable: EventTable }> {
     let url = this.appendTimeout(timeout, "/EventMgmt/EventTable");
 
     let headers = this.placeETagHeader(etag, {});
@@ -115,10 +124,7 @@ export default class HPApi {
     return headers;
   }
 
-  static appendTimeout(
-    timeout: number | null = null,
-    url: string
-  ) : string {
+  static appendTimeout(timeout: number | null = null, url: string): string {
     if (timeout == null) {
       timeout = 1200;
     }
@@ -128,7 +134,7 @@ export default class HPApi {
     return url;
   }
 
-  static async getDestination(destinationURL : string) {
+  static async getDestination(destinationURL: string) {
     const response = await axios({
       url: destinationURL,
       method: "GET",
@@ -138,7 +144,9 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      const parsed = await parseString(response.data) as WalkupScanDestinationData;
+      const parsed = (await parseString(
+        response.data
+      )) as WalkupScanDestinationData;
       return new WalkupScanDestination(parsed);
     }
   }
@@ -154,7 +162,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      const parsed = await parseString(response.data) as ScanStatusData;
+      const parsed = (await parseString(response.data)) as ScanStatusData;
       return new ScanStatus(parsed);
     }
   }
@@ -165,7 +173,7 @@ export default class HPApi {
     });
   }
 
-  static async postJob(job : ScanJobSettings) {
+  static async postJob(job: ScanJobSettings) {
     await HPApi.delay(500);
     const xml = await job.toXML();
     const response = await axios({
@@ -188,7 +196,7 @@ export default class HPApi {
    * @param jobURL
    * @return {Promise<Job|*>}
    */
-  static async getJob(jobURL :string) {
+  static async getJob(jobURL: string) {
     const response = await axios({
       url: jobURL,
       method: "GET",
@@ -198,24 +206,30 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      const parsed = await parseString(response.data) as JobData;
+      const parsed = (await parseString(response.data)) as JobData;
       return new Job(parsed);
     }
   }
 
-  static async downloadPage(binaryURL: string, destination: string) {
-    const response = await axios({
+  static async downloadPage(
+    binaryURL: string,
+    destination: string
+  ): Promise<string> {
+    const { data }: AxiosResponse<Stream> = await axios.request<Stream>({
       baseURL: `http://${printerIP}:8080`,
       url: binaryURL,
       method: "GET",
       responseType: "stream"
     });
 
-    response.data.pipe(fs.createWriteStream(destination));
+    const destinationFileStream = fs.createWriteStream(destination);
+    data.pipe(destinationFileStream);
 
     return new Promise((resolve, reject) => {
-      response.data
-        .on("end", () => resolve(destination))
+      data
+        .on("end", () => {
+          resolve(destination);
+        })
         .on("error", (error: Error) => reject(error));
     });
   }

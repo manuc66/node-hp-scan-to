@@ -1,11 +1,13 @@
 "use strict";
 
-import WalkupScanDestination, {WalkupScanDestinationData} from "./WalkupScanDestination";
+import WalkupScanDestination, {
+  WalkupScanDestinationData
+} from "./WalkupScanDestination";
 
 export interface WalkupScanDestinationsData {
   "wus:WalkupScanDestinations": {
-    "wus:WalkupScanDestination": WalkupScanDestinationData[]
-  }
+    "wus:WalkupScanDestination": WalkupScanDestinationData[];
+  };
 }
 
 export default class WalkupScanDestinations {
@@ -14,7 +16,7 @@ export default class WalkupScanDestinations {
     this.data = data;
   }
 
-  get destinations() : WalkupScanDestination[] {
+  get destinations(): WalkupScanDestination[] {
     let walkupScanDestinations = this.data["wus:WalkupScanDestinations"];
     if (walkupScanDestinations.hasOwnProperty("wus:WalkupScanDestination")) {
       return walkupScanDestinations["wus:WalkupScanDestination"].map(

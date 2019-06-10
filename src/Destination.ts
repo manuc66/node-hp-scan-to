@@ -4,13 +4,13 @@ import xml2js from "xml2js";
 import * as util from "util";
 const parser = new xml2js.Parser();
 
-type WalkupScanDestinationData =  {
+type WalkupScanDestinationData = {
   WalkupScanDestination: {
     Hostname: { _: string }[];
     Name: { _: string }[];
     LinkType: string[];
   };
-}
+};
 
 export default class Destination {
   private readonly name: string;
@@ -33,7 +33,9 @@ export default class Destination {
       "<LinkType>Network</LinkType>\n" +
       "</WalkupScanDestination>";
 
-    const parsed = await util.promisify(parser.parseString)(rawDestination) as WalkupScanDestinationData;
+    const parsed = (await util.promisify(parser.parseString)(
+      rawDestination
+    )) as WalkupScanDestinationData;
 
     parsed.WalkupScanDestination.Hostname[0]._ = this.hostname;
     parsed.WalkupScanDestination.Name[0]._ = this.name;
