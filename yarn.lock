@@ -3,9 +3,9 @@
 
 
 "@types/bonjour@^3.5.5":
-  version "3.5.5"
-  resolved "https://registry.yarnpkg.com/@types/bonjour/-/bonjour-3.5.5.tgz#98e11e61c4ddf444fb9d97cb84944457c910b6f0"
-  integrity sha512-4fHAqgL0SYHgDmdBrm201hUl7gIavk8KAtwBuDX9TjVdEZbUENdKmnago4GsmDO8QALMUE651F+nNpaCF+B4+A==
+  version "3.5.6"
+  resolved "https://registry.yarnpkg.com/@types/bonjour/-/bonjour-3.5.6.tgz#200c79b3ab8acf21676297a1d71432a74ce02112"
+  integrity sha512-BQvTuANZ2UyBnrAxxdI0ZeJEqelV7oJHLmczwPng0OawCpuMPfPVWTglFWSyRCfaeeSJFdnlPREmoK6BU9xzgA==
   dependencies:
     "@types/node" "*"
 
