@@ -49,6 +49,10 @@ export default class HPApi {
   static async removeDestination(walkupScanDestination: WalkupScanDestination) {
     let urlInfo = url.parse(walkupScanDestination.resourceURI);
 
+    if (urlInfo.pathname === null) {
+      throw new Error(`invalid walkupScanDestination.resourceURI: ${walkupScanDestination.resourceURI}`)
+    }
+
     const response = await axios({
       baseURL: `http://${printerIP}`,
       url: urlInfo.pathname,
