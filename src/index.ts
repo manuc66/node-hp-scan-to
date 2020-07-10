@@ -13,6 +13,7 @@ import ScanJobSettings from "./ScanJobSettings";
 import Event from "./Event";
 import HPApi from "./HPApi";
 import Job from "./Job";
+import { SSL_OP_EPHEMERAL_RSA } from "constants";
 
 function delay(t: number): Promise<void> {
   return new Promise(function(resolve) {
@@ -52,17 +53,32 @@ async function waitPrinterUntilItIsReadyToUploadOrCompleted(
 }
 
 async function register(): Promise<string> {
-  const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
+  let destination;
   const hostname = os.hostname();
+  const toComp = await HPApi.getWalkupScanToCompCaps();
 
-  let destinations = walkupScanDestinations.destinations;
+  if (toComp) {
+    const walkupScanDestinations = await HPApi.getWalkupScanToCompDestinations();
+    const destinations = walkupScanDestinations.destinations;
 
-  console.log(
-    "Host destinations fetched:",
-    destinations.map(d => d.name).join(", ")
-  );
+    console.log(
+      "Host destinations fetched:",
+      destinations.map(d => d.name).join(", ")
+    );
 
-  let destination = destinations.find(x => x.name === hostname);
+    destination = destinations.find(x => x.name === hostname);
+  } else {
+    const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
+    const destinations = walkupScanDestinations.destinations;
+
+    console.log(
+      "Host destinations fetched:",
+      destinations.map(d => d.name).join(", ")
+    );
+
+    destination = destinations.find(x => x.name === hostname);
+  }
+
   let resourceURI;
   if (destination) {
     console.log(
@@ -71,7 +87,8 @@ async function register(): Promise<string> {
     resourceURI = destination.resourceURI;
   } else {
     resourceURI = await HPApi.registerDestination(
-      new Destination(hostname, hostname)
+      new Destination(hostname, hostname, toComp),
+      toComp
     );
     console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
   }
@@ -86,19 +103,28 @@ async function getNextFile(
 }
 
 async function saveScan(event: Event): Promise<void> {
-  const destination = await HPApi.getDestination(event.resourceURI);
+  let shortcut = '';
+  let contentType = '';
+  //this code can in some cases be executed before the user actually chooses between Document or Photo
+  //so lets fetch the contentType (Document or Photo) until we get a value
+  let i = 0;
+  while (shortcut == '') {
+    const destination = await HPApi.getDestination(event.resourceURI);
+    shortcut = destination.shortcut;
+    if (shortcut !== '') {
+      contentType = destination.getContentType();
+      console.log("Selected shortcut: " + shortcut);
+    } else {
+      await new Promise( resolve => setTimeout(resolve, 1000) ); //wait 1s
+      i += 1;
+      if (i > 20) { return; }; //prevent endless loop
+    }
+  };
 
-  const folder = await util.promisify(fs.mkdtemp)(
-    path.join(os.tmpdir(), "scan-to-pc")
-  );
-  console.log(`Target folder: ${folder}`);
-
-  console.log("Selected shortcut: " + destination.shortcut);
   const scanStatus = await HPApi.getScanStatus();
   console.log("Afd is : " + scanStatus.adfState);
 
   let inputSource = scanStatus.getInputSource();
-  let contentType = destination.getContentType();
 
   let scanJobSettings = new ScanJobSettings(inputSource, contentType);
   const jobUrl = await HPApi.postJob(scanJobSettings);
@@ -123,6 +149,11 @@ async function saveScan(event: Event): Promise<void> {
           `Ready to download page ${job.currentPageNumber} at:`,
           job.binaryURL
         );
+
+        const folder = await util.promisify(fs.mkdtemp)(
+          path.join(os.tmpdir(), "scan-to-pc")
+        );
+        console.log(`Target folder: ${folder}`);
 
         const destinationFilePath = await getNextFile(
           folder,
@@ -184,7 +215,7 @@ function findOfficejetIp(): Promise<string> {
       (service: OfficeJetBonjourService) => {
         console.log(".");
         if (
-          service.name.startsWith("Officejet 6500 E710n-z") &&
+          service.name.startsWith("Officejet 6500 E710n-z") && //modify for your printer, i.e. "Deskjet 3520 series"
           service.port === 80 &&
           service.type === "http" &&
           service.addresses != null
