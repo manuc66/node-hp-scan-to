@@ -1,7 +1,5 @@
 "use strict";
 
-import WalkupScanDestination from "./WalkupScanDestination";
-
 export interface WalkupScanToCompDestinationData {
   "dd:Name": string[];
   "dd:ResourceURI": string[];
