@@ -1,14 +1,14 @@
 <!-- TOC -->
 
-- [Protocol]downgraded)
+- [Protocol](downgraded)
     - [Recorded Sequence](#recorded-sequence)
+		- [`GET /WalkupScanToComp/WalkupScanToCompCaps`](#get-walkupscantocompwalkupscantocompcaps)
         - [`GET /WalkupScan/WalkupScanDestinations`](#get-walkupscanwalkupscandestinations)
         - [`POST /WalkupScan/WalkupScanDestinations`](#post-walkupscanwalkupscandestinations)
         - [`GET /EventMgmt/EventTable`](#get-eventmgmteventtable)
         - [`GET /EventMgmt/EventTable?timeout=1200`](#get-eventmgmteventtabletimeout1200)
         - [`GET /WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`](#get-walkupscanwalkupscandestinations1cb3125d-7bde-1f09-8da2-2c768ab21113)
         - [`GET /DevMgmt/DiscoveryTree.xml`](#get-devmgmtdiscoverytreexml)
-        - [`GET /WalkupScanToComp/WalkupScanToCompCaps`](#get-walkupscantocompwalkupscantocompcaps)
         - [`GET /Scan/ScanCaps.xml`](#get-scanscancapsxml)
         - [`GET /Scan/Status`](#get-scanstatus)
         - [`GET /WalkupScan/WalkupScanDestinations`](#get-walkupscanwalkupscandestinations-1)
@@ -42,6 +42,48 @@ A single sheet was prepared in the tray. The `scan to computer` has never been a
 
 Rapidly after launching the desktop application a `Scan to PDF` was triggered from the printer's screen.
 
+### `GET /WalkupScanToComp/WalkupScanToCompCaps`
+
+This examines if the further API calls have to use the API WalkupScan or WalkupScanToComp.
+If a HTTP 404 is received, only WalkUpScan can be used.
+If a HTTP 200 is received, only WalkUpScanToComp can be used. In this mode basically in all URLs and XML contents the text 'WalkupScan' has to be replaced with 'WalkupScanToComp'.
+
+Hint: In the original recording this function was called after 'GET /DevMgmt/DiscoveryTree.xml', but apparently it has to be the first request to choose which request needs to be used next.
+
+_Request_
+```http
+GET /WalkupScanToComp/WalkupScanToCompCaps HTTP/1.1
+HOST: 192.168.1.7:8080
+```
+_Response when only WalkupScan API is supported_
+```http
+HTTP/1.1 404 Not Found
+Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
+Content-Length: 0
+Cache-Control: must-revalidate, max-age=0
+Pragma: no-cache
+```
+
+_Response when only WalkupScanToComp API is supported_
+```http
+HTTP/1.1 200 OK
+Server: HP HTTP Server; HP Deskjet 3520 series - CX052B; Serial Number: CN28F14C4105SY; Stuttgart_pp_usr_hf Built:Mon Dec 21, 2015 09:48:45AM {STP1FN1552AR, ASIC id 0x00340104}
+Content-Type: text/xml
+Cache-Control: must-revalidate, max-age=0
+Pragma: no-cache
+Content-Length: 676
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!---->
+<wus:WalkupScanToCompCaps xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 WalkupScanToComp.xsd" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<wus:MaxNetworkDestinations>15</wus:MaxNetworkDestinations>
+	<wus:SupportsMultiItemScanFromPlaten>false</wus:SupportsMultiItemScanFromPlaten>
+	<wus:UserActionTimeout>
+		<dd:ValueFloat>60</dd:ValueFloat>
+		<dd:Unit>seconds</dd:Unit>
+	</wus:UserActionTimeout>
+</wus:WalkupScanToCompCaps>
+```
 ### `GET /WalkupScan/WalkupScanDestinations`
 
 Lookup if a destination is registered on the printer for: `LAPTOP-BSHRTBV8` (it doesn't)
@@ -76,6 +118,16 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
+In case the scanner uses the newer WalkupScanToComp API, the GET request has to go to the URL /WalkupScanToComp/WalkupScanToCompDestinations and would return the following xml (in case there is no desination registered yet):
+_Response_
+```http
+<?xml version="1.0" encoding="UTF-8"?>
+<!---->
+<wus:WalkupScanToCompDestinations xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 WalkupScanToComp.xsd" xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:dd3="http://www.hp.com/schemas/imaging/con/dictionaries/2009/04/06" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+</wus:WalkupScanToCompDestinations>
+```
+
 ### `POST /WalkupScan/WalkupScanDestinations`
 
 Register a new `LAPTOP-BSHRTBV8` destination.
@@ -104,6 +156,16 @@ Location: http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bd
 Cache-Control: must-revalidate, max-age=0
 Pragma: no-cache
 Content-Length: 0
+```
+
+In case the scanner uses the newer WalkupScanToComp API, the POST request has to go to the URL /WalkupScanToComp/WalkupScanToCompDestinations with the following xml content. Note that it seems to be relevant to use the newer namespaces/schema from 2010, otherwise you get a HTTP 400 error.
+```http
+<?xml version="1.0" encoding="UTF-8"?>
+<WalkupScanToCompDestination xmlns="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 WalkupScanToComp.xsd">
+	<Hostname xmlns="http://www.hp.com/schemas/imaging/con/dictionaries/2009/04/06">LAPTOP-BSHRTBV8</Hostname>
+	<Name xmlns="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">LAPTOP-BSHRTBV8</Name>
+	<LinkType>Network</LinkType>
+</WalkupScanToCompDestination>
 ```
 ### `GET /EventMgmt/EventTable`
 
@@ -222,6 +284,25 @@ Pragma: no-cache
 		</wus:WalkupScanSettings>
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
+```
+
+In case the scanner uses the newer WalkupScanToComp API, the GET request has to go to the URL /WalkupScanToComp/WalkupScanToCompDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 and would return the following xml:
+_Response_
+```http
+<?xml version="1.0" encoding="UTF-8"?>
+<!---->
+<wus:WalkupScanToCompDestination xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 WalkupScanToComp.xsd" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:dd3="http://www.hp.com/schemas/imaging/con/dictionaries/2009/04/06" xmlns:scantype="http://www.hp.com/schemas/imaging/con/ledm/scantype/2008/03/17" xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<dd:ResourceURI>/WalkupScanToComp/WalkupScanToCompDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113</dd:ResourceURI>
+	<dd:Name>LAPTOP-BSHRTBV8</dd:Name>
+	<dd3:Hostname>LAPTOP-BSHRTBV8</dd3:Hostname>
+	<wus:LinkType>Network</wus:LinkType>
+	<wus:WalkupScanToCompSettings>
+		<scantype:ScanSettings>
+			<dd:ScanPlexMode>Simplex</dd:ScanPlexMode>
+		</scantype:ScanSettings>
+		<wus:Shortcut>SaveDocument1</wus:Shortcut>
+	</wus:WalkupScanToCompSettings>
+</wus:WalkupScanToCompDestination>
 ```
 ### `GET /DevMgmt/DiscoveryTree.xml`
 
@@ -479,23 +560,6 @@ Pragma: no-cache
 	</ledm:SupportedIfc>
 </ledm:DiscoveryTree>
 ```
-### `GET /WalkupScanToComp/WalkupScanToCompCaps`
-
-It query this resource that is not found... (I do no know the reason why)
-
-_Request_
-```http
-GET /WalkupScanToComp/WalkupScanToCompCaps HTTP/1.1
-HOST: 192.168.1.7:8080
-```
-_Response_
-```http
-HTTP/1.1 404 Not Found
-Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
-Content-Length: 0
-Cache-Control: must-revalidate, max-age=0
-Pragma: no-cache
-```
 ### `GET /Scan/ScanCaps.xml`
 
 Getting `ScanCaps.xml` (?Scanner capabilities?)
@@ -737,7 +801,8 @@ Content-Length: 6458
 ```
 ### `GET /Scan/Status`
 
-Getting the scanner status: `Idle` and Afd `Loaded` (It could be `Empty`)
+Getting the scanner status: `Idle` and Afd `Loaded` (It could be `Empty`).
+Note that the tag AdfState is missing when the scanner has no automatic document feeder.
 
 _Request_
 ```http
@@ -760,6 +825,7 @@ Content-Length: 283
 	<AdfState>Loaded</AdfState>
 </ScanStatus>
 ```
+
 ### `GET /WalkupScan/WalkupScanDestinations`
 
 Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?

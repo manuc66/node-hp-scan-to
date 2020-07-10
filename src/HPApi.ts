@@ -3,7 +3,9 @@
 import WalkupScanDestination, {
   WalkupScanDestinationData
 } from "./WalkupScanDestination";
-
+import WalkupScanToCompDestination, {
+  WalkupScanToCompDestinationData
+} from "./WalkupScanToCompDestination";
 import util from "util";
 import fs from "fs";
 import axios, { AxiosResponse } from "axios";
@@ -15,6 +17,9 @@ import ScanStatus, { ScanStatusData } from "./ScanStatus";
 import WalkupScanDestinations, {
   WalkupScanDestinationsData
 } from "./WalkupScanDestinations";
+import WalkupScanToCompDestinations, {
+  WalkupScanToCompDestinationsData
+} from "./WalkupScanToCompDestinations";
 import ScanJobSettings from "./ScanJobSettings";
 import Destination from "./Destination";
 import { Stream } from "stream";
@@ -46,6 +51,35 @@ export default class HPApi {
     }
   }
 
+  static async getWalkupScanToCompDestinations(): Promise<WalkupScanToCompDestinations> {
+    const response = await axios({
+      baseURL: `http://${printerIP}`,
+      url: "/WalkupScanToComp/WalkupScanToCompDestinations",
+      method: "GET",
+      responseType: "text"
+    });
+
+    if (response.status !== 200) {
+      throw new Error(response.statusText);
+    } else {
+      const parsed = (await parseString(
+        response.data
+      )) as WalkupScanToCompDestinationsData;
+      return new WalkupScanToCompDestinations(parsed);
+    }
+  }
+
+  static async getWalkupScanToCompCaps(): Promise<boolean> {
+    const response = await axios({
+      baseURL: `http://${printerIP}`,
+      url: "/WalkupScanToComp/WalkupScanToCompCaps",
+      method: "GET",
+      responseType: "text"
+    });
+
+    return (response.status == 200);
+  }
+
   static async removeDestination(walkupScanDestination: WalkupScanDestination) {
     let urlInfo = url.parse(walkupScanDestination.resourceURI);
 
@@ -66,11 +100,15 @@ export default class HPApi {
     }
   }
 
-  static async registerDestination(destination: Destination) {
-    const xml = await destination.toXML();
+  static async registerDestination(destination: Destination, toComp: Boolean) {
+    let xml = await destination.toXML();
+    let url = "/WalkupScan/WalkupScanDestinations";
+    if (toComp) {
+      url = "/WalkupScanToComp/WalkupScanToCompDestinations";
+    }
     const response = await axios({
       baseURL: `http://${printerIP}`,
-      url: "/WalkupScan/WalkupScanDestinations",
+      url: url,
       method: "POST",
       headers: { "Content-Type": "text/xml" },
       data: xml,
@@ -140,6 +178,7 @@ export default class HPApi {
 
   static async getDestination(destinationURL: string) {
     const response = await axios({
+      baseURL: `http://${printerIP}`,
       url: destinationURL,
       method: "GET",
       responseType: "text"
@@ -148,10 +187,18 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      const parsed = (await parseString(
-        response.data
-      )) as WalkupScanDestinationData;
-      return new WalkupScanDestination(parsed);
+      if (destinationURL.includes("WalkupScanToComp"))
+      {
+        const parsed = (await parseString(
+          response.data
+        )) as WalkupScanToCompDestinationData;
+        return new WalkupScanToCompDestination(parsed);
+      } else {
+        const parsed = (await parseString(
+          response.data
+        )) as WalkupScanDestinationData;
+        return new WalkupScanDestination(parsed);
+      }
     }
   }
 
