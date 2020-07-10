@@ -13,7 +13,6 @@ import ScanJobSettings from "./ScanJobSettings";
 import Event from "./Event";
 import HPApi from "./HPApi";
 import Job from "./Job";
-import { SSL_OP_EPHEMERAL_RSA } from "constants";
 
 function delay(t: number): Promise<void> {
   return new Promise(function (resolve) {
