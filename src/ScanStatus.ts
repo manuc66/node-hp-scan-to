@@ -18,8 +18,8 @@ export default class ScanStatus {
   }
 
   get adfState(): string {
-    if (this.data["ScanStatus"].hasOwnProperty("AdfState")) //not all printers have an automatic document feeder
-    {
+    if (this.data["ScanStatus"].hasOwnProperty("AdfState")) {
+      //not all printers have an automatic document feeder
       return this.data["ScanStatus"].AdfState["0"];
     } else {
       return "";

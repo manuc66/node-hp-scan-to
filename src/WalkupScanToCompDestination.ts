@@ -39,10 +39,14 @@ export default class WalkupScanToCompDestination {
   }
 
   get shortcut(): string {
-    if (this.data["wus:WalkupScanToCompDestination"].hasOwnProperty("wus:WalkupScanToCompSettings")) {
-      return this.data["wus:WalkupScanToCompDestination"]["wus:WalkupScanToCompSettings"][
-        "0"
-      ]["wus:Shortcut"][0];
+    if (
+      this.data["wus:WalkupScanToCompDestination"].hasOwnProperty(
+        "wus:WalkupScanToCompSettings"
+      )
+    ) {
+      return this.data["wus:WalkupScanToCompDestination"][
+        "wus:WalkupScanToCompSettings"
+      ]["0"]["wus:Shortcut"][0];
     }
     return "";
   }

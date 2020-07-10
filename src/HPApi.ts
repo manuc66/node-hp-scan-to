@@ -1,10 +1,10 @@
 "use strict";
 
 import WalkupScanDestination, {
-  WalkupScanDestinationData
+  WalkupScanDestinationData,
 } from "./WalkupScanDestination";
 import WalkupScanToCompDestination, {
-  WalkupScanToCompDestinationData
+  WalkupScanToCompDestinationData,
 } from "./WalkupScanToCompDestination";
 import util from "util";
 import fs from "fs";
@@ -15,10 +15,10 @@ import EventTable, { EventTableData } from "./EventTable";
 import Job, { JobData } from "./Job";
 import ScanStatus, { ScanStatusData } from "./ScanStatus";
 import WalkupScanDestinations, {
-  WalkupScanDestinationsData
+  WalkupScanDestinationsData,
 } from "./WalkupScanDestinations";
 import WalkupScanToCompDestinations, {
-  WalkupScanToCompDestinationsData
+  WalkupScanToCompDestinationsData,
 } from "./WalkupScanToCompDestinations";
 import ScanJobSettings from "./ScanJobSettings";
 import Destination from "./Destination";
@@ -38,7 +38,7 @@ export default class HPApi {
       baseURL: `http://${printerIP}`,
       url: "/WalkupScan/WalkupScanDestinations",
       method: "GET",
-      responseType: "text"
+      responseType: "text",
     });
 
     if (response.status !== 200) {
@@ -51,12 +51,14 @@ export default class HPApi {
     }
   }
 
-  static async getWalkupScanToCompDestinations(): Promise<WalkupScanToCompDestinations> {
+  static async getWalkupScanToCompDestinations(): Promise<
+    WalkupScanToCompDestinations
+  > {
     const response = await axios({
       baseURL: `http://${printerIP}`,
       url: "/WalkupScanToComp/WalkupScanToCompDestinations",
       method: "GET",
-      responseType: "text"
+      responseType: "text",
     });
 
     if (response.status !== 200) {
@@ -85,14 +87,16 @@ export default class HPApi {
     let urlInfo = url.parse(walkupScanDestination.resourceURI);
 
     if (urlInfo.pathname === null) {
-      throw new Error(`invalid walkupScanDestination.resourceURI: ${walkupScanDestination.resourceURI}`)
+      throw new Error(
+        `invalid walkupScanDestination.resourceURI: ${walkupScanDestination.resourceURI}`
+      );
     }
 
     const response = await axios({
       baseURL: `http://${printerIP}`,
       url: urlInfo.pathname,
       method: "DELETE",
-      responseType: "text"
+      responseType: "text",
     });
     if (response.status === 204) {
       return true;
@@ -113,7 +117,7 @@ export default class HPApi {
       method: "POST",
       headers: { "Content-Type": "text/xml" },
       data: xml,
-      responseType: "text"
+      responseType: "text",
     });
 
     if (response.status === 201) {
@@ -138,14 +142,14 @@ export default class HPApi {
         url: url,
         method: "GET",
         responseType: "text",
-        headers: headers
+        headers: headers,
       });
     } catch (error) {
       response = error.response;
       if (response.status === 304) {
         return {
           etag: etag,
-          eventTable: new EventTable({})
+          eventTable: new EventTable({}),
         };
       }
       throw error;
@@ -154,14 +158,14 @@ export default class HPApi {
     const parsed = await parseString(response.data);
     return {
       etag: response.headers["etag"],
-      eventTable: new EventTable(parsed as EventTableData)
+      eventTable: new EventTable(parsed as EventTableData),
     };
   }
 
   static placeETagHeader(etag: string, headers: object) {
     if (etag !== "") {
       headers = {
-        "If-None-Match": etag
+        "If-None-Match": etag,
       };
     }
     return headers;
@@ -182,14 +186,13 @@ export default class HPApi {
       baseURL: `http://${printerIP}`,
       url: destinationURL,
       method: "GET",
-      responseType: "text"
+      responseType: "text",
     });
 
     if (response.status !== 200) {
       throw response;
     } else {
-      if (destinationURL.includes("WalkupScanToComp"))
-      {
+      if (destinationURL.includes("WalkupScanToComp")) {
         const parsed = (await parseString(
           response.data
         )) as WalkupScanToCompDestinationData;
@@ -208,7 +211,7 @@ export default class HPApi {
       baseURL: `http://${printerIP}`,
       url: "/Scan/Status",
       method: "GET",
-      responseType: "text"
+      responseType: "text",
     });
 
     if (response.status !== 200) {
@@ -220,7 +223,7 @@ export default class HPApi {
   }
 
   static delay(t: number) {
-    return new Promise(function(resolve) {
+    return new Promise(function (resolve) {
       setTimeout(resolve, t);
     });
   }
@@ -234,7 +237,7 @@ export default class HPApi {
       method: "POST",
       headers: { "Content-Type": "text/xml" },
       data: xml,
-      responseType: "text"
+      responseType: "text",
     });
 
     if (response.status === 201) {
@@ -252,7 +255,7 @@ export default class HPApi {
     const response = await axios({
       url: jobURL,
       method: "GET",
-      responseType: "text"
+      responseType: "text",
     });
 
     if (response.status !== 200) {
@@ -271,7 +274,7 @@ export default class HPApi {
       baseURL: `http://${printerIP}:8080`,
       url: binaryURL,
       method: "GET",
-      responseType: "stream"
+      responseType: "stream",
     });
 
     const destinationFileStream = fs.createWriteStream(destination);

@@ -1,7 +1,7 @@
 "use strict";
 
 import WalkupScanToCompDestination, {
-  WalkupScanToCompDestinationData
+  WalkupScanToCompDestinationData,
 } from "./WalkupScanToCompDestination";
 
 export interface WalkupScanToCompDestinationsData {
@@ -17,11 +17,17 @@ export default class WalkupScanToCompDestinations {
   }
 
   get destinations(): WalkupScanToCompDestination[] {
-    let WalkupScanToCompDestinations = this.data["wus:WalkupScanToCompDestinations"];
-    if (WalkupScanToCompDestinations.hasOwnProperty("wus:WalkupScanToCompDestination")) {
-      return WalkupScanToCompDestinations["wus:WalkupScanToCompDestination"].map(
-        x => new WalkupScanToCompDestination(x)
-      );
+    let WalkupScanToCompDestinations = this.data[
+      "wus:WalkupScanToCompDestinations"
+    ];
+    if (
+      WalkupScanToCompDestinations.hasOwnProperty(
+        "wus:WalkupScanToCompDestination"
+      )
+    ) {
+      return WalkupScanToCompDestinations[
+        "wus:WalkupScanToCompDestination"
+      ].map((x) => new WalkupScanToCompDestination(x));
     } else {
       return [];
     }
