@@ -16,7 +16,7 @@ import Job from "./Job";
 import { SSL_OP_EPHEMERAL_RSA } from "constants";
 
 function delay(t: number): Promise<void> {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     setTimeout(resolve, t);
   });
 }
@@ -32,7 +32,7 @@ async function waitForScanEvent(resourceURI: string): Promise<Event> {
     currentEtag = eventTable.etag;
 
     acceptedScanEvent = eventTable.eventTable.events.find(
-      ev => ev.isScanEvent && ev.resourceURI === resourceURI
+      (ev) => ev.isScanEvent && ev.resourceURI === resourceURI
     );
   }
   return acceptedScanEvent;
@@ -63,20 +63,20 @@ async function register(): Promise<string> {
 
     console.log(
       "Host destinations fetched:",
-      destinations.map(d => d.name).join(", ")
+      destinations.map((d) => d.name).join(", ")
     );
 
-    destination = destinations.find(x => x.name === hostname);
+    destination = destinations.find((x) => x.name === hostname);
   } else {
     const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
     const destinations = walkupScanDestinations.destinations;
 
     console.log(
       "Host destinations fetched:",
-      destinations.map(d => d.name).join(", ")
+      destinations.map((d) => d.name).join(", ")
     );
 
-    destination = destinations.find(x => x.name === hostname);
+    destination = destinations.find((x) => x.name === hostname);
   }
 
   let resourceURI;
@@ -103,23 +103,25 @@ async function getNextFile(
 }
 
 async function saveScan(event: Event): Promise<void> {
-  let shortcut = '';
-  let contentType = '';
+  let shortcut = "";
+  let contentType = "";
   //this code can in some cases be executed before the user actually chooses between Document or Photo
   //so lets fetch the contentType (Document or Photo) until we get a value
   let i = 0;
-  while (shortcut == '') {
+  while (shortcut == "") {
     const destination = await HPApi.getDestination(event.resourceURI);
     shortcut = destination.shortcut;
-    if (shortcut !== '') {
+    if (shortcut !== "") {
       contentType = destination.getContentType();
       console.log("Selected shortcut: " + shortcut);
     } else {
-      await new Promise( resolve => setTimeout(resolve, 1000) ); //wait 1s
+      await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
       i += 1;
-      if (i > 20) { return; }; //prevent endless loop
+      if (i > 20) {
+        return;
+      } //prevent endless loop
     }
-  };
+  }
 
   const scanStatus = await HPApi.getScanStatus();
   console.log("Afd is : " + scanStatus.adfState);
@@ -205,12 +207,12 @@ interface OfficeJetBonjourService extends Service {
 }
 
 function findOfficejetIp(): Promise<string> {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const bonjour = Bonjour();
     console.log("Searching printer...");
     let browser = bonjour.find(
       {
-        type: "http"
+        type: "http",
       },
       (service: OfficeJetBonjourService) => {
         console.log(".");
