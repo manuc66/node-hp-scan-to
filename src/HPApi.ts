@@ -70,14 +70,15 @@ export default class HPApi {
   }
 
   static async getWalkupScanToCompCaps(): Promise<boolean> {
-    const response = await axios({
+    return await axios({
       baseURL: `http://${printerIP}`,
       url: "/WalkupScanToComp/WalkupScanToCompCaps",
       method: "GET",
-      responseType: "text"
-    });
-
-    return (response.status == 200);
+      responseType: "text",
+    }).then(
+      (response) => response.status == 200,
+      () => false
+    );
   }
 
   static async removeDestination(walkupScanDestination: WalkupScanDestination) {
