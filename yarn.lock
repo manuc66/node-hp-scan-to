@@ -15,9 +15,9 @@
     defer-to-connect "^1.0.1"
 
 "@types/bonjour@^3.5.5":
-  version "3.5.6"
-  resolved "https://registry.yarnpkg.com/@types/bonjour/-/bonjour-3.5.6.tgz#200c79b3ab8acf21676297a1d71432a74ce02112"
-  integrity sha512-BQvTuANZ2UyBnrAxxdI0ZeJEqelV7oJHLmczwPng0OawCpuMPfPVWTglFWSyRCfaeeSJFdnlPREmoK6BU9xzgA==
+  version "3.5.7"
+  resolved "https://registry.yarnpkg.com/@types/bonjour/-/bonjour-3.5.7.tgz#7d0d0b8b589840dcaa2f5638d920ab62fc91f32d"
+  integrity sha512-YhCP+gPNR5r3LQO/iiX2L58FZ6JJhQUCMJ3uOGA+fOn1bYjk1DIn2oQY0QaU9r0BwhVFVqtTo1cJfCzCsW5Viw==
   dependencies:
     "@types/node" "*"
 
