@@ -6,7 +6,7 @@ import fs from "fs";
 import path from "path";
 import util from "util";
 
-import Bonjour, { Service } from "bonjour";
+import Bonjour, { RemoteService, Service } from "bonjour";
 
 import Destination from "./Destination";
 import ScanJobSettings from "./ScanJobSettings";
@@ -201,10 +201,6 @@ async function init() {
   }
 }
 
-interface OfficeJetBonjourService extends Service {
-  addresses?: string[];
-}
-
 function findOfficejetIp(): Promise<string> {
   return new Promise((resolve) => {
     const bonjour = Bonjour();
@@ -213,7 +209,7 @@ function findOfficejetIp(): Promise<string> {
       {
         type: "http",
       },
-      (service: OfficeJetBonjourService) => {
+      (service) => {
         console.log(".");
         if (
           service.name.startsWith("Officejet 6500 E710n-z") && //modify for your printer, i.e. "Deskjet 3520 series"
