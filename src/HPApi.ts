@@ -9,7 +9,7 @@ import WalkupScanToCompDestination, {
 import util from "util";
 import fs from "fs";
 import axios, { AxiosResponse } from "axios";
-import url from "url";
+import { URL } from "url";
 import xml2js from "xml2js";
 import EventTable, { EventTableData } from "./EventTable";
 import Job, { JobData } from "./Job";
@@ -82,7 +82,7 @@ export default class HPApi {
   }
 
   static async removeDestination(walkupScanDestination: WalkupScanDestination) {
-    let urlInfo = url.parse(walkupScanDestination.resourceURI);
+    let urlInfo = new URL(walkupScanDestination.resourceURI);
 
     if (urlInfo.pathname === null) {
       throw new Error(
@@ -103,7 +103,7 @@ export default class HPApi {
     }
   }
 
-  static async registerDestination(destination: Destination, toComp: Boolean) {
+  static async registerDestination(destination: Destination, toComp: boolean) {
     let xml = await destination.toXML();
     let url = "/WalkupScan/WalkupScanDestinations";
     if (toComp) {
