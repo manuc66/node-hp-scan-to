@@ -129,7 +129,7 @@ export default class HPApi {
     etag = "",
     timeout = 0
   ): Promise<{ etag: string; eventTable: EventTable }> {
-    let url = this.appendTimeout(timeout, "/EventMgmt/EventTable");
+    let url = this.appendTimeout("/EventMgmt/EventTable", timeout);
 
     let headers = this.placeETagHeader(etag, {});
 
@@ -169,7 +169,7 @@ export default class HPApi {
     return headers;
   }
 
-  static appendTimeout(timeout: number | null = null, url: string): string {
+  static appendTimeout(url: string, timeout: number | null = null): string {
     if (timeout == null) {
       timeout = 1200;
     }
