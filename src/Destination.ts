@@ -2,6 +2,7 @@
 
 import xml2js from "xml2js";
 import * as util from "util";
+
 const parser = new xml2js.Parser();
 
 type WalkupScanDestinationData = {
@@ -26,7 +27,7 @@ export default class Destination {
   }
 
   async toXML() {
-    let rawDestination = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    let rawDestination: string = '<?xml version="1.0" encoding="UTF-8"?>\n';
     if (this.toComp) {
       rawDestination +=
         '<WalkupScanDestination xmlns="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
@@ -43,9 +44,9 @@ export default class Destination {
       "\t<LinkType>Network</LinkType>\n" +
       "</WalkupScanDestination>";
 
-    const parsed = (await util.promisify(parser.parseString)(
-      rawDestination
-    )) as WalkupScanDestinationData;
+    const parsed = await util.promisify<string, WalkupScanDestinationData>(
+      parser.parseString
+    )(rawDestination);
 
     parsed.WalkupScanDestination.Hostname[0]._ = this.hostname;
     parsed.WalkupScanDestination.Name[0]._ = this.name;

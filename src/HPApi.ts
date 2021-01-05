@@ -25,7 +25,7 @@ import Destination from "./Destination";
 import { Stream } from "stream";
 
 const parser = new xml2js.Parser();
-const parseString = util.promisify(parser.parseString);
+const parseString = util.promisify<string, any>(parser.parseString);
 let printerIP = "192.168.1.11";
 
 export default class HPApi {
@@ -51,9 +51,7 @@ export default class HPApi {
     }
   }
 
-  static async getWalkupScanToCompDestinations(): Promise<
-    WalkupScanToCompDestinations
-  > {
+  static async getWalkupScanToCompDestinations(): Promise<WalkupScanToCompDestinations> {
     const response = await axios({
       baseURL: `http://${printerIP}`,
       url: "/WalkupScanToComp/WalkupScanToCompDestinations",
