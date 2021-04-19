@@ -8,12 +8,14 @@
             "type": "node",
             "request": "launch",
             "name": "Launch Program",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "cwd": "${workspaceRoot}",
-            "runtimeArgs": ["-r", "ts-node/register"],
-            "args": ["${workspaceRoot}/src/index.ts"]
-        }
+            "program": "${workspaceFolder}/src/index.ts",
+            "preLaunchTask": "tsc: build - tsconfig.json",
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+            "args": [
+                //"-ip", "192.168.0.5"
+                "-p", "Deskjet 3520 series",
+                "-f", "'scan'_dd.mm.yyyy_hh:MM:ss"
+            ]
+        },
     ]
 }
