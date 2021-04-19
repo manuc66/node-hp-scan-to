@@ -1,0 +1,16 @@
+#!/usr/bin/with-contenv sh
+
+PUID=${PUID:-911}
+PGID=${PGID:-911}
+
+groupmod -o -g "$PGID" node
+usermod -o -u "$PUID" node
+
+echo "
+User uid:    $(id -u node)
+User gid:    $(id -g node)
+-------------------------------------
+"
+
+chown -R node:node /app
+chown node:node /scan
