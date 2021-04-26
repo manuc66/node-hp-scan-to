@@ -119,7 +119,7 @@ export default class HPApi {
     });
 
     if (response.status === 201) {
-      return response.headers.location;
+      return new URL(response.headers.location).pathname;
     } else {
       throw response;
     }

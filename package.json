@@ -52,8 +52,11 @@
     "typescript": "^4.0.2"
   },
   "dependencies": {
+    "@types/dateformat": "^3.0.1",
     "axios": "^0.21.0",
     "bonjour": "^3.5.0",
+    "commander": "^7.2.0",
+    "dateformat": "^4.5.1",
     "xml2js": "^0.4.19"
   }
 }
