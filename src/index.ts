@@ -5,8 +5,9 @@ import os from "os";
 import fs from "fs";
 import path from "path";
 import util from "util";
-
-import Bonjour, { Service } from "bonjour";
+import dateformat from "dateformat";
+import { Command } from "commander";
+import Bonjour, { RemoteService, Service } from "bonjour";
 
 import Destination from "./Destination";
 import ScanJobSettings from "./ScanJobSettings";
@@ -14,8 +15,10 @@ import Event from "./Event";
 import HPApi from "./HPApi";
 import Job from "./Job";
 
+const program = new Command();
+
 function delay(t: number): Promise<void> {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     setTimeout(resolve, t);
   });
 }
@@ -31,7 +34,7 @@ async function waitForScanEvent(resourceURI: string): Promise<Event> {
     currentEtag = eventTable.etag;
 
     acceptedScanEvent = eventTable.eventTable.events.find(
-      ev => ev.isScanEvent && ev.resourceURI === resourceURI
+      (ev) => ev.isScanEvent && ev.resourceURI === resourceURI
     );
   }
   return acceptedScanEvent;
@@ -52,17 +55,32 @@ async function waitPrinterUntilItIsReadyToUploadOrCompleted(
 }
 
 async function register(): Promise<string> {
-  const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
+  let destination;
   const hostname = os.hostname();
+  const toComp = await HPApi.getWalkupScanToCompCaps();
 
-  let destinations = walkupScanDestinations.destinations;
+  if (toComp) {
+    const walkupScanDestinations = await HPApi.getWalkupScanToCompDestinations();
+    const destinations = walkupScanDestinations.destinations;
 
-  console.log(
-    "Host destinations fetched:",
-    destinations.map(d => d.name).join(", ")
-  );
+    console.log(
+      "Host destinations fetched:",
+      destinations.map((d) => d.name).join(", ")
+    );
 
-  let destination = destinations.find(x => x.name === hostname);
+    destination = destinations.find((x) => x.name === hostname);
+  } else {
+    const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
+    const destinations = walkupScanDestinations.destinations;
+
+    console.log(
+      "Host destinations fetched:",
+      destinations.map((d) => d.name).join(", ")
+    );
+
+    destination = destinations.find((x) => x.name === hostname);
+  }
+
   let resourceURI;
   if (destination) {
     console.log(
@@ -71,7 +89,8 @@ async function register(): Promise<string> {
     resourceURI = destination.resourceURI;
   } else {
     resourceURI = await HPApi.registerDestination(
-      new Destination(hostname, hostname)
+      new Destination(hostname, hostname, toComp),
+      toComp
     );
     console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
   }
@@ -82,23 +101,39 @@ async function getNextFile(
   folder: string,
   currentPageNumber: string
 ): Promise<string> {
+  const filepattern = program.opts().pattern;
+  if (filepattern) {
+    return path.join(folder, dateformat(new Date(), filepattern) + '.jpg');
+  }
+
   return path.join(folder, `scanPage${currentPageNumber}.jpg`);
 }
 
 async function saveScan(event: Event): Promise<void> {
-  const destination = await HPApi.getDestination(event.resourceURI);
+  let shortcut = "";
+  let contentType = "";
+  //this code can in some cases be executed before the user actually chooses between Document or Photo
+  //so lets fetch the contentType (Document or Photo) until we get a value
+  let i = 0;
+  while (shortcut == "") {
+    const destination = await HPApi.getDestination(event.resourceURI);
+    shortcut = destination.shortcut;
+    if (shortcut !== "") {
+      contentType = destination.getContentType();
+      console.log("Selected shortcut: " + shortcut);
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
+      i += 1;
+      if (i > 20) {
+        return;
+      } //prevent endless loop
+    }
+  }
 
-  const folder = await util.promisify(fs.mkdtemp)(
-    path.join(os.tmpdir(), "scan-to-pc")
-  );
-  console.log(`Target folder: ${folder}`);
-
-  console.log("Selected shortcut: " + destination.shortcut);
   const scanStatus = await HPApi.getScanStatus();
   console.log("Afd is : " + scanStatus.adfState);
 
   let inputSource = scanStatus.getInputSource();
-  let contentType = destination.getContentType();
 
   let scanJobSettings = new ScanJobSettings(inputSource, contentType);
   const jobUrl = await HPApi.postJob(scanJobSettings);
@@ -123,6 +158,14 @@ async function saveScan(event: Event): Promise<void> {
           `Ready to download page ${job.currentPageNumber} at:`,
           job.binaryURL
         );
+        
+        let folder = program.opts().directory;
+        if (!folder) {
+          folder = await util.promisify(fs.mkdtemp)(
+            path.join(os.tmpdir(), "scan-to-pc")
+          );
+        }
+        console.log(`Target folder: ${folder}`);
 
         const destinationFilePath = await getNextFile(
           folder,
@@ -169,22 +212,18 @@ async function init() {
   }
 }
 
-interface OfficeJetBonjourService extends Service {
-  addresses?: string[];
-}
-
 function findOfficejetIp(): Promise<string> {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const bonjour = Bonjour();
     console.log("Searching printer...");
     let browser = bonjour.find(
       {
-        type: "http"
+        type: "http",
       },
-      (service: OfficeJetBonjourService) => {
+      (service) => {
         console.log(".");
         if (
-          service.name.startsWith("Officejet 6500 E710n-z") &&
+          service.name.startsWith(program.opts().name) &&
           service.port === 80 &&
           service.type === "http" &&
           service.addresses != null
@@ -201,7 +240,17 @@ function findOfficejetIp(): Promise<string> {
 }
 
 async function main() {
-  const ip = await findOfficejetIp();
+  program.option('-ip, --address <ip>', 'IP address of the printer (this overrides -p)');
+  program.option('-n, --name <name>', 'Name of the printer for service discovery', 'Officejet 6500 E710n-z'); //or i.e. 'Deskjet 3520 series'
+  program.option('-d, --directory <dir>', 'Directory where scans are saved (defaults to /tmp/scan-to-pc<random>)');
+  program.option('-p, --pattern <pattern>', 'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)');
+  program.parse(process.argv);
+
+  let ip = program.opts().address;
+  if (!ip) {
+    ip = await findOfficejetIp();
+  }
+ 
   HPApi.setPrinterIP(ip);
   await init();
 }

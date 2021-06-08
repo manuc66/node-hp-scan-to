@@ -1,7 +1,7 @@
 "use strict";
 
 import WalkupScanDestination, {
-  WalkupScanDestinationData
+  WalkupScanDestinationData,
 } from "./WalkupScanDestination";
 
 export interface WalkupScanDestinationsData {
@@ -20,7 +20,7 @@ export default class WalkupScanDestinations {
     let walkupScanDestinations = this.data["wus:WalkupScanDestinations"];
     if (walkupScanDestinations.hasOwnProperty("wus:WalkupScanDestination")) {
       return walkupScanDestinations["wus:WalkupScanDestination"].map(
-        x => new WalkupScanDestination(x)
+        (x) => new WalkupScanDestination(x)
       );
     } else {
       return [];
