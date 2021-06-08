@@ -47,7 +47,7 @@ export default class ScanJobSettings {
 
     let builder = new xml2js.Builder({
       xmldec: { version: "1.0", encoding: "UTF-8", standalone: false },
-      renderOpts: { pretty: true, indent: "\t", newline: "\n" }
+      renderOpts: { pretty: true, indent: "\t", newline: "\n" },
     });
 
     return builder.buildObject(parsed);
