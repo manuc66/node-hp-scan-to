@@ -28,7 +28,7 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=10.15.3"
+    "node": ">=14.17.0"
   },
   "author": {
     "email": "manuc66@gmail.com",
@@ -54,6 +54,7 @@
   "dependencies": {
     "axios": "^0.19.0",
     "bonjour": "^3.5.0",
-    "xml2js": "^0.4.19"
+    "xml2js": "^0.4.19",
+    "yarn": "^1.22.10"
   }
 }

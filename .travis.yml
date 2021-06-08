@@ -1,6 +1,6 @@
 language: node_js
 node_js:
-  - "10.15.3"
+  - "14.17.0"
 env:
   - NODE_ENV=TEST
 cache:
