@@ -8,7 +8,7 @@ import WalkupScanToCompDestination, {
 } from "./WalkupScanToCompDestination";
 import util from "util";
 import fs from "fs";
-import axios, { AxiosResponse } from "axios";
+import axios, { AxiosError, AxiosResponse } from "axios";
 import { URL } from "url";
 import xml2js from "xml2js";
 import EventTable, { EventTableData } from "./EventTable";
@@ -70,7 +70,7 @@ export default class HPApi {
   }
 
   static async getWalkupScanToCompCaps(): Promise<boolean> {
-    return await axios({
+    return axios({
       baseURL: `http://${printerIP}`,
       url: "/WalkupScanToComp/WalkupScanToCompCaps",
       method: "GET",
@@ -133,7 +133,7 @@ export default class HPApi {
 
     let headers = this.placeETagHeader(etag, {});
 
-    let response;
+    let response: AxiosResponse<any>;
     try {
       response = await axios({
         baseURL: `http://${printerIP}`,
@@ -143,8 +143,11 @@ export default class HPApi {
         headers: headers,
       });
     } catch (error) {
-      response = error.response;
-      if (response.status === 304) {
+      const axiosError = error as AxiosError<any>;
+
+      if (!axiosError.isAxiosError) throw error;
+
+      if (axiosError.response?.status === 304) {
         return {
           etag: etag,
           eventTable: new EventTable({}),
