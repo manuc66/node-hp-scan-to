@@ -53,10 +53,11 @@
   },
   "dependencies": {
     "@types/dateformat": "^3.0.1",
-    "axios": "^0.21.0",
+    "axios": "^0.21.4",
     "bonjour": "^3.5.0",
-    "commander": "^8.0.0",
+    "commander": "^8.1.0",
     "dateformat": "^4.5.1",
-    "xml2js": "^0.4.19"
+    "xml2js": "^0.4.23",
+    "eslint": "^7.32.0"
   }
 }
