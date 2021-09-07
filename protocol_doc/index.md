@@ -45,8 +45,8 @@ Rapidly after launching the desktop application a `Scan to PDF` was triggered fr
 ### `GET /WalkupScanToComp/WalkupScanToCompCaps`
 
 This examines if the further API calls have to use the API WalkupScan or WalkupScanToComp.
-If a HTTP 404 is received, only WalkUpScan can be used.
-If a HTTP 200 is received, only WalkUpScanToComp can be used. In this mode basically in all URLs and XML contents the text 'WalkupScan' has to be replaced with 'WalkupScanToComp'.
+If an HTTP 404 is received, only WalkUpScan can be used.
+If an HTTP 200 is received, only WalkUpScanToComp can be used. In this mode basically in all URLs and XML contents the text 'WalkupScan' has to be replaced with 'WalkupScanToComp'.
 
 Hint: In the original recording this function was called after 'GET /DevMgmt/DiscoveryTree.xml', but apparently it has to be the first request to choose which request needs to be used next.
 
@@ -158,7 +158,7 @@ Pragma: no-cache
 Content-Length: 0
 ```
 
-In case the scanner uses the newer WalkupScanToComp API, the POST request has to go to the URL /WalkupScanToComp/WalkupScanToCompDestinations with the following xml content. Note that it seems to be relevant to use the newer namespaces/schema from 2010, otherwise you get a HTTP 400 error.
+In case the scanner uses the newer WalkupScanToComp API, the POST request has to go to the URL /WalkupScanToComp/WalkupScanToCompDestinations with the following xml content. Note that it seems to be relevant to use the newer namespaces/schema from 2010, otherwise you get an HTTP 400 error.
 ```http
 <?xml version="1.0" encoding="UTF-8"?>
 <WalkupScanToCompDestination xmlns="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 WalkupScanToComp.xsd">
@@ -1527,7 +1527,7 @@ Content-Length: 1020
 ```
 ### `GET /EventMgmt/EventTable?timeout=1192`
 
-Polling continues.. The timeout has decreased to `1192` (why?)
+Polling continues... The timeout has decreased to `1192` (why?)
 
 _Request_
 ```http
