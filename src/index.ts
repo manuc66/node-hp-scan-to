@@ -7,13 +7,15 @@ import path from "path";
 import util from "util";
 import dateformat from "dateformat";
 import { Command } from "commander";
-import Bonjour, { RemoteService, Service } from "bonjour";
+import Bonjour from "bonjour";
 
 import Destination from "./Destination";
 import ScanJobSettings from "./ScanJobSettings";
 import Event from "./Event";
 import HPApi from "./HPApi";
 import Job from "./Job";
+import WalkupScanDestination from "./WalkupScanDestination";
+import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
 
 const program = new Command();
 
@@ -60,7 +62,8 @@ async function register(): Promise<string> {
   const toComp = await HPApi.getWalkupScanToCompCaps();
 
   if (toComp) {
-    const walkupScanDestinations = await HPApi.getWalkupScanToCompDestinations();
+    const walkupScanDestinations =
+      await HPApi.getWalkupScanToCompDestinations();
     const destinations = walkupScanDestinations.destinations;
 
     console.log(
@@ -101,34 +104,72 @@ async function getNextFile(
   folder: string,
   currentPageNumber: string
 ): Promise<string> {
-  const filepattern = program.opts().pattern;
-  if (filepattern) {
-    return path.join(folder, dateformat(new Date(), filepattern) + '.jpg');
+  const filePattern = program.opts().pattern;
+  if (filePattern) {
+    return path.join(folder, dateformat(new Date(), filePattern) + ".jpg");
   }
 
   return path.join(folder, `scanPage${currentPageNumber}.jpg`);
 }
 
-async function saveScan(event: Event): Promise<void> {
-  let shortcut = "";
-  let contentType = "";
+async function TryGetDestination(event: Event) {
   //this code can in some cases be executed before the user actually chooses between Document or Photo
   //so lets fetch the contentType (Document or Photo) until we get a value
   let i = 0;
-  while (shortcut == "") {
-    const destination = await HPApi.getDestination(event.resourceURI);
-    shortcut = destination.shortcut;
+  while (i < 20) {
+    const destination: WalkupScanDestination | WalkupScanToCompDestination =
+      await HPApi.getDestination(event.resourceURI);
+    const shortcut = destination.shortcut;
     if (shortcut !== "") {
-      contentType = destination.getContentType();
-      console.log("Selected shortcut: " + shortcut);
-    } else {
-      await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
-      i += 1;
-      if (i > 20) {
-        return;
-      } //prevent endless loop
+      return destination;
     }
+    await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
   }
+}
+
+async function handleProcessingState(job: Job) {
+  if (
+    job.pageState == "ReadyToUpload" &&
+    job.binaryURL != null &&
+    job.currentPageNumber != null
+  ) {
+    console.log(
+      `Ready to download page ${job.currentPageNumber} at:`,
+      job.binaryURL
+    );
+
+    let folder = program.opts().directory;
+    if (!folder) {
+      folder = await util.promisify(fs.mkdtemp)(
+        path.join(os.tmpdir(), "scan-to-pc")
+      );
+    }
+    console.log(`Target folder: ${folder}`);
+
+    const destinationFilePath = await getNextFile(
+      folder,
+      job.currentPageNumber
+    );
+    const filePath = await HPApi.downloadPage(
+      job.binaryURL,
+      destinationFilePath
+    );
+    console.log("Page downloaded to:", filePath);
+  } else {
+    console.log(`Unknown pageState: ${job.pageState}`);
+    await delay(200);
+  }
+}
+
+async function saveScan(event: Event): Promise<void> {
+  const destination = await TryGetDestination(event);
+  if (!destination) {
+    console.log("No shortcut selected!");
+    return;
+  }
+  console.log("Selected shortcut: " + destination.shortcut);
+
+  let contentType = destination.getContentType();
 
   const scanStatus = await HPApi.getScanStatus();
   console.log("Afd is : " + scanStatus.adfState);
@@ -149,37 +190,7 @@ async function saveScan(event: Event): Promise<void> {
     }
 
     if (job.jobState === "Processing") {
-      if (
-        job.pageState == "ReadyToUpload" &&
-        job.binaryURL != null &&
-        job.currentPageNumber != null
-      ) {
-        console.log(
-          `Ready to download page ${job.currentPageNumber} at:`,
-          job.binaryURL
-        );
-        
-        let folder = program.opts().directory;
-        if (!folder) {
-          folder = await util.promisify(fs.mkdtemp)(
-            path.join(os.tmpdir(), "scan-to-pc")
-          );
-        }
-        console.log(`Target folder: ${folder}`);
-
-        const destinationFilePath = await getNextFile(
-          folder,
-          job.currentPageNumber
-        );
-        const filePath = await HPApi.downloadPage(
-          job.binaryURL,
-          destinationFilePath
-        );
-        console.log("Page downloaded to:", filePath);
-      } else {
-        console.log(`Unknown pageState: ${job.pageState}`);
-        await delay(200);
-      }
+      await handleProcessingState(job);
     } else {
       console.log(`Unknown jobState: ${job.jobState}`);
       await delay(200);
@@ -240,17 +251,30 @@ function findOfficejetIp(): Promise<string> {
 }
 
 async function main() {
-  program.option('-ip, --address <ip>', 'IP address of the printer (this overrides -p)');
-  program.option('-n, --name <name>', 'Name of the printer for service discovery', 'Officejet 6500 E710n-z'); //or i.e. 'Deskjet 3520 series'
-  program.option('-d, --directory <dir>', 'Directory where scans are saved (defaults to /tmp/scan-to-pc<random>)');
-  program.option('-p, --pattern <pattern>', 'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)');
+  program.option(
+    "-ip, --address <ip>",
+    "IP address of the printer (this overrides -p)"
+  );
+  program.option(
+    "-n, --name <name>",
+    "Name of the printer for service discovery",
+    "Officejet 6500 E710n-z"
+  ); //or i.e. 'Deskjet 3520 series'
+  program.option(
+    "-d, --directory <dir>",
+    "Directory where scans are saved (defaults to /tmp/scan-to-pc<random>)"
+  );
+  program.option(
+    "-p, --pattern <pattern>",
+    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)'
+  );
   program.parse(process.argv);
 
   let ip = program.opts().address;
   if (!ip) {
     ip = await findOfficejetIp();
   }
- 
+
   HPApi.setPrinterIP(ip);
   await init();
 }
