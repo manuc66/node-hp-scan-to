@@ -133,7 +133,7 @@ export default class HPApi {
 
     let headers = this.placeETagHeader(etag, {});
 
-    let response: AxiosResponse<any>;
+    let response: AxiosResponse;
     try {
       response = await axios({
         baseURL: `http://${printerIP}`,
@@ -143,7 +143,7 @@ export default class HPApi {
         headers: headers,
       });
     } catch (error) {
-      const axiosError = error as AxiosError<any>;
+      const axiosError = error as AxiosError;
 
       if (!axiosError.isAxiosError) throw error;
 
