@@ -17,15 +17,14 @@ export default class WalkupScanToCompDestinations {
   }
 
   get destinations(): WalkupScanToCompDestination[] {
-    let WalkupScanToCompDestinations = this.data[
-      "wus:WalkupScanToCompDestinations"
-    ];
+    let walkupScanToCompDestinations =
+      this.data["wus:WalkupScanToCompDestinations"];
     if (
-      WalkupScanToCompDestinations.hasOwnProperty(
+      walkupScanToCompDestinations.hasOwnProperty(
         "wus:WalkupScanToCompDestination"
       )
     ) {
-      return WalkupScanToCompDestinations[
+      return walkupScanToCompDestinations[
         "wus:WalkupScanToCompDestination"
       ].map((x) => new WalkupScanToCompDestination(x));
     } else {
