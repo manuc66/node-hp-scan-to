@@ -25,7 +25,7 @@ node dist/index.js -ip 192.168.1.4 # or -n "Officejet 6500 E710n-z"
 
 ### Command line options
 - `-ip` or `--address` followed by the ip address of the printer, i.e. `-ip 192.168.0.5`. This overrides `-p`.
-- `-n` or `--name` followed by the printer name, it probably contains spaces so it needs to be quoted, i.e. `-name "Officejet 6500 E710n-z"`
+- `-n` or `--name` followed by the printer name, it probably contains spaces, so it needs to be quoted, i.e. `-name "Officejet 6500 E710n-z"`
 - `-d` or `--directory` followed by the directory path where the scanned documents should be saved, i.e. `-d ~/Documents/Scans`. Defaults to `/tmp/scan-to-pc<random value>` when not set.
 - `-p` or `--pattern` followed by the pattern for the filename without file extension, i.e. `"scan"_dd.mm.yyyy_hh:MM:ss` to name the scanned file `scan_19.04.2021_17:26:47`. Date and time patterns are replaced by the current date and time, text that should not be replaced need to be inside quotes. Documentation for the pattern can be found [here](https://www.npmjs.com/package/dateformat) in the section `Mask options`. Defaults to `scanPage<increasing number>` when not set.
 
@@ -37,7 +37,7 @@ You could however use docker's macvlan networking, this way you can use service 
 All scanned files are written to the volume `/scan`, the filename can be changed with the `PATTERN` environment variable.
 For the correct permissions to the volume set the environment variables `PUID` and `PGID`.
 
-The name shown on the printer's display is the hostname of the docker container, which defaults to a random value so you may want to specify it via the `-hostname` argument.
+The name shown on the printer's display is the hostname of the docker container, which defaults to a random value, so you may want to specify it via the `-hostname` argument.
 
 Example for docker:
 ```sh
