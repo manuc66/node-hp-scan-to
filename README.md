@@ -1,5 +1,4 @@
 # node-hp-scan-to
-
 [![Gitter](https://badges.gitter.im/node-hp-scan-to/community.svg)](https://gitter.im/node-hp-scan-to/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 Little command line program that allow to send scan from device to computer.
