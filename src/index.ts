@@ -115,16 +115,24 @@ async function getNextFile(
 async function TryGetDestination(event: Event) {
   //this code can in some cases be executed before the user actually chooses between Document or Photo
   //so lets fetch the contentType (Document or Photo) until we get a value
-  let i = 0;
-  while (i < 20) {
-    const destination: WalkupScanDestination | WalkupScanToCompDestination =
-      await HPApi.getDestination(event.resourceURI);
+  let destination: WalkupScanDestination | WalkupScanToCompDestination | null =
+    null;
+
+  for (let i = 0; i < 20; i++) {
+    destination = await HPApi.getDestination(event.resourceURI);
+
     const shortcut = destination.shortcut;
     if (shortcut !== "") {
       return destination;
     }
+
+    console.log(`No shortcut yet available, attempt: ${i}/20`);
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
   }
+
+  console.log("Failing to detect destination shortcut");
+  console.log(JSON.stringify(destination));
+  return null;
 }
 
 async function handleProcessingState(job: Job) {
@@ -204,7 +212,7 @@ async function init() {
   let keepActive = true;
   let errorCount = 0;
   while (keepActive) {
-    console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`)
+    console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
       let resourceURI = await register();
 
