@@ -199,20 +199,24 @@ async function saveScan(event: Event): Promise<void> {
   console.log(`Job state: ${job.jobState}, totalPages: ${job.totalPageNumber}`);
 }
 
+let iteration = 0;
 async function init() {
   let keepActive = true;
   let errorCount = 0;
   while (keepActive) {
+    console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`)
     try {
       let resourceURI = await register();
 
       console.log("Waiting scan event for:", resourceURI);
       const event = await waitForScanEvent(resourceURI);
-      console.log("Scan event captured");
+
+      console.log("Scan event captured, saving scan");
       await saveScan(event);
     } catch (e) {
       errorCount++;
       console.error(e);
+      console.log(e);
     }
 
     if (errorCount === 50) {
