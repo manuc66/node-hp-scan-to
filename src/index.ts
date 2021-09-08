@@ -126,7 +126,7 @@ async function TryGetDestination(event: Event) {
       return destination;
     }
 
-    console.log(`No shortcut yet available, attempt: ${i}/20`);
+    console.log(`No shortcut yet available, attempt: ${i + 1}/20`);
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
   }
 
