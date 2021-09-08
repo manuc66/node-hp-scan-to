@@ -7,7 +7,12 @@ cache:
   yarn: true
   directories:
     - "node_modules"
+services:
+  - docker
 before_script:
   - yarn install
 script:
   - yarn build || travis_terminate 1
+after_success:
+  - export REPO=manuc66/node-hp-scan-to
+  - docker build -f Dockerfile -t $REPO:$COMMIT .
