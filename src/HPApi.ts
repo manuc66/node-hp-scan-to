@@ -193,18 +193,25 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
+      const content = response.data as string;
       if (destinationURL.includes("WalkupScanToComp")) {
-        const parsed = (await parseString(
-          response.data
-        )) as WalkupScanToCompDestinationData;
-        return new WalkupScanToCompDestination(parsed);
+        return this.createWalkupScanToCompDestination(content);
       } else {
-        const parsed = (await parseString(
-          response.data
-        )) as WalkupScanDestinationData;
-        return new WalkupScanDestination(parsed);
+        return this.createWalkupScanDestination(content);
       }
     }
+  }
+
+  static async createWalkupScanDestination(content: string) {
+    const parsed = (await parseString(content)) as WalkupScanDestinationData;
+    return new WalkupScanDestination(parsed);
+  }
+
+  static async createWalkupScanToCompDestination(content: string) {
+    const parsed = (await parseString(
+      content
+    )) as WalkupScanToCompDestinationData;
+    return new WalkupScanToCompDestination(parsed);
   }
 
   static async getScanStatus() {
