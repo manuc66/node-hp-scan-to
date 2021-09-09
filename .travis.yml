@@ -16,7 +16,7 @@ script:
   - export REPO=manuc66/node-hp-scan-to
   - docker build -f Dockerfile -t $REPO:latest .
 after_success:
-  - if [ "$TRAVIS_PULL_REQUEST" == "false" -a "$TRAVIS_BRANCH" = "master" ]; then
+  - if [ "$TRAVIS_BRANCH" = "master" ]; then
     echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
     docker push $REPO:latest
     fi
