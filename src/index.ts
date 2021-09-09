@@ -293,6 +293,7 @@ async function main() {
     "-p, --pattern <pattern>",
     'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)'
   );
+  program.option("-D, --debug", "Enable debug");
   program.parse(process.argv);
 
   let ip = program.opts().address;
@@ -300,6 +301,9 @@ async function main() {
     ip = await findOfficejetIp();
   }
 
+  const debug = program.opts().debug != null;
+
+  HPApi.setDebug(debug);
   HPApi.setPrinterIP(ip);
   await init();
 }
