@@ -70,7 +70,11 @@ services:
       - /some/host/directory/or/volume:/scan
     restart: always
 ```
+
 Then run `docker-compose up -d --build`.
+
+Public Pre-built Docker image:
+- https://hub.docker.com/repository/docker/manuc66/node-hp-scan-to
 
 ## Debugging
 I'm using Visual Studio Code to debug this application, so instead of running ts-node just enter `code .` and press F5 to start debugging.
