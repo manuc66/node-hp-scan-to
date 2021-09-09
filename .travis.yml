@@ -7,7 +7,16 @@ cache:
   yarn: true
   directories:
     - "node_modules"
+services:
+  - docker
 before_script:
   - yarn install
 script:
   - yarn build || travis_terminate 1
+  - export REPO=manuc66/node-hp-scan-to
+  - docker build -f Dockerfile -t $REPO:latest .
+after_success:
+  - if [ "$TRAVIS_PULL_REQUEST" == "false" -a "$TRAVIS_BRANCH" = "master" ]; then
+    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    docker push $REPO:latest
+    fi
