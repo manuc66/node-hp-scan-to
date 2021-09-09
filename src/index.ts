@@ -49,9 +49,19 @@ async function waitPrinterUntilItIsReadyToUploadOrCompleted(
   let isReadyToUpload = false;
   do {
     job = await HPApi.getJob(jobUrl);
-    isReadyToUpload =
-      job.pageState === "ReadyToUpload" || job.jobState === "Completed";
-    await delay(200);
+    if (job.jobState === "Canceled") {
+      return job;
+    } else if (
+      job.pageState === "ReadyToUpload" ||
+      job.jobState === "Completed"
+    ) {
+      isReadyToUpload = true;
+    } else if (job.jobState == "Processing") {
+      isReadyToUpload = false;
+    } else {
+      console.log(`Unknown jobState: ${job.jobState}`);
+    }
+    await delay(300);
   } while (!isReadyToUpload);
   return job;
 }
@@ -199,8 +209,11 @@ async function saveScan(event: Event): Promise<void> {
 
     if (job.jobState === "Processing") {
       await handleProcessingState(job);
+    } else if (job.jobState === "Canceled") {
+      console.log("Job cancelled by device");
+      break;
     } else {
-      console.log(`Unknown jobState: ${job.jobState}`);
+      console.log(`Unhandled jobState: ${job.jobState}`);
       await delay(200);
     }
   }

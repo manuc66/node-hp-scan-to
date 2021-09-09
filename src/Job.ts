@@ -38,7 +38,12 @@ export default class Job {
     );
   }
 
-  get jobState(): "Completed" | "Processing" | "ReadyToUpload" | string {
+  get jobState():
+    | "Completed"
+    | "Processing"
+    | "ReadyToUpload"
+    | "Canceled"
+    | string {
     return this.data["j:Job"]["j:JobState"][0];
   }
 
