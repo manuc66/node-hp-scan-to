@@ -8,7 +8,7 @@ import WalkupScanToCompDestination, {
 } from "./WalkupScanToCompDestination";
 import util from "util";
 import fs from "fs";
-import axios, { AxiosError, AxiosResponse } from "axios";
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import { URL } from "url";
 import xml2js from "xml2js";
 import EventTable, { EventTableData } from "./EventTable";
@@ -27,14 +27,41 @@ import { Stream } from "stream";
 const parser = new xml2js.Parser();
 const parseString = util.promisify<string, any>(parser.parseString);
 let printerIP = "192.168.1.11";
+let debug = false;
+let callCount = 0;
 
 export default class HPApi {
   static setPrinterIP(ip: string) {
     printerIP = ip;
   }
 
+  static setDebug(dbg: boolean) {
+    debug = dbg;
+  }
+
+  private static logDebug(callId: number, isRequest: boolean, msg: any) {
+    if (debug) {
+      const id = String(callId).padStart(4, "0");
+      const content = typeof msg === "string" ? msg : JSON.stringify(msg);
+      console.log(id + (isRequest ? " -> " : " <- ") + content);
+    }
+  }
+
+  private static async callAxios(request: AxiosRequestConfig) {
+    callCount++;
+    HPApi.logDebug(callCount, true, request);
+    const response = await axios(request);
+    HPApi.logDebug(callCount, false, {
+      status: response.status,
+      data: response.data,
+      headers: response.headers,
+      statusText: response.statusText,
+    });
+    return response;
+  }
+
   static async getWalkupScanDestinations(): Promise<WalkupScanDestinations> {
-    const response = await axios({
+    const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: "/WalkupScan/WalkupScanDestinations",
       method: "GET",
@@ -52,7 +79,7 @@ export default class HPApi {
   }
 
   static async getWalkupScanToCompDestinations(): Promise<WalkupScanToCompDestinations> {
-    const response = await axios({
+    const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: "/WalkupScanToComp/WalkupScanToCompDestinations",
       method: "GET",
@@ -70,7 +97,7 @@ export default class HPApi {
   }
 
   static async getWalkupScanToCompCaps(): Promise<boolean> {
-    return axios({
+    return HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: "/WalkupScanToComp/WalkupScanToCompCaps",
       method: "GET",
@@ -90,7 +117,7 @@ export default class HPApi {
       );
     }
 
-    const response = await axios({
+    const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: urlInfo.pathname,
       method: "DELETE",
@@ -109,7 +136,7 @@ export default class HPApi {
     if (toComp) {
       url = "/WalkupScanToComp/WalkupScanToCompDestinations";
     }
-    const response = await axios({
+    const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: url,
       method: "POST",
@@ -135,7 +162,7 @@ export default class HPApi {
 
     let response: AxiosResponse;
     try {
-      response = await axios({
+      response = await HPApi.callAxios({
         baseURL: `http://${printerIP}`,
         url: url,
         method: "GET",
@@ -183,7 +210,7 @@ export default class HPApi {
   }
 
   static async getDestination(destinationURL: string) {
-    const response = await axios({
+    const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: destinationURL,
       method: "GET",
@@ -215,7 +242,7 @@ export default class HPApi {
   }
 
   static async getScanStatus() {
-    const response = await axios({
+    const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: "/Scan/Status",
       method: "GET",
@@ -239,7 +266,7 @@ export default class HPApi {
   static async postJob(job: ScanJobSettings) {
     await HPApi.delay(500);
     const xml = await job.toXML();
-    const response = await axios({
+    const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}:8080`,
       url: "/Scan/Jobs",
       method: "POST",
@@ -260,7 +287,7 @@ export default class HPApi {
    * @return {Promise<Job|*>}
    */
   static async getJob(jobURL: string) {
-    const response = await axios({
+    const response = await HPApi.callAxios({
       url: jobURL,
       method: "GET",
       responseType: "text",
