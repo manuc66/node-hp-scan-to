@@ -36,7 +36,7 @@ async function waitForScanEvent(resourceURI: string): Promise<Event> {
     currentEtag = eventTable.etag;
 
     acceptedScanEvent = eventTable.eventTable.events.find(
-      (ev) => ev.isScanEvent && ev.resourceURI === resourceURI
+      (ev) => ev.isScanEvent && ev.resourceURI.indexOf(resourceURI) >= 0
     );
   }
   return acceptedScanEvent;
