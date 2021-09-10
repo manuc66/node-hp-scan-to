@@ -50,14 +50,28 @@ export default class HPApi {
   private static async callAxios(request: AxiosRequestConfig) {
     callCount++;
     HPApi.logDebug(callCount, true, request);
-    const response = await axios(request);
-    HPApi.logDebug(callCount, false, {
-      status: response.status,
-      data: response.data,
-      headers: response.headers,
-      statusText: response.statusText,
-    });
-    return response;
+    try {
+      const response = await axios(request);
+      HPApi.logDebug(callCount, false, {
+        status: response.status,
+        data: response.data,
+        headers: response.headers,
+        statusText: response.statusText,
+      });
+      return response;
+    } catch (error) {
+      const axiosError = error as AxiosError;
+
+      if (axiosError.isAxiosError) {
+        HPApi.logDebug(callCount, false, {
+          status: axiosError.response?.status,
+          data: axiosError.response?.data,
+          headers: axiosError.response?.headers,
+          statusText: axiosError.response?.statusText,
+        });
+      }
+      throw error;
+    }
   }
 
   static async getWalkupScanDestinations(): Promise<WalkupScanDestinations> {
