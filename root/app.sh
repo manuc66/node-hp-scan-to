@@ -14,7 +14,11 @@ if [ ! -z "$PATTERN" ]; then
     ARGS="${ARGS} -p ${PATTERN}"
 fi
 
+if [ ! -z "$CMDLINE" ]; then
+    ARGS="${ARGS} ${CMDLINE}"
+fi
+
 cd /app
 
 s6-setuidgid node \
-    node index.js $ARGS
+    node index.js $ARGS "$@"
