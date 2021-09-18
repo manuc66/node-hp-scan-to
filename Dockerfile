@@ -23,4 +23,4 @@ RUN yarn install -d \
 
 VOLUME ["/scan"]
 ENTRYPOINT ["/init"]
-CMD ["/entrypoint.sh"]
+CMD ["/app.sh"]
