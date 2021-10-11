@@ -58,6 +58,6 @@
     "commander": "^8.1.0",
     "dateformat": "^5.0.1",
     "xml2js": "^0.4.23",
-    "eslint": "^7.32.0"
+    "eslint": "^8.0.0"
   }
 }
