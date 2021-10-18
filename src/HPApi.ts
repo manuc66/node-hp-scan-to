@@ -8,7 +8,7 @@ import WalkupScanToCompDestination, {
 } from "./WalkupScanToCompDestination";
 import util from "util";
 import fs from "fs";
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosError, AxiosRequestConfig, AxiosRequestHeaders, AxiosResponse } from "axios";
 import { URL } from "url";
 import xml2js from "xml2js";
 import EventTable, { EventTableData } from "./EventTable";
@@ -51,7 +51,7 @@ export default class HPApi {
     callCount++;
     HPApi.logDebug(callCount, true, request);
     try {
-      const response = await axios(request);
+      const response = (await axios(request)) as AxiosResponse<string>;
       HPApi.logDebug(callCount, false, {
         status: response.status,
         data: response.data,
@@ -174,7 +174,7 @@ export default class HPApi {
 
     let headers = this.placeETagHeader(etag, {});
 
-    let response: AxiosResponse;
+    let response: AxiosResponse<string>;
     try {
       response = await HPApi.callAxios({
         baseURL: `http://${printerIP}`,
@@ -204,7 +204,7 @@ export default class HPApi {
     };
   }
 
-  static placeETagHeader(etag: string, headers: object) {
+  static placeETagHeader(etag: string, headers: AxiosRequestHeaders) {
     if (etag !== "") {
       headers = {
         "If-None-Match": etag,
@@ -234,7 +234,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      const content = response.data as string;
+      const content = response.data;
       if (destinationURL.includes("WalkupScanToComp")) {
         return this.createWalkupScanToCompDestination(content);
       } else {
