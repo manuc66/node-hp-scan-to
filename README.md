@@ -14,7 +14,7 @@ Developed and tested for the following HP All-in-One Printers:
 There are good chances it also works on your HP All-in-One Printer.
 For this purpose, the original HP Windows application's interaction with the device has been [reverse engineered](protocol_doc/index.md).
 
-The `Officejet 6700 Premium` is  known to not be working but should be close to working, see #325
+The `Officejet 6700 Premium` is  known to not be working but should be close to working, see [#325](https://github.com/manuc66/node-hp-scan-to/issues/325)
 
 This project is not endorsed by nor affiliated with HP.
 
