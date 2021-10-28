@@ -56,8 +56,8 @@
     "axios": "^0.24.0",
     "bonjour": "^3.5.0",
     "commander": "^8.3.0",
-    "dateformat": "^5.0.2",
-    "xml2js": "^0.4.23",
-    "eslint": "^8.1.0"
+    "dateformat": "^4.6.3",
+    "eslint": "^8.1.0",
+    "xml2js": "^0.4.23"
   }
 }
