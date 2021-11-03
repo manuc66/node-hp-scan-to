@@ -48,18 +48,22 @@ Rapidly after launching the desktop application a `Scan to PDF` was triggered fr
 
 ### `GET /WalkupScanToComp/WalkupScanToCompCaps`
 
-This examines if the further API calls have to use the API WalkupScan or WalkupScanToComp.
-If an HTTP 404 is received, only WalkUpScan can be used.
-If an HTTP 200 is received, only WalkUpScanToComp can be used. In this mode basically in all URLs and XML contents the text 'WalkupScan' has to be replaced with 'WalkupScanToComp'.
+This examines if the further API calls have to use the API WalkupScan or WalkupScanToComp. If an HTTP 404 is received,
+only WalkUpScan can be used. If an HTTP 200 is received, only WalkUpScanToComp can be used. In this mode basically in
+all URLs and XML contents the text 'WalkupScan' has to be replaced with 'WalkupScanToComp'.
 
-Hint: In the original recording this function was called after 'GET /DevMgmt/DiscoveryTree.xml', but apparently it has to be the first request to choose which request needs to be used next.
+Hint: In the original recording this function was called after 'GET /DevMgmt/DiscoveryTree.xml', but apparently it has
+to be the first request to choose which request needs to be used next.
 
 _Request_
+
 ```http
 GET /WalkupScanToComp/WalkupScanToCompCaps HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response when only WalkupScan API is supported_
+
 ```http
 HTTP/1.1 404 Not Found
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -69,6 +73,7 @@ Pragma: no-cache
 ```
 
 _Response when only WalkupScanToComp API is supported_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Deskjet 3520 series - CX052B; Serial Number: CN28F14C4105SY; Stuttgart_pp_usr_hf Built:Mon Dec 21, 2015 09:48:45AM {STP1FN1552AR, ASIC id 0x00340104}
@@ -88,16 +93,20 @@ Content-Length: 676
 	</wus:UserActionTimeout>
 </wus:WalkupScanToCompCaps>
 ```
+
 ### `GET /WalkupScan/WalkupScanDestinations`
 
 Lookup if a destination is registered on the printer for: `LAPTOP-BSHRTBV8` (it doesn't)
 
 _Request_
+
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -123,8 +132,11 @@ Pragma: no-cache
 </wus:WalkupScanDestinations>
 ```
 
-In case the scanner uses the newer WalkupScanToComp API, the GET request has to go to the URL /WalkupScanToComp/WalkupScanToCompDestinations and would return the following xml (in case there is no desination registered yet):
+In case the scanner uses the newer WalkupScanToComp API, the GET request has to go to the URL
+/WalkupScanToComp/WalkupScanToCompDestinations and would return the following xml (in case there is no desination
+registered yet):
 _Response_
+
 ```http
 <?xml version="1.0" encoding="UTF-8"?>
 <!---->
@@ -139,6 +151,7 @@ Register a new `LAPTOP-BSHRTBV8` destination.
 Notice the `Location` header correspond to it.
 
 _Request_
+
 ```http
 POST /WalkupScan/WalkupScanDestinations HTTP/1.1
 Content-Length: 564
@@ -152,7 +165,9 @@ HOST: 192.168.1.7:8080
 	<LinkType>Network</LinkType>
 </WalkupScanDestination>
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 201 Created
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -162,7 +177,10 @@ Pragma: no-cache
 Content-Length: 0
 ```
 
-In case the scanner uses the newer WalkupScanToComp API, the POST request has to go to the URL /WalkupScanToComp/WalkupScanToCompDestinations with the following xml content. Note that it seems to be relevant to use the newer namespaces/schema from 2010, otherwise you get an HTTP 400 error.
+In case the scanner uses the newer WalkupScanToComp API, the POST request has to go to the URL
+/WalkupScanToComp/WalkupScanToCompDestinations with the following xml content. Note that it seems to be relevant to use
+the newer namespaces/schema from 2010, otherwise you get an HTTP 400 error.
+
 ```http
 <?xml version="1.0" encoding="UTF-8"?>
 <WalkupScanToCompDestination xmlns="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 WalkupScanToComp.xsd">
@@ -171,15 +189,18 @@ In case the scanner uses the newer WalkupScanToComp API, the POST request has to
 	<LinkType>Network</LinkType>
 </WalkupScanToCompDestination>
 ```
+
 ### `GET /EventMgmt/EventTable`
 
 Query for event and collect the received `ETag`: `164-11`
 
 _Request_
+
 ```http
 GET /EventMgmt/EventTable HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
 
 ```http
@@ -215,21 +236,27 @@ Content-Length: 1479
   </ev:Event>
 </ev:EventTable>
 ```
+
 ### `GET /EventMgmt/EventTable?timeout=1200`
 
 Poll for new events with a conditional get on the previously received `ETag` value.
 
 The `timeout` parameter is an amount of time during which this query __MAY__ block.
 
-In this response a new `ScanEvent` has been triggered. This event belongs to the destination URI: `http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113` (which is the one that has just been registered)
+In this response a new `ScanEvent` has been triggered. This event belongs to the destination
+URI: `http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113` (which is the one
+that has just been registered)
 
 _Request_
+
 ```http
 GET /EventMgmt/EventTable?timeout=1200 HTTP/1.1
 HOST: 192.168.1.7:8080
 If-None-Match: "164-11"
 ```
+
 _Response_
+
 ```httpHTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
 Content-Type: text/xml
@@ -254,16 +281,21 @@ Content-Length: 1263
   </ev:Event>
 </ev:EventTable>
 ```
+
 ### `GET /WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`
 
-This query is made to fetch the option selected ton the panel. In this case it's `SaveJPEG` but it could also be `SaveJPEG`.
+This query is made to fetch the option selected ton the panel. In this case it's `SaveJPEG` but it could also
+be `SaveJPEG`.
 
 _Request_
+
 ```http
 GET /WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -290,8 +322,10 @@ Pragma: no-cache
 </wus:WalkupScanDestinations>
 ```
 
-In case the scanner uses the newer WalkupScanToComp API, the GET request has to go to the URL /WalkupScanToComp/WalkupScanToCompDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 and would return the following xml:
+In case the scanner uses the newer WalkupScanToComp API, the GET request has to go to the URL
+/WalkupScanToComp/WalkupScanToCompDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 and would return the following xml:
 _Response_
+
 ```http
 <?xml version="1.0" encoding="UTF-8"?>
 <!---->
@@ -308,16 +342,20 @@ _Response_
 	</wus:WalkupScanToCompSettings>
 </wus:WalkupScanToCompDestination>
 ```
+
 ### `GET /DevMgmt/DiscoveryTree.xml`
 
 Get a ?`DiscoveryTree`?
 
 _Request_
+
 ```http
 GET /DevMgmt/DiscoveryTree.xml HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -564,16 +602,20 @@ Pragma: no-cache
 	</ledm:SupportedIfc>
 </ledm:DiscoveryTree>
 ```
+
 ### `GET /Scan/ScanCaps.xml`
 
 Getting `ScanCaps.xml` (?Scanner capabilities?)
 
 _Request_
+
 ```http
 GET /Scan/ScanCaps.xml HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -803,17 +845,21 @@ Content-Length: 6458
 	</Adf>
 </ScanCaps>
 ```
+
 ### `GET /Scan/Status`
 
-Getting the scanner status: `Idle` and Afd `Loaded` (It could be `Empty`).
-Note that the tag AdfState is missing when the scanner has no automatic document feeder.
+Getting the scanner status: `Idle` and Afd `Loaded` (It could be `Empty`). Note that the tag AdfState is missing when
+the scanner has no automatic document feeder.
 
 _Request_
+
 ```http
 GET /Scan/Status HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -835,11 +881,14 @@ Content-Length: 283
 Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?
 
 _Request_
+
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -870,16 +919,20 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
 ### `GET  http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`
 
 Query `/WalkupScan/WalkupScanDestinations/WalkupScanDestination/{id}`. Why? (the response is the same)
 
 _Request_
+
 ```http
 GET http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -905,16 +958,20 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
 ### `GET /WalkupScan/WalkupScanDestinations`
 
 Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?
 
 _Request_
+
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -945,16 +1002,20 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
 ### `GET /EventMgmt/EventTable`
 
 Query one more time the `/EventMgmt/EventTable`. Why ?
 
 _Request_
+
 ```http
 GET /EventMgmt/EventTable HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -996,13 +1057,18 @@ Content-Length: 1866
   </ev:Event>
 </ev:EventTable>
 ```
+
 ### `GET /Scan/Status`
+
 _Request_
+
 ```http
 GET /Scan/Status HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1018,16 +1084,20 @@ Content-Length: 283
 	<AdfState>Loaded</AdfState>
 </ScanStatus>
 ```
+
 ### `GET /WalkupScan/WalkupScanDestinations`
 
 Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?
 
 _Request_
+
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1058,16 +1128,20 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
 ### `GET http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`
 
 Query `/WalkupScan/WalkupScanDestinations/WalkupScanDestination/{id}`. Why? (the response is the same)
 
 _Request_
+
 ```http
 GET http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1093,16 +1167,20 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
 ### `GET /WalkupScan/WalkupScanDestinations`
 
 Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?
 
 _Request_
+
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1133,16 +1211,20 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
 ### `GET /EventMgmt/EventTable`
 
 Query one more time the `/EventMgmt/EventTable`. Why ?
 
 _Request_
+
 ```http
 GET /EventMgmt/EventTable HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1186,12 +1268,16 @@ Content-Length: 1866
 ```
 
 ### `GET /Scan/Status (4 times)`
+
 _Request_
+
 ```http
 GET /Scan/Status HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1207,6 +1293,7 @@ Content-Length: 283
 	<AdfState>Loaded</AdfState>
 </ScanStatus>
 ```
+
 ### `POST /Scan/Jobs`
 
 Post a scan job.The `Location` header point to the newly created job.
@@ -1216,6 +1303,7 @@ The `Afd` was `Loaded` so the `InputSource` is `Afd`. If `AdfState` was empty, t
 THe `Shortcut` `SavePDF` generated a `ContentType` to `Document` if it was `SaveJPEG` then it would be `Photo`.
 
 _Request_
+
 ```http
 POST /Scan/Jobs HTTP/1.1
 Content-Length: 949
@@ -1249,7 +1337,9 @@ HOST: 192.168.1.7:8080
 	<ContentType>Document</ContentType>
 </ScanSettings>
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 201 Created
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1258,16 +1348,20 @@ Content-Length: 0
 Cache-Control: must-revalidate, max-age=0
 Pragma: no-cache
 ```
+
 ### `GET /Jobs/JobList/2 (55 times)`
 
 Get the created job. The `BinaryURL` will helps to fetch the scanned document.
 
 _Request_
+
 ```http
 GET /Jobs/JobList/2 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1314,19 +1408,21 @@ Content-Length: 1620
 </ScanJob>
 </j:Job>
 ```
+
 ....
-
-
 
 The last time:
 `PageState` pass from  `PreparingScan` to `ReadyToUpload`
 
 _Request_
+
 ```http
 GET /Jobs/JobList/2 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1374,17 +1470,19 @@ Content-Length: 1620
 </j:Job>
 ```
 
-
 ### `GET /Scan/Jobs/2/Pages/1`
 
 Fetch the `BinaryURL`
 
 _Request_
+
 ```http
 GET /Scan/Jobs/2/Pages/1 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1402,19 +1500,24 @@ Transfer-Encoding: chunked
 .................}........!1A..Qa."q.2....#B...R..$3br.	
 .....%&'()*456789:CDEFGHIJSTUVWXYZcdefghijstuvwxyz <content trunked>
 ```
+
 ### `GET /Jobs/JobList/2 (2 times)`
 
-Re-query the job. A single sheet was in the tray so there is nothing more to proceed. 
+Re-query the job. A single sheet was in the tray so there is nothing more to proceed.
+
 - `JobState`: `Completed`
 - `PageState`: `UploadCompleted`
 - `PageNumber`: `1`
 
 _Request_
+
 ```http
 GET /Jobs/JobList/2 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```httpHTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
 Content-Type: text/xml
@@ -1442,11 +1545,14 @@ Content-Length: 892
 
 Another time with the same data, I don't know why.
 _Request_
+
 ```http
 GET /Jobs/JobList/2 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1472,16 +1578,20 @@ Content-Length: 892
 </ScanJob>
 </j:Job>
 ```
+
 ### `GET /Scan/Status`
 
 Get the scan status. It's back to `Idle` and the `AdfState` is `Empty`.
 
 _Request_
+
 ```http
 GET /Scan/Status HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1497,17 +1607,21 @@ Content-Length: 282
 	<AdfState>Empty</AdfState>
 </ScanStatus>
 ```
+
 ### `GET /EventMgmt/EventTable?timeout=1200`
 
 THe job is finished so, the `EventTable` is polled again.
 
 _Request_
+
 ```http
 GET /EventMgmt/EventTable?timeout=1200 HTTP/1.1
 HOST: 192.168.1.7:8080
 If-None-Match: "164-12"
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1529,435 +1643,26 @@ Content-Length: 1020
   </ev:Event>
 </ev:EventTable>
 ```
+
 ### `GET /EventMgmt/EventTable?timeout=1192`
 
 Polling continues... The timeout has decreased to `1192` (why?)
 
 _Request_
+
 ```http
 GET /EventMgmt/EventTable?timeout=1192 HTTP/1.1
 HOST: 192.168.1.7:8080
 If-None-Match: "164-14"
 ```
+
 _Response_
+
 ```http
-```
-
-### `GET /eSCL/ScannerCapabilities`
-
-Scanner Capabilities
-
-_Request_
-```http
-GET /eSCL/ScannerCapabilities HTTP/1.1
-HOST: 192.168.1.7:8080
-```
-_Response_
-```http
-HTTP/1.1 200 OK
-Server: HP HTTP Server; HP PageWide Pro 477dw MFP - D3Q20B; Serial Number: CN136MX02P; Built: Wed Oct 13, 2021 07:50:14PM {MAVEDWPP1N001.2142A.00}
-Content-Type: text/xml
-Transfer-Encoding: chunked
-Content-Encoding: gzip
-Cache-Control: must-revalidate, max-age=0
-Pragma: no-cache
-
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- THIS DATA SUBJECT TO DISCLAIMER(S) INCLUDED WITH THE PRODUCT OF ORIGIN. -->
-<scan:ScannerCapabilities xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm" xmlns:dest="http://schemas.hp.com/imaging/destination/2011/06/06" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.hp.com/imaging/escl/2011/05/03 ../../schemas/eSCL.xsd">
-	<pwg:Version>2.5</pwg:Version>
-	<pwg:MakeAndModel>HP PageWide Pro 477dw MFP</pwg:MakeAndModel>
-	<pwg:SerialNumber>CN136MX02P</pwg:SerialNumber>
-	<scan:Platen>
-		<scan:PlatenInputCaps>
-			<scan:MinWidth>8</scan:MinWidth>
-			<scan:MaxWidth>2550</scan:MaxWidth>
-			<scan:MinHeight>8</scan:MinHeight>
-			<scan:MaxHeight>4201</scan:MaxHeight>
-			<scan:MinPageWidth>8</scan:MinPageWidth>
-			<scan:MinPageHeight>8</scan:MinPageHeight>
-			<scan:MaxScanRegions>1</scan:MaxScanRegions>
-			<scan:SettingProfiles>
-				<scan:SettingProfile>
-					<scan:ColorModes>
-						<scan:ColorMode>Grayscale8</scan:ColorMode>
-						<scan:ColorMode>RGB24</scan:ColorMode>
-					</scan:ColorModes>
-					<scan:ContentTypes>
-						<pwg:ContentType>Photo</pwg:ContentType>
-						<pwg:ContentType>Text</pwg:ContentType>
-						<pwg:ContentType>TextAndPhoto</pwg:ContentType>
-					</scan:ContentTypes>
-					<scan:DocumentFormats>
-						<pwg:DocumentFormat>application/octet-stream</pwg:DocumentFormat>
-						<pwg:DocumentFormat>image/jpeg</pwg:DocumentFormat>
-						<pwg:DocumentFormat>application/pdf</pwg:DocumentFormat>
-						<scan:DocumentFormatExt>application/octet-stream</scan:DocumentFormatExt>
-						<scan:DocumentFormatExt>image/jpeg</scan:DocumentFormatExt>
-						<scan:DocumentFormatExt>application/pdf</scan:DocumentFormatExt>
-					</scan:DocumentFormats>
-					<scan:SupportedResolutions>
-						<scan:DiscreteResolutions>
-							<scan:DiscreteResolution>
-								<scan:XResolution>75</scan:XResolution>
-								<scan:YResolution>75</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>100</scan:XResolution>
-								<scan:YResolution>100</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>150</scan:XResolution>
-								<scan:YResolution>150</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>200</scan:XResolution>
-								<scan:YResolution>200</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>300</scan:XResolution>
-								<scan:YResolution>300</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>400</scan:XResolution>
-								<scan:YResolution>400</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>600</scan:XResolution>
-								<scan:YResolution>600</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>1200</scan:XResolution>
-								<scan:YResolution>1200</scan:YResolution>
-							</scan:DiscreteResolution>
-						</scan:DiscreteResolutions>
-					</scan:SupportedResolutions>
-					<scan:ColorSpaces>
-						<scan:ColorSpace>YCC</scan:ColorSpace>
-						<scan:ColorSpace>RGB</scan:ColorSpace>
-						<scan:ColorSpace>sRGB</scan:ColorSpace>
-					</scan:ColorSpaces>
-				</scan:SettingProfile>
-			</scan:SettingProfiles>
-			<scan:SupportedIntents>
-				<scan:Intent>Document</scan:Intent>
-				<scan:Intent>Photo</scan:Intent>
-				<scan:Intent>Preview</scan:Intent>
-				<scan:Intent>TextAndGraphic</scan:Intent>
-			</scan:SupportedIntents>
-			<scan:MaxOpticalXResolution>1200</scan:MaxOpticalXResolution>
-			<scan:MaxOpticalYResolution>1200</scan:MaxOpticalYResolution>
-			<scan:RiskyLeftMargin>40</scan:RiskyLeftMargin>
-			<scan:RiskyRightMargin>30</scan:RiskyRightMargin>
-			<scan:RiskyTopMargin>32</scan:RiskyTopMargin>
-			<scan:RiskyBottomMargin>45</scan:RiskyBottomMargin>
-		</scan:PlatenInputCaps>
-	</scan:Platen>
-	<scan:Adf>
-		<scan:AdfSimplexInputCaps>
-			<scan:MinWidth>8</scan:MinWidth>
-			<scan:MaxWidth>2550</scan:MaxWidth>
-			<scan:MinHeight>8</scan:MinHeight>
-			<scan:MaxHeight>4200</scan:MaxHeight>
-			<scan:MinPageWidth>1200</scan:MinPageWidth>
-			<scan:MinPageHeight>1800</scan:MinPageHeight>
-			<scan:MaxScanRegions>1</scan:MaxScanRegions>
-			<scan:SettingProfiles>
-				<scan:SettingProfile>
-					<scan:ColorModes>
-						<scan:ColorMode>Grayscale8</scan:ColorMode>
-						<scan:ColorMode>RGB24</scan:ColorMode>
-					</scan:ColorModes>
-					<scan:ContentTypes>
-						<pwg:ContentType>Photo</pwg:ContentType>
-						<pwg:ContentType>Text</pwg:ContentType>
-						<pwg:ContentType>TextAndPhoto</pwg:ContentType>
-					</scan:ContentTypes>
-					<scan:DocumentFormats>
-						<pwg:DocumentFormat>application/octet-stream</pwg:DocumentFormat>
-						<pwg:DocumentFormat>image/jpeg</pwg:DocumentFormat>
-						<pwg:DocumentFormat>application/pdf</pwg:DocumentFormat>
-						<scan:DocumentFormatExt>application/octet-stream</scan:DocumentFormatExt>
-						<scan:DocumentFormatExt>image/jpeg</scan:DocumentFormatExt>
-						<scan:DocumentFormatExt>application/pdf</scan:DocumentFormatExt>
-					</scan:DocumentFormats>
-					<scan:SupportedResolutions>
-						<scan:DiscreteResolutions>
-							<scan:DiscreteResolution>
-								<scan:XResolution>75</scan:XResolution>
-								<scan:YResolution>75</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>100</scan:XResolution>
-								<scan:YResolution>100</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>150</scan:XResolution>
-								<scan:YResolution>150</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>200</scan:XResolution>
-								<scan:YResolution>200</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>300</scan:XResolution>
-								<scan:YResolution>300</scan:YResolution>
-							</scan:DiscreteResolution>
-						</scan:DiscreteResolutions>
-					</scan:SupportedResolutions>
-					<scan:ColorSpaces>
-						<scan:ColorSpace>YCC</scan:ColorSpace>
-						<scan:ColorSpace>RGB</scan:ColorSpace>
-						<scan:ColorSpace>sRGB</scan:ColorSpace>
-					</scan:ColorSpaces>
-				</scan:SettingProfile>
-			</scan:SettingProfiles>
-			<scan:SupportedIntents>
-				<scan:Intent>Document</scan:Intent>
-				<scan:Intent>Photo</scan:Intent>
-				<scan:Intent>Preview</scan:Intent>
-				<scan:Intent>TextAndGraphic</scan:Intent>
-			</scan:SupportedIntents>
-			<scan:EdgeAutoDetection>
-				<scan:SupportedEdge>BottomEdge</scan:SupportedEdge>
-			</scan:EdgeAutoDetection>
-			<scan:MaxOpticalXResolution>300</scan:MaxOpticalXResolution>
-			<scan:MaxOpticalYResolution>300</scan:MaxOpticalYResolution>
-			<scan:RiskyLeftMargin>16</scan:RiskyLeftMargin>
-			<scan:RiskyRightMargin>0</scan:RiskyRightMargin>
-			<scan:RiskyTopMargin>35</scan:RiskyTopMargin>
-			<scan:RiskyBottomMargin>35</scan:RiskyBottomMargin>
-		</scan:AdfSimplexInputCaps>
-		<scan:AdfDuplexInputCaps>
-			<scan:MinWidth>8</scan:MinWidth>
-			<scan:MaxWidth>2550</scan:MaxWidth>
-			<scan:MinHeight>8</scan:MinHeight>
-			<scan:MaxHeight>4200</scan:MaxHeight>
-			<scan:MinPageWidth>1200</scan:MinPageWidth>
-			<scan:MinPageHeight>1800</scan:MinPageHeight>
-			<scan:MaxScanRegions>1</scan:MaxScanRegions>
-			<scan:SettingProfiles>
-				<scan:SettingProfile>
-					<scan:ColorModes>
-						<scan:ColorMode>Grayscale8</scan:ColorMode>
-						<scan:ColorMode>RGB24</scan:ColorMode>
-					</scan:ColorModes>
-					<scan:ContentTypes>
-						<pwg:ContentType>Photo</pwg:ContentType>
-						<pwg:ContentType>Text</pwg:ContentType>
-						<pwg:ContentType>TextAndPhoto</pwg:ContentType>
-					</scan:ContentTypes>
-					<scan:DocumentFormats>
-						<pwg:DocumentFormat>application/octet-stream</pwg:DocumentFormat>
-						<pwg:DocumentFormat>image/jpeg</pwg:DocumentFormat>
-						<pwg:DocumentFormat>application/pdf</pwg:DocumentFormat>
-						<scan:DocumentFormatExt>application/octet-stream</scan:DocumentFormatExt>
-						<scan:DocumentFormatExt>image/jpeg</scan:DocumentFormatExt>
-						<scan:DocumentFormatExt>application/pdf</scan:DocumentFormatExt>
-					</scan:DocumentFormats>
-					<scan:SupportedResolutions>
-						<scan:DiscreteResolutions>
-							<scan:DiscreteResolution>
-								<scan:XResolution>75</scan:XResolution>
-								<scan:YResolution>75</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>100</scan:XResolution>
-								<scan:YResolution>100</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>150</scan:XResolution>
-								<scan:YResolution>150</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>200</scan:XResolution>
-								<scan:YResolution>200</scan:YResolution>
-							</scan:DiscreteResolution>
-							<scan:DiscreteResolution>
-								<scan:XResolution>300</scan:XResolution>
-								<scan:YResolution>300</scan:YResolution>
-							</scan:DiscreteResolution>
-						</scan:DiscreteResolutions>
-					</scan:SupportedResolutions>
-					<scan:ColorSpaces>
-						<scan:ColorSpace>YCC</scan:ColorSpace>
-						<scan:ColorSpace>RGB</scan:ColorSpace>
-						<scan:ColorSpace>sRGB</scan:ColorSpace>
-					</scan:ColorSpaces>
-				</scan:SettingProfile>
-			</scan:SettingProfiles>
-			<scan:SupportedIntents>
-				<scan:Intent>Document</scan:Intent>
-				<scan:Intent>Photo</scan:Intent>
-				<scan:Intent>Preview</scan:Intent>
-				<scan:Intent>TextAndGraphic</scan:Intent>
-			</scan:SupportedIntents>
-			<scan:EdgeAutoDetection>
-				<scan:SupportedEdge>BottomEdge</scan:SupportedEdge>
-			</scan:EdgeAutoDetection>
-			<scan:MaxOpticalXResolution>300</scan:MaxOpticalXResolution>
-			<scan:MaxOpticalYResolution>300</scan:MaxOpticalYResolution>
-			<scan:RiskyLeftMargin>16</scan:RiskyLeftMargin>
-			<scan:RiskyRightMargin>0</scan:RiskyRightMargin>
-			<scan:RiskyTopMargin>35</scan:RiskyTopMargin>
-			<scan:RiskyBottomMargin>35</scan:RiskyBottomMargin>
-		</scan:AdfDuplexInputCaps>
-		<scan:FeederCapacity>50</scan:FeederCapacity>
-		<scan:AdfOptions>
-			<scan:AdfOption>DetectPaperLoaded</scan:AdfOption>
-			<scan:AdfOption>Duplex</scan:AdfOption>
-		</scan:AdfOptions>
-	</scan:Adf>
-	<scan:BrightnessSupport>
-		<scan:Min>0</scan:Min>
-		<scan:Max>2000</scan:Max>
-		<scan:Normal>1000</scan:Normal>
-		<scan:Step>1</scan:Step>
-	</scan:BrightnessSupport>
-	<scan:ContrastSupport>
-		<scan:Min>0</scan:Min>
-		<scan:Max>2000</scan:Max>
-		<scan:Normal>1000</scan:Normal>
-		<scan:Step>1</scan:Step>
-	</scan:ContrastSupport>
-	<scan:ThresholdSupport>
-		<scan:Min>0</scan:Min>
-		<scan:Max>255</scan:Max>
-		<scan:Normal>128</scan:Normal>
-		<scan:Step>1</scan:Step>
-	</scan:ThresholdSupport>
-	<scan:eSCLConfigCap>
-		<scan:StateSupport>
-			<scan:State>disabled</scan:State>
-			<scan:State>enabled</scan:State>
-		</scan:StateSupport>
-	</scan:eSCLConfigCap>
-	<scan:JobSourceInfoSupport>true</scan:JobSourceInfoSupport>
-</scan:ScannerCapabilities>
-```
-
-### `GET /eSCL/ScannerStatus`
-
-Scanner Status
-
-_Request_
-```http
-GET /eSCL/ScannerStatus HTTP/1.1
-HOST: 192.168.1.7:8080
-```
-_Response_
-```http
-HTTP/1.1 200 OK
-Server: HP HTTP Server; HP PageWide Pro 477dw MFP - D3Q20B; Serial Number: CN136MX02P; Built: Wed Oct 13, 2021 07:50:14PM {MAVEDWPP1N001.2142A.00}
-Content-Type: text/xml
-Transfer-Encoding: chunked
-Content-Encoding: gzip
-Cache-Control: must-revalidate, max-age=0
-Pragma: no-cache
-
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- THIS DATA SUBJECT TO DISCLAIMER(S) INCLUDED WITH THE PRODUCT OF ORIGIN. -->
-<scan:ScannerStatus xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.hp.com/imaging/escl/2011/05/03 ../../schemas/eSCL.xsd">
-	<pwg:Version>2.5</pwg:Version>
-	<pwg:State>Idle</pwg:State>
-	<scan:AdfState>ScannerAdfLoaded</scan:AdfState>
-	<scan:Jobs>
-		<scan:JobInfo>
-			<pwg:JobUri>/eSCL/ScanJobs/1c986213-09ff-1f09-a0d9-3822e23ba011</pwg:JobUri>
-			<pwg:JobUuid>1c986213-09ff-1f09-a0d9-3822e23ba011</pwg:JobUuid>
-			<scan:Age>93921</scan:Age>
-			<pwg:ImagesCompleted>9</pwg:ImagesCompleted>
-			<pwg:ImagesToTransfer>0</pwg:ImagesToTransfer>
-			<pwg:JobState>Completed</pwg:JobState>
-			<pwg:JobStateReasons>
-				<pwg:JobStateReason>JobCompletedSuccessfully</pwg:JobStateReason>
-			</pwg:JobStateReasons>
-		</scan:JobInfo>
-		<scan:JobInfo>
-			<pwg:JobUri>/eSCL/ScanJobs/1c9849e3-0997-1f09-b3ba-3822e23ba011</pwg:JobUri>
-			<pwg:JobUuid>1c9849e3-0997-1f09-b3ba-3822e23ba011</pwg:JobUuid>
-			<scan:Age>100247</scan:Age>
-			<pwg:ImagesCompleted>8</pwg:ImagesCompleted>
-			<pwg:ImagesToTransfer>0</pwg:ImagesToTransfer>
-			<pwg:JobState>Completed</pwg:JobState>
-			<pwg:JobStateReasons>
-				<pwg:JobStateReason>JobCompletedSuccessfully</pwg:JobStateReason>
-			</pwg:JobStateReasons>
-		</scan:JobInfo>
-	</scan:Jobs>
-</scan:ScannerStatus>
-
-```
-
-### `POST /eSCL/ScanJobs`
-
-Scanner Status
-
-_Request_
-```http
-POST /eSCL/ScanJobs HTTP/1.1
-HOST: 192.168.1.7:8080
-Content-Type: text/xml
-
-<?xml version="1.0" encoding="UTF-8"?>
-<scan:ScanSettings xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03"
-                   xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/"
-                   xmlns:dd3="http://www.hp.com/schemas/imaging/con/dictionaries/2009/04/06"
-                   xmlns:fw="http://www.hp.com/schemas/imaging/con/firewall/2011/01/05"
-                   xmlns:scc="http://schemas.hp.com/imaging/escl/2011/05/03"
-                   xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
-    <pwg:Version>2.1</pwg:Version>
-    <scan:Intent>Document</scan:Intent>
-    <pwg:ScanRegions>
-        <pwg:ScanRegion>
-            <pwg:Height>3507</pwg:Height>
-            <pwg:Width>2481</pwg:Width>
-            <pwg:XOffset>0</pwg:XOffset>
-            <pwg:YOffset>0</pwg:YOffset>
-        </pwg:ScanRegion>
-    </pwg:ScanRegions>
-    <pwg:InputSource>Feeder</pwg:InputSource>
-    <scan:DocumentFormatExt>application/pdf</scan:DocumentFormatExt>
-    <scan:XResolution>300</scan:XResolution>
-    <scan:YResolution>300</scan:YResolution>
-    <scan:ColorMode>RGB24</scan:ColorMode>
-    <scan:Duplex>false</scan:Duplex>
-    <scan:CompressionFactor>25</scan:CompressionFactor>
-    <scan:Brightness>1000</scan:Brightness>
-    <scan:Contrast>1000</scan:Contrast>
-</scan:ScanSettings>
-```
-_Response_
-```http
-HTTP/1.1 201 Created
-Server: HP HTTP Server; HP PageWide Pro 477dw MFP - D3Q20B; Serial Number: CN136MX02P; Built: Wed Oct 13, 2021 07:50:14PM {MAVEDWPP1N001.2142A.00}
-Location: http://192.168.0.20/eSCL/ScanJobs/1c9a7213-12cb-1f09-a7e3-3822e23ba011
-Content-Length: 0
-Cache-Control: must-revalidate, max-age=0
-Pragma: no-cache
-```
-
-### `POST /eSCL/ScanJobs`
-
-Scanner Status
-
-_Request_
-```http
-GET /eSCL/ScanJobs/1c9a7213-12cb-1f09-a7e3-3822e23ba011/NextDocument HTTP/1.1
-HOST: 192.168.1.7:8080
-```
-_Response_
-```http
-HTTP/1.1 200 OK
-Server: HP HTTP Server; HP PageWide Pro 477dw MFP - D3Q20B; Serial Number: CN136MX02P; Built: Wed Oct 13, 2021 07:50:14PM {MAVEDWPP1N001.2142A.00}
-Content-Type: application/pdf
-Cache-Control: max-age=180
-Transfer-Encoding: chunked
-
-...
 ```
 
 # See Also
+
 - https://github.com/simulot/hpdevices
 - https://github.com/havardgulldahl/hpscantools
 - https://github.com/0x27/mrw-code/tree/master/opt/hp-scanner-monitor
