@@ -44,7 +44,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/bonjour": "^3.5.9",
-    "@types/node": "^16.11.5",
+    "@types/node": "^17.0.6",
     "@types/xml2js": "^0.4.9",
     "nodemon": "^2.0.14",
     "prettier": "^2.4.1",
