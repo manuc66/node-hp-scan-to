@@ -11,7 +11,7 @@ ENV NODE_ENV production
 ADD root/ /
 
 # add S6 Overlay, install shadow (for groupmod and usermod) and tzdata (for TZ env variable)
-ADD https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz /tmp/
+ADD https://github.com/just-containers/s6-overlay/releases/download/v2.2.0.3/s6-overlay-amd64.tar.gz /tmp/
 RUN tar xzf /tmp/s6-overlay-amd64.tar.gz -C / \
  && apk add --no-cache shadow tzdata
 
