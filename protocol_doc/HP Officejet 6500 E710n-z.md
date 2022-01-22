@@ -2,7 +2,7 @@
 
 - [Protocol](downgraded)
     - [Recorded Sequence](#recorded-sequence)
-		- [`GET /WalkupScanToComp/WalkupScanToCompCaps`](#get-walkupscantocompwalkupscantocompcaps)
+        - [`GET /WalkupScanToComp/WalkupScanToCompCaps`](#get-walkupscantocompwalkupscantocompcaps)
         - [`GET /WalkupScan/WalkupScanDestinations`](#get-walkupscanwalkupscandestinations)
         - [`POST /WalkupScan/WalkupScanDestinations`](#post-walkupscanwalkupscandestinations)
         - [`GET /EventMgmt/EventTable`](#get-eventmgmteventtable)
@@ -12,12 +12,12 @@
         - [`GET /Scan/ScanCaps.xml`](#get-scanscancapsxml)
         - [`GET /Scan/Status`](#get-scanstatus)
         - [`GET /WalkupScan/WalkupScanDestinations`](#get-walkupscanwalkupscandestinations-1)
-        - [`GET  http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`](#get--http192168178080walkupscanwalkupscandestinations1cb3125d-7bde-1f09-8da2-2c768ab21113)
+        - [`GET /WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`](#get--http192168178080walkupscanwalkupscandestinations1cb3125d-7bde-1f09-8da2-2c768ab21113)
         - [`GET /WalkupScan/WalkupScanDestinations`](#get-walkupscanwalkupscandestinations-2)
         - [`GET /EventMgmt/EventTable`](#get-eventmgmteventtable-1)
         - [`GET /Scan/Status`](#get-scanstatus-1)
         - [`GET /WalkupScan/WalkupScanDestinations`](#get-walkupscanwalkupscandestinations-3)
-        - [`GET http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`](#get-http192168178080walkupscanwalkupscandestinations1cb3125d-7bde-1f09-8da2-2c768ab21113)
+        - [`GET /WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`](#get-http192168178080walkupscanwalkupscandestinations1cb3125d-7bde-1f09-8da2-2c768ab21113)
         - [`GET /WalkupScan/WalkupScanDestinations`](#get-walkupscanwalkupscandestinations-4)
         - [`GET /EventMgmt/EventTable`](#get-eventmgmteventtable-2)
         - [`GET /Scan/Status (4 times)`](#get-scanstatus-4-times)
@@ -28,6 +28,10 @@
         - [`GET /Scan/Status`](#get-scanstatus-2)
         - [`GET /EventMgmt/EventTable?timeout=1200`](#get-eventmgmteventtabletimeout1200-1)
         - [`GET /EventMgmt/EventTable?timeout=1192`](#get-eventmgmteventtabletimeout1192)
+        - [`GET /eSCL/ScannerCapabilities`](#get-escl-scanner-capabilities)
+        - [`GET /eSCL/ScannerStatus`](#get-escl-scanner-status)
+        - [`POST /eSCL/ScanJobs`](#post-escl-scan-jobs)
+        - [`GET /eSCL/ScanJobs/1c9a7213-12cb-1f09-a7e3-3822e23ba011/NextDocument`](#get-escl-scan-jobs-nextdocument)
 - [See Also](#see-also)
 
 <!-- /TOC -->
@@ -44,18 +48,22 @@ Rapidly after launching the desktop application a `Scan to PDF` was triggered fr
 
 ### `GET /WalkupScanToComp/WalkupScanToCompCaps`
 
-This examines if the further API calls have to use the API WalkupScan or WalkupScanToComp.
-If an HTTP 404 is received, only WalkUpScan can be used.
-If an HTTP 200 is received, only WalkUpScanToComp can be used. In this mode basically in all URLs and XML contents the text 'WalkupScan' has to be replaced with 'WalkupScanToComp'.
+This examines if the further API calls have to use the API WalkupScan or WalkupScanToComp. If an HTTP 404 is received,
+only WalkUpScan can be used. If an HTTP 200 is received, only WalkUpScanToComp can be used. In this mode basically in
+all URLs and XML contents the text 'WalkupScan' has to be replaced with 'WalkupScanToComp'.
 
-Hint: In the original recording this function was called after 'GET /DevMgmt/DiscoveryTree.xml', but apparently it has to be the first request to choose which request needs to be used next.
+Hint: In the original recording this function was called after 'GET /DevMgmt/DiscoveryTree.xml', but apparently it has
+to be the first request to choose which request needs to be used next.
 
 _Request_
+
 ```http
 GET /WalkupScanToComp/WalkupScanToCompCaps HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response when only WalkupScan API is supported_
+
 ```http
 HTTP/1.1 404 Not Found
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -65,6 +73,7 @@ Pragma: no-cache
 ```
 
 _Response when only WalkupScanToComp API is supported_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Deskjet 3520 series - CX052B; Serial Number: CN28F14C4105SY; Stuttgart_pp_usr_hf Built:Mon Dec 21, 2015 09:48:45AM {STP1FN1552AR, ASIC id 0x00340104}
@@ -84,16 +93,20 @@ Content-Length: 676
 	</wus:UserActionTimeout>
 </wus:WalkupScanToCompCaps>
 ```
+
 ### `GET /WalkupScan/WalkupScanDestinations`
 
 Lookup if a destination is registered on the printer for: `LAPTOP-BSHRTBV8` (it doesn't)
 
 _Request_
+
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -119,8 +132,11 @@ Pragma: no-cache
 </wus:WalkupScanDestinations>
 ```
 
-In case the scanner uses the newer WalkupScanToComp API, the GET request has to go to the URL /WalkupScanToComp/WalkupScanToCompDestinations and would return the following xml (in case there is no desination registered yet):
+In case the scanner uses the newer WalkupScanToComp API, the GET request has to go to the URL
+/WalkupScanToComp/WalkupScanToCompDestinations and would return the following xml (in case there is no desination
+registered yet):
 _Response_
+
 ```http
 <?xml version="1.0" encoding="UTF-8"?>
 <!---->
@@ -135,6 +151,7 @@ Register a new `LAPTOP-BSHRTBV8` destination.
 Notice the `Location` header correspond to it.
 
 _Request_
+
 ```http
 POST /WalkupScan/WalkupScanDestinations HTTP/1.1
 Content-Length: 564
@@ -148,7 +165,9 @@ HOST: 192.168.1.7:8080
 	<LinkType>Network</LinkType>
 </WalkupScanDestination>
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 201 Created
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -158,7 +177,10 @@ Pragma: no-cache
 Content-Length: 0
 ```
 
-In case the scanner uses the newer WalkupScanToComp API, the POST request has to go to the URL /WalkupScanToComp/WalkupScanToCompDestinations with the following xml content. Note that it seems to be relevant to use the newer namespaces/schema from 2010, otherwise you get an HTTP 400 error.
+In case the scanner uses the newer WalkupScanToComp API, the POST request has to go to the URL
+/WalkupScanToComp/WalkupScanToCompDestinations with the following xml content. Note that it seems to be relevant to use
+the newer namespaces/schema from 2010, otherwise you get an HTTP 400 error.
+
 ```http
 <?xml version="1.0" encoding="UTF-8"?>
 <WalkupScanToCompDestination xmlns="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 WalkupScanToComp.xsd">
@@ -167,15 +189,18 @@ In case the scanner uses the newer WalkupScanToComp API, the POST request has to
 	<LinkType>Network</LinkType>
 </WalkupScanToCompDestination>
 ```
+
 ### `GET /EventMgmt/EventTable`
 
 Query for event and collect the received `ETag`: `164-11`
 
 _Request_
+
 ```http
 GET /EventMgmt/EventTable HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
 
 ```http
@@ -211,21 +236,27 @@ Content-Length: 1479
   </ev:Event>
 </ev:EventTable>
 ```
+
 ### `GET /EventMgmt/EventTable?timeout=1200`
 
 Poll for new events with a conditional get on the previously received `ETag` value.
 
 The `timeout` parameter is an amount of time during which this query __MAY__ block.
 
-In this response a new `ScanEvent` has been triggered. This event belongs to the destination URI: `http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113` (which is the one that has just been registered)
+In this response a new `ScanEvent` has been triggered. This event belongs to the destination
+URI: `http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113` (which is the one
+that has just been registered)
 
 _Request_
+
 ```http
 GET /EventMgmt/EventTable?timeout=1200 HTTP/1.1
 HOST: 192.168.1.7:8080
 If-None-Match: "164-11"
 ```
+
 _Response_
+
 ```httpHTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
 Content-Type: text/xml
@@ -250,16 +281,21 @@ Content-Length: 1263
   </ev:Event>
 </ev:EventTable>
 ```
+
 ### `GET /WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`
 
-This query is made to fetch the option selected ton the panel. In this case it's `SaveJPEG` but it could also be `SaveJPEG`.
+This query is made to fetch the option selected ton the panel. In this case it's `SaveJPEG` but it could also
+be `SaveJPEG`.
 
 _Request_
+
 ```http
 GET /WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -286,8 +322,10 @@ Pragma: no-cache
 </wus:WalkupScanDestinations>
 ```
 
-In case the scanner uses the newer WalkupScanToComp API, the GET request has to go to the URL /WalkupScanToComp/WalkupScanToCompDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 and would return the following xml:
+In case the scanner uses the newer WalkupScanToComp API, the GET request has to go to the URL
+/WalkupScanToComp/WalkupScanToCompDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 and would return the following xml:
 _Response_
+
 ```http
 <?xml version="1.0" encoding="UTF-8"?>
 <!---->
@@ -304,16 +342,20 @@ _Response_
 	</wus:WalkupScanToCompSettings>
 </wus:WalkupScanToCompDestination>
 ```
+
 ### `GET /DevMgmt/DiscoveryTree.xml`
 
 Get a ?`DiscoveryTree`?
 
 _Request_
+
 ```http
 GET /DevMgmt/DiscoveryTree.xml HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -560,16 +602,20 @@ Pragma: no-cache
 	</ledm:SupportedIfc>
 </ledm:DiscoveryTree>
 ```
+
 ### `GET /Scan/ScanCaps.xml`
 
 Getting `ScanCaps.xml` (?Scanner capabilities?)
 
 _Request_
+
 ```http
 GET /Scan/ScanCaps.xml HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -799,17 +845,21 @@ Content-Length: 6458
 	</Adf>
 </ScanCaps>
 ```
+
 ### `GET /Scan/Status`
 
-Getting the scanner status: `Idle` and Afd `Loaded` (It could be `Empty`).
-Note that the tag AdfState is missing when the scanner has no automatic document feeder.
+Getting the scanner status: `Idle` and Afd `Loaded` (It could be `Empty`). Note that the tag AdfState is missing when
+the scanner has no automatic document feeder.
 
 _Request_
+
 ```http
 GET /Scan/Status HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -831,11 +881,14 @@ Content-Length: 283
 Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?
 
 _Request_
+
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -866,16 +919,20 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
 ### `GET  http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`
 
 Query `/WalkupScan/WalkupScanDestinations/WalkupScanDestination/{id}`. Why? (the response is the same)
 
 _Request_
+
 ```http
 GET http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -901,16 +958,20 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
 ### `GET /WalkupScan/WalkupScanDestinations`
 
 Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?
 
 _Request_
+
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -941,16 +1002,20 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
 ### `GET /EventMgmt/EventTable`
 
 Query one more time the `/EventMgmt/EventTable`. Why ?
 
 _Request_
+
 ```http
 GET /EventMgmt/EventTable HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -992,13 +1057,18 @@ Content-Length: 1866
   </ev:Event>
 </ev:EventTable>
 ```
+
 ### `GET /Scan/Status`
+
 _Request_
+
 ```http
 GET /Scan/Status HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1014,16 +1084,20 @@ Content-Length: 283
 	<AdfState>Loaded</AdfState>
 </ScanStatus>
 ```
+
 ### `GET /WalkupScan/WalkupScanDestinations`
 
 Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?
 
 _Request_
+
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1054,16 +1128,20 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
 ### `GET http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113`
 
 Query `/WalkupScan/WalkupScanDestinations/WalkupScanDestination/{id}`. Why? (the response is the same)
 
 _Request_
+
 ```http
 GET http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1089,16 +1167,20 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
 ### `GET /WalkupScan/WalkupScanDestinations`
 
 Query one more time the `/WalkupScan/WalkupScanDestinations`. Why ?
 
 _Request_
+
 ```http
 GET /WalkupScan/WalkupScanDestinations HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1129,16 +1211,20 @@ Pragma: no-cache
 	</wus:WalkupScanDestination>
 </wus:WalkupScanDestinations>
 ```
+
 ### `GET /EventMgmt/EventTable`
 
 Query one more time the `/EventMgmt/EventTable`. Why ?
 
 _Request_
+
 ```http
 GET /EventMgmt/EventTable HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1182,12 +1268,16 @@ Content-Length: 1866
 ```
 
 ### `GET /Scan/Status (4 times)`
+
 _Request_
+
 ```http
 GET /Scan/Status HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1203,6 +1293,7 @@ Content-Length: 283
 	<AdfState>Loaded</AdfState>
 </ScanStatus>
 ```
+
 ### `POST /Scan/Jobs`
 
 Post a scan job.The `Location` header point to the newly created job.
@@ -1212,6 +1303,7 @@ The `Afd` was `Loaded` so the `InputSource` is `Afd`. If `AdfState` was empty, t
 THe `Shortcut` `SavePDF` generated a `ContentType` to `Document` if it was `SaveJPEG` then it would be `Photo`.
 
 _Request_
+
 ```http
 POST /Scan/Jobs HTTP/1.1
 Content-Length: 949
@@ -1245,7 +1337,9 @@ HOST: 192.168.1.7:8080
 	<ContentType>Document</ContentType>
 </ScanSettings>
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 201 Created
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1254,16 +1348,20 @@ Content-Length: 0
 Cache-Control: must-revalidate, max-age=0
 Pragma: no-cache
 ```
+
 ### `GET /Jobs/JobList/2 (55 times)`
 
 Get the created job. The `BinaryURL` will helps to fetch the scanned document.
 
 _Request_
+
 ```http
 GET /Jobs/JobList/2 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1310,19 +1408,21 @@ Content-Length: 1620
 </ScanJob>
 </j:Job>
 ```
+
 ....
-
-
 
 The last time:
 `PageState` pass from  `PreparingScan` to `ReadyToUpload`
 
 _Request_
+
 ```http
 GET /Jobs/JobList/2 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1370,17 +1470,19 @@ Content-Length: 1620
 </j:Job>
 ```
 
-
 ### `GET /Scan/Jobs/2/Pages/1`
 
 Fetch the `BinaryURL`
 
 _Request_
+
 ```http
 GET /Scan/Jobs/2/Pages/1 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1398,19 +1500,24 @@ Transfer-Encoding: chunked
 .................}........!1A..Qa."q.2....#B...R..$3br.	
 .....%&'()*456789:CDEFGHIJSTUVWXYZcdefghijstuvwxyz <content trunked>
 ```
+
 ### `GET /Jobs/JobList/2 (2 times)`
 
-Re-query the job. A single sheet was in the tray so there is nothing more to proceed. 
+Re-query the job. A single sheet was in the tray so there is nothing more to proceed.
+
 - `JobState`: `Completed`
 - `PageState`: `UploadCompleted`
 - `PageNumber`: `1`
 
 _Request_
+
 ```http
 GET /Jobs/JobList/2 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```httpHTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
 Content-Type: text/xml
@@ -1438,11 +1545,14 @@ Content-Length: 892
 
 Another time with the same data, I don't know why.
 _Request_
+
 ```http
 GET /Jobs/JobList/2 HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1468,16 +1578,20 @@ Content-Length: 892
 </ScanJob>
 </j:Job>
 ```
+
 ### `GET /Scan/Status`
 
 Get the scan status. It's back to `Idle` and the `AdfState` is `Empty`.
 
 _Request_
+
 ```http
 GET /Scan/Status HTTP/1.1
 HOST: 192.168.1.7:8080
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1493,17 +1607,21 @@ Content-Length: 282
 	<AdfState>Empty</AdfState>
 </ScanStatus>
 ```
+
 ### `GET /EventMgmt/EventTable?timeout=1200`
 
 THe job is finished so, the `EventTable` is polled again.
 
 _Request_
+
 ```http
 GET /EventMgmt/EventTable?timeout=1200 HTTP/1.1
 HOST: 192.168.1.7:8080
 If-None-Match: "164-12"
 ```
+
 _Response_
+
 ```http
 HTTP/1.1 200 OK
 Server: HP HTTP Server; HP Officejet 6500 E710n-z - CN557A; Serial Number: CN19K340MP05JW; Chianti_pp_usr_hf Built:Mon May 16, 2016 12:22:43PM {CIP1FN1621AR, ASIC id 0x001c2105}
@@ -1525,20 +1643,26 @@ Content-Length: 1020
   </ev:Event>
 </ev:EventTable>
 ```
+
 ### `GET /EventMgmt/EventTable?timeout=1192`
 
 Polling continues... The timeout has decreased to `1192` (why?)
 
 _Request_
+
 ```http
 GET /EventMgmt/EventTable?timeout=1192 HTTP/1.1
 HOST: 192.168.1.7:8080
 If-None-Match: "164-14"
 ```
+
 _Response_
+
 ```http
 ```
+
 # See Also
+
 - https://github.com/simulot/hpdevices
 - https://github.com/havardgulldahl/hpscantools
 - https://github.com/0x27/mrw-code/tree/master/opt/hp-scanner-monitor
