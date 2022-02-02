@@ -122,6 +122,21 @@ export default class HPApi {
     );
   }
 
+  static async getWalkupScanToCompEvent(): Promise<string> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: "/WalkupScanToComp/WalkupScanToCompEvent",
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw response;
+    } else {
+      return response.data;
+    }
+  }
+
   static async removeDestination(walkupScanDestination: WalkupScanDestination) {
     let urlInfo = new URL(walkupScanDestination.resourceURI);
 

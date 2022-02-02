@@ -36,7 +36,7 @@ async function waitForScanEvent(resourceURI: string): Promise<Event> {
     currentEtag = eventTable.etag;
 
     acceptedScanEvent = eventTable.eventTable.events.find(
-      (ev) => ev.isScanEvent && ev.resourceURI.indexOf(resourceURI) >= 0
+      (ev) => ev.isScanEvent && ev.destinationURI && ev.destinationURI.indexOf(resourceURI) >= 0
     );
   }
   return acceptedScanEvent;
@@ -129,11 +129,22 @@ async function TryGetDestination(event: Event) {
     null;
 
   for (let i = 0; i < 20; i++) {
-    destination = await HPApi.getDestination(event.resourceURI);
+    const destinationURI = event.destinationURI;
 
-    const shortcut = destination.shortcut;
-    if (shortcut !== "") {
-      return destination;
+    if (event.compEventURI) {
+      await HPApi.getWalkupScanToCompEvent();
+    }
+
+    if (destinationURI) {
+      destination = await HPApi.getDestination(destinationURI);
+
+      const shortcut = destination.shortcut;
+      if (shortcut !== "") {
+        return destination;
+      }
+    }
+    else {
+      console.log(`No destination URI found`);
     }
 
     console.log(`No shortcut yet available, attempt: ${i + 1}/20`);

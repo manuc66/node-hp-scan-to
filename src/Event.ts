@@ -3,12 +3,13 @@
 export type EventData = {
   "dd:UnqualifiedEventCategory": string[];
   "ev:Payload": {
-    "0": {
-      "dd:ResourceURI": {
-        "0": string;
-      };
+    "dd:ResourceURI": {
+      "0": string;
+    },
+    "dd:ResourceType": {
+      "0": string;
     };
-  };
+  }[];
 };
 
 export default class Event {
@@ -21,8 +22,16 @@ export default class Event {
     return this.data["dd:UnqualifiedEventCategory"][0];
   }
 
-  get resourceURI(): string {
-    return this.data["ev:Payload"]["0"]["dd:ResourceURI"]["0"];
+  get destinationURI(): string | undefined {
+    const destination = this.data["ev:Payload"].find(v => v["dd:ResourceType"]["0"].includes("Destination"));
+
+    return destination ? destination["dd:ResourceURI"]["0"] : undefined;
+  }
+
+  get compEventURI(): string | undefined {
+    const compEvent = this.data["ev:Payload"].find(v => v["dd:ResourceType"]["0"].includes("CompEvent"));
+
+    return compEvent ? compEvent["dd:ResourceURI"]["0"] : undefined;
   }
 
   get isScanEvent(): boolean {
