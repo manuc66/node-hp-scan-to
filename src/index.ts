@@ -323,7 +323,7 @@ async function main() {
   program.option(
     "-n, --name <name>",
     "Name of the printer for service discovery",
-    "Officejet 6500 E710n-z"
+    "HP Smart Tank Plus 570 series"
   ); //or i.e. 'Deskjet 3520 series'
   program.option(
     "-d, --directory <dir>",
