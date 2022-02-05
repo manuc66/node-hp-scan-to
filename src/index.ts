@@ -36,7 +36,10 @@ async function waitForScanEvent(resourceURI: string): Promise<Event> {
     currentEtag = eventTable.etag;
 
     acceptedScanEvent = eventTable.eventTable.events.find(
-      (ev) => ev.isScanEvent && ev.destinationURI && ev.destinationURI.indexOf(resourceURI) >= 0
+      (ev) =>
+        ev.isScanEvent &&
+        ev.destinationURI &&
+        ev.destinationURI.indexOf(resourceURI) >= 0
     );
   }
   return acceptedScanEvent;
@@ -130,11 +133,6 @@ async function TryGetDestination(event: Event) {
 
   for (let i = 0; i < 20; i++) {
     const destinationURI = event.destinationURI;
-
-    if (event.compEventURI) {
-      await HPApi.getWalkupScanToCompEvent();
-    }
-
     if (destinationURI) {
       destination = await HPApi.getDestination(destinationURI);
 
@@ -142,8 +140,7 @@ async function TryGetDestination(event: Event) {
       if (shortcut !== "") {
         return destination;
       }
-    }
-    else {
+    } else {
       console.log(`No destination URI found`);
     }
 
@@ -190,7 +187,39 @@ async function handleProcessingState(job: Job) {
   }
 }
 
+async function waitScanRequest(compEventURI: string): Promise<boolean> {
+  const waitMax = 50;
+  for (let i = 0; i < waitMax; i++) {
+    let walkupScanToCompEvent = await HPApi.getWalkupScanToCompEvent(
+      compEventURI
+    );
+    let message = walkupScanToCompEvent.eventType;
+    if (message === "HostSelected") {
+      // this ok to wait
+    } else if (message === "ScanRequested") {
+      break;
+    } else if (message === "ScanPagesComplete") {
+      console.log("no more page to scan, scan is finished");
+      return false;
+    } else {
+      console.log(`Unknown eventType: ${message}`);
+      return false;
+    }
+
+    console.log(`Waiting user input: ${i + 1}/${waitMax}`);
+    await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
+  }
+  return true;
+}
+
 async function saveScan(event: Event): Promise<void> {
+  if (event.compEventURI) {
+    const proceedToScan = await waitScanRequest(event.compEventURI);
+    if (!proceedToScan) {
+      return;
+    }
+  }
+
   const destination = await TryGetDestination(event);
   if (!destination) {
     console.log("No shortcut selected!");
