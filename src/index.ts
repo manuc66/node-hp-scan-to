@@ -36,7 +36,10 @@ async function waitForScanEvent(resourceURI: string): Promise<Event> {
     currentEtag = eventTable.etag;
 
     acceptedScanEvent = eventTable.eventTable.events.find(
-      (ev) => ev.isScanEvent && ev.resourceURI.indexOf(resourceURI) >= 0
+      (ev) =>
+        ev.isScanEvent &&
+        ev.destinationURI &&
+        ev.destinationURI.indexOf(resourceURI) >= 0
     );
   }
   return acceptedScanEvent;
@@ -129,11 +132,16 @@ async function TryGetDestination(event: Event) {
     null;
 
   for (let i = 0; i < 20; i++) {
-    destination = await HPApi.getDestination(event.resourceURI);
+    const destinationURI = event.destinationURI;
+    if (destinationURI) {
+      destination = await HPApi.getDestination(destinationURI);
 
-    const shortcut = destination.shortcut;
-    if (shortcut !== "") {
-      return destination;
+      const shortcut = destination.shortcut;
+      if (shortcut !== "") {
+        return destination;
+      }
+    } else {
+      console.log(`No destination URI found`);
     }
 
     console.log(`No shortcut yet available, attempt: ${i + 1}/20`);
@@ -179,7 +187,39 @@ async function handleProcessingState(job: Job) {
   }
 }
 
+async function waitScanRequest(compEventURI: string): Promise<boolean> {
+  const waitMax = 50;
+  for (let i = 0; i < waitMax; i++) {
+    let walkupScanToCompEvent = await HPApi.getWalkupScanToCompEvent(
+      compEventURI
+    );
+    let message = walkupScanToCompEvent.eventType;
+    if (message === "HostSelected") {
+      // this ok to wait
+    } else if (message === "ScanRequested") {
+      break;
+    } else if (message === "ScanPagesComplete") {
+      console.log("no more page to scan, scan is finished");
+      return false;
+    } else {
+      console.log(`Unknown eventType: ${message}`);
+      return false;
+    }
+
+    console.log(`Waiting user input: ${i + 1}/${waitMax}`);
+    await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
+  }
+  return true;
+}
+
 async function saveScan(event: Event): Promise<void> {
+  if (event.compEventURI) {
+    const proceedToScan = await waitScanRequest(event.compEventURI);
+    if (!proceedToScan) {
+      return;
+    }
+  }
+
   const destination = await TryGetDestination(event);
   if (!destination) {
     console.log("No shortcut selected!");
@@ -283,7 +323,7 @@ async function main() {
   program.option(
     "-n, --name <name>",
     "Name of the printer for service discovery",
-    "Officejet 6500 E710n-z"
+    "HP Smart Tank Plus 570 series"
   ); //or i.e. 'Deskjet 3520 series'
   program.option(
     "-d, --directory <dir>",

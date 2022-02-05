@@ -8,7 +8,12 @@ import WalkupScanToCompDestination, {
 } from "./WalkupScanToCompDestination";
 import util from "util";
 import fs from "fs";
-import axios, { AxiosError, AxiosRequestConfig, AxiosRequestHeaders, AxiosResponse } from "axios";
+import axios, {
+  AxiosError,
+  AxiosRequestConfig,
+  AxiosRequestHeaders,
+  AxiosResponse,
+} from "axios";
 import { URL } from "url";
 import xml2js from "xml2js";
 import EventTable, { EventTableData } from "./EventTable";
@@ -23,6 +28,9 @@ import WalkupScanToCompDestinations, {
 import ScanJobSettings from "./ScanJobSettings";
 import Destination from "./Destination";
 import { Stream } from "stream";
+import WalkupScanToCompEvent, {
+  WalkupScanToCompEventData,
+} from "./WalkupScanToCompEvent";
 
 const parser = new xml2js.Parser();
 const parseString = util.promisify<string, any>(parser.parseString);
@@ -120,6 +128,21 @@ export default class HPApi {
       (response) => response.status == 200,
       () => false
     );
+  }
+
+  static async getWalkupScanToCompEvent(compEventURI: string): Promise<WalkupScanToCompEvent> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: compEventURI,
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw response;
+    } else {
+      return HPApi.createWalkupScanToCompEvent(response.data);
+    }
   }
 
   static async removeDestination(walkupScanDestination: WalkupScanDestination) {
@@ -255,6 +278,11 @@ export default class HPApi {
     return new WalkupScanToCompDestination(parsed);
   }
 
+  static async createWalkupScanToCompEvent(content: string) {
+    const parsed = (await parseString(content)) as WalkupScanToCompEventData;
+    return new WalkupScanToCompEvent(parsed);
+  }
+
   static async getScanStatus() {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -332,6 +360,7 @@ export default class HPApi {
     return new Promise((resolve, reject) => {
       data
         .on("end", () => {
+          destinationFileStream.close();
           resolve(destination);
         })
         .on("error", (error: Error) => reject(error));
