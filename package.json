@@ -56,7 +56,7 @@
     "axios": "^0.26.0",
     "bonjour": "^3.5.0",
     "commander": "^9.0.0",
-    "dateformat": "^4.6.3",
+    "dateformat": "^5.0.2",
     "eslint": "^8.1.0",
     "xml2js": "^0.4.23",
     "yarn": "^1.22.17"
