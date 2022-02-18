@@ -1,9 +1,9 @@
 "use strict";
 
-import xml2js from "xml2js";
+import {Parser, Builder} from "xml2js";
 import * as util from "util";
 
-const parser = new xml2js.Parser();
+const parser = new Parser();
 
 type WalkupScanDestinationData = {
   WalkupScanDestination: {
@@ -52,7 +52,7 @@ export default class Destination {
     parsed.WalkupScanDestination.Name[0]._ = this.name;
     parsed.WalkupScanDestination.LinkType[0] = this.linkType;
 
-    let builder = new xml2js.Builder();
+    let builder = new Builder();
     let xml = builder.buildObject(parsed);
     if (this.toComp) {
       return xml.replace(/WalkupScan/g, "WalkupScanToComp");

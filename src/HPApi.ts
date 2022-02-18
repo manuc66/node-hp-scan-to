@@ -6,7 +6,7 @@ import WalkupScanDestination, {
 import WalkupScanToCompDestination, {
   WalkupScanToCompDestinationData,
 } from "./WalkupScanToCompDestination";
-import util from "util";
+import { promisify } from "util";
 import fs from "fs";
 import axios, {
   AxiosError,
@@ -15,7 +15,8 @@ import axios, {
   AxiosResponse,
 } from "axios";
 import { URL } from "url";
-import xml2js from "xml2js";
+import { Parser } from "xml2js";
+import * as stream from 'stream';
 import EventTable, { EventTableData } from "./EventTable";
 import Job, { JobData } from "./Job";
 import ScanStatus, { ScanStatusData } from "./ScanStatus";
@@ -32,8 +33,8 @@ import WalkupScanToCompEvent, {
   WalkupScanToCompEventData,
 } from "./WalkupScanToCompEvent";
 
-const parser = new xml2js.Parser();
-const parseString = util.promisify<string, any>(parser.parseString);
+const parser = new Parser();
+const parseString = promisify<string, any>(parser.parseString);
 let printerIP = "192.168.1.11";
 let debug = false;
 let callCount = 0;
@@ -357,13 +358,10 @@ export default class HPApi {
     const destinationFileStream = fs.createWriteStream(destination);
     data.pipe(destinationFileStream);
 
-    return new Promise((resolve, reject) => {
-      data
-        .on("end", () => {
-          destinationFileStream.close();
-          resolve(destination);
-        })
-        .on("error", (error: Error) => reject(error));
-    });
+    const finishedDownload = promisify(stream.finished);
+
+    await finishedDownload(destinationFileStream);
+
+    return destination;
   }
 }
