@@ -10,13 +10,15 @@ Little command line program that allow to send scan from device to computer.
 Developed and tested for the following HP All-in-One Printers:
 - HP Officejet 6500A Plus
 - HP Deskjet 3520
-- HP Smart Tank Plus 570 series (in progress)
+- HP Smart Tank Plus 570 series
+
+The following printer are also working:
+- Officejet 6700 premium
 
 There are good chances it also works on your HP All-in-One Printer.
 For this purpose, the original HP Windows application's interaction with the device has been [reverse engineered](protocol_doc/HP%20Officejet%206500%20E710n-z.md).
 
 The following printers are known to be not working wright now, but they are close to be working:
-- Officejet 6700 Premium -- see issue [#325](https://github.com/manuc66/node-hp-scan-to/issues/325)
 - HP Officejet 5740 -- see issue [#364](https://github.com/manuc66/node-hp-scan-to/issues/364)
 
 This project is not endorsed by nor affiliated with HP.
