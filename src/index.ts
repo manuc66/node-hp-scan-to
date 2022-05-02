@@ -2,9 +2,8 @@
 "use strict";
 
 import os from "os";
-import fs from "fs";
+import fs from "fs/promises";
 import path from "path";
-import util from "util";
 import dateformat from "dateformat";
 import { Command } from "commander";
 import Bonjour from "bonjour";
@@ -16,6 +15,7 @@ import HPApi from "./HPApi";
 import Job from "./Job";
 import WalkupScanDestination from "./WalkupScanDestination";
 import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
+import JpegUtil from "../src/JpegUtil";
 
 const program = new Command();
 
@@ -153,7 +153,15 @@ async function TryGetDestination(event: Event) {
   return null;
 }
 
-async function handleProcessingState(job: Job) {
+async function fixJpegSize(filePath: string, size: { width: number; height: number }) {
+  const buffer: Buffer = await fs.readFile(filePath);
+
+  JpegUtil.SetJpgSize(buffer, size);
+
+  await fs.writeFile(filePath, buffer);
+}
+
+async function handleProcessingState(job: Job, inputSource: "Adf" | "Platen") {
   if (
     job.pageState == "ReadyToUpload" &&
     job.binaryURL != null &&
@@ -166,7 +174,7 @@ async function handleProcessingState(job: Job) {
 
     let folder = program.opts().directory;
     if (!folder) {
-      folder = await util.promisify(fs.mkdtemp)(
+      folder = await fs.mkdtemp(
         path.join(os.tmpdir(), "scan-to-pc")
       );
     }
@@ -181,6 +189,13 @@ async function handleProcessingState(job: Job) {
       destinationFilePath
     );
     console.log("Page downloaded to:", filePath);
+
+    if (inputSource == "Adf") {
+      if (job.imageHeight && job.imageWidth) {
+        await fixJpegSize(filePath, { height: parseInt(job.imageHeight), width: parseInt(job.imageWidth) });
+      }
+    }
+
   } else {
     console.log(`Unknown pageState: ${job.pageState}`);
     await delay(200);
@@ -248,7 +263,7 @@ async function saveScan(event: Event): Promise<void> {
     }
 
     if (job.jobState === "Processing") {
-      await handleProcessingState(job);
+      await handleProcessingState(job, inputSource);
     } else if (job.jobState === "Canceled") {
       console.log("Job cancelled by device");
       break;
@@ -336,7 +351,7 @@ async function main() {
   program.option("-D, --debug", "Enable debug");
   program.parse(process.argv);
 
-  let ip = program.opts().address;
+  let ip = program.opts().address || "192.168.1.53";
   if (!ip) {
     ip = await findOfficejetIp();
   }

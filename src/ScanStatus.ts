@@ -30,7 +30,7 @@ export default class ScanStatus {
     return this.adfState === "Loaded";
   }
 
-  getInputSource(): string {
+  getInputSource(): "Adf" | "Platen" {
     return this.isLoaded() ? "Adf" : "Platen";
   }
 }

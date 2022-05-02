@@ -7,6 +7,10 @@ export interface JobData {
         PageState: string[];
         BinaryURL: string[];
         PageNumber: string[];
+        BufferInfo: {
+          ImageWidth: string[];
+          ImageHeight: string[];
+        }[]
       }[];
       PostScanPage: {
         PageNumber: string[];
@@ -63,5 +67,12 @@ export default class Job {
     } else {
       return null;
     }
+  }
+
+  get imageWidth(): string | null {
+    return this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]?.ImageWidth[0] ?? null;
+  }
+  get imageHeight(): string | null {
+    return this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]?.ImageHeight[0] ?? null;
   }
 }
