@@ -18,7 +18,8 @@
     "build": "tsc -p .",
     "start-dev": "nodemon",
     "prepublishOnly": "tsc -p ./ --outDir dist/",
-    "prettier": "prettier --write \"src/**/*.ts\""
+    "prettier": "prettier --write \"src/**/*.ts\"",
+    "test": "nyc ./node_modules/.bin/_mocha 'test/**/*.test.ts'"
   },
   "files": [
     "dist",
@@ -43,12 +44,18 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@testdeck/mocha": "^0.2.0",
     "@types/bonjour": "^3.5.9",
     "@types/node": "^17.0.8",
     "@types/xml2js": "^0.4.9",
+    "chai": "^4.3.6",
+    "mocha": "^10.0.0",
     "nodemon": "^2.0.14",
+    "nyc": "^15.1.0",
     "prettier": "^2.4.1",
-    "ts-node": "^10.4.0",
+    "ts-mockito": "^2.6.1",
+    "ts-node": "^10.7.0",
     "typescript": "^4.4.4"
   },
   "dependencies": {
