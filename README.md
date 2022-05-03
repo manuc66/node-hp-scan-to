@@ -15,6 +15,7 @@ Developed and tested for the following HP All-in-One Printers:
 The following printer are also working:
 - Officejet 6700 premium
 - HP Officejet 5740
+- HP OfficeJet Pro 8025e
 
 There are good chances it also works on your HP All-in-One Printer.
 For this purpose, the original HP Windows application's interaction with the device has been [reverse engineered](protocol_doc/HP%20Officejet%206500%20E710n-z.md).
