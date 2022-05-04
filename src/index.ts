@@ -153,12 +153,15 @@ async function TryGetDestination(event: Event) {
   return null;
 }
 
-async function fixJpegSize(filePath: string, size: { width: number; height: number }) {
+async function fixJpegSize(filePath: string): Promise<boolean> {
   const buffer: Buffer = await fs.readFile(filePath);
 
-  JpegUtil.SetJpgSize(buffer, size);
-
-  await fs.writeFile(filePath, buffer);
+  if (JpegUtil.fixSizeWithDNL(buffer)) {
+    // rewrite the fixed file
+    await fs.writeFile(filePath, buffer);
+    return true;
+  }
+  return false;
 }
 
 async function handleProcessingState(job: Job, inputSource: "Adf" | "Platen") {
@@ -174,9 +177,7 @@ async function handleProcessingState(job: Job, inputSource: "Adf" | "Platen") {
 
     let folder = program.opts().directory;
     if (!folder) {
-      folder = await fs.mkdtemp(
-        path.join(os.tmpdir(), "scan-to-pc")
-      );
+      folder = await fs.mkdtemp(path.join(os.tmpdir(), "scan-to-pc"));
     }
     console.log(`Target folder: ${folder}`);
 
@@ -191,11 +192,13 @@ async function handleProcessingState(job: Job, inputSource: "Adf" | "Platen") {
     console.log("Page downloaded to:", filePath);
 
     if (inputSource == "Adf") {
-      if (job.imageHeight && job.imageWidth) {
-        await fixJpegSize(filePath, { height: parseInt(job.imageHeight), width: parseInt(job.imageWidth) });
+      const sizeFixed = await fixJpegSize(filePath);
+      if (!sizeFixed) {
+        console.log(
+          `File size has not been fixed, DNF may not have been found and approximate height is: ${job.imageHeight}`
+        );
       }
     }
-
   } else {
     console.log(`Unknown pageState: ${job.pageState}`);
     await delay(200);
