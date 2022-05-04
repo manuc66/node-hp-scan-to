@@ -12,6 +12,7 @@ services:
 before_script:
   - yarn install
 script:
+  - yarn test || travis_terminate 1
   - yarn build || travis_terminate 1
   - export REPO=manuc66/node-hp-scan-to
   - docker build -f Dockerfile -t $REPO:latest .
