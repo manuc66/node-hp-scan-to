@@ -2,6 +2,7 @@
 
 export type EventData = {
   "dd:UnqualifiedEventCategory": string[];
+  "dd:AgingStamp": string[];
   "ev:Payload": {
     "dd:ResourceURI": {
       "0": string;
@@ -20,6 +21,10 @@ export default class Event {
 
   get unqualifiedEventCategory(): string {
     return this.data["dd:UnqualifiedEventCategory"][0];
+  }
+
+  get agingStamp(): string {
+    return this.data["dd:AgingStamp"][0];
   }
 
   get destinationURI(): string | undefined {
