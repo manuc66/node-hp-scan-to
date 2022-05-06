@@ -36,7 +36,7 @@ node dist/index.js -ip 192.168.1.4 # or -n "Officejet 6500 E710n-z"
 - `-ip` or `--address` followed by the ip address of the printer, i.e. `-ip 192.168.0.5`. This overrides `-p`.
 - `-n` or `--name` followed by the printer name, it probably contains spaces, so it needs to be quoted, i.e. `-name "Officejet 6500 E710n-z"`
 - `-d` or `--directory` followed by the directory path where the scanned documents should be saved, i.e. `-d ~/Documents/Scans`. Defaults to `/tmp/scan-to-pc<random value>` when not set.
-- `-p` or `--pattern` followed by the pattern for the filename without file extension, i.e. `"scan"_dd.mm.yyyy_hh:MM:ss` to name the scanned file `scan_19.04.2021_17:26:47`. Date and time patterns are replaced by the current date and time, text that should not be replaced need to be inside quotes. Documentation for the pattern can be found [here](https://www.npmjs.com/package/dateformat) in the section `Mask options`. Defaults to `scanPage<increasing number>` when not set.
+- `-p` or `--pattern` followed by the pattern for the filename without file extension, i.e. `"scan"_dd.mm.yyyy_hh:MM:ss` to name the scanned file `scan_19.04.2021_17:26:47`. Date and time patterns are replaced by the current date and time, text that should not be replaced need to be inside quotes. Documentation for the pattern can be found [here](https://www.npmjs.com/package/dateformat) in the section `Mask options`. Defaults to `scan<increasing number>_page<page number>` when not set.
 - `-D, --debug"` enables debug logs.
 
 ### Run with docker

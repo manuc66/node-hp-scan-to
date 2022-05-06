@@ -1,5 +1,8 @@
 let debug = false;
 
+const start_of_Frame_0 = "FFC0";
+const define_number_of_lines = "FFDC";
+
 export default class JpegUtil {
   static setDebug(dbg: boolean) {
     debug = dbg;
@@ -12,16 +15,13 @@ export default class JpegUtil {
   }
 
   private static numToHex(s: number) {
-    let hex = s.toString(16);
-    if (hex.length % 2 > 0) {
-      hex = "0" + hex;
-    }
-    return hex.toUpperCase();
+    return s.toString(16).padStart(2, "0").toUpperCase();
   }
+
   static GetJpgSize(buffer: Buffer): { height: number; width: number } | null {
     let size: { height: number; width: number } | null = null;
     this.parse(buffer, {
-      FFC0: (start: number, length: number) => {
+      [start_of_Frame_0]: (start: number, length: number) => {
         // read the the "Start of frame" marker which contains the file size
         if (6 < length) {
           const pHeight = buffer[start + 3] * 256 + buffer[start + 4];
@@ -43,7 +43,7 @@ export default class JpegUtil {
   ): boolean {
     let sizeWritten = false;
     const parsingSucceed = this.parse(buffer, {
-      FFC0: (start: number, length: number) => {
+      [start_of_Frame_0]: (start: number, length: number) => {
         // read the the "Start of frame" marker which contains the file size
 
         // write the picture size
@@ -76,18 +76,16 @@ export default class JpegUtil {
   static setJpgHeight(buffer: Buffer, height: number): boolean {
     let heightWritten = false;
     const parsingSucceed = this.parse(buffer, {
-      FFC0: (start: number, length: number) => {
+      [start_of_Frame_0]: (start: number, length: number) => {
         // read the the "Start of frame" marker which contains the file size
 
         // write the picture size
-        if (6 < length) {
-          const heightBuffer = Buffer.from([0x00, 0x00]);
-          heightBuffer.writeInt16BE(height);
-          buffer[start + 3] = heightBuffer[0];
-          buffer[start + 4] = heightBuffer[1];
-
-          heightWritten = true;
-        }
+        heightWritten = this.writeHeightInStartOfFrame(
+          buffer,
+          start,
+          length,
+          height
+        );
 
         // stop processing
         return true;
@@ -101,27 +99,78 @@ export default class JpegUtil {
     return heightWritten;
   }
 
-  static fixSizeWithDNL(buffer: Buffer): boolean {
-    const numberOfLine = JpegUtil.readNumberOfLineFromDNL(buffer);
-
-    if (numberOfLine == null) {
-      return false;
-    }
-
-    return JpegUtil.setJpgHeight(buffer, numberOfLine);
-  }
-
-  static readNumberOfLineFromDNL(buffer: Buffer): number | null {
+  static fixSizeWithDNL(buffer: Buffer): number | null {
     let numberOfLine: number | null = null;
+    let startOfStartOfFrame: number | null = null;
+    let lengthOfStartOfFrame: number | null = null;
     this.parse(buffer, {
-      FFDC: (start: number, length: number) => {
-        // read the number of line
-        if (3 < length) {
-          numberOfLine = buffer[start + 2] * 256 + buffer[start + 3];
-        }
-        return true;
+      [define_number_of_lines]: (start: number, length: number) => {
+        numberOfLine = this.readNumberOfLineFromDNL(buffer, start, length);
+        return false; // don't stop
+      },
+      [start_of_Frame_0]: (start: number, length: number) => {
+        startOfStartOfFrame = start;
+        lengthOfStartOfFrame = length;
+        return false; // don't stop
       },
     });
+
+    if (numberOfLine == null) {
+      this.logDebug("DNL marker not found impossible to fix height");
+      return null;
+    }
+
+    if (startOfStartOfFrame == null || lengthOfStartOfFrame == null) {
+      this.logDebug(
+        "Start of frame 0 not found, either jpeg parsing is broken either the stream is corrupted"
+      );
+      return null;
+    }
+
+    if (
+      this.writeHeightInStartOfFrame(
+        buffer,
+        startOfStartOfFrame,
+        lengthOfStartOfFrame,
+        numberOfLine
+      )
+    ) {
+      return numberOfLine;
+    }
+    return null;
+  }
+
+  private static writeHeightInStartOfFrame(
+    buffer: Buffer,
+    startOfStartOfFrame: number,
+    lengthOfStartOfFrame: number,
+    numberOfLine: number
+  ) : boolean {
+    // write the picture height
+    if (6 < lengthOfStartOfFrame) {
+      const heightBuffer = Buffer.from([0x00, 0x00]);
+      heightBuffer.writeInt16BE(numberOfLine);
+      buffer[startOfStartOfFrame + 3] = heightBuffer[0];
+      buffer[startOfStartOfFrame + 4] = heightBuffer[1];
+
+      return true;
+    }
+
+    return false;
+  }
+
+  static readNumberOfLineFromDNL(
+    buffer: Buffer,
+    start: number,
+    length: number
+  ): number | null {
+    let numberOfLine: number | null = null;
+
+    // read the number of line
+    if (3 < length) {
+      numberOfLine = buffer[start + 2] * 256 + buffer[start + 3];
+    }
+
     return numberOfLine;
   }
   static parse(
@@ -129,17 +178,8 @@ export default class JpegUtil {
     markerHandler: { [key: string]: (start: number, length: number) => boolean }
   ): boolean {
     let i: number = 0;
-    let marker = "";
 
-    if (
-      !(
-        i + 3 < buffer.length &&
-        buffer[i] == 0xff &&
-        buffer[i + 1] == 0xd8 &&
-        buffer[i + 2] == 0xff &&
-        buffer[i + 3] == 0xe0
-      )
-    ) {
+    if (!this.isSOIHeader(i, buffer)) {
       this.logDebug("Not a valid SOI header");
       return false;
     }
@@ -147,65 +187,33 @@ export default class JpegUtil {
     i += 4;
 
     // Check for valid JPEG header (null terminated JFIF)
-    if (
-      !(
-        i + 6 < buffer.length &&
-        buffer[i + 2] == "J".charCodeAt(0) &&
-        buffer[i + 3] == "F".charCodeAt(0) &&
-        buffer[i + 4] == "I".charCodeAt(0) &&
-        buffer[i + 5] == "F".charCodeAt(0) &&
-        buffer[i + 6] == 0x00
-      )
-    ) {
+    if (!this.isValidJpegHeader(i, buffer)) {
       this.logDebug("Not a valid JFIF string");
       return false;
     }
 
-    //Retrieve the block length of the first block since the first block will not contain the size of file
-    let blockLength = buffer[i] * 256 + buffer[i + 1];
+    return this.parseMarker(buffer, i, markerHandler);
+  }
 
-    //Increase the file index to get to the next block
-    i += blockLength;
-    while (i < buffer.length) {
-      if (buffer[i] != 0xff) {
-        this.logDebug(
-          "We should be at the begining of the next block, but got: " +
-            buffer[i]
-        );
-        return false;
-      }
+  private static isValidJpegHeader(i: number, buffer: Buffer) {
+    return (
+      i + 6 < buffer.length &&
+      buffer[i + 2] == "J".charCodeAt(0) &&
+      buffer[i + 3] == "F".charCodeAt(0) &&
+      buffer[i + 4] == "I".charCodeAt(0) &&
+      buffer[i + 5] == "F".charCodeAt(0) &&
+      buffer[i + 6] == 0x00
+    );
+  }
 
-      if (i + 1 >= buffer.length) {
-        this.logDebug("End of stream prematurely found in marker: " + marker);
-        return false;
-      }
-
-      if (buffer[i + 1] == 0x00) {
-        this.logDebug(`Bad marker at ${i} 0x00 juste after marker ${marker}`);
-        return false;
-      }
-
-      marker = this.numToHex(buffer[i]) + this.numToHex(buffer[i + 1]);
-
-      const foundBlockLength = this.getBlockLength(buffer, i, marker);
-      if (foundBlockLength == null) {
-        this.logDebug(
-          `Was not able to determine block size for marker ${marker}`
-        );
-        return false;
-      }
-      blockLength = foundBlockLength;
-
-      const handler = markerHandler[marker];
-      if (handler != null && handler(i + 2, blockLength)) {
-        return true;
-      }
-
-      i = i + 2 + blockLength;
-    }
-
-    this.logDebug("End of payload reached");
-    return true;
+  private static isSOIHeader(i: number, buffer: Buffer) {
+    return (
+      i + 3 < buffer.length &&
+      buffer[i] == 0xff &&
+      buffer[i + 1] == 0xd8 &&
+      buffer[i + 2] == 0xff &&
+      buffer[i + 3] == 0xe0
+    );
   }
 
   private static getBlockLength(
@@ -224,11 +232,7 @@ export default class JpegUtil {
       marker === "FFD6" ||
       marker === "FFD7"
     ) {
-      return JpegUtil.findCurrentBlockSize(
-        buffer,
-        i + 2,
-        marker
-      );
+      return JpegUtil.findCurrentBlockSize(buffer, i + 2, marker);
     } else {
       // read the new block length
       const blockLength = buffer[i + 2] * 256 + buffer[i + 3];
@@ -261,5 +265,55 @@ export default class JpegUtil {
       }
     }
     return null;
+  }
+
+  private static parseMarker(buffer: Buffer, i: number, markerHandler: { [key: string]: (start: number, length: number) => boolean }) : boolean {
+    let marker = "";
+
+    //Retrieve the block length of the first block since the first block will not contain the size of file
+    let blockLength = buffer[i] * 256 + buffer[i + 1];
+
+    //Increase the file index to get to the next block
+    i += blockLength;
+    while (i < buffer.length) {
+      if (buffer[i] != 0xff) {
+        this.logDebug(
+          "We should be at the begining of the next block, but got: " +
+          buffer[i]
+        );
+        return false;
+      }
+
+      if (i + 1 >= buffer.length) {
+        this.logDebug("End of stream prematurely found in marker: " + marker);
+        return false;
+      }
+
+      if (buffer[i + 1] == 0x00) {
+        this.logDebug(`Bad marker at ${i} 0x00 just after marker ${marker}`);
+        return false;
+      }
+
+      marker = this.numToHex(buffer[i]) + this.numToHex(buffer[i + 1]);
+
+      const foundBlockLength = this.getBlockLength(buffer, i, marker);
+      if (foundBlockLength == null) {
+        this.logDebug(
+          `Was not able to determine block size for marker ${marker}`
+        );
+        return false;
+      }
+      blockLength = foundBlockLength;
+
+      const handler = markerHandler[marker];
+      if (handler != null && handler(i + 2, blockLength)) {
+        return true;
+      }
+
+      i = i + 2 + blockLength;
+    }
+
+    this.logDebug("End of payload reached");
+    return true;
   }
 }
