@@ -1,10 +1,10 @@
 #!/usr/bin/env node
+// noinspection XmlDeprecatedElement,HtmlDeprecatedTag
+
 "use strict";
 
 import os from "os";
 import fs from "fs/promises";
-import path from "path";
-import dateformat from "dateformat";
 import { Command } from "commander";
 import Bonjour from "bonjour";
 
@@ -16,6 +16,7 @@ import Job from "./Job";
 import WalkupScanDestination from "./WalkupScanDestination";
 import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
 import JpegUtil from "../src/JpegUtil";
+import PathHelper from "./PathHelper";
 
 const program = new Command();
 
@@ -113,18 +114,6 @@ async function register(): Promise<string> {
   return resourceURI;
 }
 
-async function getNextFile(
-  folder: string,
-  currentPageNumber: string
-): Promise<string> {
-  const filePattern = program.opts().pattern;
-  if (filePattern) {
-    return path.join(folder, dateformat(new Date(), filePattern) + ".jpg");
-  }
-
-  return path.join(folder, `scanPage${currentPageNumber}.jpg`);
-}
-
 async function TryGetDestination(event: Event) {
   //this code can in some cases be executed before the user actually chooses between Document or Photo
   //so lets fetch the contentType (Document or Photo) until we get a value
@@ -164,7 +153,12 @@ async function fixJpegSize(filePath: string): Promise<boolean> {
   return false;
 }
 
-async function handleProcessingState(job: Job, inputSource: "Adf" | "Platen") {
+async function handleProcessingState(
+  job: Job,
+  inputSource: "Adf" | "Platen",
+  folder: string,
+  scanCount: number
+) {
   if (
     job.pageState == "ReadyToUpload" &&
     job.binaryURL != null &&
@@ -175,15 +169,12 @@ async function handleProcessingState(job: Job, inputSource: "Adf" | "Platen") {
       job.binaryURL
     );
 
-    let folder = program.opts().directory;
-    if (!folder) {
-      folder = await fs.mkdtemp(path.join(os.tmpdir(), "scan-to-pc"));
-    }
-    console.log(`Target folder: ${folder}`);
-
-    const destinationFilePath = await getNextFile(
+    const destinationFilePath = PathHelper.getNextFile(
       folder,
-      job.currentPageNumber
+      scanCount,
+      +job.currentPageNumber,
+      program.opts().pattern,
+      "jpg"
     );
     const filePath = await HPApi.downloadPage(
       job.binaryURL,
@@ -230,7 +221,11 @@ async function waitScanRequest(compEventURI: string): Promise<boolean> {
   return true;
 }
 
-async function saveScan(event: Event): Promise<void> {
+async function saveScan(
+  event: Event,
+  folder: string,
+  scanCount: number
+): Promise<void> {
   if (event.compEventURI) {
     const proceedToScan = await waitScanRequest(event.compEventURI);
     if (!proceedToScan) {
@@ -266,7 +261,7 @@ async function saveScan(event: Event): Promise<void> {
     }
 
     if (job.jobState === "Processing") {
-      await handleProcessingState(job, inputSource);
+      await handleProcessingState(job, inputSource, folder, scanCount);
     } else if (job.jobState === "Canceled") {
       console.log("Job cancelled by device");
       break;
@@ -280,6 +275,11 @@ async function saveScan(event: Event): Promise<void> {
 
 let iteration = 0;
 async function init() {
+  const folder = await PathHelper.getOutputFolder(program.opts().directory);
+  console.log(`Target folder: ${folder}`);
+
+  let scanCount = 0;
+
   let keepActive = true;
   let errorCount = 0;
   while (keepActive) {
@@ -290,8 +290,8 @@ async function init() {
       console.log("Waiting scan event for:", resourceURI);
       const event = await waitForScanEvent(resourceURI);
 
-      console.log("Scan event captured, saving scan");
-      await saveScan(event);
+      console.log(`Scan event captured, saving scan #${scanCount}`);
+      await saveScan(event, folder, scanCount);
     } catch (e) {
       errorCount++;
       console.error(e);
