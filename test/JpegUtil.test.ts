@@ -59,7 +59,7 @@ describe("JpegUtil", () => {
       );
 
       const sizeFixed = JpegUtil.fixSizeWithDNL(buffer);
-      expect(sizeFixed).to.be.true;
+      expect(sizeFixed).to.be.eq(2322);
 
       fs.writeFileSync(
         path.resolve(__dirname, "./asset/adf_bytes_scan_height_fixed.jpg"),
