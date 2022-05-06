@@ -26,10 +26,10 @@ function delay(t: number): Promise<void> {
   });
 }
 
-async function waitForScanEvent(resourceURI: string): Promise<Event> {
+  async function waitForScanEvent(resourceURI: string, afterEtag: string | null = null): Promise<Event> {
   console.log("Start listening for new ScanEvent");
 
-  let eventTable = await HPApi.getEvents();
+  let eventTable = await HPApi.getEvents(afterEtag ?? "");
   let acceptedScanEvent = null;
   let currentEtag = eventTable.etag;
   while (acceptedScanEvent == null) {
@@ -154,7 +154,12 @@ async function fixJpegSize(filePath: string): Promise<number | null> {
   return null;
 }
 
-function createScanPage(job: Job, filePath: string, sizeFixed: number | null) {
+function createScanPage(
+  job: Job,
+  currentPageNumber: number,
+  filePath: string,
+  sizeFixed: number | null
+) {
   let height = sizeFixed ?? parseInt(job.imageHeight ?? "unknown");
   if (isNaN(height)) {
     console.log("Fail to parse height: " + job.imageHeight);
@@ -165,16 +170,11 @@ function createScanPage(job: Job, filePath: string, sizeFixed: number | null) {
     console.log("Fail to parse height: " + job.imageWidth);
   }
 
-  let currentPageNumber = parseInt(job.currentPageNumber ?? "unknown");
-  if (isNaN(currentPageNumber)) {
-    console.log("Fail to parse height: " + job.currentPageNumber);
-  }
-
   return {
     path: filePath,
     pageNumber: currentPageNumber,
     width: width,
-    height: height
+    height: height,
   };
 }
 
@@ -182,7 +182,8 @@ async function handleProcessingState(
   job: Job,
   inputSource: "Adf" | "Platen",
   folder: string,
-  scanCount: number
+  scanCount: number,
+  currentPageNumber: number
 ): Promise<ScanPage | null> {
   if (
     job.pageState == "ReadyToUpload" &&
@@ -190,14 +191,14 @@ async function handleProcessingState(
     job.currentPageNumber != null
   ) {
     console.log(
-      `Ready to download page ${job.currentPageNumber} at:`,
+      `Ready to download page job page ${job.currentPageNumber} at:`,
       job.binaryURL
     );
 
     const destinationFilePath = PathHelper.getNextFile(
       folder,
       scanCount,
-      +job.currentPageNumber,
+      currentPageNumber,
       program.opts().pattern,
       "jpg"
     );
@@ -216,7 +217,7 @@ async function handleProcessingState(
         );
       }
     }
-    return createScanPage(job, filePath, sizeFixed);
+    return createScanPage(job, currentPageNumber, filePath, sizeFixed);
   } else {
     console.log(`Unknown pageState: ${job.pageState}`);
     await delay(200);
@@ -234,6 +235,8 @@ async function waitScanRequest(compEventURI: string): Promise<boolean> {
     if (message === "HostSelected") {
       // this ok to wait
     } else if (message === "ScanRequested") {
+      break;
+    } else if (message === "ScanNewPageRequested") {
       break;
     } else if (message === "ScanPagesComplete") {
       console.log("no more page to scan, scan is finished");
@@ -256,6 +259,117 @@ interface ScanPage {
   pageNumber: number;
   width: number;
   height: number;
+}
+
+async function executeScanJob(
+  scanJobSettings: ScanJobSettings,
+  inputSource: "Adf" | "Platen",
+  folder: string,
+  scanCount: number,
+  scanJobContent: ScanContent
+) {
+  const jobUrl = await HPApi.postJob(scanJobSettings);
+
+  console.log("New job created:", jobUrl);
+
+  let job = await HPApi.getJob(jobUrl);
+  while (job.jobState !== "Completed") {
+    job = await waitPrinterUntilItIsReadyToUploadOrCompleted(jobUrl);
+
+    if (job.jobState == "Completed") {
+      continue;
+    }
+
+    if (job.jobState === "Processing") {
+      const page = await handleProcessingState(
+        job,
+        inputSource,
+        folder,
+        scanCount,
+        scanJobContent.elements.length + 1
+      );
+      if (page != null) {
+        scanJobContent.elements.push(page);
+      }
+    } else if (job.jobState === "Canceled") {
+      console.log("Job cancelled by device");
+      break;
+    } else {
+      console.log(`Unhandled jobState: ${job.jobState}`);
+      await delay(200);
+    }
+  }
+  console.log(
+    `Job state: ${job.jobState}, totalPages: ${job.totalPageNumber}:`
+  );
+}
+
+async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
+  let startNewScanJob = false;
+  let wait = true;
+  while (wait) {
+    await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
+
+    let walkupScanToCompEvent = await HPApi.getWalkupScanToCompEvent(
+      compEventURI
+    );
+    let message = walkupScanToCompEvent.eventType;
+
+    if (message === "ScanNewPageRequested") {
+      startNewScanJob = true;
+      wait = false;
+    } else if (message === "ScanPagesComplete") {
+      wait = false;
+    } else if (message === "ScanRequested") {
+      // continue waiting
+    } else {
+      wait = false;
+      console.log(`Unknown eventType: ${message}`);
+    }
+  }
+  return startNewScanJob;
+}
+
+async function executeScanJobs(
+  scanJobSettings: ScanJobSettings,
+  inputSource: "Adf" | "Platen",
+  folder: string,
+  scanCount: number,
+  scanJobContent: ScanContent,
+  firstEvent: Event
+) {
+  await executeScanJob(
+    scanJobSettings,
+    inputSource,
+    folder,
+    scanCount,
+    scanJobContent
+  );
+  let lastEvent = firstEvent;
+  if (lastEvent.compEventURI && inputSource !== "Adf" && lastEvent.destinationURI) {
+    lastEvent = await waitForScanEvent(lastEvent.destinationURI, lastEvent.agingStamp);
+    if (!lastEvent.compEventURI) {
+      return;
+    }
+    let startNewScanJob = await waitScanNewPageRequest(lastEvent.compEventURI);
+    while (startNewScanJob) {
+      await executeScanJob(
+        scanJobSettings,
+        inputSource,
+        folder,
+        scanCount,
+        scanJobContent
+      );
+      if (!lastEvent.destinationURI) {
+        break;
+      }
+      lastEvent = await waitForScanEvent(lastEvent.destinationURI, lastEvent.agingStamp);
+      if (!lastEvent.compEventURI) {
+        return;
+      }
+      startNewScanJob = await waitScanNewPageRequest(lastEvent.compEventURI);
+    }
+  }
 }
 
 async function saveScan(
@@ -285,35 +399,28 @@ async function saveScan(
   let inputSource = scanStatus.getInputSource();
 
   let scanJobSettings = new ScanJobSettings(inputSource, contentType);
-  const jobUrl = await HPApi.postJob(scanJobSettings);
-
-  console.log("New job created:", jobUrl);
 
   let scanJobContent: ScanContent = { elements: [] };
 
-  let job = await HPApi.getJob(jobUrl);
-  while (job.jobState !== "Completed") {
-    job = await waitPrinterUntilItIsReadyToUploadOrCompleted(jobUrl);
+  await executeScanJobs(
+    scanJobSettings,
+    inputSource,
+    folder,
+    scanCount,
+    scanJobContent,
+    event
+  );
 
-    if (job.jobState == "Completed") {
-      continue;
-    }
-
-    if (job.jobState === "Processing") {
-     const page =  await handleProcessingState(job, inputSource, folder, scanCount);
-     if (page != null) {
-       scanJobContent.elements.push(page);
-     }
-    } else if (job.jobState === "Canceled") {
-      console.log("Job cancelled by device");
-      break;
-    } else {
-      console.log(`Unhandled jobState: ${job.jobState}`);
-      await delay(200);
-    }
-  }
-  console.log(`Job state: ${job.jobState}, totalPages: ${job.totalPageNumber}:`);
-  scanJobContent.elements.forEach(e => console.log(`\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${e.height} - ${e.path}`))
+  console.log(
+    `Scan of pages completed totalPages: ${scanJobContent.elements.length}:`
+  );
+  scanJobContent.elements.forEach((e) =>
+    console.log(
+      `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
+        e.height
+      } - ${e.path}`
+    )
+  );
 }
 
 let iteration = 0;
@@ -333,6 +440,7 @@ async function init() {
       console.log("Waiting scan event for:", resourceURI);
       const event = await waitForScanEvent(resourceURI);
 
+      scanCount++;
       console.log(`Scan event captured, saving scan #${scanCount}`);
       await saveScan(event, folder, scanCount);
     } catch (e) {
