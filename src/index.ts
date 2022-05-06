@@ -142,15 +142,40 @@ async function TryGetDestination(event: Event) {
   return null;
 }
 
-async function fixJpegSize(filePath: string): Promise<boolean> {
+async function fixJpegSize(filePath: string): Promise<number | null> {
   const buffer: Buffer = await fs.readFile(filePath);
 
-  if (JpegUtil.fixSizeWithDNL(buffer)) {
+  let height = JpegUtil.fixSizeWithDNL(buffer);
+  if (height != null) {
     // rewrite the fixed file
     await fs.writeFile(filePath, buffer);
-    return true;
+    return height;
   }
-  return false;
+  return null;
+}
+
+function createScanPage(job: Job, filePath: string, sizeFixed: number | null) {
+  let height = sizeFixed ?? parseInt(job.imageHeight ?? "unknown");
+  if (isNaN(height)) {
+    console.log("Fail to parse height: " + job.imageHeight);
+  }
+
+  let width = parseInt(job.imageWidth ?? "unknown");
+  if (isNaN(width)) {
+    console.log("Fail to parse height: " + job.imageWidth);
+  }
+
+  let currentPageNumber = parseInt(job.currentPageNumber ?? "unknown");
+  if (isNaN(currentPageNumber)) {
+    console.log("Fail to parse height: " + job.currentPageNumber);
+  }
+
+  return {
+    path: filePath,
+    pageNumber: currentPageNumber,
+    width: width,
+    height: height
+  };
 }
 
 async function handleProcessingState(
@@ -158,7 +183,7 @@ async function handleProcessingState(
   inputSource: "Adf" | "Platen",
   folder: string,
   scanCount: number
-) {
+): Promise<ScanPage | null> {
   if (
     job.pageState == "ReadyToUpload" &&
     job.binaryURL != null &&
@@ -182,17 +207,20 @@ async function handleProcessingState(
     );
     console.log("Page downloaded to:", filePath);
 
+    let sizeFixed: null | number = null;
     if (inputSource == "Adf") {
-      const sizeFixed = await fixJpegSize(filePath);
-      if (!sizeFixed) {
+      sizeFixed = await fixJpegSize(filePath);
+      if (sizeFixed == null) {
         console.log(
           `File size has not been fixed, DNF may not have been found and approximate height is: ${job.imageHeight}`
         );
       }
     }
+    return createScanPage(job, filePath, sizeFixed);
   } else {
     console.log(`Unknown pageState: ${job.pageState}`);
     await delay(200);
+    return null;
   }
 }
 
@@ -219,6 +247,15 @@ async function waitScanRequest(compEventURI: string): Promise<boolean> {
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
   }
   return true;
+}
+interface ScanContent {
+  elements: ScanPage[];
+}
+interface ScanPage {
+  path: string;
+  pageNumber: number;
+  width: number;
+  height: number;
 }
 
 async function saveScan(
@@ -252,6 +289,8 @@ async function saveScan(
 
   console.log("New job created:", jobUrl);
 
+  let scanJobContent: ScanContent = { elements: [] };
+
   let job = await HPApi.getJob(jobUrl);
   while (job.jobState !== "Completed") {
     job = await waitPrinterUntilItIsReadyToUploadOrCompleted(jobUrl);
@@ -261,7 +300,10 @@ async function saveScan(
     }
 
     if (job.jobState === "Processing") {
-      await handleProcessingState(job, inputSource, folder, scanCount);
+     const page =  await handleProcessingState(job, inputSource, folder, scanCount);
+     if (page != null) {
+       scanJobContent.elements.push(page);
+     }
     } else if (job.jobState === "Canceled") {
       console.log("Job cancelled by device");
       break;
@@ -270,7 +312,8 @@ async function saveScan(
       await delay(200);
     }
   }
-  console.log(`Job state: ${job.jobState}, totalPages: ${job.totalPageNumber}`);
+  console.log(`Job state: ${job.jobState}, totalPages: ${job.totalPageNumber}:`);
+  scanJobContent.elements.forEach(e => console.log(`\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${e.height} - ${e.path}`))
 }
 
 let iteration = 0;
