@@ -17,6 +17,7 @@ import WalkupScanDestination from "./WalkupScanDestination";
 import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
 import JpegUtil from "../src/JpegUtil";
 import PathHelper from "./PathHelper";
+import { createPdfFrom, ScanContent, ScanPage } from "./ScanContent";
 
 const program = new Command();
 
@@ -26,7 +27,10 @@ function delay(t: number): Promise<void> {
   });
 }
 
-  async function waitForScanEvent(resourceURI: string, afterEtag: string | null = null): Promise<Event> {
+async function waitForScanEvent(
+  resourceURI: string,
+  afterEtag: string | null = null
+): Promise<Event> {
   console.log("Start listening for new ScanEvent");
 
   let eventTable = await HPApi.getEvents(afterEtag ?? "");
@@ -159,22 +163,15 @@ function createScanPage(
   currentPageNumber: number,
   filePath: string,
   sizeFixed: number | null
-) {
-  let height = sizeFixed ?? parseInt(job.imageHeight ?? "unknown");
-  if (isNaN(height)) {
-    console.log("Fail to parse height: " + job.imageHeight);
-  }
-
-  let width = parseInt(job.imageWidth ?? "unknown");
-  if (isNaN(width)) {
-    console.log("Fail to parse height: " + job.imageWidth);
-  }
-
+): ScanPage {
+  let height = sizeFixed ?? job.imageHeight;
   return {
     path: filePath,
     pageNumber: currentPageNumber,
-    width: width,
-    height: height,
+    width: job.imageWidth,
+    height,
+    xResolution: job.xResolution,
+    yResolution: job.yResolution,
   };
 }
 
@@ -195,7 +192,7 @@ async function handleProcessingState(
       job.binaryURL
     );
 
-    const destinationFilePath = PathHelper.getNextFile(
+    const destinationFilePath = PathHelper.getFileForPage(
       folder,
       scanCount,
       currentPageNumber,
@@ -250,15 +247,6 @@ async function waitScanRequest(compEventURI: string): Promise<boolean> {
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
   }
   return true;
-}
-interface ScanContent {
-  elements: ScanPage[];
-}
-interface ScanPage {
-  path: string;
-  pageNumber: number;
-  width: number;
-  height: number;
 }
 
 async function executeScanJob(
@@ -346,8 +334,15 @@ async function executeScanJobs(
     scanJobContent
   );
   let lastEvent = firstEvent;
-  if (lastEvent.compEventURI && inputSource !== "Adf" && lastEvent.destinationURI) {
-    lastEvent = await waitForScanEvent(lastEvent.destinationURI, lastEvent.agingStamp);
+  if (
+    lastEvent.compEventURI &&
+    inputSource !== "Adf" &&
+    lastEvent.destinationURI
+  ) {
+    lastEvent = await waitForScanEvent(
+      lastEvent.destinationURI,
+      lastEvent.agingStamp
+    );
     if (!lastEvent.compEventURI) {
       return;
     }
@@ -363,13 +358,51 @@ async function executeScanJobs(
       if (!lastEvent.destinationURI) {
         break;
       }
-      lastEvent = await waitForScanEvent(lastEvent.destinationURI, lastEvent.agingStamp);
+      lastEvent = await waitForScanEvent(
+        lastEvent.destinationURI,
+        lastEvent.agingStamp
+      );
       if (!lastEvent.compEventURI) {
         return;
       }
       startNewScanJob = await waitScanNewPageRequest(lastEvent.compEventURI);
     }
   }
+}
+
+async function mergeToPdf(folder: string, scanCount: number, scanJobContent: ScanContent) {
+  const pdfFilePath = PathHelper.getFileForScan(
+    folder,
+    scanCount,
+    program.opts().pattern,
+    "pdf"
+  );
+  await createPdfFrom(scanJobContent, pdfFilePath);
+  scanJobContent.elements.forEach((e) => fs.unlink(e.path));
+  return pdfFilePath;
+}
+
+function displayPdfScan(pdfFilePath: string, scanJobContent: ScanContent) {
+  console.log(
+    `The following page(s) have been rendered inside '${pdfFilePath}': `
+  );
+  scanJobContent.elements.forEach((e) =>
+    console.log(
+      `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
+        e.height
+      }`
+    )
+  );
+}
+
+function displayJpegScan(scanJobContent: ScanContent) {
+  scanJobContent.elements.forEach((e) =>
+    console.log(
+      `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
+        e.height
+      } - ${e.path}`
+    )
+  );
 }
 
 async function saveScan(
@@ -391,7 +424,9 @@ async function saveScan(
   }
   console.log("Selected shortcut: " + destination.shortcut);
 
-  let contentType = destination.getContentType();
+  const contentType = destination.getContentType();
+  const toPdf =
+    destination.shortcut === "SavePDF" || destination.shortcut === "EmailPDF";
 
   const scanStatus = await HPApi.getScanStatus();
   console.log("Afd is : " + scanStatus.adfState);
@@ -412,15 +447,15 @@ async function saveScan(
   );
 
   console.log(
-    `Scan of pages completed totalPages: ${scanJobContent.elements.length}:`
+    `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`
   );
-  scanJobContent.elements.forEach((e) =>
-    console.log(
-      `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
-        e.height
-      } - ${e.path}`
-    )
-  );
+
+  if (toPdf) {
+    const pdfFilePath = await mergeToPdf(folder, scanCount, scanJobContent);
+    displayPdfScan(pdfFilePath, scanJobContent);
+  } else {
+    displayJpegScan(scanJobContent);
+  }
 }
 
 let iteration = 0;

@@ -10,7 +10,11 @@ export interface JobData {
         BufferInfo: {
           ImageWidth: string[];
           ImageHeight: string[];
-        }[]
+          ScanSettings: {
+            XResolution: string[];
+            YResolution: string[];
+          }[];
+        }[];
       }[];
       PostScanPage: {
         PageNumber: string[];
@@ -69,10 +73,28 @@ export default class Job {
     }
   }
 
-  get imageWidth(): string | null {
-    return this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]?.ImageWidth[0] ?? null;
+  get imageWidth(): number {
+    return parseInt(
+      this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
+        ?.ImageWidth[0] ?? ""
+    );
   }
-  get imageHeight(): string | null {
-    return this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]?.ImageHeight[0] ?? null;
+  get imageHeight(): number {
+    return parseInt(
+      this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
+        ?.ImageHeight[0] ?? ""
+    );
+  }
+  get xResolution(): number {
+    return parseInt(
+      this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
+        ?.ScanSettings?.[0]?.XResolution[0] ?? ""
+    );
+  }
+  get yResolution(): number {
+    return parseInt(
+      this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
+        ?.ScanSettings?.[0]?.YResolution[0] ?? ""
+    );
   }
 }
