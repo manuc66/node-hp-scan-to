@@ -3,9 +3,9 @@ import { expect } from "chai";
 import PathHelper from "../src/PathHelper";
 
 describe("PathHelper", () => {
-  describe("getNextFile", () => {
+  describe("getFileForPage", () => {
     it("Can format a file with formatted timestamp", async () => {
-      const nextFileName = PathHelper.getNextFile(
+      const nextFileName = PathHelper.getFileForPage(
         "someFolder",
         2,
         1,
@@ -25,7 +25,7 @@ describe("PathHelper", () => {
       );
     });
     it("Can format a file based on scan count and page number", async () => {
-      const nextFileName = PathHelper.getNextFile(
+      const nextFileName = PathHelper.getFileForPage(
         "someFolder",
         2,
         1,
