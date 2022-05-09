@@ -7,6 +7,8 @@
 
 Little command line program that allow to send scan from device to computer.
 
+Can be ran with npx : `npx node-hp-scan-to` or with Docker (see below)
+
 Developed and tested for the following HP All-in-One Printers:
 - HP Officejet 6500A Plus
 - HP Deskjet 3520
