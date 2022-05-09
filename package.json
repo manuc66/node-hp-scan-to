@@ -64,7 +64,7 @@
     "bonjour": "^3.5.0",
     "commander": "^9.0.0",
     "dateformat": "^4.6.3",
-    "eslint": "^8.1.0",
+    "eslint": "^8.15.0",
     "xml2js": "^0.4.23",
     "jspdf": "^2.5.1",
     "yarn": "^1.22.18"
