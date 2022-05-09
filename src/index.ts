@@ -15,7 +15,7 @@ import HPApi from "./HPApi";
 import Job from "./Job";
 import WalkupScanDestination from "./WalkupScanDestination";
 import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
-import JpegUtil from "../src/JpegUtil";
+import JpegUtil from "./JpegUtil";
 import PathHelper from "./PathHelper";
 import { createPdfFrom, ScanContent, ScanPage } from "./ScanContent";
 
