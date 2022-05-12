@@ -3,12 +3,18 @@ const parser = new xml2js.Parser();
 const util = require("util");
 
 export default class ScanJobSettings {
-  private readonly inputSource: string;
-  private readonly contentType: string;
+  private readonly inputSource: "Adf" | "Platen";
+  private readonly contentType: "Document" | "Photo";
+  private readonly isDuplex: boolean;
 
-  constructor(inputSource: string, contentType: string) {
+  constructor(
+    inputSource: "Adf" | "Platen",
+    contentType: "Document" | "Photo",
+    isDuplex: boolean
+  ) {
     this.inputSource = inputSource;
     this.contentType = contentType;
+    this.isDuplex = isDuplex;
   }
 
   async toXML(): Promise<string> {
@@ -43,6 +49,9 @@ export default class ScanJobSettings {
     const parsed = await util.promisify(parser.parseString)(rawJob);
 
     parsed.ScanSettings.InputSource[0] = this.inputSource;
+    if (this.inputSource === "Adf" && this.isDuplex) {
+      parsed.ScanSettings["AdfOptions"] = [{ AdfOption: ["Duplex"] }];
+    }
     parsed.ScanSettings.ContentType[0] = this.contentType;
 
     let builder = new xml2js.Builder({

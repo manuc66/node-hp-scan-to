@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!---->
+<wus:WalkupScanToCompDestination xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 WalkupScanToComp.xsd" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:dd3="http://www.hp.com/schemas/imaging/con/dictionaries/2009/04/06" xmlns:scantype="http://www.hp.com/schemas/imaging/con/ledm/scantype/2008/03/17" xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <dd:ResourceURI>/WalkupScanToComp/WalkupScanToCompDestinations/1c881fde-c4a0-1f08-822f-a01d48c5c091</dd:ResourceURI>
+    <dd:Name>FIXE</dd:Name>
+    <dd3:Hostname>FIXE</dd3:Hostname>
+    <wus:LinkType>Network</wus:LinkType>
+    <wus:WalkupScanToCompSettings>
+        <scantype:ScanSettings>
+            <dd:ScanPlexMode>Simplex</dd:ScanPlexMode>
+        </scantype:ScanSettings>
+        <wus:Shortcut>SavePDF</wus:Shortcut>
+    </wus:WalkupScanToCompSettings>
+</wus:WalkupScanToCompDestination>

@@ -118,7 +118,9 @@ async function register(): Promise<string> {
   return resourceURI;
 }
 
-async function TryGetDestination(event: Event) {
+async function TryGetDestination(
+  event: Event
+): Promise<WalkupScanDestination | WalkupScanToCompDestination | null> {
   //this code can in some cases be executed before the user actually chooses between Document or Photo
   //so lets fetch the contentType (Document or Photo) until we get a value
   let destination: WalkupScanDestination | WalkupScanToCompDestination | null =
@@ -370,7 +372,11 @@ async function executeScanJobs(
   }
 }
 
-async function mergeToPdf(folder: string, scanCount: number, scanJobContent: ScanContent) {
+async function mergeToPdf(
+  folder: string,
+  scanCount: number,
+  scanJobContent: ScanContent
+) {
   const pdfFilePath = PathHelper.getFileForScan(
     folder,
     scanCount,
@@ -428,14 +434,22 @@ async function saveScan(
   const toPdf =
     destination.shortcut === "SavePDF" || destination.shortcut === "EmailPDF";
 
+  const isDuplex =
+    destination.scanPlexMode != null && destination.scanPlexMode != "Simplex";
+  console.log("ScanPlexMode is : " + destination.scanPlexMode);
+
   const scanStatus = await HPApi.getScanStatus();
   console.log("Afd is : " + scanStatus.adfState);
 
-  let inputSource = scanStatus.getInputSource();
+  const inputSource = scanStatus.getInputSource();
 
-  let scanJobSettings = new ScanJobSettings(inputSource, contentType);
+  const scanJobSettings = new ScanJobSettings(
+    inputSource,
+    contentType,
+    isDuplex
+  );
 
-  let scanJobContent: ScanContent = { elements: [] };
+  const scanJobContent: ScanContent = { elements: [] };
 
   await executeScanJobs(
     scanJobSettings,
