@@ -40,7 +40,11 @@ export default class WalkupScanDestination {
     ]["wus:WalkupScanSettings"]["0"]["wus:Shortcut"][0];
   }
 
-  getContentType(): string {
+  getContentType(): "Document" | "Photo" {
     return this.shortcut === "SavePDF" ? "Document" : "Photo";
+  }
+
+  get scanPlexMode(): string | null {
+    return null;
   }
 }
