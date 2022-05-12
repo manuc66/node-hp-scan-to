@@ -92,3 +92,10 @@ Public Pre-built Docker image:
 ## Debugging
 I'm using Visual Studio Code to debug this application, so instead of running ts-node just enter `code .` and press F5 to start debugging.
 You may want to set your printers ip or name in `.vscode/launch.json`.
+
+
+## 💖 Support this project
+If this project helped you save money or time or simply makes your life also easier, you can give me a cup of coffee =)
+
+- [![Support via PayPal](https://cdn.rawgit.com/twolfson/paypal-github-button/1.0.0/dist/button.svg)](https://www.paypal.me/manuc66)
+- Bitcoin — You can send me bitcoins at this address: `33gxVjey6g4Beha26fSQZLFfWWndT1oY3F`
