@@ -21,15 +21,15 @@ export default class WalkupScanToCompDestination {
   }
 
   get name(): string {
-    return this.data["wus:WalkupScanToCompDestination"]?.["dd:Name"][0];
+    return this.data["wus:WalkupScanToCompDestination"]["dd:Name"][0];
   }
 
   get hostname(): string {
-    return this.data["wus:WalkupScanToCompDestination"]?.["dd3:Hostname"][0];
+    return this.data["wus:WalkupScanToCompDestination"]["dd3:Hostname"][0];
   }
 
   get resourceURI(): string {
-    return this.data["wus:WalkupScanToCompDestination"]?.["dd:ResourceURI"][0];
+    return this.data["wus:WalkupScanToCompDestination"]["dd:ResourceURI"][0];
   }
 
   get shortcut(): string {
@@ -46,7 +46,7 @@ export default class WalkupScanToCompDestination {
   }
 
   get scanPlexMode(): string | null {
-    return this.data["wus:WalkupScanToCompDestination"]?.["wus:WalkupScanToCompSettings"]?.["0"]?.["scantype:ScanSettings"]?.["0"]?.["dd:ScanPlexMode"]?.[0] || null;
+    return this.data["wus:WalkupScanToCompDestination"]["wus:WalkupScanToCompSettings"]["0"]["scantype:ScanSettings"]["0"]["dd:ScanPlexMode"][0] || null;
   }
 
   getContentType(): "Document" | "Photo" {
