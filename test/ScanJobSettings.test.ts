@@ -14,5 +14,14 @@ describe("ScanJobSettings", () => {
       );
       expect((await scanJobSettings.toXML()).trimEnd()).to.be.eq(content.trimEnd());
     });
+
+    it("Allows to describe an ADF single side", async () => {
+      const scanJobSettings = new ScanJobSettings("Adf", "Document", false);
+
+      const content: string = await fs.readFile(
+        path.resolve(__dirname, "./asset/adf_simplex_job.xml"), {encoding:'utf8' }
+      );
+      expect((await scanJobSettings.toXML()).trimEnd()).to.be.eq(content.trimEnd());
+    });
   });
 });
