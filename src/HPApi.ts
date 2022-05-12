@@ -16,7 +16,7 @@ import axios, {
 } from "axios";
 import { URL } from "url";
 import { Parser } from "xml2js";
-import * as stream from 'stream/promises';
+import * as stream from 'stream';
 import EventTable, { EventTableData } from "./EventTable";
 import Job, { JobData } from "./Job";
 import ScanStatus, { ScanStatusData } from "./ScanStatus";
@@ -358,7 +358,7 @@ export default class HPApi {
     const destinationFileStream = fs.createWriteStream(destination);
     data.pipe(destinationFileStream);
 
-    await stream.finished(destinationFileStream);
+    await promisify(stream.finished)(destinationFileStream);
 
     return destination;
   }
