@@ -12,12 +12,10 @@ ADD root/ /
 
 # add S6 Overlay
 ADD https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-noarch.tar.xz /tmp
-RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz
 ADD https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-x86_64.tar.xz /tmp
-RUN tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz
-
-# install shadow (for groupmod and usermod) and tzdata (for TZ env variable)
-RUN apk add --no-cache shadow tzdata
+RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
+ && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
+ && apk add --no-cache shadow tzdata # install shadow (for groupmod and usermod) and tzdata (for TZ env variable)
 
 # add builded app
 WORKDIR /app
