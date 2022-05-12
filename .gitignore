@@ -1,5 +1,7 @@
 /.idea/
 /node_modules/
 /dist/
+/coverage/
+/.nyc_output/
 /package-lock.json
 /yarn-error.log
