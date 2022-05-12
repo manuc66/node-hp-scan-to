@@ -1,18 +1,18 @@
 "use strict";
 
 export interface WalkupScanDestinationData {
-  "dd:Name": string[];
-  "dd:ResourceURI": string[];
   "wus:WalkupScanDestinations": {
     "wus:WalkupScanDestination": {
-      "0": {
-        "wus:WalkupScanSettings": {
-          "0": {
-            "wus:Shortcut": string[];
-          };
-        };
-      };
-    };
+      "dd:Name": string[];
+      "dd3:Hostname": string[];
+      "dd:ResourceURI": string[];
+      "wus:WalkupScanSettings": {
+        "scantype:ScanSettings": {
+          "dd:ScanPlexMode": string[];
+        }[];
+        "wus:Shortcut": string[];
+      }[];
+    }[];
   };
 }
 
@@ -23,15 +23,21 @@ export default class WalkupScanDestination {
   }
 
   get name(): string {
-    return this.data["dd:Name"][0];
+    return this.data["wus:WalkupScanDestinations"][
+      "wus:WalkupScanDestination"
+    ][0]["dd:Name"][0];
   }
 
   get hostname(): string {
-    return this.data["dd:ResourceURI"][0];
+    return this.data["wus:WalkupScanDestinations"][
+      "wus:WalkupScanDestination"
+    ][0]["dd3:Hostname"][0];
   }
 
   get resourceURI(): string {
-    return this.data["dd:ResourceURI"][0];
+    return this.data["wus:WalkupScanDestinations"][
+      "wus:WalkupScanDestination"
+    ][0]["dd:ResourceURI"][0];
   }
 
   get shortcut(): string {
@@ -45,6 +51,8 @@ export default class WalkupScanDestination {
   }
 
   get scanPlexMode(): string | null {
-    return null;
+    return this.data["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"][
+      "0"
+      ]["wus:WalkupScanSettings"]["0"]["scantype:ScanSettings"][0]["dd:ScanPlexMode"]?.[0];
   }
 }
