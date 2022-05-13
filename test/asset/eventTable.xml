@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- THIS DATA SUBJECT TO DISCLAIMER(S) INCLUDED WITH THE PRODUCT OF ORIGIN. -->
+<ev:EventTable xmlns:ev="http://www.hp.com/schemas/imaging/con/ledm/events/2007/09/16"                                                                 xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/"                                                                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"                                                                                   xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/events/2007/09/16 ../schemas/ledmEvents.xsd                                 http://www.hp.com/schemas/imaging/con/dictionaries/1.0/ ../schemas/dd/DataDictionaryMasterLEDM.xsd">
+  <dd:Version>
+    <dd:Revision>SVN.3295</dd:Revision>
+  </dd:Version>
+  <ev:Event>
+    <dd:UnqualifiedEventCategory>DeviceCapabilitiesChanged</dd:UnqualifiedEventCategory>
+    <dd:AgingStamp>139-1</dd:AgingStamp>
+  </ev:Event>
+  <ev:Event>
+    <dd:UnqualifiedEventCategory>PowerUpEvent</dd:UnqualifiedEventCategory>
+    <dd:AgingStamp>163-1</dd:AgingStamp>
+  </ev:Event>
+  <ev:Event>
+    <dd:UnqualifiedEventCategory>AlertTableChanged</dd:UnqualifiedEventCategory>
+    <dd:AgingStamp>164-9</dd:AgingStamp>
+  </ev:Event>
+  <ev:Event>
+    <dd:UnqualifiedEventCategory>JobEvent</dd:UnqualifiedEventCategory>
+    <dd:AgingStamp>164-11</dd:AgingStamp>
+  </ev:Event>
+  <ev:Event>
+    <dd:UnqualifiedEventCategory>ScanEvent</dd:UnqualifiedEventCategory>
+    <dd:AgingStamp>164-12</dd:AgingStamp>
+    <ev:Payload>
+      <dd:ResourceURI>http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113</dd:ResourceURI>
+      <dd:ResourceType>hpCnxWalkupScanDestinations</dd:ResourceType>
+    </ev:Payload>
+  </ev:Event>
+</ev:EventTable>

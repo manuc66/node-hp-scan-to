@@ -9,7 +9,7 @@ describe("PathHelper", () => {
         "someFolder",
         2,
         1,
-        '"scan"_dd.mm.yyyy_hh:MM:ss',
+        '"scan"_dd.mm.yyyy_HH:MM:ss',
         "jpg"
       );
       const now = new Date();
