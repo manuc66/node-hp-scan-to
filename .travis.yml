@@ -17,19 +17,8 @@ script:
   - export REPO=manuc66/node-hp-scan-to
   - docker build -f Dockerfile -t $REPO:$TRAVIS_COMMIT .
 after_success:
-  - echo $TRAVIS_COMMIT
-  - echo $TRAVIS_BRANCH
-  - echo $TRAVIS_REPO_SLUG
-  - echo $TRAVIS_PULL_REQUEST
   - if [ "$TRAVIS_PULL_REQUEST" = "false" ] && [ "$TRAVIS_REPO_SLUG" == "manuc66/node-hp-scan-to" ]; then
       export TAG=`if [ "$TRAVIS_BRANCH" == "master" ]; then echo "latest"; else echo ${TRAVIS_BRANCH//\//_} ; fi`;
-      echo 1;
       echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin;
-      echo 2;
-      docker tag  "${REPO}:${TRAVIS_COMMIT}" "${REPO}:${TAG}";
-      echo "${REPO}:${TRAVIS_COMMIT}";
-      echo "${REPO}:${TAG}";
-      echo 3;
       docker push "${REPO}:${TAG}";
-      echo 4;
     fi
