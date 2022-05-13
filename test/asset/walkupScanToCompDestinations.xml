@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!---->
+<wus:WalkupScanToCompDestinations xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 ../../schemas/WalkupScanToComp.xsd" xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:dd3="http://www.hp.com/schemas/imaging/con/dictionaries/2009/04/06" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <wus:WalkupScanToCompDestination>
+        <dd:ResourceURI>/WalkupScanToComp/WalkupScanToCompDestinations/4ad05d8e-20e8-4b8c-bdaa-5e6eca0dd3d8</dd:ResourceURI>
+        <dd:Name>8d170beb5887</dd:Name>
+        <dd3:Hostname>8d170beb5887</dd3:Hostname>
+        <wus:LinkType>Network</wus:LinkType>
+    </wus:WalkupScanToCompDestination>
+</wus:WalkupScanToCompDestinations>

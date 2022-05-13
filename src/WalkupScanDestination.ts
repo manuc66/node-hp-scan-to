@@ -1,19 +1,15 @@
 "use strict";
 
 export interface WalkupScanDestinationData {
-  "wus:WalkupScanDestinations": {
-    "wus:WalkupScanDestination": {
-      "dd:Name": string[];
-      "dd3:Hostname": string[];
-      "dd:ResourceURI": string[];
-      "wus:WalkupScanSettings": {
-        "scantype:ScanSettings": {
-          "dd:ScanPlexMode": string[];
-        }[];
-        "wus:Shortcut": string[];
-      }[];
+  "dd:Name": string[];
+  "dd3:Hostname": string[];
+  "dd:ResourceURI": string[];
+  "wus:WalkupScanSettings": {
+    "scantype:ScanSettings": {
+      "dd:ScanPlexMode": string[];
     }[];
-  };
+    "wus:Shortcut": string[];
+  }[];
 }
 
 export default class WalkupScanDestination {
@@ -23,27 +19,22 @@ export default class WalkupScanDestination {
   }
 
   get name(): string {
-    return this.data["wus:WalkupScanDestinations"][
-      "wus:WalkupScanDestination"
-    ][0]["dd:Name"][0];
+    return this.data["dd:Name"][0];
   }
 
   get hostname(): string {
-    return this.data["wus:WalkupScanDestinations"][
-      "wus:WalkupScanDestination"
-    ][0]["dd3:Hostname"][0];
+    return this.data["dd3:Hostname"][0];
   }
 
   get resourceURI(): string {
-    return this.data["wus:WalkupScanDestinations"][
-      "wus:WalkupScanDestination"
-    ][0]["dd:ResourceURI"][0];
+    return this.data["dd:ResourceURI"][0];
   }
 
-  get shortcut(): string {
-    return this.data["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"][
-      "0"
-    ]["wus:WalkupScanSettings"]["0"]["wus:Shortcut"][0];
+  get shortcut(): string | null {
+    if (this.data.hasOwnProperty("wus:WalkupScanSettings")) {
+      return this.data["wus:WalkupScanSettings"]["0"]["wus:Shortcut"][0];
+    }
+    return null;
   }
 
   getContentType(): "Document" | "Photo" {
@@ -51,8 +42,11 @@ export default class WalkupScanDestination {
   }
 
   get scanPlexMode(): string | null {
-    return this.data["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"][
-      "0"
-      ]["wus:WalkupScanSettings"]["0"]["scantype:ScanSettings"][0]["dd:ScanPlexMode"]?.[0];
+    if (this.data.hasOwnProperty("wus:WalkupScanSettings")) {
+      return this.data["wus:WalkupScanSettings"]["0"][
+        "scantype:ScanSettings"
+      ][0]["dd:ScanPlexMode"][0];
+    }
+    return null;
   }
 }
