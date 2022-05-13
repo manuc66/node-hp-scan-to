@@ -16,7 +16,7 @@ import axios, {
 } from "axios";
 import { URL } from "url";
 import { Parser } from "xml2js";
-import * as stream from 'stream';
+import * as stream from "stream";
 import EventTable, { EventTableData } from "./EventTable";
 import Job, { JobData } from "./Job";
 import ScanStatus, { ScanStatusData } from "./ScanStatus";
@@ -94,10 +94,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw new Error(response.statusText);
     } else {
-      const parsed = (await parseString(
-        response.data
-      )) as WalkupScanDestinationsData;
-      return new WalkupScanDestinations(parsed);
+      return HPApi.createWalkupScanDestinations(response.data);
     }
   }
 
@@ -112,10 +109,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw new Error(response.statusText);
     } else {
-      const parsed = (await parseString(
-        response.data
-      )) as WalkupScanToCompDestinationsData;
-      return new WalkupScanToCompDestinations(parsed);
+      return HPApi.createWalkupScanToCompDestinations(response.data);
     }
   }
 
@@ -131,7 +125,9 @@ export default class HPApi {
     );
   }
 
-  static async getWalkupScanToCompEvent(compEventURI: string): Promise<WalkupScanToCompEvent> {
+  static async getWalkupScanToCompEvent(
+    compEventURI: string
+  ): Promise<WalkupScanToCompEvent> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: compEventURI,
@@ -247,7 +243,9 @@ export default class HPApi {
     return url;
   }
 
-  static async getDestination(destinationURL: string) {
+  static async getDestination(
+    destinationURL: string
+  ): Promise<WalkupScanDestination | WalkupScanToCompDestination> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: destinationURL,
@@ -266,17 +264,39 @@ export default class HPApi {
       }
     }
   }
-
-  static async createWalkupScanDestination(content: string) {
-    const parsed = (await parseString(content)) as WalkupScanDestinationData;
-    return new WalkupScanDestination(parsed);
+  static async createWalkupScanDestinations(
+    content: string
+  ): Promise<WalkupScanDestinations> {
+    const parsed = (await parseString(content)) as WalkupScanDestinationsData;
+    return new WalkupScanDestinations(parsed);
   }
-
-  static async createWalkupScanToCompDestination(content: string) {
+  static async createWalkupScanToCompDestinations(
+    content: string
+  ): Promise<WalkupScanToCompDestinations> {
     const parsed = (await parseString(
       content
-    )) as WalkupScanToCompDestinationData;
-    return new WalkupScanToCompDestination(parsed);
+    )) as WalkupScanToCompDestinationsData;
+    return new WalkupScanToCompDestinations(parsed);
+  }
+
+  static async createWalkupScanDestination(
+    content: string
+  ): Promise<WalkupScanDestination> {
+    const parsed = (await parseString(content)) as {
+      "wus:WalkupScanDestinations":{"wus:WalkupScanDestination": WalkupScanDestinationData[]};
+    };
+    return new WalkupScanDestination(parsed["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"][0]);
+  }
+
+  static async createWalkupScanToCompDestination(
+    content: string
+  ): Promise<WalkupScanToCompDestination> {
+    const parsed = (await parseString(content)) as {
+      "wus:WalkupScanToCompDestination": WalkupScanToCompDestinationData;
+    };
+    return new WalkupScanToCompDestination(
+      parsed["wus:WalkupScanToCompDestination"]
+    );
   }
 
   static async createWalkupScanToCompEvent(content: string) {
