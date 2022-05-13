@@ -22,7 +22,7 @@ after_success:
   - echo $TRAVIS_REPO_SLUG
   - echo $TRAVIS_PULL_REQUEST
   - if [ "$TRAVIS_PULL_REQUEST" = "false" ] && [ "$TRAVIS_REPO_SLUG" == "manuc66/node-hp-scan-to" ]; then
-      export TAG=`if [ "$TRAVIS_BRANCH" == "master" ]; then echo "latest"; else echo $TRAVIS_BRANCH ; fi`;
+      export TAG=`if [ "$TRAVIS_BRANCH" == "master" ]; then echo "latest"; else echo ${TRAVIS_BRANCH//\//_} ; fi`;
       echo 1;
       echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin;
       echo 2;
