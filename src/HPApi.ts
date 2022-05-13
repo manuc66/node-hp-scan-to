@@ -39,6 +39,11 @@ let printerIP = "192.168.1.11";
 let debug = false;
 let callCount = 0;
 
+export interface EtagEventTable {
+  etag: string;
+  eventTable: EventTable;
+}
+
 export default class HPApi {
   static setPrinterIP(ip: string) {
     printerIP = ip;
@@ -186,10 +191,12 @@ export default class HPApi {
     }
   }
 
+
+
   static async getEvents(
     etag = "",
     timeout = 0
-  ): Promise<{ etag: string; eventTable: EventTable }> {
+  ): Promise<EtagEventTable> {
     let url = this.appendTimeout("/EventMgmt/EventTable", timeout);
 
     let headers = this.placeETagHeader(etag, {});
@@ -217,10 +224,16 @@ export default class HPApi {
       throw error;
     }
 
-    const parsed = await parseString(response.data);
+    const etagReceived = response.headers["etag"];
+    const content = response.data;
+    return this.createEtagEventTable(content, etagReceived);
+  }
+
+  static async createEtagEventTable(content: string, etagReceived: string) :Promise<EtagEventTable> {
+    const parsed = await parseString(content);
     return {
-      etag: response.headers["etag"],
-      eventTable: new EventTable(parsed as EventTableData),
+      etag: etagReceived,
+      eventTable: new EventTable(parsed as EventTableData)
     };
   }
 
