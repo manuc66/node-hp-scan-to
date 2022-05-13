@@ -24,5 +24,6 @@ after_success:
   - if [ "$TRAVIS_PULL_REQUEST" = "false" ] && [ "$TRAVIS_REPO_SLUG" == "manuc66/node-hp-scan-to" ]; then
       export TAG=`if [ "$TRAVIS_BRANCH" == "master" ]; then echo "latest"; else echo $TRAVIS_BRANCH ; fi`;
       echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin;
-      docker push $REPO:$TAG;
+      docker tag  "${REPO}:${TRAVIS_COMMIT}" "${REPO}:${TAG}";
+      docker push "${REPO}:${TAG}";
     fi
