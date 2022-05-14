@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- THIS DATA SUBJECT TO DISCLAIMER(S) INCLUDED WITH THE PRODUCT OF ORIGIN. -->
+<j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/jobs/2009/04/30" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:fax="http://www.hp.com/schemas/imaging/con/fax/2008/06/13" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/jobs/2009/04/30 ../schemas/Jobs.xsd">
+    <j:JobUrl>/Jobs/JobList/2</j:JobUrl>
+    <j:JobCategory>Scan</j:JobCategory>
+    <j:JobState>Completed</j:JobState>
+    <j:JobStateUpdate>164-4</j:JobStateUpdate>
+    <ScanJob xmlns="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19">
+        <PostScanPage>
+            <PageNumber>1</PageNumber>
+            <PageState>UploadCompleted</PageState>
+            <TotalLines>2294</TotalLines>
+        </PostScanPage>
+    </ScanJob>
+</j:Job>

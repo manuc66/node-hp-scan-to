@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- THIS DATA SUBJECT TO DISCLAIMER(S) INCLUDED WITH THE PRODUCT OF ORIGIN. -->
+<ScanStatus xmlns="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19">
+    <ScannerState>Idle</ScannerState>
+    <AdfState>Loaded</AdfState>
+</ScanStatus>

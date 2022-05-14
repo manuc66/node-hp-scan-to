@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!---->
+<wus:WalkupScanToCompEvent xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 WalkupScanToComp.xsd" xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <wus:WalkupScanToCompEventType>HostSelected</wus:WalkupScanToCompEventType>
+</wus:WalkupScanToCompEvent>
