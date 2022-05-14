@@ -16,7 +16,7 @@ export interface JobData {
           }[];
         }[];
       }[];
-      PostScanPage: {
+      PostScanPage?: {
         PageNumber: string[];
       }[];
     }[];
@@ -39,11 +39,14 @@ export default class Job {
     }
   }
 
-  get totalPageNumber(): number {
-    return parseInt(
-      this.data["j:Job"].ScanJob[0].PostScanPage[0].PageNumber[0],
-      10
-    );
+  get totalPageNumber(): number | null {
+    if (this.data["j:Job"].ScanJob[0].PostScanPage) {
+      return parseInt(
+        this.data["j:Job"].ScanJob[0].PostScanPage[0].PageNumber[0],
+        10
+      );
+    }
+    return null;
   }
 
   get jobState():
@@ -55,46 +58,53 @@ export default class Job {
     return this.data["j:Job"]["j:JobState"][0];
   }
 
-  get pageState(): string {
+  get pageState(): string | null {
     let preScanPage = this.data["j:Job"].ScanJob[0].PreScanPage;
     if (preScanPage) {
       return preScanPage[0].PageState[0];
-    } else {
-      return "";
-    }
-  }
-
-  get binaryURL(): string | null {
-    let preScanPage = this.data["j:Job"].ScanJob[0].PreScanPage;
-    if (preScanPage) {
-      return preScanPage[0].BinaryURL[0];
     } else {
       return null;
     }
   }
 
-  get imageWidth(): number {
+  get binaryURL(): string | null {
+    if (this.data["j:Job"].ScanJob[0].PreScanPage) {
+      return this.data["j:Job"].ScanJob[0].PreScanPage[0].BinaryURL[0];
+    }
+    return null;
+  }
+
+  get imageWidth(): number | null {
+    if (!this.data["j:Job"].ScanJob[0].hasOwnProperty("PreScanPage")) {
+      return null;
+    }
     return parseInt(
       this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
         ?.ImageWidth[0] ?? ""
     );
   }
-  get imageHeight(): number {
-    return parseInt(
-      this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
-        ?.ImageHeight[0] ?? ""
-    );
+  get imageHeight(): number | null{
+    if (this.data["j:Job"].ScanJob[0].PreScanPage) {
+      return parseInt(this.data["j:Job"].ScanJob[0].PreScanPage[0].BufferInfo[0].ImageHeight[0]);
+    }
+    return null;
   }
-  get xResolution(): number {
-    return parseInt(
-      this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
-        ?.ScanSettings?.[0]?.XResolution[0] ?? ""
-    );
+  get xResolution(): number | null {
+    if (this.data["j:Job"].ScanJob[0].PreScanPage) {
+      return parseInt(
+        this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
+          ?.ScanSettings?.[0]?.XResolution[0] ?? ""
+      );
+    }
+    return null;
   }
-  get yResolution(): number {
-    return parseInt(
-      this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
-        ?.ScanSettings?.[0]?.YResolution[0] ?? ""
-    );
+  get yResolution(): number | null {
+    if (this.data["j:Job"].ScanJob[0].hasOwnProperty("PreScanPage")) {
+      return parseInt(
+        this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
+          ?.ScanSettings?.[0]?.YResolution[0] ?? ""
+      );
+    }
+    return null;
   }
 }

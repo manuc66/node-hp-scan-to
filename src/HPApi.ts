@@ -191,12 +191,7 @@ export default class HPApi {
     }
   }
 
-
-
-  static async getEvents(
-    etag = "",
-    timeout = 0
-  ): Promise<EtagEventTable> {
+  static async getEvents(etag = "", timeout = 0): Promise<EtagEventTable> {
     let url = this.appendTimeout("/EventMgmt/EventTable", timeout);
 
     let headers = this.placeETagHeader(etag, {});
@@ -229,11 +224,14 @@ export default class HPApi {
     return this.createEtagEventTable(content, etagReceived);
   }
 
-  static async createEtagEventTable(content: string, etagReceived: string) :Promise<EtagEventTable> {
+  static async createEtagEventTable(
+    content: string,
+    etagReceived: string
+  ): Promise<EtagEventTable> {
     const parsed = await parseString(content);
     return {
       etag: etagReceived,
-      eventTable: new EventTable(parsed as EventTableData)
+      eventTable: new EventTable(parsed as EventTableData),
     };
   }
 
@@ -296,9 +294,13 @@ export default class HPApi {
     content: string
   ): Promise<WalkupScanDestination> {
     const parsed = (await parseString(content)) as {
-      "wus:WalkupScanDestinations":{"wus:WalkupScanDestination": WalkupScanDestinationData[]};
+      "wus:WalkupScanDestinations": {
+        "wus:WalkupScanDestination": WalkupScanDestinationData[];
+      };
     };
-    return new WalkupScanDestination(parsed["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"][0]);
+    return new WalkupScanDestination(
+      parsed["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"][0]
+    );
   }
 
   static async createWalkupScanToCompDestination(
@@ -328,9 +330,14 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      const parsed = (await parseString(response.data)) as ScanStatusData;
-      return new ScanStatus(parsed);
+      let content = response.data;
+      return this.createScanStatus(content);
     }
+  }
+
+  static async createScanStatus(content: string) : Promise<ScanStatus> {
+    const parsed = (await parseString(content)) as ScanStatusData;
+    return new ScanStatus(parsed);
   }
 
   static delay(t: number) {
@@ -372,9 +379,14 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      const parsed = (await parseString(response.data)) as JobData;
-      return new Job(parsed);
+      const content = response.data;
+      return this.createJob(content);
     }
+  }
+
+  static async createJob(content: string) : Promise<Job> {
+    const parsed = (await parseString(content)) as JobData;
+    return new Job(parsed);
   }
 
   static async downloadPage(
