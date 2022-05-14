@@ -115,6 +115,9 @@ async function register(): Promise<string> {
     );
     console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
   }
+
+  console.log(`Using: ${hostname}`);
+
   return resourceURI;
 }
 
@@ -170,10 +173,10 @@ function createScanPage(
   return {
     path: filePath,
     pageNumber: currentPageNumber,
-    width: job.imageWidth,
-    height,
-    xResolution: job.xResolution,
-    yResolution: job.yResolution,
+    width: job.imageWidth ?? 0,
+    height: height ?? 0,
+    xResolution: job.xResolution ?? 200,
+    yResolution: job.yResolution ?? 200,
   };
 }
 
