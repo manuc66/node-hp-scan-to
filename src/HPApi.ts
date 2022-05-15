@@ -36,7 +36,7 @@ export default class HPApi {
     debug = dbg;
   }
 
-  private static logDebug(callId: number, isRequest: boolean, msg: any) {
+  private static logDebug(callId: number, isRequest: boolean, msg: object | string) {
     if (debug) {
       const id = String(callId).padStart(4, "0");
       const content = typeof msg === "string" ? msg : JSON.stringify(msg);
