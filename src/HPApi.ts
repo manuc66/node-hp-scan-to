@@ -11,7 +11,7 @@ import axios, {
 import { URL } from "url";
 import * as stream from "stream";
 import { Stream } from "stream";
-import EventTable from "./EventTable";
+import EventTable, { EtagEventTable } from "./EventTable";
 import Job, { JobData } from "./Job";
 import ScanStatus from "./ScanStatus";
 import WalkupScanDestination from "./WalkupScanDestination";
@@ -29,10 +29,6 @@ let printerIP = "192.168.1.11";
 let debug = false;
 let callCount = 0;
 
-export interface EtagEventTable {
-  etag: string;
-  eventTable: EventTable;
-}
 
 export default class HPApi {
   static setPrinterIP(ip: string) {
