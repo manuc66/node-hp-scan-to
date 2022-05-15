@@ -2,8 +2,6 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
-import HPApi from "../src/HPApi";
-import WalkupScanToCompDestination from "../src/WalkupScanToCompDestination";
 import WalkupScanDestination from "../src/WalkupScanDestination";
 
 describe("WalkupScanDestination", () => {

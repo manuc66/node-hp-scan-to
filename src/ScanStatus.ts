@@ -2,7 +2,7 @@
 import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
-const parseString = promisify<string, any>(parser.parseString);
+const parseString = promisify<string, ScanStatusData>(parser.parseString);
 
 export interface ScanStatusData {
   ScanStatus: {
@@ -18,7 +18,7 @@ export default class ScanStatus {
   }
 
   static async createScanStatus(content: string): Promise<ScanStatus> {
-    const parsed = (await parseString(content)) as ScanStatusData;
+    const parsed = await parseString(content);
     return new ScanStatus(parsed);
   }
 

@@ -2,9 +2,6 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
-import HPApi from "../src/HPApi";
-import WalkupScanToCompDestination from "../src/WalkupScanToCompDestination";
-import WalkupScanDestination from "../src/WalkupScanDestination";
 import Job from "../src/Job";
 
 describe("Job", () => {
@@ -16,7 +13,7 @@ describe("Job", () => {
         path.resolve(__dirname, "./asset/job_processing.xml"),
         { encoding: "utf8" }
       );
-      job = await HPApi.createJob(content);
+      job = await Job.createJob(content);
     });
 
     it("Parse jobState", async () => {
@@ -63,7 +60,7 @@ describe("Job", () => {
         path.resolve(__dirname, "./asset/job_completed.xml"),
         { encoding: "utf8" }
       );
-      job = await HPApi.createJob(content);
+      job = await Job.createJob(content);
     });
 
     it("Parse jobState", async () => {
