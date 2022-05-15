@@ -2,7 +2,13 @@
 import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
-const parseString = promisify<string, any>(parser.parseString);
+const parseString = promisify<string, WalkupScanDestinationsData>(parser.parseString);
+
+interface  WalkupScanDestinationsData {
+  "wus:WalkupScanDestinations": {
+    "wus:WalkupScanDestination": WalkupScanDestinationData[];
+  };
+}
 
 export interface WalkupScanDestinationData {
   "dd:Name": string[];
@@ -24,11 +30,7 @@ export default class WalkupScanDestination {
   static async createWalkupScanDestination(
     content: string
   ): Promise<WalkupScanDestination> {
-    const parsed = (await parseString(content)) as {
-      "wus:WalkupScanDestinations": {
-        "wus:WalkupScanDestination": WalkupScanDestinationData[];
-      };
-    };
+    const parsed = await parseString(content);
     return new WalkupScanDestination(
       parsed["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"][0]
     );

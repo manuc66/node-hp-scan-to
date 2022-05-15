@@ -2,7 +2,7 @@
 import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
-const parseString = promisify<string, any>(parser.parseString);
+const parseString = promisify<string, WalkupScanToCompEventData>(parser.parseString);
 
 export interface WalkupScanToCompEventData {
   "wus:WalkupScanToCompEvent": {
@@ -16,7 +16,7 @@ export default class WalkupScanToCompEvent {
     this.data = data;
   }
   static async createWalkupScanToCompEvent(content: string) {
-    const parsed = (await parseString(content)) as WalkupScanToCompEventData;
+    const parsed = await parseString(content);
     return new WalkupScanToCompEvent(parsed);
   }
 

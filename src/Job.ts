@@ -1,4 +1,8 @@
 "use strict";
+import { Parser } from "xml2js";
+const parser = new Parser();
+import { promisify } from "util";
+const parseString = promisify<string, JobData>(parser.parseString);
 
 export interface JobData {
   "j:Job": {
@@ -28,6 +32,11 @@ export default class Job {
   private readonly data: JobData;
   constructor(data: JobData) {
     this.data = data;
+  }
+
+  static async createJob(content: string): Promise<Job> {
+    const parsed = await parseString(content);
+    return new Job(parsed);
   }
 
   get currentPageNumber(): string | null {

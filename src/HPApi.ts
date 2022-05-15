@@ -12,7 +12,7 @@ import { URL } from "url";
 import * as stream from "stream";
 import { Stream } from "stream";
 import EventTable, { EtagEventTable } from "./EventTable";
-import Job, { JobData } from "./Job";
+import Job from "./Job";
 import ScanStatus from "./ScanStatus";
 import WalkupScanDestination from "./WalkupScanDestination";
 import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
@@ -22,9 +22,6 @@ import ScanJobSettings from "./ScanJobSettings";
 import Destination from "./Destination";
 import WalkupScanToCompEvent from "./WalkupScanToCompEvent";
 
-import { Parser } from "xml2js";
-const parser = new Parser();
-const parseString = promisify<string, any>(parser.parseString);
 let printerIP = "192.168.1.11";
 let debug = false;
 let callCount = 0;
@@ -311,14 +308,10 @@ export default class HPApi {
       throw response;
     } else {
       const content = response.data;
-      return this.createJob(content);
+      return Job.createJob(content);
     }
   }
 
-  static async createJob(content: string): Promise<Job> {
-    const parsed = (await parseString(content)) as JobData;
-    return new Job(parsed);
-  }
 
   static async downloadPage(
     binaryURL: string,
