@@ -18,7 +18,7 @@ describe("ScanStatus", () => {
           __dirname,
           "./asset/scanStatus.xml"
         ),
-        { encoding: "utf8" }
+        { encoding: "utf8" } //
       );
       scanStatus = await HPApi.createScanStatus(content);
     });
