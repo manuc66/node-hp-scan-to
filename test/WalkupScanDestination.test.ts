@@ -29,6 +29,11 @@ describe("WalkupScanDestination", () => {
       expect(destination.shortcut).to.be.eq("SavePDF");
     });
 
+    it("Parse getContentType", async () => {
+      expect(destination.getContentType()).to.be.eq("Document");
+    });
+
+
     it("Parse resourceURI", async () => {
       expect(destination.resourceURI).to.be.eq(
         "http://192.168.1.7:8080/WalkupScan/WalkupScanDestinations/1cb3125d-7bde-1f09-8da2-2c768ab21113"

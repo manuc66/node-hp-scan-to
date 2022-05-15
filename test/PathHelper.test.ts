@@ -35,4 +35,34 @@ describe("PathHelper", () => {
       expect(nextFileName).to.be.eq(`someFolder/scan2_page1.jpg`);
     });
   });
+  describe("getFileForScan", () => {
+    it("Can format a file with formatted timestamp", async () => {
+      const nextFileName = PathHelper.getFileForScan(
+        "someFolder",
+        2,
+        '"scan"_dd.mm.yyyy_HH:MM:ss',
+        "pdf"
+      );
+      const now = new Date();
+      expect(nextFileName).to.be.eq(
+        `someFolder/scan_${("" + now.getDate()).padStart(2, "0")}.${(
+          "" +
+          (now.getMonth() + 1)
+        ).padStart(2, "0")}.${("" + now.getFullYear()).padStart(4, "0")}_${(
+          "" + (now.getHours())
+        ).padStart(2, "0")}:${("" + now.getMinutes()).padStart(2, "0")}:${(
+          "" + now.getSeconds()
+        ).padStart(2, "0")}.pdf`
+      );
+    });
+    it("Can format a file based on scan count and page number", async () => {
+      const nextFileName = PathHelper.getFileForScan(
+        "someFolder",
+        2,
+        undefined,
+        "pdf"
+      );
+      expect(nextFileName).to.be.eq(`someFolder/scan2.pdf`);
+    });
+  });
 });
