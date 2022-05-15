@@ -1,4 +1,8 @@
 "use strict";
+import { Parser } from "xml2js";
+const parser = new Parser();
+import { promisify } from "util";
+const parseString = promisify<string, any>(parser.parseString);
 
 export interface ScanStatusData {
   ScanStatus: {
@@ -11,6 +15,11 @@ export default class ScanStatus {
   private readonly data: ScanStatusData;
   constructor(data: ScanStatusData) {
     this.data = data;
+  }
+
+  static async createScanStatus(content: string): Promise<ScanStatus> {
+    const parsed = (await parseString(content)) as ScanStatusData;
+    return new ScanStatus(parsed);
   }
 
   get scannerState(): string {

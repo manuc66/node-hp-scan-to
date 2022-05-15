@@ -1,11 +1,5 @@
 "use strict";
 
-import WalkupScanDestination, {
-  WalkupScanDestinationData,
-} from "./WalkupScanDestination";
-import WalkupScanToCompDestination, {
-  WalkupScanToCompDestinationData,
-} from "./WalkupScanToCompDestination";
 import { promisify } from "util";
 import fs from "fs";
 import axios, {
@@ -15,24 +9,20 @@ import axios, {
   AxiosResponse,
 } from "axios";
 import { URL } from "url";
-import { Parser } from "xml2js";
 import * as stream from "stream";
-import EventTable, { EventTableData } from "./EventTable";
+import { Stream } from "stream";
+import EventTable from "./EventTable";
 import Job, { JobData } from "./Job";
-import ScanStatus, { ScanStatusData } from "./ScanStatus";
-import WalkupScanDestinations, {
-  WalkupScanDestinationsData,
-} from "./WalkupScanDestinations";
-import WalkupScanToCompDestinations, {
-  WalkupScanToCompDestinationsData,
-} from "./WalkupScanToCompDestinations";
+import ScanStatus from "./ScanStatus";
+import WalkupScanDestination from "./WalkupScanDestination";
+import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
+import WalkupScanDestinations from "./WalkupScanDestinations";
+import WalkupScanToCompDestinations from "./WalkupScanToCompDestinations";
 import ScanJobSettings from "./ScanJobSettings";
 import Destination from "./Destination";
-import { Stream } from "stream";
-import WalkupScanToCompEvent, {
-  WalkupScanToCompEventData,
-} from "./WalkupScanToCompEvent";
+import WalkupScanToCompEvent from "./WalkupScanToCompEvent";
 
+import { Parser } from "xml2js";
 const parser = new Parser();
 const parseString = promisify<string, any>(parser.parseString);
 let printerIP = "192.168.1.11";
@@ -99,7 +89,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw new Error(response.statusText);
     } else {
-      return HPApi.createWalkupScanDestinations(response.data);
+      return WalkupScanDestinations.createWalkupScanDestinations(response.data);
     }
   }
 
@@ -114,7 +104,9 @@ export default class HPApi {
     if (response.status !== 200) {
       throw new Error(response.statusText);
     } else {
-      return HPApi.createWalkupScanToCompDestinations(response.data);
+      return WalkupScanToCompDestinations.createWalkupScanToCompDestinations(
+        response.data
+      );
     }
   }
 
@@ -143,7 +135,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      return HPApi.createWalkupScanToCompEvent(response.data);
+      return WalkupScanToCompEvent.createWalkupScanToCompEvent(response.data);
     }
   }
 
@@ -221,18 +213,7 @@ export default class HPApi {
 
     const etagReceived = response.headers["etag"];
     const content = response.data;
-    return this.createEtagEventTable(content, etagReceived);
-  }
-
-  static async createEtagEventTable(
-    content: string,
-    etagReceived: string
-  ): Promise<EtagEventTable> {
-    const parsed = await parseString(content);
-    return {
-      etag: etagReceived,
-      eventTable: new EventTable(parsed as EventTableData),
-    };
+    return EventTable.createEtagEventTable(content, etagReceived);
   }
 
   static placeETagHeader(etag: string, headers: AxiosRequestHeaders) {
@@ -269,54 +250,13 @@ export default class HPApi {
     } else {
       const content = response.data;
       if (destinationURL.includes("WalkupScanToComp")) {
-        return this.createWalkupScanToCompDestination(content);
+        return WalkupScanToCompDestination.createWalkupScanToCompDestination(
+          content
+        );
       } else {
-        return this.createWalkupScanDestination(content);
+        return WalkupScanDestination.createWalkupScanDestination(content);
       }
     }
-  }
-  static async createWalkupScanDestinations(
-    content: string
-  ): Promise<WalkupScanDestinations> {
-    const parsed = (await parseString(content)) as WalkupScanDestinationsData;
-    return new WalkupScanDestinations(parsed);
-  }
-  static async createWalkupScanToCompDestinations(
-    content: string
-  ): Promise<WalkupScanToCompDestinations> {
-    const parsed = (await parseString(
-      content
-    )) as WalkupScanToCompDestinationsData;
-    return new WalkupScanToCompDestinations(parsed);
-  }
-
-  static async createWalkupScanDestination(
-    content: string
-  ): Promise<WalkupScanDestination> {
-    const parsed = (await parseString(content)) as {
-      "wus:WalkupScanDestinations": {
-        "wus:WalkupScanDestination": WalkupScanDestinationData[];
-      };
-    };
-    return new WalkupScanDestination(
-      parsed["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"][0]
-    );
-  }
-
-  static async createWalkupScanToCompDestination(
-    content: string
-  ): Promise<WalkupScanToCompDestination> {
-    const parsed = (await parseString(content)) as {
-      "wus:WalkupScanToCompDestination": WalkupScanToCompDestinationData;
-    };
-    return new WalkupScanToCompDestination(
-      parsed["wus:WalkupScanToCompDestination"]
-    );
-  }
-
-  static async createWalkupScanToCompEvent(content: string) {
-    const parsed = (await parseString(content)) as WalkupScanToCompEventData;
-    return new WalkupScanToCompEvent(parsed);
   }
 
   static async getScanStatus() {
@@ -331,13 +271,8 @@ export default class HPApi {
       throw response;
     } else {
       let content = response.data;
-      return this.createScanStatus(content);
+      return ScanStatus.createScanStatus(content);
     }
-  }
-
-  static async createScanStatus(content: string) : Promise<ScanStatus> {
-    const parsed = (await parseString(content)) as ScanStatusData;
-    return new ScanStatus(parsed);
   }
 
   static delay(t: number) {
@@ -384,7 +319,7 @@ export default class HPApi {
     }
   }
 
-  static async createJob(content: string) : Promise<Job> {
+  static async createJob(content: string): Promise<Job> {
     const parsed = (await parseString(content)) as JobData;
     return new Job(parsed);
   }
