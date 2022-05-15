@@ -66,6 +66,7 @@ describe("EtagEventTable", () => {
 
     it("Parse event compEventURI", async () => {
       expect(etagEventTable.eventTable.events[0].compEventURI).to.be.eq(undefined);
+      expect(etagEventTable.eventTable.events[3].compEventURI).to.be.eq("/WalkupScanToComp/WalkupScanToCompEvent");
     });
 
     it("Parse event destinationURI", async () => {
