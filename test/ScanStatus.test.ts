@@ -20,7 +20,7 @@ describe("ScanStatus", () => {
         ),
         { encoding: "utf8" } //
       );
-      scanStatus = await HPApi.createScanStatus(content);
+      scanStatus = await ScanStatus.createScanStatus(content);
     });
 
     it("Parse adfState", async () => {
@@ -47,7 +47,7 @@ describe("ScanStatus", () => {
         ),
         { encoding: "utf8" }
       );
-      scanStatus = await HPApi.createScanStatus(content);
+      scanStatus = await ScanStatus.createScanStatus(content);
     });
 
     it("Parse adfState", async () => {

@@ -18,7 +18,7 @@ describe("WalkupScanDestination", () => {
         ),
         { encoding: "utf8" }
       );
-      destination = await HPApi.createWalkupScanDestination(content);
+      destination = await WalkupScanDestination.createWalkupScanDestination(content);
     });
 
     it("Parse scanPlexMode", async () => {

@@ -1,11 +1,15 @@
 "use strict";
 
 import Event, { EventData } from "./Event";
-import { EtagEventTable } from "./HPApi";
 import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
 const parseString = promisify<string, any>(parser.parseString);
+
+export interface EtagEventTable {
+  etag: string;
+  eventTable: EventTable;
+}
 
 export interface EventTableData {
   "ev:EventTable"?: {

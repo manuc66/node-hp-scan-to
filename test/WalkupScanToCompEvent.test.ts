@@ -19,7 +19,7 @@ describe("WalkupScanToCompEvent", () => {
         ),
         { encoding: "utf8" }
       );
-      compEvent = await HPApi.createWalkupScanToCompEvent(content);
+      compEvent = await WalkupScanToCompEvent.createWalkupScanToCompEvent(content);
     });
 
     it("Parse eventType", async () => {

@@ -2,8 +2,9 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
-import HPApi, { EtagEventTable } from "../src/HPApi";
-import WalkupScanToCompDestinations from "../src/WalkupScanToCompDestinations";
+import HPApi from "../src/HPApi";
+import EventTable from "../src/EventTable";
+import { EtagEventTable } from "../src/EventTable";
 
 describe("EtagEventTable", () => {
   describe("Parsing eventTable.xml", async () => {
@@ -17,7 +18,7 @@ describe("EtagEventTable", () => {
         ),
         { encoding: "utf8" }
       );
-      etagEventTable = await HPApi.createEtagEventTable( content, "tag1");
+      etagEventTable = await EventTable.createEtagEventTable( content, "tag1");
     });
 
     it("tag", async () => {
@@ -56,7 +57,7 @@ describe("EtagEventTable", () => {
         ),
         { encoding: "utf8" }
       );
-      etagEventTable = await HPApi.createEtagEventTable( content, "tag1");
+      etagEventTable = await EventTable.createEtagEventTable( content, "tag1");
     });
 
     it("tag", async () => {
