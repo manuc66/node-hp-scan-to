@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- THIS DATA SUBJECT TO DISCLAIMER(S) INCLUDED WITH THE PRODUCT OF ORIGIN. -->
+<j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/jobs/2009/04/30" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:fax="http://www.hp.com/schemas/imaging/con/fax/2008/06/13" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/jobs/2009/04/30 ../schemas/Jobs.xsd">
+    <j:JobUrl>/Jobs/JobList/2</j:JobUrl>
+    <j:JobCategory>Scan</j:JobCategory>
+    <j:JobState>Processing</j:JobState>
+    <j:JobStateUpdate>164-3</j:JobStateUpdate>
+    <ScanJob xmlns="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19">
+        <PreScanPage>
+            <PageNumber>1</PageNumber>
+            <PageState>PreparingScan</PageState>
+            <BufferInfo>
+                <ScanSettings>
+                    <XResolution>200</XResolution>
+                    <YResolution>200</YResolution>
+                    <XStart>33</XStart>
+                    <YStart>0</YStart>
+                    <Width>2481</Width>
+                    <Height>3507</Height>
+                    <Format>Jpeg</Format>
+                    <CompressionQFactor>0</CompressionQFactor>
+                    <ColorSpace>Color</ColorSpace>
+                    <BitDepth>8</BitDepth>
+                    <InputSource>Adf</InputSource>
+                    <ContentType>Document</ContentType>
+                </ScanSettings>
+                <ImageWidth>1654</ImageWidth>
+                <ImageHeight>2338</ImageHeight>
+                <BytesPerLine>4962</BytesPerLine>
+                <Cooked>enabled</Cooked>
+            </BufferInfo>
+            <BinaryURL>/Scan/Jobs/2/Pages/1</BinaryURL>
+            <ImageOrientation>Normal</ImageOrientation>
+        </PreScanPage>
+    </ScanJob>
+</j:Job>

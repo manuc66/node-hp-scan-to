@@ -15,7 +15,11 @@ script:
   - yarn test-ci || travis_terminate 1
   - yarn build || travis_terminate 1
   - export REPO=manuc66/node-hp-scan-to
-  - docker build -f Dockerfile -t $REPO:latest .
+  - docker build -f Dockerfile -t $REPO:$TRAVIS_COMMIT .
 after_success:
-  - if [ "$TRAVIS_REPO_SLUG" == "manuc66/node-hp-scan-to" -a "$TRAVIS_PULL_REQUEST" == "false" -a "$TRAVIS_BRANCH" == "master" ]; then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; fi
-  - if [ "$TRAVIS_REPO_SLUG" == "manuc66/node-hp-scan-to" -a "$TRAVIS_PULL_REQUEST" == "false" -a "$TRAVIS_BRANCH" == "master" ]; then docker push $REPO:latest; fi
+  - if [ "$TRAVIS_PULL_REQUEST" = "false" ] && [ "$TRAVIS_REPO_SLUG" == "manuc66/node-hp-scan-to" ]; then
+      export TAG=`if [ "$TRAVIS_BRANCH" == "master" ]; then echo "latest"; else echo ${TRAVIS_BRANCH//\//_} ; fi`;
+      docker tag  "${REPO}:${TRAVIS_COMMIT}" "${REPO}:${TAG}";
+      echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin;
+      docker push "${REPO}:${TAG}";
+    fi
