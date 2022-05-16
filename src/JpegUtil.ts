@@ -8,7 +8,7 @@ export default class JpegUtil {
     debug = dbg;
   }
 
-  private static logDebug(msg: any) {
+  private static logDebug(msg: string | object) {
     if (debug) {
       console.log(msg);
     }

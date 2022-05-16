@@ -1,11 +1,5 @@
 "use strict";
 
-import WalkupScanDestination, {
-  WalkupScanDestinationData,
-} from "./WalkupScanDestination";
-import WalkupScanToCompDestination, {
-  WalkupScanToCompDestinationData,
-} from "./WalkupScanToCompDestination";
 import { promisify } from "util";
 import fs from "fs";
 import axios, {
@@ -15,29 +9,23 @@ import axios, {
   AxiosResponse,
 } from "axios";
 import { URL } from "url";
-import { Parser } from "xml2js";
-import * as stream from 'stream/promises';
-import EventTable, { EventTableData } from "./EventTable";
-import Job, { JobData } from "./Job";
-import ScanStatus, { ScanStatusData } from "./ScanStatus";
-import WalkupScanDestinations, {
-  WalkupScanDestinationsData,
-} from "./WalkupScanDestinations";
-import WalkupScanToCompDestinations, {
-  WalkupScanToCompDestinationsData,
-} from "./WalkupScanToCompDestinations";
+import * as stream from "stream";
+import { Stream } from "stream";
+import EventTable, { EtagEventTable } from "./EventTable";
+import Job from "./Job";
+import ScanStatus from "./ScanStatus";
+import WalkupScanDestination from "./WalkupScanDestination";
+import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
+import WalkupScanDestinations from "./WalkupScanDestinations";
+import WalkupScanToCompDestinations from "./WalkupScanToCompDestinations";
 import ScanJobSettings from "./ScanJobSettings";
 import Destination from "./Destination";
-import { Stream } from "stream";
-import WalkupScanToCompEvent, {
-  WalkupScanToCompEventData,
-} from "./WalkupScanToCompEvent";
+import WalkupScanToCompEvent from "./WalkupScanToCompEvent";
 
-const parser = new Parser();
-const parseString = promisify<string, any>(parser.parseString);
 let printerIP = "192.168.1.11";
 let debug = false;
 let callCount = 0;
+
 
 export default class HPApi {
   static setPrinterIP(ip: string) {
@@ -48,7 +36,7 @@ export default class HPApi {
     debug = dbg;
   }
 
-  private static logDebug(callId: number, isRequest: boolean, msg: any) {
+  private static logDebug(callId: number, isRequest: boolean, msg: object | string) {
     if (debug) {
       const id = String(callId).padStart(4, "0");
       const content = typeof msg === "string" ? msg : JSON.stringify(msg);
@@ -94,10 +82,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw new Error(response.statusText);
     } else {
-      const parsed = (await parseString(
-        response.data
-      )) as WalkupScanDestinationsData;
-      return new WalkupScanDestinations(parsed);
+      return WalkupScanDestinations.createWalkupScanDestinations(response.data);
     }
   }
 
@@ -112,10 +97,9 @@ export default class HPApi {
     if (response.status !== 200) {
       throw new Error(response.statusText);
     } else {
-      const parsed = (await parseString(
+      return WalkupScanToCompDestinations.createWalkupScanToCompDestinations(
         response.data
-      )) as WalkupScanToCompDestinationsData;
-      return new WalkupScanToCompDestinations(parsed);
+      );
     }
   }
 
@@ -131,7 +115,9 @@ export default class HPApi {
     );
   }
 
-  static async getWalkupScanToCompEvent(compEventURI: string): Promise<WalkupScanToCompEvent> {
+  static async getWalkupScanToCompEvent(
+    compEventURI: string
+  ): Promise<WalkupScanToCompEvent> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: compEventURI,
@@ -142,7 +128,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      return HPApi.createWalkupScanToCompEvent(response.data);
+      return WalkupScanToCompEvent.createWalkupScanToCompEvent(response.data);
     }
   }
 
@@ -190,10 +176,7 @@ export default class HPApi {
     }
   }
 
-  static async getEvents(
-    etag = "",
-    timeout = 0
-  ): Promise<{ etag: string; eventTable: EventTable }> {
+  static async getEvents(etag = "", timeout = 0): Promise<EtagEventTable> {
     let url = this.appendTimeout("/EventMgmt/EventTable", timeout);
 
     let headers = this.placeETagHeader(etag, {});
@@ -221,11 +204,9 @@ export default class HPApi {
       throw error;
     }
 
-    const parsed = await parseString(response.data);
-    return {
-      etag: response.headers["etag"],
-      eventTable: new EventTable(parsed as EventTableData),
-    };
+    const etagReceived = response.headers["etag"];
+    const content = response.data;
+    return EventTable.createEtagEventTable(content, etagReceived);
   }
 
   static placeETagHeader(etag: string, headers: AxiosRequestHeaders) {
@@ -247,7 +228,9 @@ export default class HPApi {
     return url;
   }
 
-  static async getDestination(destinationURL: string) {
+  static async getDestination(
+    destinationURL: string
+  ): Promise<WalkupScanDestination | WalkupScanToCompDestination> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: destinationURL,
@@ -260,28 +243,13 @@ export default class HPApi {
     } else {
       const content = response.data;
       if (destinationURL.includes("WalkupScanToComp")) {
-        return this.createWalkupScanToCompDestination(content);
+        return WalkupScanToCompDestination.createWalkupScanToCompDestination(
+          content
+        );
       } else {
-        return this.createWalkupScanDestination(content);
+        return WalkupScanDestination.createWalkupScanDestination(content);
       }
     }
-  }
-
-  static async createWalkupScanDestination(content: string) {
-    const parsed = (await parseString(content)) as WalkupScanDestinationData;
-    return new WalkupScanDestination(parsed);
-  }
-
-  static async createWalkupScanToCompDestination(content: string) {
-    const parsed = (await parseString(
-      content
-    )) as WalkupScanToCompDestinationData;
-    return new WalkupScanToCompDestination(parsed);
-  }
-
-  static async createWalkupScanToCompEvent(content: string) {
-    const parsed = (await parseString(content)) as WalkupScanToCompEventData;
-    return new WalkupScanToCompEvent(parsed);
   }
 
   static async getScanStatus() {
@@ -295,8 +263,8 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      const parsed = (await parseString(response.data)) as ScanStatusData;
-      return new ScanStatus(parsed);
+      let content = response.data;
+      return ScanStatus.createScanStatus(content);
     }
   }
 
@@ -339,10 +307,11 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      const parsed = (await parseString(response.data)) as JobData;
-      return new Job(parsed);
+      const content = response.data;
+      return Job.createJob(content);
     }
   }
+
 
   static async downloadPage(
     binaryURL: string,
@@ -358,7 +327,7 @@ export default class HPApi {
     const destinationFileStream = fs.createWriteStream(destination);
     data.pipe(destinationFileStream);
 
-    await stream.finished(destinationFileStream);
+    await promisify(stream.finished)(destinationFileStream);
 
     return destination;
   }

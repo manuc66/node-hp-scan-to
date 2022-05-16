@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<ScanSettings xmlns="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19 Scan Schema - 0.26.xsd">
+	<XResolution>200</XResolution>
+	<YResolution>200</YResolution>
+	<XStart>33</XStart>
+	<YStart>0</YStart>
+	<Width>2481</Width>
+	<Height>3507</Height>
+	<Format>Jpeg</Format>
+	<CompressionQFactor>0</CompressionQFactor>
+	<ColorSpace>Color</ColorSpace>
+	<BitDepth>8</BitDepth>
+	<InputSource>Adf</InputSource>
+	<GrayRendering>NTSC</GrayRendering>
+	<ToneMap>
+		<Gamma>1000</Gamma>
+		<Brightness>1000</Brightness>
+		<Contrast>1000</Contrast>
+		<Highlite>179</Highlite>
+		<Shadow>25</Shadow>
+		<Threshold>0</Threshold>
+	</ToneMap>
+	<SharpeningLevel>128</SharpeningLevel>
+	<NoiseRemoval>0</NoiseRemoval>
+	<ContentType>Document</ContentType>
+	<AdfOptions>
+		<AdfOption>Duplex</AdfOption>
+	</AdfOptions>
+</ScanSettings>

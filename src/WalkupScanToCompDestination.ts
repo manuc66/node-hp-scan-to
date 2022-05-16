@@ -1,27 +1,39 @@
 "use strict";
+import { Parser } from "xml2js";
+const parser = new Parser();
+import { promisify } from "util";
+const parseString = promisify<string, WalkupScanToCompDestinationRoot>(
+  parser.parseString
+);
+
+interface WalkupScanToCompDestinationRoot {
+  "wus:WalkupScanToCompDestination": WalkupScanToCompDestinationData;
+}
 
 export interface WalkupScanToCompDestinationData {
   "dd:Name": string[];
   "dd:ResourceURI": string[];
   "dd3:Hostname": string[];
-  "wus:WalkupScanToCompDestination": {
-    "wus:WalkupScanToCompSettings": {
-      "0": {
-        "scantype:Scansettings": {
-          "0": {
-            "dd:ScanPlexMode": string[];
-          };
-        };
-        "wus:Shortcut": string[]; //can be 'SaveDocument1' or 'SavePhoto1'
-      };
-    };
-  };
+  "wus:WalkupScanToCompSettings": {
+    "scantype:ScanSettings": {
+      "dd:ScanPlexMode": string[];
+    }[];
+    "wus:Shortcut": string[]; //can be 'SaveDocument1' or 'SavePhoto1'
+  }[];
 }
 
 export default class WalkupScanToCompDestination {
   private readonly data: WalkupScanToCompDestinationData;
   constructor(data: WalkupScanToCompDestinationData) {
     this.data = data;
+  }
+  static async createWalkupScanToCompDestination(
+    content: string
+  ): Promise<WalkupScanToCompDestination> {
+    const parsed = await parseString(content);
+    return new WalkupScanToCompDestination(
+      parsed["wus:WalkupScanToCompDestination"]
+    );
   }
 
   get name(): string {
@@ -36,20 +48,25 @@ export default class WalkupScanToCompDestination {
     return this.data["dd:ResourceURI"][0];
   }
 
-  get shortcut(): string {
-    if (
-      this.data["wus:WalkupScanToCompDestination"].hasOwnProperty(
-        "wus:WalkupScanToCompSettings"
-      )
-    ) {
-      return this.data["wus:WalkupScanToCompDestination"][
-        "wus:WalkupScanToCompSettings"
-      ]["0"]["wus:Shortcut"][0];
+  get shortcut(): string | null {
+    if (this.data.hasOwnProperty("wus:WalkupScanToCompSettings")) {
+      return this.data["wus:WalkupScanToCompSettings"]["0"]["wus:Shortcut"][0];
     }
-    return "";
+    return null;
   }
 
-  getContentType(): string {
+  get scanPlexMode(): string | null {
+    if (this.data.hasOwnProperty("wus:WalkupScanToCompSettings")) {
+      return (
+        this.data["wus:WalkupScanToCompSettings"]["0"]["scantype:ScanSettings"][
+          "0"
+        ]["dd:ScanPlexMode"][0] || null
+      );
+    }
+    return null;
+  }
+
+  getContentType(): "Document" | "Photo" {
     return this.shortcut === "SaveDocument1" ? "Document" : "Photo";
   }
 }

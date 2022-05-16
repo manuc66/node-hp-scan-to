@@ -6,7 +6,7 @@ export type EventData = {
   "ev:Payload": {
     "dd:ResourceURI": {
       "0": string;
-    },
+    };
     "dd:ResourceType": {
       "0": string;
     };
@@ -28,15 +28,25 @@ export default class Event {
   }
 
   get destinationURI(): string | undefined {
-    const destination = this.data["ev:Payload"].find(v => v["dd:ResourceType"]["0"].includes("Destination"));
+    if (this.data.hasOwnProperty("ev:Payload")) {
+      const destination = this.data["ev:Payload"].find((v) =>
+        v["dd:ResourceType"]["0"].includes("Destination")
+      );
 
-    return destination ? destination["dd:ResourceURI"]["0"] : undefined;
+      return destination ? destination["dd:ResourceURI"]["0"] : undefined;
+    }
+    return undefined;
   }
 
   get compEventURI(): string | undefined {
-    const compEvent = this.data["ev:Payload"].find(v => v["dd:ResourceType"]["0"].includes("CompEvent"));
+    if (this.data.hasOwnProperty("ev:Payload")) {
+      const compEvent = this.data["ev:Payload"].find((v) =>
+        v["dd:ResourceType"]["0"].includes("CompEvent")
+      );
 
-    return compEvent ? compEvent["dd:ResourceURI"]["0"] : undefined;
+      return compEvent ? compEvent["dd:ResourceURI"]["0"] : undefined;
+    }
+    return undefined;
   }
 
   get isScanEvent(): boolean {
