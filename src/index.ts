@@ -260,30 +260,31 @@ async function executeScanJob(
   folder: string,
   scanCount: number,
   scanJobContent: ScanContent
-) {
+): Promise<"Completed" | "Canceled"> {
   const jobUrl = await HPApi.postJob(scanJobSettings);
 
   console.log("New job created:", jobUrl);
 
+  let currentPage: ScanPage | null = null;
   let job = await HPApi.getJob(jobUrl);
   while (job.jobState !== "Completed") {
     job = await waitPrinterUntilItIsReadyToUploadOrCompleted(jobUrl);
 
     if (job.jobState == "Completed") {
+      if (currentPage != null) {
+        scanJobContent.elements.push(currentPage);
+      }
       continue;
     }
 
     if (job.jobState === "Processing") {
-      const page = await handleProcessingState(
+      currentPage = await handleProcessingState(
         job,
         inputSource,
         folder,
         scanCount,
         scanJobContent.elements.length + 1
       );
-      if (page != null) {
-        scanJobContent.elements.push(page);
-      }
     } else if (job.jobState === "Canceled") {
       console.log("Job cancelled by device");
       break;
@@ -293,8 +294,9 @@ async function executeScanJob(
     }
   }
   console.log(
-    `Job state: ${job.jobState}, totalPages: ${job.totalPageNumber}:`
+    `Job state: ${job.jobState}, totalPages: ${scanJobContent.elements.length}:`
   );
+  return job.jobState;
 }
 
 async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
@@ -330,8 +332,8 @@ async function executeScanJobs(
   scanCount: number,
   scanJobContent: ScanContent,
   firstEvent: Event
-) {
-  await executeScanJob(
+): Promise<"Completed" | "Canceled"> {
+  let jobState = await executeScanJob(
     scanJobSettings,
     inputSource,
     folder,
@@ -340,6 +342,7 @@ async function executeScanJobs(
   );
   let lastEvent = firstEvent;
   if (
+    jobState === "Completed" &&
     lastEvent.compEventURI &&
     inputSource !== "Adf" &&
     lastEvent.destinationURI
@@ -349,17 +352,20 @@ async function executeScanJobs(
       lastEvent.agingStamp
     );
     if (!lastEvent.compEventURI) {
-      return;
+      return jobState;
     }
     let startNewScanJob = await waitScanNewPageRequest(lastEvent.compEventURI);
     while (startNewScanJob) {
-      await executeScanJob(
+      jobState = await executeScanJob(
         scanJobSettings,
         inputSource,
         folder,
         scanCount,
         scanJobContent
       );
+      if (jobState !== "Completed") {
+        return jobState;
+      }
       if (!lastEvent.destinationURI) {
         break;
       }
@@ -368,14 +374,16 @@ async function executeScanJobs(
         lastEvent.agingStamp
       );
       if (!lastEvent.compEventURI) {
-        return;
+        return jobState;
       }
       startNewScanJob = await waitScanNewPageRequest(lastEvent.compEventURI);
     }
   }
+  return jobState;
 }
 
 async function mergeToPdf(
+  jobState: "Completed" | "Canceled",
   folder: string,
   scanCount: number,
   scanJobContent: ScanContent
@@ -386,7 +394,11 @@ async function mergeToPdf(
     program.opts().pattern,
     "pdf"
   );
-  await createPdfFrom(scanJobContent, pdfFilePath);
+  if (jobState == "Completed") {
+    await createPdfFrom(scanJobContent, pdfFilePath);
+  } else {
+    console.log(`No pdf generated because job has been cancelled`);
+  }
   scanJobContent.elements.forEach((e) => fs.unlink(e.path));
   return pdfFilePath;
 }
@@ -454,7 +466,7 @@ async function saveScan(
 
   const scanJobContent: ScanContent = { elements: [] };
 
-  await executeScanJobs(
+  const jobState = await executeScanJobs(
     scanJobSettings,
     inputSource,
     folder,
@@ -468,7 +480,12 @@ async function saveScan(
   );
 
   if (toPdf) {
-    const pdfFilePath = await mergeToPdf(folder, scanCount, scanJobContent);
+    const pdfFilePath = await mergeToPdf(
+      jobState,
+      folder,
+      scanCount,
+      scanJobContent
+    );
     displayPdfScan(pdfFilePath, scanJobContent);
   } else {
     displayJpegScan(scanJobContent);
@@ -558,7 +575,6 @@ async function main() {
   program.parse(process.argv);
 
   let ip = program.opts().address || "192.168.1.53";
-  //let ip = program.opts().address || "192.168.1.30" ;
   if (!ip) {
     ip = await findOfficejetIp();
   }
