@@ -455,7 +455,9 @@ async function saveScan(
   ) {
     toPdf = true;
     destinationFolder = tempFolder;
-    console.log(`Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`);
+    console.log(
+      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`
+    );
   } else {
     toPdf = false;
     destinationFolder = folder;
