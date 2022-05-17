@@ -15,7 +15,7 @@ if [ ! -z "$PATTERN" ]; then
 fi
 
 if [ ! -z "$TEMP_DIR" ]; then
-    ARGS="${ARGS} -t ${$TEMP_DIR}"
+    ARGS="${ARGS} -t ${TEMP_DIR}"
 fi
 
 if [ ! -z "$CMDLINE" ]; then
