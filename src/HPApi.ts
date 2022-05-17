@@ -26,7 +26,6 @@ let printerIP = "192.168.1.11";
 let debug = false;
 let callCount = 0;
 
-
 export default class HPApi {
   static setPrinterIP(ip: string) {
     printerIP = ip;
@@ -36,7 +35,11 @@ export default class HPApi {
     debug = dbg;
   }
 
-  private static logDebug(callId: number, isRequest: boolean, msg: object | string) {
+  private static logDebug(
+    callId: number,
+    isRequest: boolean,
+    msg: object | string
+  ) {
     if (debug) {
       const id = String(callId).padStart(4, "0");
       const content = typeof msg === "string" ? msg : JSON.stringify(msg);
@@ -132,22 +135,31 @@ export default class HPApi {
     }
   }
 
-  static async removeDestination(walkupScanDestination: WalkupScanDestination) {
-    let urlInfo = new URL(walkupScanDestination.resourceURI);
+  static async removeDestination(
+    walkupScanDestination: WalkupScanDestination | WalkupScanToCompDestination
+  ) {
 
-    if (urlInfo.pathname === null) {
-      throw new Error(
-        `invalid walkupScanDestination.resourceURI: ${walkupScanDestination.resourceURI}`
-      );
+    let path: string;
+
+    if (walkupScanDestination.resourceURI.startsWith("http")) {
+      let urlInfo = new URL(walkupScanDestination.resourceURI);
+      if (urlInfo.pathname === null) {
+        throw new Error(
+          `invalid walkupScanDestination.resourceURI: ${walkupScanDestination.resourceURI}`
+        );
+      }
+      path = urlInfo.pathname;
+    } else {
+      path = walkupScanDestination.resourceURI;
     }
 
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
-      url: urlInfo.pathname,
+      url: path,
       method: "DELETE",
       responseType: "text",
     });
-    if (response.status === 204) {
+    if (response.status === 204 || response.status == 200) {
       return true;
     } else {
       throw response;
@@ -311,7 +323,6 @@ export default class HPApi {
       return Job.createJob(content);
     }
   }
-
 
   static async downloadPage(
     binaryURL: string,
