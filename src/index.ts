@@ -429,6 +429,7 @@ function displayJpegScan(scanJobContent: ScanContent) {
 async function saveScan(
   event: Event,
   folder: string,
+  tempFolder: string,
   scanCount: number
 ): Promise<void> {
   if (event.compEventURI) {
@@ -446,8 +447,19 @@ async function saveScan(
   console.log("Selected shortcut: " + destination.shortcut);
 
   const contentType = destination.getContentType();
-  const toPdf =
-    destination.shortcut === "SavePDF" || destination.shortcut === "EmailPDF";
+  let toPdf: boolean;
+  let destinationFolder: string;
+  if (
+    destination.shortcut === "SavePDF" ||
+    destination.shortcut === "EmailPDF"
+  ) {
+    toPdf = true;
+    destinationFolder = tempFolder;
+    console.log(`Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`);
+  } else {
+    toPdf = false;
+    destinationFolder = folder;
+  }
 
   const isDuplex =
     destination.scanPlexMode != null && destination.scanPlexMode != "Simplex";
@@ -469,7 +481,7 @@ async function saveScan(
   const jobState = await executeScanJobs(
     scanJobSettings,
     inputSource,
-    folder,
+    destinationFolder,
     scanCount,
     scanJobContent,
     event
@@ -497,6 +509,11 @@ async function init() {
   const folder = await PathHelper.getOutputFolder(program.opts().directory);
   console.log(`Target folder: ${folder}`);
 
+  const tempFolder = await PathHelper.getOutputFolder(
+    program.opts().tempDirectory
+  );
+  console.log(`Temp folder: ${tempFolder}`);
+
   let scanCount = 0;
 
   let keepActive = true;
@@ -511,7 +528,7 @@ async function init() {
 
       scanCount++;
       console.log(`Scan event captured, saving scan #${scanCount}`);
-      await saveScan(event, folder, scanCount);
+      await saveScan(event, folder, tempFolder, scanCount);
     } catch (e) {
       errorCount++;
       console.error(e);
@@ -566,6 +583,10 @@ async function main() {
   program.option(
     "-d, --directory <dir>",
     "Directory where scans are saved (defaults to /tmp/scan-to-pc<random>)"
+  );
+  program.option(
+    "-t, --temp-directory <dir>",
+    "Temp directory used for processing (defaults to /tmp/scan-to-pc<random>)"
   );
   program.option(
     "-p, --pattern <pattern>",
