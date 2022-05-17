@@ -197,13 +197,14 @@ async function handleProcessingState(
       job.binaryURL
     );
 
-    const destinationFilePath = PathHelper.getFileForPage(
+    let destinationFilePath = PathHelper.getFileForPage(
       folder,
       scanCount,
       currentPageNumber,
       program.opts().pattern,
       "jpg"
     );
+    destinationFilePath = PathHelper.makeUnique(destinationFilePath);
     const filePath = await HPApi.downloadPage(
       job.binaryURL,
       destinationFilePath
@@ -380,12 +381,13 @@ async function mergeToPdf(
   scanCount: number,
   scanJobContent: ScanContent
 ) {
-  const pdfFilePath = PathHelper.getFileForScan(
+  let pdfFilePath = PathHelper.getFileForScan(
     folder,
     scanCount,
     program.opts().pattern,
     "pdf"
   );
+  pdfFilePath = PathHelper.makeUnique(pdfFilePath);
   await createPdfFrom(scanJobContent, pdfFilePath);
   scanJobContent.elements.forEach((e) => fs.unlink(e.path));
   return pdfFilePath;
@@ -558,7 +560,6 @@ async function main() {
   program.parse(process.argv);
 
   let ip = program.opts().address || "192.168.1.53";
-  //let ip = program.opts().address || "192.168.1.30" ;
   if (!ip) {
     ip = await findOfficejetIp();
   }
