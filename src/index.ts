@@ -197,13 +197,14 @@ async function handleProcessingState(
       job.binaryURL
     );
 
-    const destinationFilePath = PathHelper.getFileForPage(
+    let destinationFilePath = PathHelper.getFileForPage(
       folder,
       scanCount,
       currentPageNumber,
       program.opts().pattern,
       "jpg"
     );
+    destinationFilePath = PathHelper.makeUnique(destinationFilePath);
     const filePath = await HPApi.downloadPage(
       job.binaryURL,
       destinationFilePath
@@ -380,12 +381,13 @@ async function mergeToPdf(
   scanCount: number,
   scanJobContent: ScanContent
 ) {
-  const pdfFilePath = PathHelper.getFileForScan(
+  let pdfFilePath = PathHelper.getFileForScan(
     folder,
     scanCount,
     program.opts().pattern,
     "pdf"
   );
+  pdfFilePath = PathHelper.makeUnique(pdfFilePath);
   await createPdfFrom(scanJobContent, pdfFilePath);
   scanJobContent.elements.forEach((e) => fs.unlink(e.path));
   return pdfFilePath;
@@ -417,6 +419,7 @@ function displayJpegScan(scanJobContent: ScanContent) {
 async function saveScan(
   event: Event,
   folder: string,
+  tempFolder: string,
   scanCount: number
 ): Promise<void> {
   if (event.compEventURI) {
@@ -434,8 +437,19 @@ async function saveScan(
   console.log("Selected shortcut: " + destination.shortcut);
 
   const contentType = destination.getContentType();
-  const toPdf =
-    destination.shortcut === "SavePDF" || destination.shortcut === "EmailPDF";
+  let toPdf: boolean;
+  let destinationFolder: string;
+  if (
+    destination.shortcut === "SavePDF" ||
+    destination.shortcut === "EmailPDF"
+  ) {
+    toPdf = true;
+    destinationFolder = tempFolder;
+    console.log(`Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`);
+  } else {
+    toPdf = false;
+    destinationFolder = folder;
+  }
 
   const isDuplex =
     destination.scanPlexMode != null && destination.scanPlexMode != "Simplex";
@@ -457,7 +471,7 @@ async function saveScan(
   await executeScanJobs(
     scanJobSettings,
     inputSource,
-    folder,
+    destinationFolder,
     scanCount,
     scanJobContent,
     event
@@ -480,6 +494,11 @@ async function init() {
   const folder = await PathHelper.getOutputFolder(program.opts().directory);
   console.log(`Target folder: ${folder}`);
 
+  const tempFolder = await PathHelper.getOutputFolder(
+    program.opts().tempDirectory
+  );
+  console.log(`Temp folder: ${tempFolder}`);
+
   let scanCount = 0;
 
   let keepActive = true;
@@ -494,7 +513,7 @@ async function init() {
 
       scanCount++;
       console.log(`Scan event captured, saving scan #${scanCount}`);
-      await saveScan(event, folder, scanCount);
+      await saveScan(event, folder, tempFolder, scanCount);
     } catch (e) {
       errorCount++;
       console.error(e);
@@ -551,6 +570,10 @@ async function main() {
     "Directory where scans are saved (defaults to /tmp/scan-to-pc<random>)"
   );
   program.option(
+    "-t, --temp-directory <dir>",
+    "Temp directory used for processing (defaults to /tmp/scan-to-pc<random>)"
+  );
+  program.option(
     "-p, --pattern <pattern>",
     'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)'
   );
@@ -558,7 +581,6 @@ async function main() {
   program.parse(process.argv);
 
   let ip = program.opts().address || "192.168.1.53";
-  //let ip = program.opts().address || "192.168.1.30" ;
   if (!ip) {
     ip = await findOfficejetIp();
   }
