@@ -197,14 +197,13 @@ async function handleProcessingState(
       job.binaryURL
     );
 
-    let destinationFilePath = PathHelper.getFileForPage(
+    const destinationFilePath = PathHelper.getFileForPage(
       folder,
       scanCount,
       currentPageNumber,
       program.opts().pattern,
       "jpg"
     );
-    destinationFilePath = PathHelper.makeUnique(destinationFilePath);
     const filePath = await HPApi.downloadPage(
       job.binaryURL,
       destinationFilePath
@@ -261,30 +260,31 @@ async function executeScanJob(
   folder: string,
   scanCount: number,
   scanJobContent: ScanContent
-) {
+): Promise<"Completed" | "Canceled"> {
   const jobUrl = await HPApi.postJob(scanJobSettings);
 
   console.log("New job created:", jobUrl);
 
+  let currentPage: ScanPage | null = null;
   let job = await HPApi.getJob(jobUrl);
   while (job.jobState !== "Completed") {
     job = await waitPrinterUntilItIsReadyToUploadOrCompleted(jobUrl);
 
     if (job.jobState == "Completed") {
+      if (currentPage != null) {
+        scanJobContent.elements.push(currentPage);
+      }
       continue;
     }
 
     if (job.jobState === "Processing") {
-      const page = await handleProcessingState(
+      currentPage = await handleProcessingState(
         job,
         inputSource,
         folder,
         scanCount,
         scanJobContent.elements.length + 1
       );
-      if (page != null) {
-        scanJobContent.elements.push(page);
-      }
     } else if (job.jobState === "Canceled") {
       console.log("Job cancelled by device");
       break;
@@ -294,8 +294,9 @@ async function executeScanJob(
     }
   }
   console.log(
-    `Job state: ${job.jobState}, totalPages: ${job.totalPageNumber}:`
+    `Job state: ${job.jobState}, totalPages: ${scanJobContent.elements.length}:`
   );
+  return job.jobState;
 }
 
 async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
@@ -332,7 +333,7 @@ async function executeScanJobs(
   scanJobContent: ScanContent,
   firstEvent: Event
 ) {
-  await executeScanJob(
+  let jobState = await executeScanJob(
     scanJobSettings,
     inputSource,
     folder,
@@ -341,6 +342,7 @@ async function executeScanJobs(
   );
   let lastEvent = firstEvent;
   if (
+    jobState === "Completed" &&
     lastEvent.compEventURI &&
     inputSource !== "Adf" &&
     lastEvent.destinationURI
@@ -354,13 +356,16 @@ async function executeScanJobs(
     }
     let startNewScanJob = await waitScanNewPageRequest(lastEvent.compEventURI);
     while (startNewScanJob) {
-      await executeScanJob(
+      jobState = await executeScanJob(
         scanJobSettings,
         inputSource,
         folder,
         scanCount,
         scanJobContent
       );
+      if (jobState !== "Completed") {
+        return;
+      }
       if (!lastEvent.destinationURI) {
         break;
       }
@@ -380,20 +385,30 @@ async function mergeToPdf(
   folder: string,
   scanCount: number,
   scanJobContent: ScanContent
-) {
-  let pdfFilePath = PathHelper.getFileForScan(
-    folder,
-    scanCount,
-    program.opts().pattern,
-    "pdf"
-  );
-  pdfFilePath = PathHelper.makeUnique(pdfFilePath);
-  await createPdfFrom(scanJobContent, pdfFilePath);
-  scanJobContent.elements.forEach((e) => fs.unlink(e.path));
-  return pdfFilePath;
+): Promise<string | null> {
+  if (scanJobContent.elements.length > 0) {
+    const pdfFilePath = PathHelper.getFileForScan(
+      folder,
+      scanCount,
+      program.opts().pattern,
+      "pdf"
+    );
+    await createPdfFrom(scanJobContent, pdfFilePath);
+    scanJobContent.elements.forEach((e) => fs.unlink(e.path));
+    return pdfFilePath;
+  }
+  console.log(`No page available to build a pdf file`);
+  return null;
 }
 
-function displayPdfScan(pdfFilePath: string, scanJobContent: ScanContent) {
+function displayPdfScan(
+  pdfFilePath: string | null,
+  scanJobContent: ScanContent
+) {
+  if (pdfFilePath === null) {
+    console.log(`Pdf generated has not been generated`);
+    return;
+  }
   console.log(
     `The following page(s) have been rendered inside '${pdfFilePath}': `
   );
@@ -445,7 +460,9 @@ async function saveScan(
   ) {
     toPdf = true;
     destinationFolder = tempFolder;
-    console.log(`Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`);
+    console.log(
+      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`
+    );
   } else {
     toPdf = false;
     destinationFolder = folder;
