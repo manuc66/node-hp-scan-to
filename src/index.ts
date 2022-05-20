@@ -265,26 +265,26 @@ async function executeScanJob(
 
   console.log("New job created:", jobUrl);
 
-  let currentPage: ScanPage | null = null;
   let job = await HPApi.getJob(jobUrl);
   while (job.jobState !== "Completed") {
     job = await waitPrinterUntilItIsReadyToUploadOrCompleted(jobUrl);
 
     if (job.jobState == "Completed") {
-      if (currentPage != null) {
-        scanJobContent.elements.push(currentPage);
-      }
       continue;
     }
 
     if (job.jobState === "Processing") {
-      currentPage = await handleProcessingState(
+      const page = await handleProcessingState(
         job,
         inputSource,
         folder,
         scanCount,
         scanJobContent.elements.length + 1
       );
+      job = await HPApi.getJob(jobUrl);
+      if (page != null && job.jobState != "Canceled") {
+        scanJobContent.elements.push(page);
+      }
     } else if (job.jobState === "Canceled") {
       console.log("Job cancelled by device");
       break;
