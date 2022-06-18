@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!---->
+<wus:WalkupScanToCompCaps xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 ../../schemas/WalkupScanToComp.xsd" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <dd:Version>
+        <dd:Revision>SVN-IPG-LEDM.351</dd:Revision>
+    </dd:Version>
+    <wus:MaxNetworkDestinations>15</wus:MaxNetworkDestinations>
+    <wus:SupportsMultiItemScanFromPlaten>true</wus:SupportsMultiItemScanFromPlaten>
+    <wus:UserActionTimeout>
+        <dd:ValueFloat>60</dd:ValueFloat>
+        <dd:Unit>seconds</dd:Unit>
+    </wus:UserActionTimeout>
+    <wus:ShortcutSupport access="readOnly">
+        <wus:Shortcut>SavePDF</wus:Shortcut>
+        <wus:Shortcut>SaveJPEG</wus:Shortcut>
+        <wus:Shortcut>EmailPDF</wus:Shortcut>
+        <wus:Shortcut>EmailJPEG</wus:Shortcut>
+        <wus:Shortcut>GeneralScan</wus:Shortcut>
+    </wus:ShortcutSupport>
+</wus:WalkupScanToCompCaps>
