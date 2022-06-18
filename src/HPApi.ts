@@ -21,6 +21,7 @@ import WalkupScanToCompDestinations from "./WalkupScanToCompDestinations";
 import ScanJobSettings from "./ScanJobSettings";
 import Destination from "./Destination";
 import WalkupScanToCompEvent from "./WalkupScanToCompEvent";
+import DiscoveryTree from "./DiscoveryTree";
 
 let printerIP = "192.168.1.11";
 let debug = false;
@@ -71,6 +72,22 @@ export default class HPApi {
         });
       }
       throw error;
+    }
+  }
+
+
+  static async getDiscoveryTree(): Promise<DiscoveryTree> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: "/DevMgmt/DiscoveryTree.xml",
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw new Error(response.statusText);
+    } else {
+      return DiscoveryTree.createDiscoveryTree(response.data);
     }
   }
 
