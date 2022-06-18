@@ -18,6 +18,8 @@ import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
 import JpegUtil from "./JpegUtil";
 import PathHelper from "./PathHelper";
 import { createPdfFrom, ScanContent, ScanPage } from "./ScanContent";
+import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
+import { DeviceCapabilities } from "./DeviceCapabilities";
 
 const program = new Command();
 
@@ -74,33 +76,19 @@ async function waitPrinterUntilItIsReadyToUploadOrCompleted(
   return job;
 }
 
-async function register(): Promise<string> {
+async function registerWalkupScanToCompDestination(): Promise<string> {
   let destination;
   const hostname = os.hostname();
-  const toComp = await HPApi.getWalkupScanToCompCaps();
 
-  if (toComp) {
-    const walkupScanDestinations =
-      await HPApi.getWalkupScanToCompDestinations();
-    const destinations = walkupScanDestinations.destinations;
+  const walkupScanDestinations = await HPApi.getWalkupScanToCompDestinations();
+  const destinations = walkupScanDestinations.destinations;
 
-    console.log(
-      "Host destinations fetched:",
-      destinations.map((d) => d.name).join(", ")
-    );
+  console.log(
+    "Host destinations fetched:",
+    destinations.map((d) => d.name).join(", ")
+  );
 
-    destination = destinations.find((x) => x.name === hostname);
-  } else {
-    const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
-    const destinations = walkupScanDestinations.destinations;
-
-    console.log(
-      "Host destinations fetched:",
-      destinations.map((d) => d.name).join(", ")
-    );
-
-    destination = destinations.find((x) => x.name === hostname);
-  }
+  destination = destinations.find((x) => x.name === hostname);
 
   let resourceURI;
   if (destination) {
@@ -110,8 +98,40 @@ async function register(): Promise<string> {
     resourceURI = destination.resourceURI;
   } else {
     resourceURI = await HPApi.registerDestination(
-      new Destination(hostname, hostname, toComp),
-      toComp
+      new Destination(hostname, hostname, true),
+      true
+    );
+    console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
+  }
+
+  console.log(`Using: ${hostname}`);
+
+  return resourceURI;
+}
+async function registerWalkupScanDestination(): Promise<string> {
+  let destination;
+  const hostname = os.hostname();
+
+  const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
+  const destinations = walkupScanDestinations.destinations;
+
+  console.log(
+    "Host destinations fetched:",
+    destinations.map((d) => d.name).join(", ")
+  );
+
+  destination = destinations.find((x) => x.name === hostname);
+
+  let resourceURI;
+  if (destination) {
+    console.log(
+      `Re-using existing destination: ${hostname} - ${destination.resourceURI}`
+    );
+    resourceURI = destination.resourceURI;
+  } else {
+    resourceURI = await HPApi.registerDestination(
+      new Destination(hostname, hostname, false),
+      false
     );
     console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
   }
@@ -331,7 +351,8 @@ async function executeScanJobs(
   folder: string,
   scanCount: number,
   scanJobContent: ScanContent,
-  firstEvent: Event
+  firstEvent: Event,
+  deviceCapabilities: DeviceCapabilities
 ) {
   let jobState = await executeScanJob(
     scanJobSettings,
@@ -345,7 +366,8 @@ async function executeScanJobs(
     jobState === "Completed" &&
     lastEvent.compEventURI &&
     inputSource !== "Adf" &&
-    lastEvent.destinationURI
+    lastEvent.destinationURI &&
+    deviceCapabilities.supportsMultiItemScanFromPlaten
   ) {
     lastEvent = await waitForScanEvent(
       lastEvent.destinationURI,
@@ -435,7 +457,8 @@ async function saveScan(
   event: Event,
   folder: string,
   tempFolder: string,
-  scanCount: number
+  scanCount: number,
+  deviceCapabilities: DeviceCapabilities
 ): Promise<void> {
   if (event.compEventURI) {
     const proceedToScan = await waitScanRequest(event.compEventURI);
@@ -491,7 +514,8 @@ async function saveScan(
     destinationFolder,
     scanCount,
     scanJobContent,
-    event
+    event,
+    deviceCapabilities
   );
 
   console.log(
@@ -506,6 +530,37 @@ async function saveScan(
   }
 }
 
+async function readDeviceCapabilities() : Promise<DeviceCapabilities> {
+  let supportsMultiItemScanFromPlaten = true;
+  const discoveryTree = await HPApi.getDiscoveryTree();
+  let walkupScanToCompCaps: WalkupScanToCompCaps | null = null;
+  if (discoveryTree.WalkupScanToCompManifestURI != null) {
+    const walkupScanToCompManifest = await HPApi.getWalkupScanToCompManifest(
+      discoveryTree.WalkupScanToCompManifestURI
+    );
+    if (walkupScanToCompManifest.WalkupScanToCompCapsURI != null) {
+      walkupScanToCompCaps = await HPApi.getWalkupScanToCompCaps(
+        walkupScanToCompManifest.WalkupScanToCompCapsURI
+      );
+      supportsMultiItemScanFromPlaten =
+        walkupScanToCompCaps.supportsMultiItemScanFromPlaten;
+    }
+  } else if (discoveryTree.WalkupScanManifestURI != null) {
+    const walkupScanManifest = await HPApi.getWalkupScanManifest(
+      discoveryTree.WalkupScanManifestURI
+    );
+    if (walkupScanManifest.walkupScanDestinationsURI != null) {
+      await HPApi.getWalkupScanDestinations(
+        walkupScanManifest.walkupScanDestinationsURI
+      );
+    }
+  } else {
+    console.log("Unknown device!");
+  }
+
+  return {supportsMultiItemScanFromPlaten, useWalkupScanToComp: walkupScanToCompCaps != null}
+}
+
 let iteration = 0;
 async function init() {
   const folder = await PathHelper.getOutputFolder(program.opts().directory);
@@ -516,21 +571,33 @@ async function init() {
   );
   console.log(`Temp folder: ${tempFolder}`);
 
-  let scanCount = 0;
+  const deviceCapabilities = await readDeviceCapabilities();
 
+  let scanCount = 0;
   let keepActive = true;
   let errorCount = 0;
   while (keepActive) {
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
-      let resourceURI = await register();
+      let resourceURI: string;
+      if (deviceCapabilities.useWalkupScanToComp) {
+        resourceURI = await registerWalkupScanToCompDestination();
+      } else {
+        resourceURI = await registerWalkupScanDestination();
+      }
 
       console.log("Waiting scan event for:", resourceURI);
       const event = await waitForScanEvent(resourceURI);
 
       scanCount++;
       console.log(`Scan event captured, saving scan #${scanCount}`);
-      await saveScan(event, folder, tempFolder, scanCount);
+      await saveScan(
+        event,
+        folder,
+        tempFolder,
+        scanCount,
+        deviceCapabilities
+      );
     } catch (e) {
       errorCount++;
       console.error(e);

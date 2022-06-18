@@ -2,6 +2,7 @@
 
 import {Parser, Builder} from "xml2js";
 import * as util from "util";
+import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
 
 const parser = new Parser();
 
@@ -19,7 +20,7 @@ export default class Destination {
   private readonly linkType: string;
   private readonly toComp: boolean;
 
-  constructor(name: string, hostname: string, toComp: boolean) {
+  constructor(name: string, hostname: string, toComp:boolean) {
     this.name = name;
     this.hostname = hostname;
     this.linkType = "Network";
