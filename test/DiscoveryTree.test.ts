@@ -26,6 +26,9 @@ describe("DiscoveryTree", () => {
     it("Parse WalkupScanManifest uri", async () => {
       expect(discoveryTree.WalkupScanManifestURI).to.be.eq(null);
     });
+    it("Parse ScanJobManifest uri", async () => {
+      expect(discoveryTree.ScanJobManifestURI).to.be.eq("/Scan/ScanJobManifest.xml");
+    });
   });
   describe("Parsing discoveryTree2.xml", async () => {
     let discoveryTree: DiscoveryTree;
@@ -46,6 +49,9 @@ describe("DiscoveryTree", () => {
     });
     it("Parse WalkupScanManifest uri", async () => {
       expect(discoveryTree.WalkupScanManifestURI).to.be.eq("/WalkupScan/WalkupScanManifest.xml");
+    });
+    it("Parse ScanJobManifest uri", async () => {
+      expect(discoveryTree.ScanJobManifestURI).to.be.eq("/Scan/ScanJobManifest.xml");
     });
   });
 });

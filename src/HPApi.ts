@@ -25,6 +25,8 @@ import DiscoveryTree from "./DiscoveryTree";
 import WalkupScanToCompManifest from "./WalkupScanToCompManifest";
 import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
 import WalkupScanManifest from "./WalkupScanManifest";
+import ScanJobManifest from "./ScanJobManifest";
+import ScanCaps from "./ScanCaps";
 
 let printerIP = "192.168.1.11";
 let debug = false;
@@ -154,6 +156,37 @@ export default class HPApi {
       return WalkupScanToCompManifest.createWalkupScanToCompManifest(response.data);
     }
   }
+
+  static async getScanJobManifest(uri: string): Promise<ScanJobManifest> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: uri,
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw new Error(response.statusText);
+    } else {
+      return ScanJobManifest.createScanJobManifest(response.data);
+    }
+  }
+
+  static async getScanCaps(uri: string): Promise<ScanCaps> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: uri,
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw new Error(response.statusText);
+    } else {
+      return ScanCaps.createScanCaps(response.data);
+    }
+  }
+
   static async getWalkupScanToCompCaps(uri: string): Promise<WalkupScanToCompCaps> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
