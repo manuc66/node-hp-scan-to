@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/01/27" xmlns:scantype="http://www.hp.com/schemas/imaging/con/ledm/scantype/2008/03/17" xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+    http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24 ../../schemas/Manifest.xsd
+    http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/01/27 ../../schemas/ResourceMap.xsd
+    http://www.hp.com/schemas/imaging/con/dictionaries/1.0/ ../../schemas/dd/DataDictionaryMasterLEDM.xsd
+    http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 ../../schemas/WalkupScanToComp.xsd">
+    <dd:Version>
+        <dd:Revision>SVN-IPG-LEDM.351</dd:Revision>
+        <dd:Date>2011-10-27</dd:Date>
+    </dd:Version>
+    <man:InterfaceNamespaces>
+        <man:InterfaceNamespace>http://www.hp.com/schemas/imaging/con/rest/walkupscan/2010/09/28</man:InterfaceNamespace>
+    </man:InterfaceNamespaces>
+    <map:ResourceMap>
+        <map:ResourceLink>
+            <dd:ResourceURI>/WalkupScanToComp</dd:ResourceURI>
+            <map:Base>Root</map:Base>
+        </map:ResourceLink>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/WalkupScanToCompCaps</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType><wus:WalkupScanToCompResourceType>WalkupScanToCompCaps</wus:WalkupScanToCompResourceType></map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Get</map:Verb>
+                </map:Method>
+            </map:Methods>
+            <map:XmlElement>
+                <wus:WalkupScanToCompCaps xsi:nil="true"/>
+            </map:XmlElement>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/WalkupScanToCompDestinations</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType><wus:WalkupScanToCompResourceType>WalkupScanToCompDestinations</wus:WalkupScanToCompResourceType></map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Get</map:Verb>
+                </map:Method>
+                <map:Method>
+                    <map:Verb>Post</map:Verb>
+                </map:Method>
+            </map:Methods>
+            <map:XmlElement>
+                <wus:WalkupScanToCompDestinations xsi:nil="true"/>
+            </map:XmlElement>
+            <map:ResourceMap>
+                <map:ResourceNode>
+                    <map:ResourceLink>
+                        <dd:ResourceURI>/{dd:UUID}</dd:ResourceURI>
+                    </map:ResourceLink>
+                    <map:ResourceType><wus:WalkupScanToCompResourceType>WalkupScanToCompDestination</wus:WalkupScanToCompResourceType></map:ResourceType>
+                    <map:Methods>
+                        <map:Method>
+                            <map:Verb>Get</map:Verb>
+                        </map:Method>
+                        <map:Method>
+                            <map:Verb>Delete</map:Verb>
+                        </map:Method>
+                    </map:Methods>
+                    <map:XmlElement>
+                        <wus:WalkupScanToCompDestination xsi:nil="true"/>
+                    </map:XmlElement>
+                </map:ResourceNode>
+            </map:ResourceMap>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/WalkupScanToCompEvent</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType><wus:WalkupScanToCompResourceType>WalkupScanToCompEvent</wus:WalkupScanToCompResourceType></map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Get</map:Verb>
+                </map:Method>
+            </map:Methods>
+            <map:XmlElement>
+                <wus:WalkupScanToCompEvent xsi:nil="true"/>
+            </map:XmlElement>
+        </map:ResourceNode>
+    </map:ResourceMap>
+</man:Manifest>
