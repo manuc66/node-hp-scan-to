@@ -77,7 +77,6 @@ async function waitPrinterUntilItIsReadyToUploadOrCompleted(
 }
 
 async function registerWalkupScanToCompDestination(): Promise<string> {
-  let destination;
   const hostname = os.hostname();
 
   const walkupScanDestinations = await HPApi.getWalkupScanToCompDestinations();
@@ -88,7 +87,7 @@ async function registerWalkupScanToCompDestination(): Promise<string> {
     destinations.map((d) => d.name).join(", ")
   );
 
-  destination = destinations.find((x) => x.name === hostname);
+  const destination = destinations.find((x) => x.name === hostname);
 
   let resourceURI;
   if (destination) {
@@ -97,9 +96,8 @@ async function registerWalkupScanToCompDestination(): Promise<string> {
     );
     resourceURI = destination.resourceURI;
   } else {
-    resourceURI = await HPApi.registerDestination(
-      new Destination(hostname, hostname, true),
-      true
+    resourceURI = await HPApi.registerWalkupScanToCompDestination(
+      new Destination(hostname, hostname, true)
     );
     console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
   }
@@ -109,7 +107,6 @@ async function registerWalkupScanToCompDestination(): Promise<string> {
   return resourceURI;
 }
 async function registerWalkupScanDestination(): Promise<string> {
-  let destination;
   const hostname = os.hostname();
 
   const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
@@ -120,7 +117,7 @@ async function registerWalkupScanDestination(): Promise<string> {
     destinations.map((d) => d.name).join(", ")
   );
 
-  destination = destinations.find((x) => x.name === hostname);
+  const destination = destinations.find((x) => x.name === hostname);
 
   let resourceURI;
   if (destination) {
@@ -129,9 +126,8 @@ async function registerWalkupScanDestination(): Promise<string> {
     );
     resourceURI = destination.resourceURI;
   } else {
-    resourceURI = await HPApi.registerDestination(
-      new Destination(hostname, hostname, false),
-      false
+    resourceURI = await HPApi.registerWalkupScanDestination(
+      new Destination(hostname, hostname, false)
     );
     console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
   }
