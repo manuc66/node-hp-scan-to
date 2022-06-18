@@ -2,7 +2,6 @@
 
 import {Parser, Builder} from "xml2js";
 import * as util from "util";
-import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
 
 const parser = new Parser();
 
