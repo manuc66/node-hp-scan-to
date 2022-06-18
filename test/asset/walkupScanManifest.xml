@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/01/27" xmlns:scantype="http://www.hp.com/schemas/imaging/con/ledm/scantype/2008/03/17" xmlns:wus="http://www.hp.com/schemas/imaging/con/cnx/walkupscan/2009/09/21" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+    http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24 ../../schemas/Manifest.xsd
+    http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/01/27 ../../schemas/ResourceMap.xsd
+    http://www.hp.com/schemas/imaging/con/dictionaries/1.0/ ../../schemas/dd/DataDictionaryMasterLEDM.xsd
+    http://www.hp.com/schemas/imaging/con/ledm/scantype/2008/03/17 ../../schemas/ScanSettingsType.xsd
+    http://www.hp.com/schemas/imaging/con/cnx/walkupscan/2009/09/21 ../Schemas/WalkupScanDestinations.xsd">
+    <dd:Version>
+        <dd:Revision>SVN.3367</dd:Revision>
+    </dd:Version>
+    <man:InterfaceNamespaces>
+        <man:InterfaceNamespace>http://www.hp.com/schemas/imaging/con/rest/walkupscan/2009/09/21</man:InterfaceNamespace>
+    </man:InterfaceNamespaces>
+    <map:ResourceMap>
+        <map:ResourceLink>
+            <dd:ResourceURI>/WalkupScan</dd:ResourceURI>
+            <map:Base>Root</map:Base>
+        </map:ResourceLink>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/WalkupScanDestinations</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType><wus:WalkupScanResourceType>WalkupScanDestinations</wus:WalkupScanResourceType></map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Get</map:Verb>
+                </map:Method>
+                <map:Method>
+                    <map:Verb>Post</map:Verb>
+                </map:Method>
+            </map:Methods>
+            <map:XmlElement>
+                <wus:WalkupScanDestinations xsi:nil="true"/>
+            </map:XmlElement>
+            <map:ResourceMap>
+                <map:ResourceNode>
+                    <map:ResourceLink>
+                        <dd:ResourceURI>/{dd:UUID}</dd:ResourceURI>
+                    </map:ResourceLink>
+                    <map:ResourceType><wus:WalkupScanResourceType>WalkupScanDestination</wus:WalkupScanResourceType></map:ResourceType>
+                    <map:Methods>
+                        <map:Method>
+                            <map:Verb>Get</map:Verb>
+                        </map:Method>
+                        <map:Method>
+                            <map:Verb>Delete</map:Verb>
+                        </map:Method>
+                    </map:Methods>
+                    <map:XmlElement>
+                        <wus:WalkupScanDestination xsi:nil="true"/>
+                    </map:XmlElement>
+                </map:ResourceNode>
+            </map:ResourceMap>
+        </map:ResourceNode>
+    </map:ResourceMap>
+</man:Manifest>
