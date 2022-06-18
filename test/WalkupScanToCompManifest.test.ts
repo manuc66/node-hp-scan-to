@@ -2,8 +2,6 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
-import WalkupScanToCompEvent from "../src/WalkupScanToCompEvent";
-import DiscoveryTree from "../src/DiscoveryTree";
 import WalkupScanToCompManifest from "../src/WalkupScanToCompManifest";
 
 describe("WalkupScanToCompManifest", () => {

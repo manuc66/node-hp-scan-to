@@ -28,10 +28,7 @@
         - [`GET /Scan/Status`](#get-scanstatus-2)
         - [`GET /EventMgmt/EventTable?timeout=1200`](#get-eventmgmteventtabletimeout1200-1)
         - [`GET /EventMgmt/EventTable?timeout=1192`](#get-eventmgmteventtabletimeout1192)
-        - [`GET /eSCL/ScannerCapabilities`](#get-escl-scanner-capabilities)
-        - [`GET /eSCL/ScannerStatus`](#get-escl-scanner-status)
-        - [`POST /eSCL/ScanJobs`](#post-escl-scan-jobs)
-        - [`GET /eSCL/ScanJobs/1c9a7213-12cb-1f09-a7e3-3822e23ba011/NextDocument`](#get-escl-scan-jobs-nextdocument)
+
 - [See Also](#see-also)
 
 <!-- /TOC -->
