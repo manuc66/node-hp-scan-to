@@ -80,7 +80,6 @@ export default class HPApi {
     }
   }
 
-
   static async getDiscoveryTree(): Promise<DiscoveryTree> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -96,7 +95,9 @@ export default class HPApi {
     }
   }
 
-  static async getWalkupScanDestinations(uri : string = "/WalkupScan/WalkupScanDestinations"): Promise<WalkupScanDestinations> {
+  static async getWalkupScanDestinations(
+    uri: string = "/WalkupScan/WalkupScanDestinations"
+  ): Promise<WalkupScanDestinations> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: uri,
@@ -142,7 +143,9 @@ export default class HPApi {
       return WalkupScanManifest.createWalkupScanManifest(response.data);
     }
   }
-  static async getWalkupScanToCompManifest(uri: string): Promise<WalkupScanToCompManifest> {
+  static async getWalkupScanToCompManifest(
+    uri: string
+  ): Promise<WalkupScanToCompManifest> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: uri,
@@ -153,7 +156,9 @@ export default class HPApi {
     if (response.status !== 200) {
       throw new Error(response.statusText);
     } else {
-      return WalkupScanToCompManifest.createWalkupScanToCompManifest(response.data);
+      return WalkupScanToCompManifest.createWalkupScanToCompManifest(
+        response.data
+      );
     }
   }
 
@@ -187,7 +192,9 @@ export default class HPApi {
     }
   }
 
-  static async getWalkupScanToCompCaps(uri: string): Promise<WalkupScanToCompCaps> {
+  static async getWalkupScanToCompCaps(
+    uri: string
+  ): Promise<WalkupScanToCompCaps> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: uri,
@@ -222,7 +229,6 @@ export default class HPApi {
   static async removeDestination(
     walkupScanDestination: WalkupScanDestination | WalkupScanToCompDestination
   ) {
-
     let path: string;
 
     if (walkupScanDestination.resourceURI.startsWith("http")) {
@@ -250,12 +256,27 @@ export default class HPApi {
     }
   }
 
-  static async registerDestination(destination: Destination, toComp: boolean) {
-    let xml = await destination.toXML();
-    let url = "/WalkupScan/WalkupScanDestinations";
-    if (toComp != null) {
-      url = "/WalkupScanToComp/WalkupScanToCompDestinations";
+  static async registerWalkupScanDestination(destination: Destination) {
+    const xml = await destination.toXML();
+    const url = "/WalkupScan/WalkupScanDestinations";
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: url,
+      method: "POST",
+      headers: { "Content-Type": "text/xml" },
+      data: xml,
+      responseType: "text",
+    });
+
+    if (response.status === 201) {
+      return new URL(response.headers.location).pathname;
+    } else {
+      throw response;
     }
+  }
+  static async registerWalkupScanToCompDestination(destination: Destination) {
+    const xml = await destination.toXML();
+    const url = "/WalkupScanToComp/WalkupScanToCompDestinations";
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: url,
