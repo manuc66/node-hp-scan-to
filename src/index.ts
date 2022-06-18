@@ -558,6 +558,13 @@ async function readDeviceCapabilities() : Promise<DeviceCapabilities> {
     console.log("Unknown device!");
   }
 
+  if (discoveryTree.ScanJobManifestURI != null) {
+    const scanJobManifest = await HPApi.getScanJobManifest(discoveryTree.ScanJobManifestURI);
+    if (scanJobManifest.ScanCapsURI != null) {
+      await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);
+    }
+  }
+
   return {supportsMultiItemScanFromPlaten, useWalkupScanToComp: walkupScanToCompCaps != null}
 }
 
