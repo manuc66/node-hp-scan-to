@@ -1,8 +1,7 @@
 FROM node:alpine as build
 WORKDIR /app
 
-#Disable service timeout
-ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
+ARG S6_OVERLAY_VERSION=3.0.0.2-2
 
 ADD . .
 RUN yarn install -d \
@@ -14,8 +13,8 @@ ENV NODE_ENV production
 ADD root/ /
 
 # add S6 Overlay
-ADD https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-noarch.tar.xz /tmp
-ADD https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-x86_64.tar.xz /tmp
+ADD https://github.com/just-containers/s6-overlay/releases/v${S6_OVERLAY_VERSION}/download/s6-overlay-noarch.tar.xz /tmp
+ADD https://github.com/just-containers/s6-overlay/releases/v${S6_OVERLAY_VERSION}/download/s6-overlay-x86_64.tar.xz /tmp
 RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
  && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
  && apk add --no-cache shadow tzdata # install shadow (for groupmod and usermod) and tzdata (for TZ env variable)
