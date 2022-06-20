@@ -24,5 +24,6 @@ fi
 
 cd /app
 
+echo "Starting"
 s6-setuidgid node \
     node index.js $ARGS "$@"

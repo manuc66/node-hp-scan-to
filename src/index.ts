@@ -670,6 +670,7 @@ async function main() {
   if (!ip) {
     ip = await findOfficejetIp();
   }
+  console.log(`Using device ip: ${ip}`);
 
   const debug = program.opts().debug != null;
 
