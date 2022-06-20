@@ -20,7 +20,7 @@ describe("PathHelper", () => {
       );
       const now = new Date();
       expect(nextFileName).to.be.eq(
-        `someFolder/scan_${("" + now.getDate()).padStart(2, "0")}.${(
+        `someFolder${path.sep}scan_${("" + now.getDate()).padStart(2, "0")}.${(
           "" +
           (now.getMonth() + 1)
         ).padStart(2, "0")}.${("" + now.getFullYear()).padStart(4, "0")}_${(
@@ -38,7 +38,7 @@ describe("PathHelper", () => {
         undefined,
         "jpg"
       );
-      expect(nextFileName).to.be.eq(`someFolder/scan2_page1.jpg`);
+      expect(nextFileName).to.be.eq(`someFolder${path.sep}scan2_page1.jpg`);
     });
   });
   describe("getFileForScan", () => {
@@ -51,7 +51,7 @@ describe("PathHelper", () => {
       );
       const now = new Date();
       expect(nextFileName).to.be.eq(
-        `someFolder/scan_${("" + now.getDate()).padStart(2, "0")}.${(
+        `someFolder${path.sep}scan_${("" + now.getDate()).padStart(2, "0")}.${(
           "" +
           (now.getMonth() + 1)
         ).padStart(2, "0")}.${("" + now.getFullYear()).padStart(4, "0")}_${(
@@ -68,7 +68,7 @@ describe("PathHelper", () => {
         undefined,
         "pdf"
       );
-      expect(nextFileName).to.be.eq(`someFolder/scan2.pdf`);
+      expect(nextFileName).to.be.eq(`someFolder${path.sep}scan2.pdf`);
     });
   });
   describe("getOutputFolder", () => {
@@ -133,7 +133,7 @@ describe("PathHelper", () => {
 
       expect(() => {
         for (let i = 0; i < 50; ++i) {
-            const another = PathHelper.makeUnique(filePath);
+          const another = PathHelper.makeUnique(filePath);
             fs.openSync(another, 'w');
         }
       }).to.throw(/Can not create unique file:/);
