@@ -14,7 +14,10 @@ export interface ScanPage {
   yResolution: number;
 }
 
-export async function createPdfFrom(scanContent: ScanContent, destination: string) {
+export async function createPdfFrom(
+  scanContent: ScanContent,
+  destination: string
+) {
   let doc: jsPDF | null = null;
   for (const element of scanContent.elements) {
     const widthInInches = element.width / element.xResolution;

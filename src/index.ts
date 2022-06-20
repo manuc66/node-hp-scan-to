@@ -526,7 +526,7 @@ async function saveScan(
   }
 }
 
-async function readDeviceCapabilities() : Promise<DeviceCapabilities> {
+async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
   const discoveryTree = await HPApi.getDiscoveryTree();
   let walkupScanToCompCaps: WalkupScanToCompCaps | null = null;
@@ -555,13 +555,18 @@ async function readDeviceCapabilities() : Promise<DeviceCapabilities> {
   }
 
   if (discoveryTree.ScanJobManifestURI != null) {
-    const scanJobManifest = await HPApi.getScanJobManifest(discoveryTree.ScanJobManifestURI);
+    const scanJobManifest = await HPApi.getScanJobManifest(
+      discoveryTree.ScanJobManifestURI
+    );
     if (scanJobManifest.ScanCapsURI != null) {
       await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);
     }
   }
 
-  return {supportsMultiItemScanFromPlaten, useWalkupScanToComp: walkupScanToCompCaps != null}
+  return {
+    supportsMultiItemScanFromPlaten,
+    useWalkupScanToComp: walkupScanToCompCaps != null,
+  };
 }
 
 let iteration = 0;
@@ -594,13 +599,7 @@ async function init() {
 
       scanCount++;
       console.log(`Scan event captured, saving scan #${scanCount}`);
-      await saveScan(
-        event,
-        folder,
-        tempFolder,
-        scanCount,
-        deviceCapabilities
-      );
+      await saveScan(event, folder, tempFolder, scanCount, deviceCapabilities);
     } catch (e) {
       errorCount++;
       console.error(e);
