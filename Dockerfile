@@ -13,10 +13,12 @@ ENV NODE_ENV production
 ADD root/ /
 
 # add S6 Overlay
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64-${S6_OVERLAY_VERSION}.tar.xz /tmp
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch-${S6_OVERLAY_VERSION}.tar.xz /tmp
 ADD https://github.com/just-containers/s6-overlay/releases/v${S6_OVERLAY_VERSION}/download/s6-overlay-noarch.tar.xz /tmp
 ADD https://github.com/just-containers/s6-overlay/releases/v${S6_OVERLAY_VERSION}/download/s6-overlay-x86_64.tar.xz /tmp
-RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
- && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
+RUN tar -C / -Jxpf /tmp/s6-overlay-noarch-${S6_OVERLAY_VERSION}.tar.xz \
+ && tar -C / -Jxpf /tmp/s6-overlay-x86_64-${S6_OVERLAY_VERSION}.tar.xz \
  && apk add --no-cache shadow tzdata # install shadow (for groupmod and usermod) and tzdata (for TZ env variable)
 
 # add builded app
