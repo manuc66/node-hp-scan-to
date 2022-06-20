@@ -1,6 +1,9 @@
 FROM node:alpine as build
 WORKDIR /app
 
+#Disable service timeout
+ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
+
 ADD . .
 RUN yarn install -d \
  && yarn build \
