@@ -36,12 +36,10 @@ export default class ScanJobManifest {
   }
 
   get ScanCapsURI(): string | null {
-    const scanCaps = this.data["man:Manifest"]["map:ResourceMap"][
-      "0"
-    ]["map:ResourceNode"].find(
-      (x) =>
-        x["map:ResourceType"][0]["scan:ScanResourceType"][0] ===
-        "ScanCaps"
+    const scanCaps = this.data["man:Manifest"]["map:ResourceMap"]["0"][
+      "map:ResourceNode"
+    ].find(
+      (x) => x["map:ResourceType"][0]["scan:ScanResourceType"][0] === "ScanCaps"
     );
 
     if (scanCaps === undefined) {
