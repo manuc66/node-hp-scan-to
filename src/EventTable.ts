@@ -34,7 +34,6 @@ export default class EventTable {
     };
   }
 
-
   get events() {
     let eventTable = this.data["ev:EventTable"];
     if (eventTable != null && eventTable["ev:Event"] != null) {

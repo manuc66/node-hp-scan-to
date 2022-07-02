@@ -1,0 +1,12 @@
+<!---->
+<wus:WalkupScanToCompCaps xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 WalkupScanToComp.xsd">
+    <dd:Version>
+        <dd:Revision>SVN-IPG-LEDM.351</dd:Revision>
+    </dd:Version>
+    <wus:MaxNetworkDestinations>15</wus:MaxNetworkDestinations>
+    <wus:SupportsMultiItemScanFromPlaten>false</wus:SupportsMultiItemScanFromPlaten>
+    <wus:UserActionTimeout>
+        <dd:ValueFloat>60</dd:ValueFloat>
+        <dd:Unit>seconds</dd:Unit>
+    </wus:UserActionTimeout>
+</wus:WalkupScanToCompCaps>

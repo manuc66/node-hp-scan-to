@@ -2,12 +2,14 @@
 import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
-const parseString = promisify<string, WalkupScanToCompEventData>(parser.parseString);
+const parseString = promisify<string, WalkupScanToCompEventData>(
+  parser.parseString
+);
 
 export interface WalkupScanToCompEventData {
   "wus:WalkupScanToCompEvent": {
-    'wus:WalkupScanToCompEventType': string[]
-  }
+    "wus:WalkupScanToCompEventType": string[];
+  };
 }
 
 export default class WalkupScanToCompEvent {
@@ -21,6 +23,8 @@ export default class WalkupScanToCompEvent {
   }
 
   get eventType(): string {
-    return this.data["wus:WalkupScanToCompEvent"]["wus:WalkupScanToCompEventType"][0];
+    return this.data["wus:WalkupScanToCompEvent"][
+      "wus:WalkupScanToCompEventType"
+    ][0];
   }
 }

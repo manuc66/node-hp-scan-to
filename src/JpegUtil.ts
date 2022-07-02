@@ -145,7 +145,7 @@ export default class JpegUtil {
     startOfStartOfFrame: number,
     lengthOfStartOfFrame: number,
     numberOfLine: number
-  ) : boolean {
+  ): boolean {
     // write the picture height
     if (6 < lengthOfStartOfFrame) {
       const heightBuffer = Buffer.from([0x00, 0x00]);
@@ -267,7 +267,11 @@ export default class JpegUtil {
     return null;
   }
 
-  private static parseMarker(buffer: Buffer, i: number, markerHandler: { [key: string]: (start: number, length: number) => boolean }) : boolean {
+  private static parseMarker(
+    buffer: Buffer,
+    i: number,
+    markerHandler: { [key: string]: (start: number, length: number) => boolean }
+  ): boolean {
     let marker = "";
 
     //Retrieve the block length of the first block since the first block will not contain the size of file
@@ -279,7 +283,7 @@ export default class JpegUtil {
       if (buffer[i] != 0xff) {
         this.logDebug(
           "We should be at the begining of the next block, but got: " +
-          buffer[i]
+            buffer[i]
         );
         return false;
       }
