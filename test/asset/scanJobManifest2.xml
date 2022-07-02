@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/01/27" xmlns:scan="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+    http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24 ../../schemas/Manifest.xsd
+    http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/01/27 ../../schemas/ResourceMap.xsd
+    http://www.hp.com/schemas/imaging/con/dictionaries/1.0/ ../../schemas/dd/DataDictionaryMasterLEDM.xsd
+    http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19 ../Schemas/Scan.xsd">
+    <dd:Version>
+        <dd:Revision>SVN.4032</dd:Revision>
+    </dd:Version>
+    <man:InterfaceNamespaces>
+        <man:InterfaceNamespace>http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19</man:InterfaceNamespace>
+    </man:InterfaceNamespaces>
+    <map:ResourceMap>
+        <map:ResourceLink>
+            <dd:ResourceURI>/Scan</dd:ResourceURI>
+            <map:Base>Root</map:Base>
+        </map:ResourceLink>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/ScanCaps</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType><scan:ScanResourceType>ScanCaps</scan:ScanResourceType></map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Get</map:Verb>
+                </map:Method>
+            </map:Methods>
+            <map:XmlElement>
+                <scan:ScanCaps xsi:nil="true"/>
+            </map:XmlElement>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/Status</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType><scan:ScanResourceType>Status</scan:ScanResourceType></map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Get</map:Verb>
+                </map:Method>
+            </map:Methods>
+            <map:XmlElement>
+                <scan:ScanStatus xsi:nil="true"/>
+            </map:XmlElement>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/SPF</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType>
+                <scan:ScanResourceType>SPFfile</scan:ScanResourceType>
+            </map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Get</map:Verb>
+                </map:Method>
+            </map:Methods>
+            <map:IanaTypes>
+                <map:IanaType>application/vnd.hp-SPF</map:IanaType>
+                <map:IanaType>application/vnd.hp-SPF-encrypted</map:IanaType>
+            </map:IanaTypes>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/Jobs</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType><scan:ScanResourceType>ScanJob</scan:ScanResourceType></map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Post</map:Verb>
+                </map:Method>
+            </map:Methods>
+            <map:XmlElement>
+                <scan:ScanJob xsi:nil="true"/>
+            </map:XmlElement>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/BufferInfo</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType><scan:ScanResourceType>BufferInfo</scan:ScanResourceType></map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Put</map:Verb>
+                </map:Method>
+            </map:Methods>
+            <map:XmlElement>
+                <scan:BufferInfo xsi:nil="true"/>
+            </map:XmlElement>
+        </map:ResourceNode>
+    </map:ResourceMap>
+</man:Manifest>

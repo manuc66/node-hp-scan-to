@@ -26,3 +26,4 @@ RUN yarn install -d \
 VOLUME ["/scan"]
 ENTRYPOINT ["/init"]
 CMD ["/app.sh"]
+

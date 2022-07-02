@@ -1,6 +1,6 @@
 "use strict";
 
-import {Parser, Builder} from "xml2js";
+import { Parser, Builder } from "xml2js";
 import * as util from "util";
 
 const parser = new Parser();

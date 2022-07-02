@@ -20,11 +20,11 @@ describe("PathHelper", () => {
       );
       const now = new Date();
       expect(nextFileName).to.be.eq(
-        `someFolder/scan_${("" + now.getDate()).padStart(2, "0")}.${(
+        `someFolder${path.sep}scan_${("" + now.getDate()).padStart(2, "0")}.${(
           "" +
           (now.getMonth() + 1)
         ).padStart(2, "0")}.${("" + now.getFullYear()).padStart(4, "0")}_${(
-          "" + (now.getHours())
+          "" + now.getHours()
         ).padStart(2, "0")}:${("" + now.getMinutes()).padStart(2, "0")}:${(
           "" + now.getSeconds()
         ).padStart(2, "0")}.jpg`
@@ -38,7 +38,7 @@ describe("PathHelper", () => {
         undefined,
         "jpg"
       );
-      expect(nextFileName).to.be.eq(`someFolder/scan2_page1.jpg`);
+      expect(nextFileName).to.be.eq(`someFolder${path.sep}scan2_page1.jpg`);
     });
   });
   describe("getFileForScan", () => {
@@ -51,7 +51,7 @@ describe("PathHelper", () => {
       );
       const now = new Date();
       expect(nextFileName).to.be.eq(
-        `someFolder/scan_${("" + now.getDate()).padStart(2, "0")}.${(
+        `someFolder${path.sep}scan_${("" + now.getDate()).padStart(2, "0")}.${(
           "" +
           (now.getMonth() + 1)
         ).padStart(2, "0")}.${("" + now.getFullYear()).padStart(4, "0")}_${(
@@ -68,7 +68,7 @@ describe("PathHelper", () => {
         undefined,
         "pdf"
       );
-      expect(nextFileName).to.be.eq(`someFolder/scan2.pdf`);
+      expect(nextFileName).to.be.eq(`someFolder${path.sep}scan2.pdf`);
     });
   });
   describe("getOutputFolder", () => {
@@ -106,7 +106,7 @@ describe("PathHelper", () => {
     it("return another file in case of conflict", async () => {
       const folder = await PathHelper.getOutputFolder();
       const filePath = path.join(folder, "someFolder.pdf");
-      fs.openSync(filePath, 'w')
+      fs.openSync(filePath, "w");
 
       const uniqueFile = PathHelper.makeUnique(filePath);
 
@@ -116,9 +116,9 @@ describe("PathHelper", () => {
     it("return another two conflict", async () => {
       const folder = await PathHelper.getOutputFolder();
       let filePath = path.join(folder, "someFolder.pdf");
-      fs.openSync(filePath, 'w');
+      fs.openSync(filePath, "w");
       const another = PathHelper.makeUnique(filePath);
-      fs.openSync(another, 'w');
+      fs.openSync(another, "w");
 
       const uniqueFile = PathHelper.makeUnique(filePath);
 
@@ -129,15 +129,14 @@ describe("PathHelper", () => {
     it("conflict resolution terminate with error", async () => {
       const folder = await PathHelper.getOutputFolder();
       let filePath = path.join(folder, "someFolder.pdf");
-      fs.openSync(filePath, 'w');
+      fs.openSync(filePath, "w");
 
       expect(() => {
         for (let i = 0; i < 50; ++i) {
-            const another = PathHelper.makeUnique(filePath);
-            fs.openSync(another, 'w');
+          const another = PathHelper.makeUnique(filePath);
+          fs.openSync(another, "w");
         }
       }).to.throw(/Can not create unique file:/);
-
     });
   });
 });

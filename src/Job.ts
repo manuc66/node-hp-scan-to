@@ -92,9 +92,12 @@ export default class Job {
         ?.ImageWidth[0] ?? ""
     );
   }
-  get imageHeight(): number | null{
+  get imageHeight(): number | null {
     if (this.data["j:Job"].ScanJob[0].PreScanPage) {
-      return parseInt(this.data["j:Job"].ScanJob[0].PreScanPage[0].BufferInfo[0].ImageHeight[0]);
+      return parseInt(
+        this.data["j:Job"].ScanJob[0].PreScanPage[0].BufferInfo[0]
+          .ImageHeight[0]
+      );
     }
     return null;
   }

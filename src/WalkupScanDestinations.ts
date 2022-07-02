@@ -2,7 +2,9 @@
 import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
-const parseString = promisify<string, WalkupScanDestinationsData>(parser.parseString);
+const parseString = promisify<string, WalkupScanDestinationsData>(
+  parser.parseString
+);
 
 import WalkupScanDestination, {
   WalkupScanDestinationData,

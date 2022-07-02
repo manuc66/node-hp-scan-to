@@ -5,7 +5,7 @@ import * as fs from "fs/promises";
 import WalkupScanDestinations from "../src/WalkupScanDestinations";
 
 describe("WalkupScanDestinations", () => {
-  describe("Parsing walkupScanToCompDestination_with_ScanPlexMode.xml", async () => {
+  describe("Parsing walkupScanDestinations.xml", async () => {
     let destinations: WalkupScanDestinations;
 
     before(async () => {
@@ -39,6 +39,24 @@ describe("WalkupScanDestinations", () => {
 
     it("Parse name", async () => {
       expect(destinations.destinations[0].name).to.be.eq("manu-sve1511b1ew");
+    });
+  });
+  describe("Parsing walkupScanDestinations2.xml", async () => {
+    let destinations: WalkupScanDestinations;
+
+    before(async () => {
+      const content: string = await fs.readFile(
+        path.resolve(
+          __dirname,
+          "./asset/walkupScanDestinations2.xml"
+        ),
+        { encoding: "utf8" }
+      );
+      destinations = await WalkupScanDestinations.createWalkupScanDestinations(content);
+    });
+
+    it("Parse destinations", async () => {
+      expect(destinations.destinations).to.be.empty;
     });
   });
 });
