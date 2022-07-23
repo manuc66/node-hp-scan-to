@@ -25,7 +25,7 @@ jobs:
       - name: Install project dependencies
         run: yarn
       - name: Test
-        run: yarn test-ci
+        run: yarn test
       - name: Build
         run: yarn build
       - name: Set up QEMU
