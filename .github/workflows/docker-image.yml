@@ -17,6 +17,8 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: manuc66/node-hp-scan-to
+          flavor: |
+            latest=true
       - name: Setup NodeJS
         uses: actions/setup-node@v2
         with:
