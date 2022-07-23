@@ -30,7 +30,7 @@ RUN export SYS_ARCH=$(uname -m); \
     esac; \
     untar (){ \
         echo "⏬ Downloading $1"; \
-        wget -O- $1 | tar Jxp -C /; \
+        wget -nv -O- $1 | tar Jxp -C /; \
     }; \
     \
     echo "⬇️ Downloading s6 overlay:${S6_ARCH}-${S6_VERSION} for ${SYS_ARCH}" \
