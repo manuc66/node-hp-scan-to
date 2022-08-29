@@ -7,6 +7,7 @@ import os from "os";
 import fs from "fs/promises";
 import { Command } from "commander";
 import Bonjour from "bonjour";
+import config from "config";
 
 import Destination from "./Destination";
 import ScanJobSettings from "./ScanJobSettings";
@@ -20,8 +21,6 @@ import PathHelper from "./PathHelper";
 import { createPdfFrom, ScanContent, ScanPage } from "./ScanContent";
 import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
 import { DeviceCapabilities } from "./DeviceCapabilities";
-
-const program = new Command();
 
 function delay(t: number): Promise<void> {
   return new Promise(function (resolve) {
@@ -201,7 +200,8 @@ async function handleProcessingState(
   inputSource: "Adf" | "Platen",
   folder: string,
   scanCount: number,
-  currentPageNumber: number
+  currentPageNumber: number,
+  filePattern: string | undefined
 ): Promise<ScanPage | null> {
   if (
     job.pageState == "ReadyToUpload" &&
@@ -217,7 +217,7 @@ async function handleProcessingState(
       folder,
       scanCount,
       currentPageNumber,
-      program.opts().pattern,
+      filePattern,
       "jpg"
     );
     const filePath = await HPApi.downloadPage(
@@ -275,7 +275,8 @@ async function executeScanJob(
   inputSource: "Adf" | "Platen",
   folder: string,
   scanCount: number,
-  scanJobContent: ScanContent
+  scanJobContent: ScanContent,
+  filePattern: string | undefined
 ): Promise<"Completed" | "Canceled"> {
   const jobUrl = await HPApi.postJob(scanJobSettings);
 
@@ -295,7 +296,8 @@ async function executeScanJob(
         inputSource,
         folder,
         scanCount,
-        scanJobContent.elements.length + 1
+        scanJobContent.elements.length + 1,
+        filePattern
       );
       job = await HPApi.getJob(jobUrl);
       if (page != null && job.jobState != "Canceled") {
@@ -348,14 +350,16 @@ async function executeScanJobs(
   scanCount: number,
   scanJobContent: ScanContent,
   firstEvent: Event,
-  deviceCapabilities: DeviceCapabilities
+  deviceCapabilities: DeviceCapabilities,
+  filePattern: string | undefined
 ) {
   let jobState = await executeScanJob(
     scanJobSettings,
     inputSource,
     folder,
     scanCount,
-    scanJobContent
+    scanJobContent,
+    filePattern
   );
   let lastEvent = firstEvent;
   if (
@@ -379,7 +383,8 @@ async function executeScanJobs(
         inputSource,
         folder,
         scanCount,
-        scanJobContent
+        scanJobContent,
+        filePattern
       );
       if (jobState !== "Completed") {
         return;
@@ -402,13 +407,14 @@ async function executeScanJobs(
 async function mergeToPdf(
   folder: string,
   scanCount: number,
-  scanJobContent: ScanContent
+  scanJobContent: ScanContent,
+  filePattern: string | undefined
 ): Promise<string | null> {
   if (scanJobContent.elements.length > 0) {
     const pdfFilePath = PathHelper.getFileForScan(
       folder,
       scanCount,
-      program.opts().pattern,
+      filePattern,
       "pdf"
     );
     await createPdfFrom(scanJobContent, pdfFilePath);
@@ -454,7 +460,8 @@ async function saveScan(
   folder: string,
   tempFolder: string,
   scanCount: number,
-  deviceCapabilities: DeviceCapabilities
+  deviceCapabilities: DeviceCapabilities,
+  filePattern: string | undefined
 ): Promise<void> {
   if (event.compEventURI) {
     const proceedToScan = await waitScanRequest(event.compEventURI);
@@ -511,7 +518,8 @@ async function saveScan(
     scanCount,
     scanJobContent,
     event,
-    deviceCapabilities
+    deviceCapabilities,
+    filePattern
   );
 
   console.log(
@@ -519,7 +527,12 @@ async function saveScan(
   );
 
   if (toPdf) {
-    const pdfFilePath = await mergeToPdf(folder, scanCount, scanJobContent);
+    const pdfFilePath = await mergeToPdf(
+      folder,
+      scanCount,
+      scanJobContent,
+      filePattern
+    );
     displayPdfScan(pdfFilePath, scanJobContent);
   } else {
     displayJpegScan(scanJobContent);
@@ -569,13 +582,19 @@ async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
   };
 }
 
+type DirectoryConfig = {
+  directory: string | undefined;
+  tempDirectory: string | undefined;
+  filePattern: string | undefined;
+};
+
 let iteration = 0;
-async function init() {
-  const folder = await PathHelper.getOutputFolder(program.opts().directory);
+async function init(directoryConfig: DirectoryConfig) {
+  const folder = await PathHelper.getOutputFolder(directoryConfig.directory);
   console.log(`Target folder: ${folder}`);
 
   const tempFolder = await PathHelper.getOutputFolder(
-    program.opts().tempDirectory
+    directoryConfig.tempDirectory
   );
   console.log(`Temp folder: ${tempFolder}`);
 
@@ -599,7 +618,14 @@ async function init() {
 
       scanCount++;
       console.log(`Scan event captured, saving scan #${scanCount}`);
-      await saveScan(event, folder, tempFolder, scanCount, deviceCapabilities);
+      await saveScan(
+        event,
+        folder,
+        tempFolder,
+        scanCount,
+        deviceCapabilities,
+        directoryConfig.filePattern
+      );
     } catch (e) {
       errorCount++;
       console.error(e);
@@ -614,7 +640,7 @@ async function init() {
   }
 }
 
-function findOfficejetIp(): Promise<string> {
+function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
     const bonjour = Bonjour();
     console.log("Searching printer...");
@@ -625,7 +651,7 @@ function findOfficejetIp(): Promise<string> {
       (service) => {
         console.log(".");
         if (
-          service.name.startsWith(program.opts().name) &&
+          service.name.startsWith(deviceNamePrefix) &&
           service.port === 80 &&
           service.type === "http" &&
           service.addresses != null
@@ -641,7 +667,12 @@ function findOfficejetIp(): Promise<string> {
   });
 }
 
+function getConfig<T>(name: string): T | undefined {
+  return config.has(name) ? config.get<T>(name) : undefined;
+}
+
 async function main() {
+  const program = new Command();
   program.option(
     "-ip, --address <ip>",
     "IP address of the printer (this overrides -p)"
@@ -649,8 +680,7 @@ async function main() {
   program.option(
     "-n, --name <name>",
     "Name of the printer for service discovery",
-    "HP Smart Tank Plus 570 series"
-  ); //or i.e. 'Deskjet 3520 series'
+  ); // i.e. 'Deskjet 3520 series'
   program.option(
     "-d, --directory <dir>",
     "Directory where scans are saved (defaults to /tmp/scan-to-pc<random>)"
@@ -666,17 +696,23 @@ async function main() {
   program.option("-D, --debug", "Enable debug");
   program.parse(process.argv);
 
-  let ip = program.opts().address || "192.168.1.53";
+  let ip = program.opts().address || getConfig("ip");
   if (!ip) {
-    ip = await findOfficejetIp();
+    const name = program.opts().name || getConfig("name");
+    ip = await findOfficejetIp(name || "HP Smart Tank Plus 570 series");
   }
   console.log(`Using device ip: ${ip}`);
 
-  const debug = program.opts().debug != null;
+  const debug = program.opts().debug != null ? true : getConfig<boolean>("debug") || false;
 
   HPApi.setDebug(debug);
   HPApi.setPrinterIP(ip);
-  await init();
+  const directoryConfig = {
+    directory: program.opts().directory || getConfig("directory"),
+    tempDirectory: program.opts().tempDirectory || getConfig("tempDirectory"),
+    filePattern: program.opts().pattern || getConfig("pattern"),
+  }
+  await init(directoryConfig);
 }
 
 main();
