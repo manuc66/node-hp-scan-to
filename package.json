@@ -69,7 +69,7 @@
     "yarn": "^1.22.19"
   },
   "dependencies": {
-    "axios": "^0.27.2",
+    "axios": "^1.1.0",
     "bonjour": "^3.5.0",
     "commander": "^9.3.0",
     "config": "^3.3.7",
