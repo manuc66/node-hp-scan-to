@@ -5,8 +5,8 @@ import fs from "fs";
 import axios, {
   AxiosError,
   AxiosRequestConfig,
-  AxiosRequestHeaders,
   AxiosResponse,
+  RawAxiosRequestHeaders,
 } from "axios";
 import { URL } from "url";
 import * as stream from "stream";
@@ -33,11 +33,11 @@ let debug = false;
 let callCount = 0;
 
 export default class HPApi {
-  static setPrinterIP(ip: string) {
+  static setPrinterIP(ip: string): void {
     printerIP = ip;
   }
 
-  static setDebug(dbg: boolean) {
+  static setDebug(dbg: boolean): void {
     debug = dbg;
   }
 
@@ -45,7 +45,7 @@ export default class HPApi {
     callId: number,
     isRequest: boolean,
     msg: object | string
-  ) {
+  ): void {
     if (debug) {
       const id = String(callId).padStart(4, "0");
       const content = typeof msg === "string" ? msg : JSON.stringify(msg);
@@ -53,11 +53,13 @@ export default class HPApi {
     }
   }
 
-  private static async callAxios(request: AxiosRequestConfig) {
+  private static async callAxios(
+    request: AxiosRequestConfig
+  ): Promise<AxiosResponse<string>> {
     callCount++;
     HPApi.logDebug(callCount, true, request);
     try {
-      const response = (await axios(request)) as AxiosResponse<string>;
+      const response = await axios(request);
       HPApi.logDebug(callCount, false, {
         status: response.status,
         data: response.data,
@@ -228,7 +230,7 @@ export default class HPApi {
 
   static async removeDestination(
     walkupScanDestination: WalkupScanDestination | WalkupScanToCompDestination
-  ) {
+  ): Promise<boolean> {
     let path: string;
 
     if (walkupScanDestination.resourceURI.startsWith("http")) {
@@ -256,7 +258,9 @@ export default class HPApi {
     }
   }
 
-  static async registerWalkupScanDestination(destination: Destination) {
+  static async registerWalkupScanDestination(
+    destination: Destination
+  ): Promise<string> {
     const xml = await destination.toXML();
     const url = "/WalkupScan/WalkupScanDestinations";
     const response = await HPApi.callAxios({
@@ -268,13 +272,15 @@ export default class HPApi {
       responseType: "text",
     });
 
-    if (response.status === 201) {
+    if (response.status === 201 && response.headers.location != null) {
       return new URL(response.headers.location).pathname;
     } else {
       throw response;
     }
   }
-  static async registerWalkupScanToCompDestination(destination: Destination) {
+  static async registerWalkupScanToCompDestination(
+    destination: Destination
+  ): Promise<string> {
     const xml = await destination.toXML();
     const url = "/WalkupScanToComp/WalkupScanToCompDestinations";
     const response = await HPApi.callAxios({
@@ -286,7 +292,7 @@ export default class HPApi {
       responseType: "text",
     });
 
-    if (response.status === 201) {
+    if (response.status === 201 && response.headers.location != null) {
       return new URL(response.headers.location).pathname;
     } else {
       throw response;
@@ -322,15 +328,20 @@ export default class HPApi {
     }
 
     const etagReceived = response.headers["etag"];
+    if (etagReceived == null) {
+      throw response;
+    }
+
     const content = response.data;
     return EventTable.createEtagEventTable(content, etagReceived);
   }
 
-  static placeETagHeader(etag: string, headers: AxiosRequestHeaders) {
+  static placeETagHeader(
+    etag: string,
+    headers: RawAxiosRequestHeaders
+  ): RawAxiosRequestHeaders {
     if (etag !== "") {
-      headers = {
-        "If-None-Match": etag,
-      };
+      headers["If-None-Match"] = etag;
     }
     return headers;
   }
@@ -369,7 +380,7 @@ export default class HPApi {
     }
   }
 
-  static async getScanStatus() {
+  static async getScanStatus(): Promise<ScanStatus> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: "/Scan/Status",
@@ -385,13 +396,13 @@ export default class HPApi {
     }
   }
 
-  static delay(t: number) {
+  static delay(t: number): Promise<void> {
     return new Promise(function (resolve) {
       setTimeout(resolve, t);
     });
   }
 
-  static async postJob(job: ScanJobSettings) {
+  static async postJob(job: ScanJobSettings): Promise<string> {
     await HPApi.delay(500);
     const xml = await job.toXML();
     const response = await HPApi.callAxios({
@@ -403,7 +414,7 @@ export default class HPApi {
       responseType: "text",
     });
 
-    if (response.status === 201) {
+    if (response.status === 201 && response.headers.location != null) {
       return response.headers.location;
     } else {
       throw response;

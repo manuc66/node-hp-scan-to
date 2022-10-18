@@ -679,7 +679,7 @@ async function main() {
   );
   program.option(
     "-n, --name <name>",
-    "Name of the printer for service discovery",
+    "Name of the printer for service discovery"
   ); // i.e. 'Deskjet 3520 series'
   program.option(
     "-d, --directory <dir>",
@@ -703,7 +703,8 @@ async function main() {
   }
   console.log(`Using device ip: ${ip}`);
 
-  const debug = program.opts().debug != null ? true : getConfig<boolean>("debug") || false;
+  const debug =
+    program.opts().debug != null ? true : getConfig<boolean>("debug") || false;
 
   HPApi.setDebug(debug);
   HPApi.setPrinterIP(ip);
@@ -711,7 +712,7 @@ async function main() {
     directory: program.opts().directory || getConfig("directory"),
     tempDirectory: program.opts().tempDirectory || getConfig("tempDirectory"),
     filePattern: program.opts().pattern || getConfig("pattern"),
-  }
+  };
   await init(directoryConfig);
 }
 
