@@ -150,7 +150,7 @@ async function TryGetDestination(
       destination = await HPApi.getDestination(destinationURI);
 
       const shortcut = destination.shortcut;
-      if (shortcut !== "") {
+      if (shortcut != null) {
         return destination;
       }
     } else {
@@ -455,6 +455,28 @@ function displayJpegScan(scanJobContent: ScanContent) {
   );
 }
 
+function isPdf(
+  destination: WalkupScanDestination | WalkupScanToCompDestination
+) {
+  if (
+    destination.shortcut === "SavePDF" ||
+    destination.shortcut === "EmailPDF" ||
+    destination.shortcut == "SaveDocument1"
+  ) {
+    return true;
+  } else if (
+    destination.shortcut === "SaveJPEG" ||
+    destination.shortcut === "SavePhoto1"
+  ) {
+    return false;
+  } else {
+    console.log(
+      `Unexpected shortcut received: ${destination.shortcut}, considering it as non pdf target!`
+    );
+    return false;
+  }
+}
+
 async function saveScan(
   event: Event,
   folder: string,
@@ -477,20 +499,19 @@ async function saveScan(
   }
   console.log("Selected shortcut: " + destination.shortcut);
 
-  const contentType = destination.getContentType();
   let toPdf: boolean;
   let destinationFolder: string;
-  if (
-    destination.shortcut === "SavePDF" ||
-    destination.shortcut === "EmailPDF"
-  ) {
+  let contentType: "Document" | "Photo";
+  if (isPdf(destination)) {
     toPdf = true;
+    contentType = "Document";
     destinationFolder = tempFolder;
     console.log(
       `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`
     );
   } else {
     toPdf = false;
+    contentType = "Photo";
     destinationFolder = folder;
   }
 
