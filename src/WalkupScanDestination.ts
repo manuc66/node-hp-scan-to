@@ -1,7 +1,9 @@
 "use strict";
 import { Parser } from "xml2js";
-const parser = new Parser();
 import { promisify } from "util";
+import { KnownShortcut } from "./KnownShortcut";
+
+const parser = new Parser();
 const parseString = promisify<string, WalkupScanDestinationsData>(
   parser.parseString
 );
@@ -20,7 +22,7 @@ export interface WalkupScanDestinationData {
     "scantype:ScanSettings": {
       "dd:ScanPlexMode": string[];
     }[];
-    "wus:Shortcut": string[];
+    "wus:Shortcut": KnownShortcut[];
   }[];
 }
 
@@ -50,15 +52,11 @@ export default class WalkupScanDestination {
     return this.data["dd:ResourceURI"][0];
   }
 
-  get shortcut(): string | null {
+  get shortcut(): null | KnownShortcut {
     if (this.data.hasOwnProperty("wus:WalkupScanSettings")) {
       return this.data["wus:WalkupScanSettings"]["0"]["wus:Shortcut"][0];
     }
     return null;
-  }
-
-  getContentType(): "Document" | "Photo" {
-    return this.shortcut === "SavePDF" ? "Document" : "Photo";
   }
 
   get scanPlexMode(): string | null {
