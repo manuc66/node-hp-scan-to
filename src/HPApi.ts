@@ -27,6 +27,8 @@ import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
 import WalkupScanManifest from "./WalkupScanManifest";
 import ScanJobManifest from "./ScanJobManifest";
 import ScanCaps from "./ScanCaps";
+import ping from "ping";
+import { delay } from "./delay";
 
 let printerIP = "192.168.1.11";
 let debug = false;
@@ -79,6 +81,25 @@ export default class HPApi {
         });
       }
       throw error;
+    }
+  }
+
+  static async isAlive(): Promise<boolean> {
+    const pingResult = await ping.promise.probe(printerIP);
+    return pingResult.alive;
+  }
+
+  static async waitDeviceUp(): Promise<void> {
+    let first = true;
+    while (!(await HPApi.isAlive())) {
+      if (first) {
+        console.log(`Device ip: ${printerIP} is down! [${new Date().toISOString()}]`);
+      }
+      first = false;
+      await delay(1000);
+    }
+    if (!first) {
+      console.log(`Device ip: ${printerIP} is up again! [${new Date().toISOString()}]`);
     }
   }
 
