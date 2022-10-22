@@ -27,10 +27,6 @@ describe("WalkupScanToCompDestination", () => {
       expect(destination.shortcut).to.be.eq("SavePDF");
     });
 
-    it("Parse getContentType", async () => {
-      expect(destination.getContentType()).to.be.eq("Photo");
-    });
-
     it("Parse resourceURI", async () => {
       expect(destination.resourceURI).to.be.eq(
         "/WalkupScanToComp/WalkupScanToCompDestinations/1c881fde-c4a0-1f08-822f-a01d48c5c091"
