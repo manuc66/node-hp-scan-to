@@ -19,7 +19,7 @@ export interface WalkupScanToCompDestinationData {
     "scantype:ScanSettings": {
       "dd:ScanPlexMode": string[];
     }[];
-    "wus:Shortcut": ("SaveDocument1" | "SavePhoto1" | "SavePDF" | "EmailPDF")[];
+    "wus:Shortcut": KnownShortcut[];
   }[];
 }
 
