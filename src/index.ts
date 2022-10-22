@@ -21,12 +21,7 @@ import PathHelper from "./PathHelper";
 import { createPdfFrom, ScanContent, ScanPage } from "./ScanContent";
 import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
 import { DeviceCapabilities } from "./DeviceCapabilities";
-
-function delay(t: number): Promise<void> {
-  return new Promise(function (resolve) {
-    setTimeout(resolve, t);
-  });
-}
+import { delay } from "./delay";
 
 async function waitForScanEvent(
   resourceURI: string,
@@ -609,8 +604,14 @@ type DirectoryConfig = {
   filePattern: string | undefined;
 };
 
+
+
 let iteration = 0;
 async function init(directoryConfig: DirectoryConfig) {
+  // first make sure the device is reachable
+  await HPApi.waitDeviceUp();
+  let deviceUp = true;
+
   const folder = await PathHelper.getOutputFolder(directoryConfig.directory);
   console.log(`Target folder: ${folder}`);
 
@@ -648,16 +649,26 @@ async function init(directoryConfig: DirectoryConfig) {
         directoryConfig.filePattern
       );
     } catch (e) {
-      errorCount++;
-      console.error(e);
-      console.log(e);
+      if (await HPApi.isAlive()) {
+        errorCount++;
+        console.error(e);
+        console.log(e);
+      }
+      else {
+        deviceUp = false;
+      }
     }
 
     if (errorCount === 50) {
       keepActive = false;
     }
 
-    await delay(1000);
+    if (!deviceUp) {
+      await HPApi.waitDeviceUp();
+    }
+    else {
+      await delay(1000);
+    }
   }
 }
 
@@ -736,5 +747,7 @@ async function main() {
   };
   await init(directoryConfig);
 }
+
+
 
 main();
