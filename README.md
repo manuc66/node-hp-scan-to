@@ -30,6 +30,17 @@ For this purpose, the original HP Windows application's interaction with the dev
 
 This project is not endorsed by nor affiliated with HP.
 
+## Supported features
+- ✔️ JPG scan output
+- ✔️ PDF document scan output
+- ✔️ Scan from automatic document feeder
+- ✔️ Dual side with automatic document feeder
+- ✔️ Multi page from platen
+- ✔️ Automatic IP adress discovery
+- ✔️ Docker support
+- ✔️ Command line support (Cross platform)
+- ✔️ Customizable file names
+
 ## Usage
 ```sh
 git clone ...
