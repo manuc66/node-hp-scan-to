@@ -2,7 +2,7 @@ FROM node:alpine as build
 WORKDIR /app
 
 ADD . .
-RUN yarn install -d
+RUN yarn install -d --verbose
 RUN yarn build
 RUN rm dist/*.d.ts dist/*.js.map
 
