@@ -88,7 +88,7 @@ services:
     restart: always
 ```
 Then run `docker-compose up -d --build`.
-To 
+
 
 Public Pre-built Docker image:
 - https://hub.docker.com/repository/docker/manuc66/node-hp-scan-to
