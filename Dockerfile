@@ -3,8 +3,11 @@ WORKDIR /app
 
 ADD . .
 RUN yarn install -d \
+ && echo "install finished" \
  && yarn build \
- && rm dist/*.d.ts dist/*.js.map
+ && echo "build finished" \
+ && rm dist/*.d.ts dist/*.js.map \
+ && echo "cleanup finished"
 
 FROM node:alpine as app
 ENV NODE_ENV production
