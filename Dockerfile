@@ -2,9 +2,9 @@ FROM node:alpine as build
 WORKDIR /app
 
 ADD . .
-RUN yarn install -d \
- && yarn build \
- && rm dist/*.d.ts dist/*.js.map
+RUN yarn install -d
+RUN yarn build
+RUN rm dist/*.d.ts dist/*.js.map
 
 FROM node:alpine as app
 ENV NODE_ENV production
