@@ -2,7 +2,7 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "master", "feature/multiarch-docker" ]
+    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
 
