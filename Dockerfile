@@ -10,6 +10,12 @@ FROM node:alpine as app
 ENV NODE_ENV production
 ADD root/ /
 
+# add builded app
+WORKDIR /app
+COPY --from=build /app/dist/ /app/package.json ./
+RUN yarn install -d \
+ && yarn cache clean --force
+
 # sets version for s6 overlay
 ARG S6_SRC_DEP="ca-certificates xz-utils wget"
 ARG S6_SRC_URL="https://github.com/just-containers/s6-overlay/releases/download"
@@ -39,11 +45,6 @@ RUN export SYS_ARCH=$(uname -m); \
     echo "⬇️ Install shadow (for groupmod and usermod) and tzdata (for TZ env variable)" \
     && apk add --no-cache shadow tzdata
 
-# add builded app
-WORKDIR /app
-COPY --from=build /app/dist/ /app/package.json ./
-RUN yarn install -d \
- && yarn cache clean --force
 
 VOLUME ["/scan"]
 ENTRYPOINT ["/init"]
