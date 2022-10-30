@@ -1,4 +1,4 @@
-FROM node:alpine as build
+FROM node:18-alpine as build
 WORKDIR /app
 
 ADD . .
@@ -6,7 +6,7 @@ RUN yarn install -d --verbose
 RUN yarn build
 RUN rm dist/*.d.ts dist/*.js.map
 
-FROM node:alpine as app
+FROM node:18-alpine as app
 ENV NODE_ENV production
 ADD root/ /
 
