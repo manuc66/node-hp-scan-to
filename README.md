@@ -36,12 +36,23 @@ This project is not endorsed by nor affiliated with HP.
 - ✔️ Scan from automatic document feeder
 - ✔️ Dual side with automatic document feeder
 - ✔️ Multi page from platen
-- ✔️ Automatic IP adress discovery
-- ✔️ Docker support
+- ✔️ Automatic IP address discovery
+- ✔️ Prebuilt Docker images (multi arch)
 - ✔️ Command line support (Cross platform)
 - ✔️ Customizable file names
 
 ## Usage
+
+### Command line
+`npx node-hp-scan-to`
+
+- `-ip` or `--address` followed by the ip address of the printer, i.e. `-ip 192.168.0.5`. This overrides `-p`.
+- `-n` or `--name` followed by the printer name, it probably contains spaces, so it needs to be quoted, i.e. `-name "Officejet 6500 E710n-z"`
+- `-d` or `--directory` followed by the directory path where the scanned documents should be saved, i.e. `-d ~/Documents/Scans`. Defaults to `/tmp/scan-to-pc<random value>` when not set.
+- `-p` or `--pattern` followed by the pattern for the filename without file extension, i.e. `"scan"_dd.mm.yyyy_hh:MM:ss` to name the scanned file `scan_19.04.2021_17:26:47`. Date and time patterns are replaced by the current date and time, text that should not be replaced need to be inside quotes. Documentation for the pattern can be found [here](https://www.npmjs.com/package/dateformat) in the section `Mask options`. Defaults to `scan<increasing number>_page<page number>` when not set.
+- `-D, --debug"` enables debug logs.
+
+If you wish to test it by cloning this repository:
 ```sh
 git clone ...
 cd node-hp-scan-to
@@ -51,13 +62,6 @@ yarn build
 node dist/index.js -ip 192.168.1.4 # or -n "Officejet 6500 E710n-z"
 ```
 
-### Command line options
-- `-ip` or `--address` followed by the ip address of the printer, i.e. `-ip 192.168.0.5`. This overrides `-p`.
-- `-n` or `--name` followed by the printer name, it probably contains spaces, so it needs to be quoted, i.e. `-name "Officejet 6500 E710n-z"`
-- `-d` or `--directory` followed by the directory path where the scanned documents should be saved, i.e. `-d ~/Documents/Scans`. Defaults to `/tmp/scan-to-pc<random value>` when not set.
-- `-p` or `--pattern` followed by the pattern for the filename without file extension, i.e. `"scan"_dd.mm.yyyy_hh:MM:ss` to name the scanned file `scan_19.04.2021_17:26:47`. Date and time patterns are replaced by the current date and time, text that should not be replaced need to be inside quotes. Documentation for the pattern can be found [here](https://www.npmjs.com/package/dateformat) in the section `Mask options`. Defaults to `scan<increasing number>_page<page number>` when not set.
-- `-D, --debug"` enables debug logs.
-
 ### Run with docker
 Be aware that with docker you have to specify the ip address of the printer via the `IP` environment variable, because 
 bonjour service discovery uses multicast network traffic which by default doesn't work in docker.
@@ -66,7 +70,7 @@ You could however use docker's macvlan networking, this way you can use service 
 All scanned files are written to the volume `/scan`, the filename can be changed with the `PATTERN` environment variable.
 For the correct permissions to the volume set the environment variables `PUID` and `PGID`.
 
-To enable debug logs set the environment variable `CMDLINE` to `-D`. Can also be used for any other command line parameters.
+__To enable debug logs set the environment variable `CMDLINE` to `-D`.__ Can also be used for any other command line parameters.
 
 The name shown on the printer's display is the hostname of the docker container, which defaults to a random value, so you may want to specify it via the `-hostname` argument.
 
