@@ -336,7 +336,7 @@ export default class HPApi {
         method: "GET",
         responseType: "text",
         headers: headers,
-        timeout: decisecondTimeout * 100
+        timeout: (decisecondTimeout * 100) * 1.1
       });
     } catch (error) {
       const axiosError = error as AxiosError;
