@@ -59,6 +59,9 @@ export default class HPApi {
     request: AxiosRequestConfig
   ): Promise<AxiosResponse<string>> {
     callCount++;
+    if (request.timeout === 0) {
+      request.timeout = 100_000;
+    }
     HPApi.logDebug(callCount, true, request);
     try {
       const response = await axios(request);
@@ -320,8 +323,8 @@ export default class HPApi {
     }
   }
 
-  static async getEvents(etag = "", timeout = 0): Promise<EtagEventTable> {
-    let url = this.appendTimeout("/EventMgmt/EventTable", timeout);
+  static async getEvents(etag = "", decisecondTimeout = 0): Promise<EtagEventTable> {
+    let url = this.appendTimeout("/EventMgmt/EventTable", decisecondTimeout);
 
     let headers = this.placeETagHeader(etag, {});
 
@@ -333,6 +336,7 @@ export default class HPApi {
         method: "GET",
         responseType: "text",
         headers: headers,
+        timeout: decisecondTimeout * 100
       });
     } catch (error) {
       const axiosError = error as AxiosError;
