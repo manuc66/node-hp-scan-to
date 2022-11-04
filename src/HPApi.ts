@@ -27,8 +27,8 @@ import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
 import WalkupScanManifest from "./WalkupScanManifest";
 import ScanJobManifest from "./ScanJobManifest";
 import ScanCaps from "./ScanCaps";
-import ping from "ping";
 import { delay } from "./delay";
+import * as net from "net";
 
 let printerIP = "192.168.1.11";
 let debug = false;
@@ -87,22 +87,40 @@ export default class HPApi {
     }
   }
 
-  static async isAlive(): Promise<boolean> {
-    const pingResult = await ping.promise.probe(printerIP);
-    return pingResult.alive;
+  static async isAlive(timeout: number | null = null): Promise<boolean> {
+    const definedTimeout = timeout || 10000; // default of 10 seconds
+    return new Promise((resolve) => {
+      const socket = net.createConnection(80, printerIP, () => {
+        clearTimeout(timer);
+        resolve(true);
+        socket.end();
+      });
+      const timer = setTimeout(() => {
+        resolve(false);
+        socket.end();
+      }, definedTimeout);
+      socket.on("error", () => {
+        clearTimeout(timer);
+        resolve(false);
+      });
+    });
   }
 
   static async waitDeviceUp(): Promise<void> {
     let first = true;
     while (!(await HPApi.isAlive())) {
       if (first) {
-        console.log(`Device ip: ${printerIP} is down! [${new Date().toISOString()}]`);
+        console.log(
+          `Device ip: ${printerIP} is down! [${new Date().toISOString()}]`
+        );
       }
       first = false;
       await delay(1000);
     }
     if (!first) {
-      console.log(`Device ip: ${printerIP} is up again! [${new Date().toISOString()}]`);
+      console.log(
+        `Device ip: ${printerIP} is up again! [${new Date().toISOString()}]`
+      );
     }
   }
 
@@ -323,7 +341,10 @@ export default class HPApi {
     }
   }
 
-  static async getEvents(etag = "", decisecondTimeout = 0): Promise<EtagEventTable> {
+  static async getEvents(
+    etag = "",
+    decisecondTimeout = 0
+  ): Promise<EtagEventTable> {
     let url = this.appendTimeout("/EventMgmt/EventTable", decisecondTimeout);
 
     let headers = this.placeETagHeader(etag, {});
@@ -336,7 +357,7 @@ export default class HPApi {
         method: "GET",
         responseType: "text",
         headers: headers,
-        timeout: (decisecondTimeout * 100) * 1.1
+        timeout: decisecondTimeout * 100 * 1.1,
       });
     } catch (error) {
       const axiosError = error as AxiosError;

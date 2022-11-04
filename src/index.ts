@@ -604,8 +604,6 @@ type DirectoryConfig = {
   filePattern: string | undefined;
 };
 
-
-
 let iteration = 0;
 async function init(directoryConfig: DirectoryConfig) {
   // first make sure the device is reachable
@@ -653,8 +651,7 @@ async function init(directoryConfig: DirectoryConfig) {
         errorCount++;
         console.error(e);
         console.log(e);
-      }
-      else {
+      } else {
         deviceUp = false;
       }
     }
@@ -665,8 +662,7 @@ async function init(directoryConfig: DirectoryConfig) {
 
     if (!deviceUp) {
       await HPApi.waitDeviceUp();
-    }
-    else {
+    } else {
       await delay(1000);
     }
   }
@@ -747,7 +743,5 @@ async function main() {
   };
   await init(directoryConfig);
 }
-
-
 
 main();
