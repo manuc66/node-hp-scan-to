@@ -22,6 +22,7 @@ import { createPdfFrom, ScanContent, ScanPage } from "./ScanContent";
 import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
 import { DeviceCapabilities } from "./DeviceCapabilities";
 import { delay } from "./delay";
+import ScanStatus from "./ScanStatus";
 
 async function waitForScanEvent(
   resourceURI: string,
@@ -605,7 +606,105 @@ type DirectoryConfig = {
 };
 
 let iteration = 0;
-async function init(directoryConfig: DirectoryConfig) {
+
+async function waitScanEvent(deviceCapabilities: DeviceCapabilities) : Promise<Event>{
+  let resourceURI: string;
+  if (deviceCapabilities.useWalkupScanToComp) {
+    resourceURI = await registerWalkupScanToCompDestination();
+  } else {
+    resourceURI = await registerWalkupScanDestination();
+  }
+
+  console.log("Waiting scan event for:", resourceURI);
+  const event = await waitForScanEvent(resourceURI);
+  return event;
+}
+
+async function scanFromAdf(
+ toPdf : boolean,
+ isDuplex: boolean,
+ contentType: "Document" | "Photo",
+ scanCount: number,
+ folder : string,
+ tempFolder : string,
+ filePattern: string | undefined
+) {
+  let destinationFolder: string;
+  if (toPdf) {
+    contentType = "Document";
+    destinationFolder = tempFolder;
+    console.log(
+      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`
+    );
+  } else {
+    contentType = "Photo";
+    destinationFolder = folder;
+  }
+
+  const scanJobSettings = new ScanJobSettings(
+    "Adf",
+    contentType,
+    isDuplex
+  );
+
+  const scanJobContent: ScanContent = { elements: [] };
+
+  await executeScanJob(
+    scanJobSettings,
+    "Adf",
+    destinationFolder,
+    scanCount,
+    scanJobContent,
+    filePattern
+  );
+
+  console.log(
+    `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`
+  );
+
+  if (toPdf) {
+    const pdfFilePath = await mergeToPdf(
+      folder,
+      scanCount,
+      scanJobContent,
+      filePattern
+    );
+    displayPdfScan(pdfFilePath, scanJobContent);
+  } else {
+    displayJpegScan(scanJobContent);
+  }
+}
+
+async function waitAdfLoaded(waitLoadInSecond: number) {
+  let ready = false;
+  while (!ready) {
+    let scanStatus: ScanStatus = await HPApi.getScanStatus();
+    while (!scanStatus.isLoaded()) {
+      await delay(1000);
+      scanStatus = await HPApi.getScanStatus();
+    }
+    console.log(`ADF load detected`);
+
+    let loaded = true;
+    let counter = 0;
+    while (loaded && counter < waitLoadInSecond) {
+      await delay(1000);
+      scanStatus = await HPApi.getScanStatus();
+      loaded = scanStatus.isLoaded();
+      counter++;
+    }
+
+    if (loaded && counter === waitLoadInSecond) {
+      ready = true;
+      console.log(`ADF still loaded, proceeding`);
+    }
+    else {
+      console.log(`ADF not loaded anymore, waiting...`);
+    }
+  }
+}
+
+async function init(directoryConfig: DirectoryConfig, adfOnly : boolean = false) {
   // first make sure the device is reachable
   await HPApi.waitDeviceUp();
   let deviceUp = true;
@@ -626,26 +725,34 @@ async function init(directoryConfig: DirectoryConfig) {
   while (keepActive) {
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
-      let resourceURI: string;
-      if (deviceCapabilities.useWalkupScanToComp) {
-        resourceURI = await registerWalkupScanToCompDestination();
-      } else {
-        resourceURI = await registerWalkupScanDestination();
+      if (adfOnly) {
+        await waitAdfLoaded(5);
+
+        scanCount++;
+
+        console.log(`Scan event captured, saving scan #${scanCount}`);
+
+        const toPdf = true;
+        const isDuplex = false;
+        const contentType: "Document" | "Photo" = "Document";
+
+        await scanFromAdf(toPdf, isDuplex, contentType, scanCount, folder, tempFolder, directoryConfig.filePattern);
+      }
+      else {
+
+        const event = await waitScanEvent(deviceCapabilities);
+        scanCount++;
+        console.log(`Scan event captured, saving scan #${scanCount}`);
+        await saveScan(
+          event,
+          folder,
+          tempFolder,
+          scanCount,
+          deviceCapabilities,
+          directoryConfig.filePattern
+        );
       }
 
-      console.log("Waiting scan event for:", resourceURI);
-      const event = await waitForScanEvent(resourceURI);
-
-      scanCount++;
-      console.log(`Scan event captured, saving scan #${scanCount}`);
-      await saveScan(
-        event,
-        folder,
-        tempFolder,
-        scanCount,
-        deviceCapabilities,
-        directoryConfig.filePattern
-      );
     } catch (e) {
       if (await HPApi.isAlive()) {
         errorCount++;
@@ -741,7 +848,7 @@ async function main() {
     tempDirectory: program.opts().tempDirectory || getConfig("tempDirectory"),
     filePattern: program.opts().pattern || getConfig("pattern"),
   };
-  await init(directoryConfig);
+  await init(directoryConfig, true);
 }
 
 main();
