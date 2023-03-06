@@ -19,9 +19,9 @@ import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
 import JpegUtil from "./JpegUtil";
 import PathHelper from "./PathHelper";
 import { createPdfFrom, ScanContent, ScanPage } from "./ScanContent";
-import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
 import { DeviceCapabilities } from "./DeviceCapabilities";
 import { delay } from "./delay";
+import { readDeviceCapabilities } from "./readDeviceCapabilities";
 
 async function waitForScanEvent(
   resourceURI: string,
@@ -480,8 +480,7 @@ async function saveScan(
   tempFolder: string,
   scanCount: number,
   deviceCapabilities: DeviceCapabilities,
-  scanConfig: ScanConfig,
-  filePattern: string | undefined
+  scanConfig: ScanConfig
 ): Promise<void> {
   if (event.compEventURI) {
     const proceedToScan = await waitScanRequest(event.compEventURI);
@@ -539,7 +538,7 @@ async function saveScan(
     scanJobContent,
     event,
     deviceCapabilities,
-    filePattern
+    scanConfig.directoryConfig.filePattern
   );
 
   console.log(
@@ -551,55 +550,12 @@ async function saveScan(
       folder,
       scanCount,
       scanJobContent,
-      filePattern
+      scanConfig.directoryConfig.filePattern
     );
     displayPdfScan(pdfFilePath, scanJobContent);
   } else {
     displayJpegScan(scanJobContent);
   }
-}
-
-async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
-  let supportsMultiItemScanFromPlaten = true;
-  const discoveryTree = await HPApi.getDiscoveryTree();
-  let walkupScanToCompCaps: WalkupScanToCompCaps | null = null;
-  if (discoveryTree.WalkupScanToCompManifestURI != null) {
-    const walkupScanToCompManifest = await HPApi.getWalkupScanToCompManifest(
-      discoveryTree.WalkupScanToCompManifestURI
-    );
-    if (walkupScanToCompManifest.WalkupScanToCompCapsURI != null) {
-      walkupScanToCompCaps = await HPApi.getWalkupScanToCompCaps(
-        walkupScanToCompManifest.WalkupScanToCompCapsURI
-      );
-      supportsMultiItemScanFromPlaten =
-        walkupScanToCompCaps.supportsMultiItemScanFromPlaten;
-    }
-  } else if (discoveryTree.WalkupScanManifestURI != null) {
-    const walkupScanManifest = await HPApi.getWalkupScanManifest(
-      discoveryTree.WalkupScanManifestURI
-    );
-    if (walkupScanManifest.walkupScanDestinationsURI != null) {
-      await HPApi.getWalkupScanDestinations(
-        walkupScanManifest.walkupScanDestinationsURI
-      );
-    }
-  } else {
-    console.log("Unknown device!");
-  }
-
-  if (discoveryTree.ScanJobManifestURI != null) {
-    const scanJobManifest = await HPApi.getScanJobManifest(
-      discoveryTree.ScanJobManifestURI
-    );
-    if (scanJobManifest.ScanCapsURI != null) {
-      await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);
-    }
-  }
-
-  return {
-    supportsMultiItemScanFromPlaten,
-    useWalkupScanToComp: walkupScanToCompCaps != null,
-  };
 }
 
 type DirectoryConfig = {
@@ -610,6 +566,7 @@ type DirectoryConfig = {
 
 type ScanConfig = {
   resolution: number;
+  directoryConfig: DirectoryConfig;
 };
 
 type RegistrationConfig = {
@@ -619,18 +576,17 @@ type RegistrationConfig = {
 let iteration = 0;
 async function init(
   registrationConfig: RegistrationConfig,
-  directoryConfig: DirectoryConfig,
   scanConfig: ScanConfig
 ) {
   // first make sure the device is reachable
   await HPApi.waitDeviceUp();
   let deviceUp = true;
 
-  const folder = await PathHelper.getOutputFolder(directoryConfig.directory);
+  const folder = await PathHelper.getOutputFolder(scanConfig.directoryConfig.directory);
   console.log(`Target folder: ${folder}`);
 
   const tempFolder = await PathHelper.getOutputFolder(
-    directoryConfig.tempDirectory
+    scanConfig.directoryConfig.tempDirectory
   );
   console.log(`Temp folder: ${tempFolder}`);
 
@@ -662,8 +618,7 @@ async function init(
         tempFolder,
         scanCount,
         deviceCapabilities,
-        scanConfig,
-        directoryConfig.filePattern
+        scanConfig
       );
     } catch (e) {
       if (await HPApi.isAlive()) {
@@ -718,8 +673,7 @@ function getConfig<T>(name: string): T | undefined {
   return config.has(name) ? config.get<T>(name) : undefined;
 }
 
-async function main() {
-  const program = new Command();
+function setupParameterOpts(program: Command) {
   program.option(
     "-ip, --address <ip>",
     "IP address of the printer (this overrides -p)"
@@ -742,13 +696,18 @@ async function main() {
   );
   program.option(
     "-p, --pattern <pattern>",
-    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)'
+    "Pattern for filename (i.e. \"scan\"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)"
   );
   program.option(
     "-r, --resolution <dpi>",
     "Resolution in DPI of the scans (defaults is 200)"
   );
   program.option("-D, --debug", "Enable debug");
+}
+
+async function main() {
+  const program = new Command();
+  setupParameterOpts(program);
   program.parse(process.argv);
 
   let ip = program.opts().address || getConfig("ip");
@@ -779,8 +738,9 @@ async function main() {
       program.opts().resolution || getConfig("resolution") || 200,
       10
     ),
+    directoryConfig
   };
-  await init(registrationConfig, directoryConfig, scanConfig);
+  await init(registrationConfig, scanConfig);
 }
 
 main().catch((err) => console.log(err));
