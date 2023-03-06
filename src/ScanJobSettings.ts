@@ -5,15 +5,18 @@ const util = require("util");
 export default class ScanJobSettings {
   private readonly inputSource: "Adf" | "Platen";
   private readonly contentType: "Document" | "Photo";
+  private readonly resolution: number;
   private readonly isDuplex: boolean;
 
   constructor(
     inputSource: "Adf" | "Platen",
     contentType: "Document" | "Photo",
+    resolution: number,
     isDuplex: boolean
   ) {
     this.inputSource = inputSource;
     this.contentType = contentType;
+    this.resolution = resolution;
     this.isDuplex = isDuplex;
   }
 
@@ -47,6 +50,9 @@ export default class ScanJobSettings {
       "</ScanSettings>";
 
     const parsed = await util.promisify(parser.parseString)(rawJob);
+
+    parsed.ScanSettings.XResolution[0] = this.resolution;
+    parsed.ScanSettings.YResolution[0] = this.resolution;
 
     parsed.ScanSettings.InputSource[0] = this.inputSource;
     if (this.inputSource === "Adf" && this.isDuplex) {
