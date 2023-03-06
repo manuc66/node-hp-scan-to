@@ -70,9 +70,9 @@ async function waitPrinterUntilItIsReadyToUploadOrCompleted(
   return job;
 }
 
-async function registerWalkupScanToCompDestination(): Promise<string> {
-  const hostname = os.hostname();
-
+async function registerWalkupScanToCompDestination(
+  registrationConfig: RegistrationConfig
+): Promise<string> {
   const walkupScanDestinations = await HPApi.getWalkupScanToCompDestinations();
   const destinations = walkupScanDestinations.destinations;
 
@@ -81,6 +81,7 @@ async function registerWalkupScanToCompDestination(): Promise<string> {
     destinations.map((d) => d.name).join(", ")
   );
 
+  const hostname = registrationConfig.label;
   const destination = destinations.find((x) => x.name === hostname);
 
   let resourceURI;
@@ -100,9 +101,9 @@ async function registerWalkupScanToCompDestination(): Promise<string> {
 
   return resourceURI;
 }
-async function registerWalkupScanDestination(): Promise<string> {
-  const hostname = os.hostname();
-
+async function registerWalkupScanDestination(
+  registrationConfig: RegistrationConfig
+): Promise<string> {
   const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
   const destinations = walkupScanDestinations.destinations;
 
@@ -111,6 +112,7 @@ async function registerWalkupScanDestination(): Promise<string> {
     destinations.map((d) => d.name).join(", ")
   );
 
+  const hostname = registrationConfig.label;
   const destination = destinations.find((x) => x.name === hostname);
 
   let resourceURI;
@@ -478,6 +480,7 @@ async function saveScan(
   tempFolder: string,
   scanCount: number,
   deviceCapabilities: DeviceCapabilities,
+  scanConfig: ScanConfig,
   filePattern: string | undefined
 ): Promise<void> {
   if (event.compEventURI) {
@@ -522,6 +525,7 @@ async function saveScan(
   const scanJobSettings = new ScanJobSettings(
     inputSource,
     contentType,
+    scanConfig.resolution,
     isDuplex
   );
 
@@ -604,8 +608,20 @@ type DirectoryConfig = {
   filePattern: string | undefined;
 };
 
+type ScanConfig = {
+  resolution: number;
+};
+
+type RegistrationConfig = {
+  label: string;
+};
+
 let iteration = 0;
-async function init(directoryConfig: DirectoryConfig) {
+async function init(
+  registrationConfig: RegistrationConfig,
+  directoryConfig: DirectoryConfig,
+  scanConfig: ScanConfig
+) {
   // first make sure the device is reachable
   await HPApi.waitDeviceUp();
   let deviceUp = true;
@@ -628,9 +644,11 @@ async function init(directoryConfig: DirectoryConfig) {
     try {
       let resourceURI: string;
       if (deviceCapabilities.useWalkupScanToComp) {
-        resourceURI = await registerWalkupScanToCompDestination();
+        resourceURI = await registerWalkupScanToCompDestination(
+          registrationConfig
+        );
       } else {
-        resourceURI = await registerWalkupScanDestination();
+        resourceURI = await registerWalkupScanDestination(registrationConfig);
       }
 
       console.log("Waiting scan event for:", resourceURI);
@@ -644,6 +662,7 @@ async function init(directoryConfig: DirectoryConfig) {
         tempFolder,
         scanCount,
         deviceCapabilities,
+        scanConfig,
         directoryConfig.filePattern
       );
     } catch (e) {
@@ -706,6 +725,10 @@ async function main() {
     "IP address of the printer (this overrides -p)"
   );
   program.option(
+    "-l, --label <label>",
+    "The label to display on the printer (default is the hostname)"
+  );
+  program.option(
     "-n, --name <name>",
     "Name of the printer for service discovery"
   ); // i.e. 'Deskjet 3520 series'
@@ -720,6 +743,10 @@ async function main() {
   program.option(
     "-p, --pattern <pattern>",
     'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)'
+  );
+  program.option(
+    "-r, --resolution <dpi>",
+    "Resolution in DPI of the scans (defaults is 200)"
   );
   program.option("-D, --debug", "Enable debug");
   program.parse(process.argv);
@@ -736,12 +763,24 @@ async function main() {
 
   HPApi.setDebug(debug);
   HPApi.setPrinterIP(ip);
-  const directoryConfig = {
+
+  const registrationConfig: RegistrationConfig = {
+    label: program.opts().label || getConfig("label") || os.hostname(),
+  };
+
+  const directoryConfig: DirectoryConfig = {
     directory: program.opts().directory || getConfig("directory"),
     tempDirectory: program.opts().tempDirectory || getConfig("tempDirectory"),
     filePattern: program.opts().pattern || getConfig("pattern"),
   };
-  await init(directoryConfig);
+
+  const scanConfig: ScanConfig = {
+    resolution: parseInt(
+      program.opts().resolution || getConfig("resolution") || 200,
+      10
+    ),
+  };
+  await init(registrationConfig, directoryConfig, scanConfig);
 }
 
-main();
+main().catch((err) => console.log(err));
