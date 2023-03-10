@@ -19,9 +19,9 @@ import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
 import JpegUtil from "./JpegUtil";
 import PathHelper from "./PathHelper";
 import { createPdfFrom, ScanContent, ScanPage } from "./ScanContent";
-import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
 import { DeviceCapabilities } from "./DeviceCapabilities";
 import { delay } from "./delay";
+import { readDeviceCapabilities } from "./readDeviceCapabilities";
 
 async function waitForScanEvent(
   resourceURI: string,
@@ -70,9 +70,9 @@ async function waitPrinterUntilItIsReadyToUploadOrCompleted(
   return job;
 }
 
-async function registerWalkupScanToCompDestination(): Promise<string> {
-  const hostname = os.hostname();
-
+async function registerWalkupScanToCompDestination(
+  registrationConfig: RegistrationConfig
+): Promise<string> {
   const walkupScanDestinations = await HPApi.getWalkupScanToCompDestinations();
   const destinations = walkupScanDestinations.destinations;
 
@@ -81,6 +81,7 @@ async function registerWalkupScanToCompDestination(): Promise<string> {
     destinations.map((d) => d.name).join(", ")
   );
 
+  const hostname = registrationConfig.label;
   const destination = destinations.find((x) => x.name === hostname);
 
   let resourceURI;
@@ -100,9 +101,9 @@ async function registerWalkupScanToCompDestination(): Promise<string> {
 
   return resourceURI;
 }
-async function registerWalkupScanDestination(): Promise<string> {
-  const hostname = os.hostname();
-
+async function registerWalkupScanDestination(
+  registrationConfig: RegistrationConfig
+): Promise<string> {
   const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
   const destinations = walkupScanDestinations.destinations;
 
@@ -111,6 +112,7 @@ async function registerWalkupScanDestination(): Promise<string> {
     destinations.map((d) => d.name).join(", ")
   );
 
+  const hostname = registrationConfig.label;
   const destination = destinations.find((x) => x.name === hostname);
 
   let resourceURI;
@@ -478,7 +480,7 @@ async function saveScan(
   tempFolder: string,
   scanCount: number,
   deviceCapabilities: DeviceCapabilities,
-  filePattern: string | undefined
+  scanConfig: ScanConfig
 ): Promise<void> {
   if (event.compEventURI) {
     const proceedToScan = await waitScanRequest(event.compEventURI);
@@ -522,6 +524,7 @@ async function saveScan(
   const scanJobSettings = new ScanJobSettings(
     inputSource,
     contentType,
+    scanConfig.resolution,
     isDuplex
   );
 
@@ -535,7 +538,7 @@ async function saveScan(
     scanJobContent,
     event,
     deviceCapabilities,
-    filePattern
+    scanConfig.directoryConfig.filePattern
   );
 
   console.log(
@@ -547,55 +550,12 @@ async function saveScan(
       folder,
       scanCount,
       scanJobContent,
-      filePattern
+      scanConfig.directoryConfig.filePattern
     );
     displayPdfScan(pdfFilePath, scanJobContent);
   } else {
     displayJpegScan(scanJobContent);
   }
-}
-
-async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
-  let supportsMultiItemScanFromPlaten = true;
-  const discoveryTree = await HPApi.getDiscoveryTree();
-  let walkupScanToCompCaps: WalkupScanToCompCaps | null = null;
-  if (discoveryTree.WalkupScanToCompManifestURI != null) {
-    const walkupScanToCompManifest = await HPApi.getWalkupScanToCompManifest(
-      discoveryTree.WalkupScanToCompManifestURI
-    );
-    if (walkupScanToCompManifest.WalkupScanToCompCapsURI != null) {
-      walkupScanToCompCaps = await HPApi.getWalkupScanToCompCaps(
-        walkupScanToCompManifest.WalkupScanToCompCapsURI
-      );
-      supportsMultiItemScanFromPlaten =
-        walkupScanToCompCaps.supportsMultiItemScanFromPlaten;
-    }
-  } else if (discoveryTree.WalkupScanManifestURI != null) {
-    const walkupScanManifest = await HPApi.getWalkupScanManifest(
-      discoveryTree.WalkupScanManifestURI
-    );
-    if (walkupScanManifest.walkupScanDestinationsURI != null) {
-      await HPApi.getWalkupScanDestinations(
-        walkupScanManifest.walkupScanDestinationsURI
-      );
-    }
-  } else {
-    console.log("Unknown device!");
-  }
-
-  if (discoveryTree.ScanJobManifestURI != null) {
-    const scanJobManifest = await HPApi.getScanJobManifest(
-      discoveryTree.ScanJobManifestURI
-    );
-    if (scanJobManifest.ScanCapsURI != null) {
-      await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);
-    }
-  }
-
-  return {
-    supportsMultiItemScanFromPlaten,
-    useWalkupScanToComp: walkupScanToCompCaps != null,
-  };
 }
 
 type DirectoryConfig = {
@@ -604,17 +564,29 @@ type DirectoryConfig = {
   filePattern: string | undefined;
 };
 
+type ScanConfig = {
+  resolution: number;
+  directoryConfig: DirectoryConfig;
+};
+
+type RegistrationConfig = {
+  label: string;
+};
+
 let iteration = 0;
-async function init(directoryConfig: DirectoryConfig) {
+async function init(
+  registrationConfig: RegistrationConfig,
+  scanConfig: ScanConfig
+) {
   // first make sure the device is reachable
   await HPApi.waitDeviceUp();
   let deviceUp = true;
 
-  const folder = await PathHelper.getOutputFolder(directoryConfig.directory);
+  const folder = await PathHelper.getOutputFolder(scanConfig.directoryConfig.directory);
   console.log(`Target folder: ${folder}`);
 
   const tempFolder = await PathHelper.getOutputFolder(
-    directoryConfig.tempDirectory
+    scanConfig.directoryConfig.tempDirectory
   );
   console.log(`Temp folder: ${tempFolder}`);
 
@@ -628,9 +600,11 @@ async function init(directoryConfig: DirectoryConfig) {
     try {
       let resourceURI: string;
       if (deviceCapabilities.useWalkupScanToComp) {
-        resourceURI = await registerWalkupScanToCompDestination();
+        resourceURI = await registerWalkupScanToCompDestination(
+          registrationConfig
+        );
       } else {
-        resourceURI = await registerWalkupScanDestination();
+        resourceURI = await registerWalkupScanDestination(registrationConfig);
       }
 
       console.log("Waiting scan event for:", resourceURI);
@@ -644,7 +618,7 @@ async function init(directoryConfig: DirectoryConfig) {
         tempFolder,
         scanCount,
         deviceCapabilities,
-        directoryConfig.filePattern
+        scanConfig
       );
     } catch (e) {
       if (await HPApi.isAlive()) {
@@ -699,11 +673,14 @@ function getConfig<T>(name: string): T | undefined {
   return config.has(name) ? config.get<T>(name) : undefined;
 }
 
-async function main() {
-  const program = new Command();
+function setupParameterOpts(program: Command) {
   program.option(
     "-ip, --address <ip>",
     "IP address of the printer (this overrides -p)"
+  );
+  program.option(
+    "-l, --label <label>",
+    "The label to display on the printer (default is the hostname)"
   );
   program.option(
     "-n, --name <name>",
@@ -719,9 +696,18 @@ async function main() {
   );
   program.option(
     "-p, --pattern <pattern>",
-    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)'
+    "Pattern for filename (i.e. \"scan\"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)"
+  );
+  program.option(
+    "-r, --resolution <dpi>",
+    "Resolution in DPI of the scans (defaults is 200)"
   );
   program.option("-D, --debug", "Enable debug");
+}
+
+async function main() {
+  const program = new Command();
+  setupParameterOpts(program);
   program.parse(process.argv);
 
   let ip = program.opts().address || getConfig("ip");
@@ -736,12 +722,25 @@ async function main() {
 
   HPApi.setDebug(debug);
   HPApi.setPrinterIP(ip);
-  const directoryConfig = {
+
+  const registrationConfig: RegistrationConfig = {
+    label: program.opts().label || getConfig("label") || os.hostname(),
+  };
+
+  const directoryConfig: DirectoryConfig = {
     directory: program.opts().directory || getConfig("directory"),
     tempDirectory: program.opts().tempDirectory || getConfig("tempDirectory"),
     filePattern: program.opts().pattern || getConfig("pattern"),
   };
-  await init(directoryConfig);
+
+  const scanConfig: ScanConfig = {
+    resolution: parseInt(
+      program.opts().resolution || getConfig("resolution") || 200,
+      10
+    ),
+    directoryConfig
+  };
+  await init(registrationConfig, scanConfig);
 }
 
-main();
+main().catch((err) => console.log(err));
