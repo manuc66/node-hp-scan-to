@@ -5,7 +5,7 @@
 
 import os from "os";
 import fs from "fs/promises";
-import { Command } from "commander";
+import { program, Command } from "commander";
 import Bonjour from "bonjour";
 import config from "config";
 
@@ -72,7 +72,7 @@ async function waitPrinterUntilItIsReadyToUploadOrCompleted(
 }
 
 async function registerWalkupScanToCompDestination(
-  registrationConfig: RegistrationConfig,
+  registrationConfig: RegistrationConfig
 ): Promise<string> {
   const walkupScanDestinations = await HPApi.getWalkupScanToCompDestinations();
   const destinations = walkupScanDestinations.destinations;
@@ -576,8 +576,10 @@ type RegistrationConfig = {
 
 let iteration = 0;
 
-async function waitScanEvent(deviceCapabilities: DeviceCapabilities,
-registrationConfig: RegistrationConfig) : Promise<Event>{
+async function waitScanEvent(
+  deviceCapabilities: DeviceCapabilities,
+  registrationConfig: RegistrationConfig
+): Promise<Event> {
   let resourceURI: string;
   if (deviceCapabilities.useWalkupScanToComp) {
     resourceURI = await registerWalkupScanToCompDestination(registrationConfig);
@@ -591,13 +593,13 @@ registrationConfig: RegistrationConfig) : Promise<Event>{
 }
 
 async function scanFromAdf(
- toPdf : boolean,
- isDuplex: boolean,
- contentType: "Document" | "Photo",
- scanCount: number,
- folder : string,
- tempFolder : string,
- scanConfig: ScanConfig
+  toPdf: boolean,
+  isDuplex: boolean,
+  contentType: "Document" | "Photo",
+  scanCount: number,
+  folder: string,
+  tempFolder: string,
+  scanConfig: ScanConfig
 ) {
   let destinationFolder: string;
   if (toPdf) {
@@ -668,21 +670,24 @@ async function waitAdfLoaded(waitLoadInSecond: number) {
     if (loaded && counter === waitLoadInSecond) {
       ready = true;
       console.log(`ADF still loaded, proceeding`);
-    }
-    else {
+    } else {
       console.log(`ADF not loaded anymore, waiting...`);
     }
   }
 }
 
-async function init(  registrationConfig: RegistrationConfig,
-                      scanConfig: ScanConfig
-                      , adfOnly : boolean = false) {
+async function init(
+  registrationConfig: RegistrationConfig,
+  scanConfig: ScanConfig,
+  adfOnly: boolean = false
+) {
   // first make sure the device is reachable
   await HPApi.waitDeviceUp();
   let deviceUp = true;
 
-  const folder = await PathHelper.getOutputFolder(scanConfig.directoryConfig.directory);
+  const folder = await PathHelper.getOutputFolder(
+    scanConfig.directoryConfig.directory
+  );
   console.log(`Target folder: ${folder}`);
 
   const tempFolder = await PathHelper.getOutputFolder(
@@ -709,11 +714,20 @@ async function init(  registrationConfig: RegistrationConfig,
         const isDuplex = false;
         const contentType: "Document" | "Photo" = "Document";
 
-        await scanFromAdf(toPdf, isDuplex, contentType, scanCount, folder, tempFolder, scanConfig, );
-      }
-      else {
-
-        const event = await waitScanEvent(deviceCapabilities, registrationConfig);
+        await scanFromAdf(
+          toPdf,
+          isDuplex,
+          contentType,
+          scanCount,
+          folder,
+          tempFolder,
+          scanConfig
+        );
+      } else {
+        const event = await waitScanEvent(
+          deviceCapabilities,
+          registrationConfig
+        );
         scanCount++;
         console.log(`Scan event captured, saving scan #${scanCount}`);
         await saveScan(
@@ -725,7 +739,6 @@ async function init(  registrationConfig: RegistrationConfig,
           scanConfig
         );
       }
-
     } catch (e) {
       if (await HPApi.isAlive()) {
         errorCount++;
@@ -779,7 +792,7 @@ function getConfig<T>(name: string): T | undefined {
   return config.has(name) ? config.get<T>(name) : undefined;
 }
 
-function setupParameterOpts(program: Command) {
+function setupParameterOpts(program: Command): Command {
   program.option(
     "-ip, --address <ip>",
     "IP address of the printer (this overrides -p)"
@@ -802,51 +815,63 @@ function setupParameterOpts(program: Command) {
   );
   program.option(
     "-p, --pattern <pattern>",
-    "Pattern for filename (i.e. \"scan\"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)"
+    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)'
   );
   program.option(
     "-r, --resolution <dpi>",
     "Resolution in DPI of the scans (defaults is 200)"
   );
+  program.option(
+    "--adf-autoscan <dpi>",
+    "Resolution in DPI of the scans (defaults is 200)"
+  );
   program.option("-D, --debug", "Enable debug");
+  return program;
 }
 
 async function main() {
-  const program = new Command();
-  setupParameterOpts(program);
-  program.parse(process.argv);
+  const cmdListen = program.command("listen", { isDefault: true });
+  setupParameterOpts(cmdListen).action(async (options) => {
 
-  let ip = program.opts().address || getConfig("ip");
-  if (!ip) {
-    const name = program.opts().name || getConfig("name");
-    ip = await findOfficejetIp(name || "HP Smart Tank Plus 570 series");
-  }
-  console.log(`Using device ip: ${ip}`);
+    let ip = options.address || getConfig("ip");
+    if (!ip) {
+      const name = options.name || getConfig("name");
+      ip = await findOfficejetIp(name || "HP Smart Tank Plus 570 series");
+    }
+    console.log(`Using device ip: ${ip}`);
 
-  const debug =
-    program.opts().debug != null ? true : getConfig<boolean>("debug") || false;
+    const debug =
+      options.debug != null ? true : getConfig<boolean>("debug") || false;
 
-  HPApi.setDebug(debug);
-  HPApi.setPrinterIP(ip);
+    console.log(options);
+    console.log(`IsDebug: ${debug}`);
 
-  const registrationConfig: RegistrationConfig = {
-    label: program.opts().label || getConfig("label") || os.hostname(),
-  };
+    HPApi.setDebug(debug);
+    HPApi.setPrinterIP(ip);
 
-  const directoryConfig: DirectoryConfig = {
-    directory: program.opts().directory || getConfig("directory"),
-    tempDirectory: program.opts().tempDirectory || getConfig("tempDirectory"),
-    filePattern: program.opts().pattern || getConfig("pattern"),
-  };
+    const registrationConfig: RegistrationConfig = {
+      label: options.label || getConfig("label") || os.hostname(),
+    };
 
-  const scanConfig: ScanConfig = {
-    resolution: parseInt(
-      program.opts().resolution || getConfig("resolution") || 200,
-      10
-    ),
-    directoryConfig
-  };
-  await init(registrationConfig, scanConfig, true);
+    const directoryConfig: DirectoryConfig = {
+      directory: options.directory || getConfig("directory"),
+      tempDirectory: options.tempDirectory || getConfig("tempDirectory"),
+      filePattern: options.pattern || getConfig("pattern"),
+    };
+
+    const scanConfig: ScanConfig = {
+      resolution: parseInt(
+        options.resolution || getConfig("resolution") || 200,
+        10
+      ),
+      directoryConfig,
+    };
+
+    await init(registrationConfig, scanConfig, false);
+  });
+  await program.parseAsync(process.argv);
+console.log("ici");
+
 }
 
 main().catch((err) => console.log(err));
