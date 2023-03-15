@@ -5,7 +5,7 @@
 
 import os from "os";
 import fs from "fs/promises";
-import { program, Command } from "commander";
+import { Command, OptionValues, program } from "commander";
 import Bonjour from "bonjour";
 import config from "config";
 
@@ -47,7 +47,7 @@ async function waitForScanEvent(
   return acceptedScanEvent;
 }
 
-async function waitPrinterUntilItIsReadyToUploadOrCompleted(
+async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string
 ): Promise<Job> {
   let job = null;
@@ -282,7 +282,7 @@ async function executeScanJob(
 
   let job = await HPApi.getJob(jobUrl);
   while (job.jobState !== "Completed") {
-    job = await waitPrinterUntilItIsReadyToUploadOrCompleted(jobUrl);
+    job = await waitDeviceUntilItIsReadyToUploadOrCompleted(jobUrl);
 
     if (job.jobState == "Completed") {
       continue;
@@ -565,7 +565,7 @@ type DirectoryConfig = {
   filePattern: string | undefined;
 };
 
-type ScanConfig  = {
+type ScanConfig = {
   resolution: number;
   directoryConfig: DirectoryConfig;
 };
@@ -594,8 +594,7 @@ async function waitScanEvent(
   }
 
   console.log("Waiting scan event for:", resourceURI);
-  const event = await waitForScanEvent(resourceURI);
-  return event;
+  return await waitForScanEvent(resourceURI);
 }
 
 async function scanFromAdf(
@@ -767,12 +766,7 @@ async function initAdfAutoscan(adfAutoScanConfig: AdfAutoScanConfig) {
 
       console.log(`Scan event captured, saving scan #${scanCount}`);
 
-      await scanFromAdf(
-        scanCount,
-        folder,
-        tempFolder,
-        adfAutoScanConfig
-      );
+      await scanFromAdf(scanCount, folder, tempFolder, adfAutoScanConfig);
     } catch (e) {
       if (await HPApi.isAlive()) {
         errorCount++;
@@ -798,7 +792,7 @@ async function initAdfAutoscan(adfAutoScanConfig: AdfAutoScanConfig) {
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
     const bonjour = Bonjour();
-    console.log("Searching printer...");
+    console.log("Searching device...");
     let browser = bonjour.find(
       {
         type: "http",
@@ -826,33 +820,38 @@ function getConfig<T>(name: string): T | undefined {
   return config.has(name) ? config.get<T>(name) : undefined;
 }
 
-function setupParameterOpts(program: Command): Command {
-  program.option(
-    "-ip, --address <ip>",
-    "IP address of the printer (this overrides -p)"
-  );
-  program.option(
-    "-n, --name <name>",
-    "Name of the printer for service discovery"
-  ); // i.e. 'Deskjet 3520 series'
-  program.option(
+function setupScanParameters(command: Command): Command {
+  command.option(
     "-d, --directory <dir>",
     "Directory where scans are saved (defaults to /tmp/scan-to-pc<random>)"
   );
-  program.option(
+  command.option(
     "-t, --temp-directory <dir>",
     "Temp directory used for processing (defaults to /tmp/scan-to-pc<random>)"
   );
-  program.option(
+  command.option(
     "-p, --pattern <pattern>",
     'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)'
   );
-  program.option(
+  command.option(
     "-r, --resolution <dpi>",
     "Resolution in DPI of the scans (defaults is 200)"
   );
-  program.option("-D, --debug", "Enable debug");
-  return program;
+  return command;
+}
+
+function setupParameterOpts(command: Command): Command {
+  command.option(
+    "-ip, --address <ip>",
+    "IP address of the device (this overrides -p)"
+  );
+  command.option(
+    "-n, --name <name>",
+    "Name of the device for service discovery"
+  ); // i.e. 'Deskjet 3520 series'
+
+  command.option("-D, --debug", "Enable debug");
+  return command;
 }
 
 async function getDeviceIp(options: any) {
@@ -873,18 +872,37 @@ function getIsDebug(options: any) {
   return debug;
 }
 
+function getScanConfiguration(parentOption: OptionValues) {
+  const directoryConfig: DirectoryConfig = {
+    directory: parentOption.directory || getConfig("directory"),
+    tempDirectory: parentOption.tempDirectory || getConfig("tempDirectory"),
+    filePattern: parentOption.pattern || getConfig("pattern")
+  };
+
+  const scanConfig: ScanConfig = {
+    resolution: parseInt(
+      parentOption.resolution || getConfig("resolution") || 200,
+      10
+    ),
+    directoryConfig
+  };
+  return scanConfig;
+}
+
 async function main() {
   setupParameterOpts(program);
-  const cmdListen = program.createCommand("listen"); //program.command("listen", { isDefault: true });
-  cmdListen
+  const cmdListen = program.createCommand("listen");
+  setupScanParameters(cmdListen)
+    .description("Listen the device for new scan job to save to this target")
     .option(
       "-l, --label <label>",
-      "The label to display on the printer (default is the hostname)"
+      "The label to display on the device (default is the hostname)"
     )
     .action(async (options, cmd) => {
       const parentOption = cmd.parent.opts();
+
       const ip = await getDeviceIp(parentOption);
-      HPApi.setPrinterIP(ip);
+      HPApi.setDeviceIP(ip);
 
       const isDebug = getIsDebug(parentOption);
       HPApi.setDebug(isDebug);
@@ -893,61 +911,47 @@ async function main() {
         label: options.label || getConfig("label") || os.hostname(),
       };
 
-      const directoryConfig: DirectoryConfig = {
-        directory: parentOption.directory || getConfig("directory"),
-        tempDirectory: parentOption.tempDirectory || getConfig("tempDirectory"),
-        filePattern: parentOption.pattern || getConfig("pattern"),
-      };
-
-      const scanConfig: ScanConfig = {
-        resolution: parseInt(
-          parentOption.resolution || getConfig("resolution") || 200,
-          10
-        ),
-        directoryConfig,
-      };
+      const scanConfig = getScanConfiguration(parentOption);
 
       await init(registrationConfig, scanConfig);
     });
-  program.addCommand(cmdListen, { isDefault: true});
+  program.addCommand(cmdListen, { isDefault: true });
 
   const cmdAdfAutoscan = program.createCommand("adf-autoscan");
-  cmdAdfAutoscan.action(async (options, cmd) => {
+  setupScanParameters(cmdAdfAutoscan)
+    .description("Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)")
+    .action(async (options, cmd) => {
     const parentOption = cmd.parent.opts();
 
     const ip = await getDeviceIp(parentOption);
-    HPApi.setPrinterIP(ip);
+    HPApi.setDeviceIP(ip);
 
     const isDebug = getIsDebug(parentOption);
     HPApi.setDebug(isDebug);
 
-    const directoryConfig: DirectoryConfig = {
-      directory: parentOption.directory || getConfig("directory"),
-      tempDirectory: parentOption.tempDirectory || getConfig("tempDirectory"),
-      filePattern: parentOption.pattern || getConfig("pattern"),
-    };
+    const scanConfig = getScanConfiguration(parentOption);
 
-    const scanConfig: AdfAutoScanConfig = {
-      resolution: parseInt(
-        parentOption.resolution || getConfig("resolution") || 200,
-        10
-      ),
-      directoryConfig,
+    const adfScanConfig: AdfAutoScanConfig = {
+      ...scanConfig,
       isDuplex: options.isDuplex,
       contentType: "Document",
       generatePdf: options.pdf,
     };
 
-    await initAdfAutoscan(scanConfig);
+    await initAdfAutoscan(adfScanConfig);
   });
   program.addCommand(cmdAdfAutoscan);
 
   const cmdClearRegistrations = program.createCommand("clear-registrations");
-  cmdClearRegistrations.action(async (options) => {
-    const ip = await getDeviceIp(options);
-    HPApi.setPrinterIP(ip);
+  cmdClearRegistrations
+    .description("Clear the list or registered target on the device")
+    .action(async (options, cmd) => {
+    const parentOption = cmd.parent.opts();
 
-    const isDebug = getIsDebug(options);
+    const ip = await getDeviceIp(parentOption);
+    HPApi.setDeviceIP(ip);
+
+    const isDebug = getIsDebug(parentOption);
     HPApi.setDebug(isDebug);
 
     const dests = await HPApi.getWalkupScanToCompDestinations();
@@ -956,7 +960,7 @@ async function main() {
       await HPApi.removeDestination(dests.destinations[i]);
     }
   });
-  program.addCommand(cmdAdfAutoscan);
+  program.addCommand(cmdClearRegistrations);
 
   await program.parseAsync(process.argv);
 }

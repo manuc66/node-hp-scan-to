@@ -5,7 +5,7 @@ import HPApi from "../src/HPApi";
 describe("EtagEventTable", () => {
   describe("Parsing eventTable.xml", async () => {
     before(async () => {
-      HPApi.setPrinterIP("192.168.1.53");
+      HPApi.setDeviceIP("192.168.1.53");
     });
 
     it("Clean all destinations", async () => {
