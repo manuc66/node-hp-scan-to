@@ -5,7 +5,7 @@
 
 import os from "os";
 import fs from "fs/promises";
-import { Command, OptionValues, program } from "commander";
+import { Command, Option, OptionValues, program } from "commander";
 import Bonjour from "bonjour";
 import config from "config";
 
@@ -23,6 +23,7 @@ import { DeviceCapabilities } from "./DeviceCapabilities";
 import { delay } from "./delay";
 import { readDeviceCapabilities } from "./readDeviceCapabilities";
 import ScanStatus from "./ScanStatus";
+import { parseNumbers } from "xml2js/lib/processors";
 
 async function waitForScanEvent(
   resourceURI: string,
@@ -572,8 +573,9 @@ type ScanConfig = {
 
 type AdfAutoScanConfig = ScanConfig & {
   isDuplex: boolean;
-  contentType: "Document" | "Photo";
   generatePdf: boolean;
+  pollingInterval: number;
+  startScanDelay: number;
 };
 
 type RegistrationConfig = {
@@ -606,7 +608,7 @@ async function scanFromAdf(
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
   if (adfAutoScanConfig.generatePdf) {
-    contentType = adfAutoScanConfig.contentType;
+    contentType = "Document";
     destinationFolder = tempFolder;
     console.log(
       `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`
@@ -651,26 +653,27 @@ async function scanFromAdf(
   }
 }
 
-async function waitAdfLoaded(waitLoadInSecond: number) {
+async function waitAdfLoaded(pollingInterval: number, startScanDelay: number) {
   let ready = false;
   while (!ready) {
     let scanStatus: ScanStatus = await HPApi.getScanStatus();
     while (!scanStatus.isLoaded()) {
-      await delay(1000);
+      await delay(pollingInterval);
       scanStatus = await HPApi.getScanStatus();
     }
     console.log(`ADF load detected`);
 
     let loaded = true;
     let counter = 0;
-    while (loaded && counter < waitLoadInSecond) {
-      await delay(1000);
+    const shortPollingInterval = 500;
+    while (loaded && counter < startScanDelay) {
+      await delay(shortPollingInterval);
       scanStatus = await HPApi.getScanStatus();
       loaded = scanStatus.isLoaded();
-      counter++;
+      counter += shortPollingInterval;
     }
 
-    if (loaded && counter === waitLoadInSecond) {
+    if (loaded && counter >= startScanDelay) {
       ready = true;
       console.log(`ADF still loaded, proceeding`);
     } else {
@@ -681,10 +684,11 @@ async function waitAdfLoaded(waitLoadInSecond: number) {
 
 async function init(
   registrationConfig: RegistrationConfig,
-  scanConfig: ScanConfig
+  scanConfig: ScanConfig,
+  deviceUpPollingInterval: number
 ) {
   // first make sure the device is reachable
-  await HPApi.waitDeviceUp();
+  await HPApi.waitDeviceUp(deviceUpPollingInterval);
   let deviceUp = true;
 
   const folder = await PathHelper.getOutputFolder(
@@ -731,15 +735,18 @@ async function init(
     }
 
     if (!deviceUp) {
-      await HPApi.waitDeviceUp();
+      await HPApi.waitDeviceUp(deviceUpPollingInterval);
     } else {
       await delay(1000);
     }
   }
 }
-async function initAdfAutoscan(adfAutoScanConfig: AdfAutoScanConfig) {
+async function initAdfAutoscan(
+  adfAutoScanConfig: AdfAutoScanConfig,
+  deviceUpPollingInterval: number
+) {
   // first make sure the device is reachable
-  await HPApi.waitDeviceUp();
+  await HPApi.waitDeviceUp(deviceUpPollingInterval);
   let deviceUp = true;
 
   const folder = await PathHelper.getOutputFolder(
@@ -752,15 +759,16 @@ async function initAdfAutoscan(adfAutoScanConfig: AdfAutoScanConfig) {
   );
   console.log(`Temp folder: ${tempFolder}`);
 
-  const deviceCapabilities = await readDeviceCapabilities();
-
   let scanCount = 0;
   let keepActive = true;
   let errorCount = 0;
   while (keepActive) {
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
-      await waitAdfLoaded(5);
+      await waitAdfLoaded(
+        adfAutoScanConfig.pollingInterval,
+        adfAutoScanConfig.startScanDelay
+      );
 
       scanCount++;
 
@@ -782,7 +790,7 @@ async function initAdfAutoscan(adfAutoScanConfig: AdfAutoScanConfig) {
     }
 
     if (!deviceUp) {
-      await HPApi.waitDeviceUp();
+      await HPApi.waitDeviceUp(deviceUpPollingInterval);
     } else {
       await delay(1000);
     }
@@ -823,11 +831,11 @@ function getConfig<T>(name: string): T | undefined {
 function setupScanParameters(command: Command): Command {
   command.option(
     "-d, --directory <dir>",
-    "Directory where scans are saved (defaults to /tmp/scan-to-pc<random>)"
+    "Directory where scans are saved (default: /tmp/scan-to-pc<random>)"
   );
   command.option(
     "-t, --temp-directory <dir>",
-    "Temp directory used for processing (defaults to /tmp/scan-to-pc<random>)"
+    "Temp directory used for processing (default: /tmp/scan-to-pc<random>)"
   );
   command.option(
     "-p, --pattern <pattern>",
@@ -835,7 +843,7 @@ function setupScanParameters(command: Command): Command {
   );
   command.option(
     "-r, --resolution <dpi>",
-    "Resolution in DPI of the scans (defaults is 200)"
+    "Resolution in DPI of the scans (default: 200)"
   );
   return command;
 }
@@ -844,6 +852,11 @@ function setupParameterOpts(command: Command): Command {
   command.option(
     "-ip, --address <ip>",
     "IP address of the device (this overrides -p)"
+  );
+  command.option(
+    "--device-up-polling-interval <deviceUpPollingInterval>",
+    "Device up polling interval in milliseconds",
+    parseNumbers
   );
   command.option(
     "-n, --name <name>",
@@ -868,7 +881,9 @@ function getIsDebug(options: any) {
   const debug =
     options.debug != null ? true : getConfig<boolean>("debug") || false;
 
-  console.log(`IsDebug: ${debug}`);
+  if (debug) {
+    console.log(`IsDebug: ${debug}`);
+  }
   return debug;
 }
 
@@ -876,7 +891,7 @@ function getScanConfiguration(parentOption: OptionValues) {
   const directoryConfig: DirectoryConfig = {
     directory: parentOption.directory || getConfig("directory"),
     tempDirectory: parentOption.tempDirectory || getConfig("tempDirectory"),
-    filePattern: parentOption.pattern || getConfig("pattern")
+    filePattern: parentOption.pattern || getConfig("pattern"),
   };
 
   const scanConfig: ScanConfig = {
@@ -884,9 +899,17 @@ function getScanConfiguration(parentOption: OptionValues) {
       parentOption.resolution || getConfig("resolution") || 200,
       10
     ),
-    directoryConfig
+    directoryConfig,
   };
   return scanConfig;
+}
+
+function getDeviceUpPollingInterval(parentOption: OptionValues) {
+  return (
+    parentOption.deviceUpPollingInterval ||
+    getConfig("deviceUpPollingInterval") ||
+    1000
+  );
 }
 
 async function main() {
@@ -896,7 +919,7 @@ async function main() {
     .description("Listen the device for new scan job to save to this target")
     .option(
       "-l, --label <label>",
-      "The label to display on the device (default is the hostname)"
+      "The label to display on the device (the default is the hostname)"
     )
     .action(async (options, cmd) => {
       const parentOption = cmd.parent.opts();
@@ -911,55 +934,79 @@ async function main() {
         label: options.label || getConfig("label") || os.hostname(),
       };
 
+      const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
+
       const scanConfig = getScanConfiguration(parentOption);
 
-      await init(registrationConfig, scanConfig);
+      await init(registrationConfig, scanConfig, deviceUpPollingInterval);
     });
   program.addCommand(cmdListen, { isDefault: true });
 
   const cmdAdfAutoscan = program.createCommand("adf-autoscan");
   setupScanParameters(cmdAdfAutoscan)
-    .description("Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)")
+    .addOption(
+      new Option("--duplex", "If specified, the scan will be in duplex")
+    )
+    .addOption(
+      new Option(
+        "--pdf",
+        "If specified, the scan result will be a pdf document, the default is multiple jpeg files"
+      )
+    )
+    .addOption(
+      new Option(
+        "--pollingInterval",
+        "Time interval in millisecond between each lookup for content in the automatic document feeder"
+      )
+    )
+    .description(
+      "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)"
+    )
     .action(async (options, cmd) => {
-    const parentOption = cmd.parent.opts();
+      const parentOption = cmd.parent.opts();
 
-    const ip = await getDeviceIp(parentOption);
-    HPApi.setDeviceIP(ip);
+      const ip = await getDeviceIp(parentOption);
+      HPApi.setDeviceIP(ip);
 
-    const isDebug = getIsDebug(parentOption);
-    HPApi.setDebug(isDebug);
+      const isDebug = getIsDebug(parentOption);
+      HPApi.setDebug(isDebug);
 
-    const scanConfig = getScanConfiguration(parentOption);
+      const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
 
-    const adfScanConfig: AdfAutoScanConfig = {
-      ...scanConfig,
-      isDuplex: options.isDuplex,
-      contentType: "Document",
-      generatePdf: options.pdf,
-    };
+      const scanConfig = getScanConfiguration(parentOption);
 
-    await initAdfAutoscan(adfScanConfig);
-  });
+      const adfScanConfig: AdfAutoScanConfig = {
+        ...scanConfig,
+        isDuplex: options.isDuplex || getConfig("autoscan_duplex") || false,
+        generatePdf: options.pdf || getConfig("autoscan_pdf") || false,
+        pollingInterval:
+          options.pollingInterval || getConfig("autoscan_pollingInterval") || 1000,
+        startScanDelay:
+          options.startScanDelay || getConfig("autoscan_startScanDelay") || 5000,
+      };
+
+      await initAdfAutoscan(adfScanConfig, deviceUpPollingInterval);
+    });
   program.addCommand(cmdAdfAutoscan);
 
   const cmdClearRegistrations = program.createCommand("clear-registrations");
   cmdClearRegistrations
     .description("Clear the list or registered target on the device")
     .action(async (options, cmd) => {
-    const parentOption = cmd.parent.opts();
+      const parentOption = cmd.parent.opts();
 
-    const ip = await getDeviceIp(parentOption);
-    HPApi.setDeviceIP(ip);
+      const ip = await getDeviceIp(parentOption);
+      HPApi.setDeviceIP(ip);
 
-    const isDebug = getIsDebug(parentOption);
-    HPApi.setDebug(isDebug);
+      const isDebug = getIsDebug(parentOption);
+      HPApi.setDebug(isDebug);
 
-    const dests = await HPApi.getWalkupScanToCompDestinations();
-    for (let i = 0; i < dests.destinations.length; i++) {
-      console.log(`Removing: ${dests.destinations[i].name}`);
-      await HPApi.removeDestination(dests.destinations[i]);
-    }
-  });
+      const dests = await HPApi.getWalkupScanToCompDestinations();
+      for (let i = 0; i < dests.destinations.length; i++) {
+        console.log(`Removing: ${dests.destinations[i].name}`);
+        await HPApi.removeDestination(dests.destinations[i]);
+      }
+    });
   program.addCommand(cmdClearRegistrations);
 
   await program.parseAsync(process.argv);

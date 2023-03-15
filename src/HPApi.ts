@@ -106,7 +106,7 @@ export default class HPApi {
     });
   }
 
-  static async waitDeviceUp(): Promise<void> {
+  static async waitDeviceUp(deviceUpPollingInterval: number): Promise<void> {
     let first = true;
     while (!(await HPApi.isAlive())) {
       if (first) {
@@ -115,7 +115,7 @@ export default class HPApi {
         );
       }
       first = false;
-      await delay(1000);
+      await delay(deviceUpPollingInterval);
     }
     if (!first) {
       console.log(
