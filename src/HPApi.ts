@@ -35,7 +35,7 @@ let debug = false;
 let callCount = 0;
 
 export default class HPApi {
-  static setPrinterIP(ip: string): void {
+  static setDeviceIP(ip: string): void {
     printerIP = ip;
   }
 
