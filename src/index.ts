@@ -955,8 +955,17 @@ async function main() {
     )
     .addOption(
       new Option(
-        "--pollingInterval",
+        "--pollingInterval <pollingInterval>",
         "Time interval in millisecond between each lookup for content in the automatic document feeder"
+      )
+    )
+    .description(
+      "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)"
+    )
+    .addOption(
+      new Option(
+        "--start-scan-delay <startScanDelay>",
+        "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan"
       )
     )
     .description(
