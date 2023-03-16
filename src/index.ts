@@ -721,10 +721,9 @@ async function init(
         scanConfig
       );
     } catch (e) {
+      console.log(e);
       if (await HPApi.isAlive()) {
         errorCount++;
-        console.error(e);
-        console.log(e);
       } else {
         deviceUp = false;
       }
@@ -776,10 +775,9 @@ async function initAdfAutoscan(
 
       await scanFromAdf(scanCount, folder, tempFolder, adfAutoScanConfig);
     } catch (e) {
+      console.log(e);
       if (await HPApi.isAlive()) {
         errorCount++;
-        console.error(e);
-        console.log(e);
       } else {
         deviceUp = false;
       }
@@ -867,7 +865,7 @@ function setupParameterOpts(command: Command): Command {
   return command;
 }
 
-async function getDeviceIp(options: any) {
+async function getDeviceIp(options: OptionValues) {
   let ip = options.address || getConfig("ip");
   if (!ip) {
     const name = options.name || getConfig("name");
@@ -877,7 +875,7 @@ async function getDeviceIp(options: any) {
   return ip;
 }
 
-function getIsDebug(options: any) {
+function getIsDebug(options: OptionValues) {
   const debug =
     options.debug != null ? true : getConfig<boolean>("debug") || false;
 
@@ -910,6 +908,22 @@ function getDeviceUpPollingInterval(parentOption: OptionValues) {
     getConfig("deviceUpPollingInterval") ||
     1000
   );
+}
+
+async function clearRegistrations(cmd: Command) {
+  const parentOption = cmd.parent!.opts();
+
+  const ip = await getDeviceIp(parentOption);
+  HPApi.setDeviceIP(ip);
+
+  const isDebug = getIsDebug(parentOption);
+  HPApi.setDebug(isDebug);
+
+  const dests = await HPApi.getWalkupScanToCompDestinations();
+  for (let i = 0; i < dests.destinations.length; i++) {
+    console.log(`Removing: ${dests.destinations[i].name}`);
+    await HPApi.removeDestination(dests.destinations[i]);
+  }
 }
 
 async function main() {
@@ -1002,19 +1016,7 @@ async function main() {
   cmdClearRegistrations
     .description("Clear the list or registered target on the device")
     .action(async (options, cmd) => {
-      const parentOption = cmd.parent.opts();
-
-      const ip = await getDeviceIp(parentOption);
-      HPApi.setDeviceIP(ip);
-
-      const isDebug = getIsDebug(parentOption);
-      HPApi.setDebug(isDebug);
-
-      const dests = await HPApi.getWalkupScanToCompDestinations();
-      for (let i = 0; i < dests.destinations.length; i++) {
-        console.log(`Removing: ${dests.destinations[i].name}`);
-        await HPApi.removeDestination(dests.destinations[i]);
-      }
+      await clearRegistrations(cmd);
     });
   program.addCommand(cmdClearRegistrations);
 
