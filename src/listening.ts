@@ -1,6 +1,6 @@
 import HPApi from "./HPApi";
-import Event from "./Event";
-import Destination from "./Destination";
+import Event from "./models/Event";
+import Destination from "./models/Destination";
 import { DeviceCapabilities } from "./DeviceCapabilities";
 
 export async function waitScanRequest(compEventURI: string): Promise<boolean> {

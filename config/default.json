@@ -1,4 +1,5 @@
 {
   "ip": "192.168.1.53",
-  "debug": false
+  "debug": false,
+  "directory": "/scan"
 }

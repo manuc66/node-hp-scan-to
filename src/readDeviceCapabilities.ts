@@ -1,6 +1,6 @@
 import { DeviceCapabilities } from "./DeviceCapabilities";
 import HPApi from "./HPApi";
-import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
+import WalkupScanToCompCaps from "./models/WalkupScanToCompCaps";
 
 export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;

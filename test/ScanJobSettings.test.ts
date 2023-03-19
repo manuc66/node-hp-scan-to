@@ -1,6 +1,6 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import ScanJobSettings from "../src/ScanJobSettings";
+import ScanJobSettings from "../src/models/ScanJobSettings";
 import path from "path";
 import * as fs from "fs/promises";
 
