@@ -41,6 +41,6 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
 
   return {
     supportsMultiItemScanFromPlaten,
-    useWalkupScanToComp: walkupScanToCompCaps != null
+    useWalkupScanToComp: walkupScanToCompCaps != null,
   };
 }
