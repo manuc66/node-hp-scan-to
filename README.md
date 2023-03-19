@@ -20,8 +20,9 @@ Developed and tested for the following HP All-in-One Printers:
 
 The following printer are also working:
 - HP Deskjet 3050 All-in-One Printer - J610a
-- HP Officejet 5740
+- HP Officejet 5230
 - HP Officejet 6700 premium
+- HP Officejet 5740
 - HP Officejet 6950
 - HP OfficeJet Pro 8025e
 
