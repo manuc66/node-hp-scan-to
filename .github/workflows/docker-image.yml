@@ -17,6 +17,9 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: manuc66/node-hp-scan-to
+          tags: |
+            # set latest tag for master branch
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
           flavor: |
             latest=auto
       - name: Setup NodeJS
