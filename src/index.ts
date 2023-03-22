@@ -281,7 +281,7 @@ async function main() {
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
 
-      const scanConfig = getScanConfiguration(parentOption);
+      const scanConfig = getScanConfiguration(options);
 
       await listenCmd(registrationConfig, scanConfig, deviceUpPollingInterval);
     });
@@ -327,7 +327,7 @@ async function main() {
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
 
-      const scanConfig = getScanConfiguration(parentOption);
+      const scanConfig = getScanConfiguration(options);
 
       const adfScanConfig: AdfAutoScanConfig = {
         ...scanConfig,
