@@ -50,14 +50,24 @@ export default class WalkupScanToCompDestination {
   }
 
   get shortcut(): null | KnownShortcut {
-    if (this.data.hasOwnProperty("wus:WalkupScanToCompSettings")) {
+    if (
+      Object.prototype.hasOwnProperty.call(
+        this.data,
+        "wus:WalkupScanToCompSettings"
+      )
+    ) {
       return this.data["wus:WalkupScanToCompSettings"]["0"]["wus:Shortcut"][0];
     }
     return null;
   }
 
   get scanPlexMode(): string | null {
-    if (this.data.hasOwnProperty("wus:WalkupScanToCompSettings")) {
+    if (
+      Object.prototype.hasOwnProperty.call(
+        this.data,
+        "wus:WalkupScanToCompSettings"
+      )
+    ) {
       return (
         this.data["wus:WalkupScanToCompSettings"]["0"]["scantype:ScanSettings"][
           "0"

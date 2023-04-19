@@ -92,7 +92,7 @@ function createScanPage(
     width: job.imageWidth ?? 0,
     height: height ?? 0,
     xResolution: job.xResolution ?? 200,
-    yResolution: job.yResolution ?? 200
+    yResolution: job.yResolution ?? 200,
   };
 }
 
@@ -505,7 +505,10 @@ export async function scanFromAdf(
   }
 }
 
-export async function waitAdfLoaded(pollingInterval: number, startScanDelay: number) {
+export async function waitAdfLoaded(
+  pollingInterval: number,
+  startScanDelay: number
+) {
   let ready = false;
   while (!ready) {
     let scanStatus: ScanStatus = await HPApi.getScanStatus();
