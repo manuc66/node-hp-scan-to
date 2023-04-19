@@ -11,8 +11,19 @@ import HPApi from "./HPApi";
 import PathHelper from "./PathHelper";
 import { delay } from "./delay";
 import { readDeviceCapabilities } from "./readDeviceCapabilities";
-import { clearRegistrations, RegistrationConfig, waitScanEvent } from "./listening";
-import { AdfAutoScanConfig, DirectoryConfig, saveScan, ScanConfig, scanFromAdf, waitAdfLoaded } from "./scanProcessing";
+import {
+  clearRegistrations,
+  RegistrationConfig,
+  waitScanEvent,
+} from "./listening";
+import {
+  AdfAutoScanConfig,
+  DirectoryConfig,
+  saveScan,
+  ScanConfig,
+  scanFromAdf,
+  waitAdfLoaded,
+} from "./scanProcessing";
 
 let iteration = 0;
 
@@ -256,7 +267,6 @@ function getDeviceUpPollingInterval(parentOption: OptionValues) {
   );
 }
 
-
 async function main() {
   setupParameterOpts(program);
   const cmdListen = program.createCommand("listen");
@@ -301,7 +311,7 @@ async function main() {
     .addOption(
       new Option(
         "--pollingInterval <pollingInterval>",
-        "Time interval in millisecond between each lookup for content in the automatic document feeder",
+        "Time interval in millisecond between each lookup for content in the automatic document feeder"
       )
     )
     .description(
@@ -310,7 +320,7 @@ async function main() {
     .addOption(
       new Option(
         "--start-scan-delay <startScanDelay>",
-        "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan",
+        "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan"
       )
     )
     .description(
@@ -334,9 +344,13 @@ async function main() {
         isDuplex: options.isDuplex || getConfig("autoscan_duplex") || false,
         generatePdf: options.pdf || getConfig("autoscan_pdf") || false,
         pollingInterval:
-          options.pollingInterval || getConfig("autoscan_pollingInterval") || 1000,
+          options.pollingInterval ||
+          getConfig("autoscan_pollingInterval") ||
+          1000,
         startScanDelay:
-          options.startScanDelay || getConfig("autoscan_startScanDelay") || 5000,
+          options.startScanDelay ||
+          getConfig("autoscan_startScanDelay") ||
+          5000,
       };
 
       await adfAutoscanCmd(adfScanConfig, deviceUpPollingInterval);

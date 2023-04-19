@@ -84,7 +84,12 @@ export default class Job {
   }
 
   get imageWidth(): number | null {
-    if (!this.data["j:Job"].ScanJob[0].hasOwnProperty("PreScanPage")) {
+    if (
+      !Object.prototype.hasOwnProperty.call(
+        this.data["j:Job"].ScanJob[0],
+        "PreScanPage"
+      )
+    ) {
       return null;
     }
     return parseInt(
@@ -111,7 +116,12 @@ export default class Job {
     return null;
   }
   get yResolution(): number | null {
-    if (this.data["j:Job"].ScanJob[0].hasOwnProperty("PreScanPage")) {
+    if (
+      Object.prototype.hasOwnProperty.call(
+        this.data["j:Job"].ScanJob[0],
+        "PreScanPage"
+      )
+    ) {
       return parseInt(
         this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
           ?.ScanSettings?.[0]?.YResolution[0] ?? ""

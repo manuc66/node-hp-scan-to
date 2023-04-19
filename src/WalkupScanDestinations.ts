@@ -30,7 +30,12 @@ export default class WalkupScanDestinations {
 
   get destinations(): WalkupScanDestination[] {
     let walkupScanDestinations = this.data["wus:WalkupScanDestinations"];
-    if (walkupScanDestinations.hasOwnProperty("wus:WalkupScanDestination")) {
+    if (
+      Object.prototype.hasOwnProperty.call(
+        walkupScanDestinations,
+        "wus:WalkupScanDestination"
+      )
+    ) {
       return walkupScanDestinations["wus:WalkupScanDestination"].map(
         (x) => new WalkupScanDestination(x)
       );

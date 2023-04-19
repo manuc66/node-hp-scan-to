@@ -32,7 +32,8 @@ export default class WalkupScanToCompDestinations {
     let walkupScanToCompDestinations =
       this.data["wus:WalkupScanToCompDestinations"];
     if (
-      walkupScanToCompDestinations.hasOwnProperty(
+      Object.prototype.hasOwnProperty.call(
+        walkupScanToCompDestinations,
         "wus:WalkupScanToCompDestination"
       )
     ) {

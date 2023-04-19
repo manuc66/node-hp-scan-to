@@ -28,7 +28,7 @@ export default class Event {
   }
 
   get destinationURI(): string | undefined {
-    if (this.data.hasOwnProperty("ev:Payload")) {
+    if (Object.prototype.hasOwnProperty.call(this.data, "ev:Payload")) {
       const destination = this.data["ev:Payload"].find((v) =>
         v["dd:ResourceType"]["0"].includes("Destination")
       );
@@ -39,7 +39,7 @@ export default class Event {
   }
 
   get compEventURI(): string | undefined {
-    if (this.data.hasOwnProperty("ev:Payload")) {
+    if (Object.prototype.hasOwnProperty.call(this.data, "ev:Payload")) {
       const compEvent = this.data["ev:Payload"].find((v) =>
         v["dd:ResourceType"]["0"].includes("CompEvent")
       );
