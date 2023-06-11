@@ -43,6 +43,7 @@ This project is not endorsed by nor affiliated with HP.
 - ✔️ Customizable file names
 - ✔️ Customizable resolution
 - ✔️ Customizable label on the device
+- ✔️ Multi platform: Linux, Windows and most probably macOS
 
 ## Usage
 
