@@ -1723,6 +1723,13 @@ loupe@^2.3.1:
   dependencies:
     get-func-name "^2.0.0"
 
+lru-cache@^6.0.0:
+  version "6.0.0"
+  resolved "https://registry.yarnpkg.com/lru-cache/-/lru-cache-6.0.0.tgz#6d6fe6570ebd96aaf90fcad1dafa3b2566db3a94"
+  integrity sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA==
+  dependencies:
+    yallist "^4.0.0"
+
 make-dir@^3.0.0, make-dir@^3.0.2:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/make-dir/-/make-dir-3.1.0.tgz#415e967046b3a7f1d185277d84aa58203726a13f"
@@ -1840,18 +1847,18 @@ node-releases@^2.0.6:
   resolved "https://registry.yarnpkg.com/node-releases/-/node-releases-2.0.6.tgz#8a7088c63a55e493845683ebf3c828d8c51c5503"
   integrity sha512-PiVXnNuFm5+iYkLBNeq5211hvO38y63T0i2KKh2KnUs3RpzJ+JtODFjkD8yjLwnDkTYF1eKXheUwdssR+NRZdg==
 
-nodemon@^2.0.20:
-  version "2.0.22"
-  resolved "https://registry.yarnpkg.com/nodemon/-/nodemon-2.0.22.tgz#182c45c3a78da486f673d6c1702e00728daf5258"
-  integrity sha512-B8YqaKMmyuCO7BowF1Z1/mkPqLk6cs/l63Ojtd6otKjMx47Dq1utxfRxcavH1I7VSaL8n5BUaoutadnsX3AAVQ==
+nodemon@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/nodemon/-/nodemon-3.0.1.tgz#affe822a2c5f21354466b2fc8ae83277d27dadc7"
+  integrity sha512-g9AZ7HmkhQkqXkRc20w+ZfQ73cHLbE8hnPbtaFbFtCumZsjyMhKk9LajQ07U5Ux28lvFjZ5X7HvWR1xzU8jHVw==
   dependencies:
     chokidar "^3.5.2"
     debug "^3.2.7"
     ignore-by-default "^1.0.1"
     minimatch "^3.1.2"
     pstree.remy "^1.1.8"
-    semver "^5.7.1"
-    simple-update-notifier "^1.0.7"
+    semver "^7.5.3"
+    simple-update-notifier "^2.0.0"
     supports-color "^5.5.0"
     touch "^3.1.0"
     undefsafe "^2.0.5"
@@ -2170,20 +2177,17 @@ sax@>=0.6.0:
   resolved "https://registry.yarnpkg.com/sax/-/sax-1.2.4.tgz#2816234e2378bddc4e5354fab5caa895df7100d9"
   integrity sha512-NqVDv9TpANUjFm0N8uM5GxL36UgKi9/atZw+x7YFnQ8ckwFGKrl4xX4yWtrey3UJm5nP1kUbnYgLopqWNSRhWw==
 
-semver@^5.7.1:
-  version "5.7.2"
-  resolved "https://registry.yarnpkg.com/semver/-/semver-5.7.2.tgz#48d55db737c3287cd4835e17fa13feace1c41ef8"
-  integrity sha512-cBznnQ9KjJqU67B52RMC65CMarK2600WFnbkcaiwWq3xy/5haFJlshgnpjovMVJ+Hff49d8GEn0b87C5pDQ10g==
-
 semver@^6.0.0, semver@^6.3.0:
   version "6.3.1"
   resolved "https://registry.yarnpkg.com/semver/-/semver-6.3.1.tgz#556d2ef8689146e46dcea4bfdd095f3434dffcb4"
   integrity sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==
 
-semver@~7.0.0:
-  version "7.0.0"
-  resolved "https://registry.yarnpkg.com/semver/-/semver-7.0.0.tgz#5f3ca35761e47e05b206c6daff2cf814f0316b8e"
-  integrity sha512-+GB6zVA9LWh6zovYQLALHwv5rb2PHGlJi3lfiqIHxR0uuwCgefcOJc59v9fv1w8GbStwxuuqqAjI9NMAOOgq1A==
+semver@^7.5.3:
+  version "7.5.4"
+  resolved "https://registry.yarnpkg.com/semver/-/semver-7.5.4.tgz#483986ec4ed38e1c6c48c34894a9182dbff68a6e"
+  integrity sha512-1bCSESV6Pv+i21Hvpxp3Dx+pSD8lIPt8uVjRrxAUt/nbswYc+tK6Y2btiULjd4+fnq15PX+nqQDC7Oft7WkwcA==
+  dependencies:
+    lru-cache "^6.0.0"
 
 serialize-javascript@6.0.0:
   version "6.0.0"
@@ -2214,12 +2218,12 @@ signal-exit@^3.0.2:
   resolved "https://registry.yarnpkg.com/signal-exit/-/signal-exit-3.0.7.tgz#a9a1767f8af84155114eaabd73f99273c8f59ad9"
   integrity sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==
 
-simple-update-notifier@^1.0.7:
-  version "1.0.7"
-  resolved "https://registry.yarnpkg.com/simple-update-notifier/-/simple-update-notifier-1.0.7.tgz#7edf75c5bdd04f88828d632f762b2bc32996a9cc"
-  integrity sha512-BBKgR84BJQJm6WjWFMHgLVuo61FBDSj1z/xSFUIozqO6wO7ii0JxCqlIud7Enr/+LhlbNI0whErq96P2qHNWew==
+simple-update-notifier@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/simple-update-notifier/-/simple-update-notifier-2.0.0.tgz#d70b92bdab7d6d90dfd73931195a30b6e3d7cebb"
+  integrity sha512-a2B9Y0KlNXl9u/vsW6sTIu9vGEpfKu2wRV6l1H3XEas/0gUIzGzBoP/IouTcUQbm9JWZLH3COxyn03TYlFax6w==
   dependencies:
-    semver "~7.0.0"
+    semver "^7.5.3"
 
 source-map@^0.6.1:
   version "0.6.1"
@@ -2562,6 +2566,11 @@ y18n@^5.0.5:
   version "5.0.8"
   resolved "https://registry.yarnpkg.com/y18n/-/y18n-5.0.8.tgz#7f4934d0f7ca8c56f95314939ddcd2dd91ce1d55"
   integrity sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==
+
+yallist@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/yallist/-/yallist-4.0.0.tgz#9bb92790d9c0effec63be73519e11a35019a3a72"
+  integrity sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==
 
 yargs-parser@20.2.4:
   version "20.2.4"
