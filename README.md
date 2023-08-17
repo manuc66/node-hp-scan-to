@@ -26,7 +26,7 @@ Additionally, it has been reported to work on several other HP printer models.
 
 There are good chances it also works on your HP All-in-One Printer.
 
-Please note that the node-hp-scan-to project is not endorsed by nor affiliated with HP. The reverse engineering of the original HP Windows application's interaction with the device has been done independently.
+Please note that the `node-hp-scan-to` project is not endorsed by nor affiliated with HP. The reverse engineering of the original HP Windows application's interaction with the device has been done independently.
 
 ## Supported features
 - ✔️ JPG scan output
