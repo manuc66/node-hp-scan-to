@@ -9,16 +9,14 @@
 [![CodeFactor](https://www.codefactor.io/repository/github/manuc66/node-hp-scan-to/badge)](https://www.codefactor.io/repository/github/manuc66/node-hp-scan-to)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmanuc66%2Fnode-hp-scan-to.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmanuc66%2Fnode-hp-scan-to?ref=badge_shield)
 
-Little command line program that allow to send scan from device to computer.
+The `node-hp-scan-to` is a Node.js application that replicates the functionality of the "Scan to Computer" from HP. For this purpose, the original HP Windows application's interaction with the device has been [reverse engineered](protocol_doc/HP%20Officejet%206500%20E710n-z.md)
 
-Can be run with npx : `npx node-hp-scan-to` or with Docker (see below)
-
-Developed and tested for the following HP All-in-One Printers:
+Its primary purpose is to enable users to scan documents directly from an HP device and seamlessly transfer them to a computer. Unlike the original program, this program is designed to be compatible with Linux (including Docker), and is expected to work on Windows and macOS, making it accessible to a wider range of users and usages. It has been developed and tested with the following HP All-in-One Printers:
 - HP Officejet 6500A Plus
 - HP Deskjet 3520
 - HP Smart Tank Plus 570 series
 
-The following printer are also working:
+Additionally, it has been reported to work on several other HP printer models.
 - HP Deskjet 3050 All-in-One Printer - J610a
 - HP Officejet 5230
 - HP Officejet 6700 premium
@@ -27,9 +25,8 @@ The following printer are also working:
 - HP OfficeJet Pro 8025e
 
 There are good chances it also works on your HP All-in-One Printer.
-For this purpose, the original HP Windows application's interaction with the device has been [reverse engineered](protocol_doc/HP%20Officejet%206500%20E710n-z.md).
 
-This project is not endorsed by nor affiliated with HP.
+Please note that the `node-hp-scan-to` project is not endorsed by nor affiliated with HP. The reverse engineering of the original HP Windows application's interaction with the device has been done independently.
 
 ## Supported features
 - ✔️ JPG scan output
