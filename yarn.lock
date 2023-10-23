@@ -486,9 +486,9 @@
   integrity sha512-69TtiDzu0bcmKQv3yg1Zx409/Kd7r0b5F1PfpYJfSHzLGtB53547V4u+9iqKYsTu/O2ai6KTb0TInNpvuQ3qmg==
 
 "@types/config@^3.3.0":
-  version "3.3.1"
-  resolved "https://registry.yarnpkg.com/@types/config/-/config-3.3.1.tgz#eb385f254cd08381db4dda7b9bef4cc2fd400e5d"
-  integrity sha512-ZhBk8IVIbc3cuES10j2I+xa3L68rpl1X35FdsNce/AiE7yJnhQaA7tvO5MRZblqpBny4OIddJ+WQL04I1933Zg==
+  version "3.3.2"
+  resolved "https://registry.yarnpkg.com/@types/config/-/config-3.3.2.tgz#e84f6c22d409a155d88708388b1a4e8929d9764d"
+  integrity sha512-NAxsgr73BakGnfpHq5eKmtba/x+JyPcZmSa0DzCTdR4JCxeSC+KpwSQuOMGvACs7axkjGqi44/zYRkhiX7aDew==
 
 "@types/dateformat@^5.0.0":
   version "5.0.0"
