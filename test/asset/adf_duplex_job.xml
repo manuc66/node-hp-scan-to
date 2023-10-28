@@ -2,7 +2,7 @@
 <ScanSettings xmlns="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19 Scan Schema - 0.26.xsd">
 	<XResolution>200</XResolution>
 	<YResolution>200</YResolution>
-	<XStart>33</XStart>
+	<XStart>0</XStart>
 	<YStart>0</YStart>
 	<Width>2481</Width>
 	<Height>3507</Height>

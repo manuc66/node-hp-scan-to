@@ -1,6 +1,7 @@
 import { DeviceCapabilities } from "./DeviceCapabilities";
 import HPApi from "./HPApi";
 import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
+import ScanCaps from "./ScanCaps"
 
 export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
@@ -30,17 +31,22 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
     console.log("Unknown device!");
   }
 
+  let scanCaps: ScanCaps | null = null;
   if (discoveryTree.ScanJobManifestURI != null) {
     const scanJobManifest = await HPApi.getScanJobManifest(
       discoveryTree.ScanJobManifestURI
     );
     if (scanJobManifest.ScanCapsURI != null) {
-      await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);
+      scanCaps = await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);
     }
   }
 
   return {
     supportsMultiItemScanFromPlaten,
     useWalkupScanToComp: walkupScanToCompCaps != null,
+    platenMaxWidth: scanCaps?.PlatenMaxWidth || null,
+    platenMaxHeight: scanCaps?.PlatenMaxHeight || null,
+    adfMaxWidth: scanCaps?.AdfMaxWidth || null,
+    adfMaxHeight: scanCaps?.AdfMaxHeight || null,
   };
 }
