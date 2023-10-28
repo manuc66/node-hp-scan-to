@@ -402,6 +402,8 @@ export async function saveScan(
     inputSource,
     contentType,
     scanConfig.resolution,
+    inputSource === "Adf" ? deviceCapabilities.adfMaxWidth : deviceCapabilities.platenMaxWidth,
+    inputSource === "Adf" ? deviceCapabilities.adfMaxHeight : deviceCapabilities.platenMaxHeight,
     isDuplex
   );
 
@@ -474,6 +476,8 @@ export async function scanFromAdf(
     "Adf",
     contentType,
     adfAutoScanConfig.resolution,
+    null,
+    null,
     adfAutoScanConfig.isDuplex
   );
 
