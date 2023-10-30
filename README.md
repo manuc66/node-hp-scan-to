@@ -18,6 +18,7 @@ Its primary purpose is to enable users to scan documents directly from an HP dev
 
 Additionally, it has been reported to work on several other HP printer models.
 - HP Deskjet 3050 All-in-One Printer - J610a
+- HP Officejet 3830
 - HP Officejet 5230
 - HP Officejet 6700 premium
 - HP Officejet 5740
@@ -67,6 +68,10 @@ node dist/index.js -ip 192.168.1.4 # or -n "Officejet 6500 E710n-z"
 ```
 
 ### Run with docker
+
+Public Pre-built Docker image:
+- https://hub.docker.com/repository/docker/manuc66/node-hp-scan-to (take master: `docker pull manuc66/node-hp-scan-to:master`) 
+
 Be aware that with docker you have to specify the ip address of the printer via the `IP` environment variable, because 
 bonjour service discovery uses multicast network traffic which by default doesn't work in docker.
 You could however use docker's macvlan networking, this way you can use service discovery and the `NAME` environment variable.
@@ -74,11 +79,23 @@ You could however use docker's macvlan networking, this way you can use service 
 All scanned files are written to the volume `/scan`, the filename can be changed with the `PATTERN` environment variable.
 For the correct permissions to the volume set the environment variables `PUID` and `PGID`.
 
-__To enable debug logs set the environment variable `CMDLINE` to `-D`.__ Can also be used for any other command line parameters.
+Exhaustive list of supported environment variables and their meaning, or correspondence with [command-line flags](#command-line):
+- `PUID`: id of user that will run the program
+- `PGID`: id of group that will run the program
+- `IP`: command-line flag `-ip`/`--address`
+- `PATTERN`: command-line flag `-p`/`--pattern`
+- `LABEL`: command-line flag `-l`/`--label`
+- `NAME`: command-line flag `-n`/`--name`
+- `DIR`: command-line flag `-d`/`--directory`
+- `TEMP_DIR`: command-line flag `-t`/`--temp-directory`
+- `RESOLUTION`: command-line flag `-r`/`--resolution`
+- `CMDLINE`: additional command-line flags that will be put at the end of the command.
 
-The name shown on the printer's display is the hostname of the docker container, which defaults to a random value, so you may want to specify it via the `-hostname` argument.
+__To enable debug logs set the environment variable `CMDLINE` to `-D`.__
 
-Example for docker:
+The name shown on the printer's display is the hostname of the docker container, which defaults to a random value, so you may want to override it by enforcing the `hostname`, or using the `LABEL` environment variable.
+
+#### Example for docker:
 ```sh
 git clone ...
 cd node-hp-scan-to
@@ -86,7 +103,7 @@ docker build . -t node-hp-scan-to
 docker run -e IP=192.168.0.5 -e PGID=1000 -e PUID=1000 --hostname scan node-hp-scan-to
 ```
 
-Example for docker-compose:
+#### Example for docker-compose:
 Write the following `docker-compose.yml` file into this directory:
 ```yml
 version: "3"
@@ -97,9 +114,9 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: node-hp-scan-to
-    hostname: scan
     environment:
       - IP=192.168.0.5
+      - LABEL=scan
       - PATTERN="scan"_dd.mm.yyyy_hh:MM:ss
       - PGID=1000
       - PUID=1000
@@ -109,10 +126,56 @@ services:
     restart: always
 ```
 Then run `docker-compose up -d --build`.
-To 
 
-Public Pre-built Docker image:
-- https://hub.docker.com/repository/docker/manuc66/node-hp-scan-to (take master: `docker pull manuc66/node-hp-scan-to:master`) 
+#### Example for Kubernetes:
+Apply the following manifest (the PersistentVolumeClaim must also be deployed beforehand):
+```yml
+apiVersion: apps/v1
+kind: Deployment
+  name: hp-scan-to
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hp-scan-to
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hp-scan-to
+    spec:
+      containers:
+        - image: manuc66/node-hp-scan-to:master
+          name: hp-scan-to
+          env:
+          - name: IP
+            value: 192.168.0.5
+          - name: PATTERN
+            value: '"scan"_dd.mm.yyyy_hh:MM:ss'
+          - name: PGID
+            value: "1000"
+          - name: PUID
+            value: "1000"
+          - name: LABEL
+            value: scan
+          - name: DIR
+            value: /scans
+          - name: TZ
+            value: Europe/London
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              cpu: "0"
+              memory: 64Mi
+          volumeMounts:
+            - mountPath: /scans
+              name: incoming-scans
+      restartPolicy: Always
+      volumes:
+        - name: incoming-scans
+          persistentVolumeClaim:
+            claimName: incoming-scans
+```
 
 ## Debugging
 I'm using Visual Studio Code to debug this application, so instead of running ts-node just enter `code .` and press F5 to start debugging.
