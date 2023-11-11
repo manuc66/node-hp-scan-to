@@ -1,7 +1,6 @@
-const xml2js = require("xml2js");
-const parser = new xml2js.Parser();
-const util = require("util");
+import xml2js from "xml2js";
 
+const parser = new xml2js.Parser();
 export default class ScanJobSettings {
   private readonly inputSource: "Adf" | "Platen";
   private readonly contentType: "Document" | "Photo";
@@ -49,7 +48,7 @@ export default class ScanJobSettings {
       "\t<ContentType>Document</ContentType>\n" +
       "</ScanSettings>";
 
-    const parsed = await util.promisify(parser.parseString)(rawJob);
+    const parsed = await parser.parseStringPromise(rawJob);
 
     parsed.ScanSettings.XResolution[0] = this.resolution;
     parsed.ScanSettings.YResolution[0] = this.resolution;

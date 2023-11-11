@@ -15,6 +15,8 @@ export interface JobData {
           ImageWidth: string[];
           ImageHeight: string[];
           ScanSettings: {
+            InputSource: string[];
+            ContentType: string[];
             XResolution: string[];
             YResolution: string[];
           }[];
