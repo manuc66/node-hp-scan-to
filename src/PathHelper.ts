@@ -1,8 +1,8 @@
 import path from "path";
 import dateformat from "dateformat";
-const { promises: Fs } = require("fs");
-const fs = require("fs");
 import os from "os";
+import { promises as Fs } from "fs";
+import fs from "fs";
 
 export default class PathHelper {
   static getFileForPage(

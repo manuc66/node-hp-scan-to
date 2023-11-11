@@ -77,7 +77,7 @@ export default class JpegUtil {
     let heightWritten = false;
     const parsingSucceed = this.parse(buffer, {
       [start_of_Frame_0]: (start: number, length: number) => {
-        // read the the "Start of frame" marker which contains the file size
+        // read the "Start of frame" marker which contains the file size
 
         // write the picture size
         heightWritten = this.writeHeightInStartOfFrame(
