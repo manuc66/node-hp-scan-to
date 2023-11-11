@@ -30,19 +30,19 @@ let iteration = 0;
 async function listenCmd(
   registrationConfig: RegistrationConfig,
   scanConfig: ScanConfig,
-  deviceUpPollingInterval: number
+  deviceUpPollingInterval: number,
 ) {
   // first make sure the device is reachable
   await HPApi.waitDeviceUp(deviceUpPollingInterval);
   let deviceUp = true;
 
   const folder = await PathHelper.getOutputFolder(
-    scanConfig.directoryConfig.directory
+    scanConfig.directoryConfig.directory,
   );
   console.log(`Target folder: ${folder}`);
 
   const tempFolder = await PathHelper.getOutputFolder(
-    scanConfig.directoryConfig.tempDirectory
+    scanConfig.directoryConfig.tempDirectory,
   );
   console.log(`Temp folder: ${tempFolder}`);
 
@@ -55,7 +55,11 @@ async function listenCmd(
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
       const event = await waitScanEvent(deviceCapabilities, registrationConfig);
-      scanCount++;
+      scanCount = await PathHelper.getNextScanNumber(
+        folder,
+        scanCount,
+        scanConfig.directoryConfig.filePattern,
+      );
       console.log(`Scan event captured, saving scan #${scanCount}`);
       await saveScan(
         event,
@@ -63,7 +67,7 @@ async function listenCmd(
         tempFolder,
         scanCount,
         deviceCapabilities,
-        scanConfig
+        scanConfig,
       );
     } catch (e) {
       console.log(e);
@@ -88,19 +92,19 @@ async function listenCmd(
 
 async function adfAutoscanCmd(
   adfAutoScanConfig: AdfAutoScanConfig,
-  deviceUpPollingInterval: number
+  deviceUpPollingInterval: number,
 ) {
   // first make sure the device is reachable
   await HPApi.waitDeviceUp(deviceUpPollingInterval);
   let deviceUp = true;
 
   const folder = await PathHelper.getOutputFolder(
-    adfAutoScanConfig.directoryConfig.directory
+    adfAutoScanConfig.directoryConfig.directory,
   );
   console.log(`Target folder: ${folder}`);
 
   const tempFolder = await PathHelper.getOutputFolder(
-    adfAutoScanConfig.directoryConfig.tempDirectory
+    adfAutoScanConfig.directoryConfig.tempDirectory,
   );
   console.log(`Temp folder: ${tempFolder}`);
 
@@ -112,7 +116,7 @@ async function adfAutoscanCmd(
     try {
       await waitAdfLoaded(
         adfAutoScanConfig.pollingInterval,
-        adfAutoScanConfig.startScanDelay
+        adfAutoScanConfig.startScanDelay,
       );
 
       scanCount++;
@@ -173,7 +177,7 @@ function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
           console.log(`Found: ${service.name}`);
           resolve(service.addresses[0]);
         }
-      }
+      },
     );
     browser.start();
   });
@@ -186,19 +190,19 @@ function getConfig<T>(name: string): T | undefined {
 function setupScanParameters(command: Command): Command {
   command.option(
     "-d, --directory <dir>",
-    "Directory where scans are saved (default: /tmp/scan-to-pc<random>)"
+    "Directory where scans are saved (default: /tmp/scan-to-pc<random>)",
   );
   command.option(
     "-t, --temp-directory <dir>",
-    "Temp directory used for processing (default: /tmp/scan-to-pc<random>)"
+    "Temp directory used for processing (default: /tmp/scan-to-pc<random>)",
   );
   command.option(
     "-p, --pattern <pattern>",
-    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)'
+    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)',
   );
   command.option(
     "-r, --resolution <dpi>",
-    "Resolution in DPI of the scans (default: 200)"
+    "Resolution in DPI of the scans (default: 200)",
   );
   return command;
 }
@@ -206,16 +210,16 @@ function setupScanParameters(command: Command): Command {
 function setupParameterOpts(command: Command): Command {
   command.option(
     "-ip, --address <ip>",
-    "IP address of the device (this overrides -p)"
+    "IP address of the device (this overrides -p)",
   );
   command.option(
     "--device-up-polling-interval <deviceUpPollingInterval>",
     "Device up polling interval in milliseconds",
-    parseFloat
+    parseFloat,
   );
   command.option(
     "-n, --name <name>",
-    "Name of the device for service discovery"
+    "Name of the device for service discovery",
   ); // i.e. 'Deskjet 3520 series'
 
   command.option("-D, --debug", "Enable debug");
@@ -252,7 +256,7 @@ function getScanConfiguration(parentOption: OptionValues) {
   const scanConfig: ScanConfig = {
     resolution: parseInt(
       parentOption.resolution || getConfig("resolution") || 200,
-      10
+      10,
     ),
     directoryConfig,
   };
@@ -274,7 +278,7 @@ async function main() {
     .description("Listen the device for new scan job to save to this target")
     .option(
       "-l, --label <label>",
-      "The label to display on the device (the default is the hostname)"
+      "The label to display on the device (the default is the hostname)",
     )
     .action(async (options, cmd) => {
       const parentOption = cmd.parent.opts();
@@ -300,31 +304,31 @@ async function main() {
   const cmdAdfAutoscan = program.createCommand("adf-autoscan");
   setupScanParameters(cmdAdfAutoscan)
     .addOption(
-      new Option("--duplex", "If specified, the scan will be in duplex")
+      new Option("--duplex", "If specified, the scan will be in duplex"),
     )
     .addOption(
       new Option(
         "--pdf",
-        "If specified, the scan result will be a pdf document, the default is multiple jpeg files"
-      )
+        "If specified, the scan result will be a pdf document, the default is multiple jpeg files",
+      ),
     )
     .addOption(
       new Option(
         "--pollingInterval <pollingInterval>",
-        "Time interval in millisecond between each lookup for content in the automatic document feeder"
-      )
+        "Time interval in millisecond between each lookup for content in the automatic document feeder",
+      ),
     )
     .description(
-      "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)"
+      "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
     )
     .addOption(
       new Option(
         "--start-scan-delay <startScanDelay>",
-        "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan"
-      )
+        "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan",
+      ),
     )
     .description(
-      "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)"
+      "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
     )
     .action(async (options, cmd) => {
       const parentOption = cmd.parent.opts();
