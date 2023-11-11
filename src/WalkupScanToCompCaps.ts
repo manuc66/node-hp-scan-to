@@ -3,7 +3,7 @@ import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
 const parseString = promisify<string, WalkupScanToCompCapsData>(
-  parser.parseString
+  parser.parseString,
 );
 export interface WalkupScanToCompCapsData {
   "wus:WalkupScanToCompCaps": {
@@ -20,7 +20,7 @@ export default class WalkupScanToCompCaps {
   }
 
   static async createWalkupScanToCompCaps(
-    content: string
+    content: string,
   ): Promise<WalkupScanToCompCaps> {
     const parsed = await parseString(content);
     return new WalkupScanToCompCaps(parsed);

@@ -4,7 +4,7 @@ const parser = new Parser();
 import { promisify } from "util";
 import { KnownShortcut } from "./KnownShortcut";
 const parseString = promisify<string, WalkupScanToCompDestinationRoot>(
-  parser.parseString
+  parser.parseString,
 );
 
 interface WalkupScanToCompDestinationRoot {
@@ -29,11 +29,11 @@ export default class WalkupScanToCompDestination {
     this.data = data;
   }
   static async createWalkupScanToCompDestination(
-    content: string
+    content: string,
   ): Promise<WalkupScanToCompDestination> {
     const parsed = await parseString(content);
     return new WalkupScanToCompDestination(
-      parsed["wus:WalkupScanToCompDestination"]
+      parsed["wus:WalkupScanToCompDestination"],
     );
   }
 
@@ -53,7 +53,7 @@ export default class WalkupScanToCompDestination {
     if (
       Object.prototype.hasOwnProperty.call(
         this.data,
-        "wus:WalkupScanToCompSettings"
+        "wus:WalkupScanToCompSettings",
       )
     ) {
       return this.data["wus:WalkupScanToCompSettings"]["0"]["wus:Shortcut"][0];
@@ -65,7 +65,7 @@ export default class WalkupScanToCompDestination {
     if (
       Object.prototype.hasOwnProperty.call(
         this.data,
-        "wus:WalkupScanToCompSettings"
+        "wus:WalkupScanToCompSettings",
       )
     ) {
       return (

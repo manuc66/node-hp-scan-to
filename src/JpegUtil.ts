@@ -39,7 +39,7 @@ export default class JpegUtil {
 
   static setJpgSize(
     buffer: Buffer,
-    size: { height: number; width: number }
+    size: { height: number; width: number },
   ): boolean {
     let sizeWritten = false;
     const parsingSucceed = this.parse(buffer, {
@@ -84,7 +84,7 @@ export default class JpegUtil {
           buffer,
           start,
           length,
-          height
+          height,
         );
 
         // stop processing
@@ -122,7 +122,7 @@ export default class JpegUtil {
 
     if (startOfStartOfFrame == null || lengthOfStartOfFrame == null) {
       this.logDebug(
-        "Start of frame 0 not found, either jpeg parsing is broken either the stream is corrupted"
+        "Start of frame 0 not found, either jpeg parsing is broken either the stream is corrupted",
       );
       return null;
     }
@@ -132,7 +132,7 @@ export default class JpegUtil {
         buffer,
         startOfStartOfFrame,
         lengthOfStartOfFrame,
-        numberOfLine
+        numberOfLine,
       )
     ) {
       return numberOfLine;
@@ -144,7 +144,7 @@ export default class JpegUtil {
     buffer: Buffer,
     startOfStartOfFrame: number,
     lengthOfStartOfFrame: number,
-    numberOfLine: number
+    numberOfLine: number,
   ): boolean {
     // write the picture height
     if (6 < lengthOfStartOfFrame) {
@@ -162,7 +162,7 @@ export default class JpegUtil {
   static readNumberOfLineFromDNL(
     buffer: Buffer,
     start: number,
-    length: number
+    length: number,
   ): number | null {
     let numberOfLine: number | null = null;
 
@@ -175,7 +175,9 @@ export default class JpegUtil {
   }
   static parse(
     buffer: Buffer,
-    markerHandler: { [key: string]: (start: number, length: number) => boolean }
+    markerHandler: {
+      [key: string]: (start: number, length: number) => boolean;
+    },
   ): boolean {
     let i: number = 0;
 
@@ -219,7 +221,7 @@ export default class JpegUtil {
   private static getBlockLength(
     buffer: Buffer,
     i: number,
-    marker: string
+    marker: string,
   ): number | null {
     if (
       marker === "FFDA" ||
@@ -245,7 +247,7 @@ export default class JpegUtil {
   private static findCurrentBlockSize(
     buffer: Buffer,
     i: number,
-    current_marker: string
+    current_marker: string,
   ): number | null {
     for (let j = 0; i + j < buffer.length; j++) {
       if (buffer[i + j] === 0xff) {
@@ -258,7 +260,7 @@ export default class JpegUtil {
           }
         } else {
           this.logDebug(
-            `Premature end of stream reach while searching for the block size inside marker ${current_marker}`
+            `Premature end of stream reach while searching for the block size inside marker ${current_marker}`,
           );
           return null;
         }
@@ -270,7 +272,9 @@ export default class JpegUtil {
   private static parseMarker(
     buffer: Buffer,
     i: number,
-    markerHandler: { [key: string]: (start: number, length: number) => boolean }
+    markerHandler: {
+      [key: string]: (start: number, length: number) => boolean;
+    },
   ): boolean {
     let marker = "";
 
@@ -283,7 +287,7 @@ export default class JpegUtil {
       if (buffer[i] != 0xff) {
         this.logDebug(
           "We should be at the begining of the next block, but got: " +
-            buffer[i]
+            buffer[i],
         );
         return false;
       }
@@ -303,7 +307,7 @@ export default class JpegUtil {
       const foundBlockLength = this.getBlockLength(buffer, i, marker);
       if (foundBlockLength == null) {
         this.logDebug(
-          `Was not able to determine block size for marker ${marker}`
+          `Was not able to determine block size for marker ${marker}`,
         );
         return false;
       }

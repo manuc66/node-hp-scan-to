@@ -46,7 +46,7 @@ export default class HPApi {
   private static logDebug(
     callId: number,
     isRequest: boolean,
-    msg: object | string
+    msg: object | string,
   ): void {
     if (debug) {
       const id = String(callId).padStart(4, "0");
@@ -56,7 +56,7 @@ export default class HPApi {
   }
 
   private static async callAxios(
-    request: AxiosRequestConfig
+    request: AxiosRequestConfig,
   ): Promise<AxiosResponse<string>> {
     callCount++;
     if (request.timeout === 0) {
@@ -111,7 +111,7 @@ export default class HPApi {
     while (!(await HPApi.isAlive())) {
       if (first) {
         console.log(
-          `Device ip: ${printerIP} is down! [${new Date().toISOString()}]`
+          `Device ip: ${printerIP} is down! [${new Date().toISOString()}]`,
         );
       }
       first = false;
@@ -119,7 +119,7 @@ export default class HPApi {
     }
     if (!first) {
       console.log(
-        `Device ip: ${printerIP} is up again! [${new Date().toISOString()}]`
+        `Device ip: ${printerIP} is up again! [${new Date().toISOString()}]`,
       );
     }
   }
@@ -140,7 +140,7 @@ export default class HPApi {
   }
 
   static async getWalkupScanDestinations(
-    uri: string = "/WalkupScan/WalkupScanDestinations"
+    uri: string = "/WalkupScan/WalkupScanDestinations",
   ): Promise<WalkupScanDestinations> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -168,7 +168,7 @@ export default class HPApi {
       throw new Error(response.statusText);
     } else {
       return WalkupScanToCompDestinations.createWalkupScanToCompDestinations(
-        response.data
+        response.data,
       );
     }
   }
@@ -188,7 +188,7 @@ export default class HPApi {
     }
   }
   static async getWalkupScanToCompManifest(
-    uri: string
+    uri: string,
   ): Promise<WalkupScanToCompManifest> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -201,7 +201,7 @@ export default class HPApi {
       throw new Error(response.statusText);
     } else {
       return WalkupScanToCompManifest.createWalkupScanToCompManifest(
-        response.data
+        response.data,
       );
     }
   }
@@ -237,7 +237,7 @@ export default class HPApi {
   }
 
   static async getWalkupScanToCompCaps(
-    uri: string
+    uri: string,
   ): Promise<WalkupScanToCompCaps> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -254,7 +254,7 @@ export default class HPApi {
   }
 
   static async getWalkupScanToCompEvent(
-    compEventURI: string
+    compEventURI: string,
   ): Promise<WalkupScanToCompEvent> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -271,7 +271,7 @@ export default class HPApi {
   }
 
   static async removeDestination(
-    walkupScanDestination: WalkupScanDestination | WalkupScanToCompDestination
+    walkupScanDestination: WalkupScanDestination | WalkupScanToCompDestination,
   ): Promise<boolean> {
     let path: string;
 
@@ -279,7 +279,7 @@ export default class HPApi {
       let urlInfo = new URL(walkupScanDestination.resourceURI);
       if (urlInfo.pathname === null) {
         throw new Error(
-          `invalid walkupScanDestination.resourceURI: ${walkupScanDestination.resourceURI}`
+          `invalid walkupScanDestination.resourceURI: ${walkupScanDestination.resourceURI}`,
         );
       }
       path = urlInfo.pathname;
@@ -301,7 +301,7 @@ export default class HPApi {
   }
 
   static async registerWalkupScanDestination(
-    destination: Destination
+    destination: Destination,
   ): Promise<string> {
     const xml = await destination.toXML();
     const url = "/WalkupScan/WalkupScanDestinations";
@@ -321,7 +321,7 @@ export default class HPApi {
     }
   }
   static async registerWalkupScanToCompDestination(
-    destination: Destination
+    destination: Destination,
   ): Promise<string> {
     const xml = await destination.toXML();
     const url = "/WalkupScanToComp/WalkupScanToCompDestinations";
@@ -343,7 +343,7 @@ export default class HPApi {
 
   static async getEvents(
     etag = "",
-    decisecondTimeout = 0
+    decisecondTimeout = 0,
   ): Promise<EtagEventTable> {
     let url = this.appendTimeout("/EventMgmt/EventTable", decisecondTimeout);
 
@@ -384,7 +384,7 @@ export default class HPApi {
 
   static placeETagHeader(
     etag: string,
-    headers: RawAxiosRequestHeaders
+    headers: RawAxiosRequestHeaders,
   ): RawAxiosRequestHeaders {
     if (etag !== "") {
       headers["If-None-Match"] = etag;
@@ -403,7 +403,7 @@ export default class HPApi {
   }
 
   static async getDestination(
-    destinationURL: string
+    destinationURL: string,
   ): Promise<WalkupScanDestination | WalkupScanToCompDestination> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -418,7 +418,7 @@ export default class HPApi {
       const content = response.data;
       if (destinationURL.includes("WalkupScanToComp")) {
         return WalkupScanToCompDestination.createWalkupScanToCompDestination(
-          content
+          content,
         );
       } else {
         return WalkupScanDestination.createWalkupScanDestination(content);
@@ -488,7 +488,7 @@ export default class HPApi {
 
   static async downloadPage(
     binaryURL: string,
-    destination: string
+    destination: string,
   ): Promise<string> {
     const { data }: AxiosResponse<Stream> = await axios.request<Stream>({
       baseURL: `http://${printerIP}:8080`,
