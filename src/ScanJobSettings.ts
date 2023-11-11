@@ -11,7 +11,7 @@ export default class ScanJobSettings {
     inputSource: "Adf" | "Platen",
     contentType: "Document" | "Photo",
     resolution: number,
-    isDuplex: boolean
+    isDuplex: boolean,
   ) {
     this.inputSource = inputSource;
     this.contentType = contentType;

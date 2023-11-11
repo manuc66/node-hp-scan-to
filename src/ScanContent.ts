@@ -16,7 +16,7 @@ export interface ScanPage {
 
 export async function createPdfFrom(
   scanContent: ScanContent,
-  destination: string
+  destination: string,
 ) {
   let doc: jsPDF | null = null;
   for (const element of scanContent.elements) {

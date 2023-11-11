@@ -54,7 +54,7 @@ export default class Job {
     if (this.data["j:Job"].ScanJob[0].PostScanPage) {
       return parseInt(
         this.data["j:Job"].ScanJob[0].PostScanPage[0].PageNumber[0],
-        10
+        10,
       );
     }
     return null;
@@ -89,21 +89,21 @@ export default class Job {
     if (
       !Object.prototype.hasOwnProperty.call(
         this.data["j:Job"].ScanJob[0],
-        "PreScanPage"
+        "PreScanPage",
       )
     ) {
       return null;
     }
     return parseInt(
       this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
-        ?.ImageWidth[0] ?? ""
+        ?.ImageWidth[0] ?? "",
     );
   }
   get imageHeight(): number | null {
     if (this.data["j:Job"].ScanJob[0].PreScanPage) {
       return parseInt(
         this.data["j:Job"].ScanJob[0].PreScanPage[0].BufferInfo[0]
-          .ImageHeight[0]
+          .ImageHeight[0],
       );
     }
     return null;
@@ -112,7 +112,7 @@ export default class Job {
     if (this.data["j:Job"].ScanJob[0].PreScanPage) {
       return parseInt(
         this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
-          ?.ScanSettings?.[0]?.XResolution[0] ?? ""
+          ?.ScanSettings?.[0]?.XResolution[0] ?? "",
       );
     }
     return null;
@@ -121,12 +121,12 @@ export default class Job {
     if (
       Object.prototype.hasOwnProperty.call(
         this.data["j:Job"].ScanJob[0],
-        "PreScanPage"
+        "PreScanPage",
       )
     ) {
       return parseInt(
         this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
-          ?.ScanSettings?.[0]?.YResolution[0] ?? ""
+          ?.ScanSettings?.[0]?.YResolution[0] ?? "",
       );
     }
     return null;

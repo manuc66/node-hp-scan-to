@@ -6,9 +6,8 @@ import { DeviceCapabilities } from "./DeviceCapabilities";
 export async function waitScanRequest(compEventURI: string): Promise<boolean> {
   const waitMax = 50;
   for (let i = 0; i < waitMax; i++) {
-    let walkupScanToCompEvent = await HPApi.getWalkupScanToCompEvent(
-      compEventURI
-    );
+    let walkupScanToCompEvent =
+      await HPApi.getWalkupScanToCompEvent(compEventURI);
     let message = walkupScanToCompEvent.eventType;
     if (message === "HostSelected") {
       // this ok to wait
@@ -32,7 +31,7 @@ export async function waitScanRequest(compEventURI: string): Promise<boolean> {
 
 export async function waitForScanEvent(
   resourceURI: string,
-  afterEtag: string | null = null
+  afterEtag: string | null = null,
 ): Promise<Event> {
   console.log("Start listening for new ScanEvent");
 
@@ -47,21 +46,21 @@ export async function waitForScanEvent(
       (ev) =>
         ev.isScanEvent &&
         ev.destinationURI &&
-        ev.destinationURI.indexOf(resourceURI) >= 0
+        ev.destinationURI.indexOf(resourceURI) >= 0,
     );
   }
   return acceptedScanEvent;
 }
 
 async function registerWalkupScanToCompDestination(
-  registrationConfig: RegistrationConfig
+  registrationConfig: RegistrationConfig,
 ): Promise<string> {
   const walkupScanDestinations = await HPApi.getWalkupScanToCompDestinations();
   const destinations = walkupScanDestinations.destinations;
 
   console.log(
     "Host destinations fetched:",
-    destinations.map((d) => d.name).join(", ")
+    destinations.map((d) => d.name).join(", "),
   );
 
   const hostname = registrationConfig.label;
@@ -70,12 +69,12 @@ async function registerWalkupScanToCompDestination(
   let resourceURI;
   if (destination) {
     console.log(
-      `Re-using existing destination: ${hostname} - ${destination.resourceURI}`
+      `Re-using existing destination: ${hostname} - ${destination.resourceURI}`,
     );
     resourceURI = destination.resourceURI;
   } else {
     resourceURI = await HPApi.registerWalkupScanToCompDestination(
-      new Destination(hostname, hostname, true)
+      new Destination(hostname, hostname, true),
     );
     console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
   }
@@ -86,14 +85,14 @@ async function registerWalkupScanToCompDestination(
 }
 
 async function registerWalkupScanDestination(
-  registrationConfig: RegistrationConfig
+  registrationConfig: RegistrationConfig,
 ): Promise<string> {
   const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
   const destinations = walkupScanDestinations.destinations;
 
   console.log(
     "Host destinations fetched:",
-    destinations.map((d) => d.name).join(", ")
+    destinations.map((d) => d.name).join(", "),
   );
 
   const hostname = registrationConfig.label;
@@ -102,12 +101,12 @@ async function registerWalkupScanDestination(
   let resourceURI;
   if (destination) {
     console.log(
-      `Re-using existing destination: ${hostname} - ${destination.resourceURI}`
+      `Re-using existing destination: ${hostname} - ${destination.resourceURI}`,
     );
     resourceURI = destination.resourceURI;
   } else {
     resourceURI = await HPApi.registerWalkupScanDestination(
-      new Destination(hostname, hostname, false)
+      new Destination(hostname, hostname, false),
     );
     console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
   }
@@ -123,7 +122,7 @@ export type RegistrationConfig = {
 
 export async function waitScanEvent(
   deviceCapabilities: DeviceCapabilities,
-  registrationConfig: RegistrationConfig
+  registrationConfig: RegistrationConfig,
 ): Promise<Event> {
   let resourceURI: string;
   if (deviceCapabilities.useWalkupScanToComp) {
