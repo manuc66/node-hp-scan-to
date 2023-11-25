@@ -401,8 +401,12 @@ export async function saveScan(
     inputSource,
     contentType,
     scanConfig.resolution,
-    inputSource === "Adf" ? deviceCapabilities.adfMaxWidth : deviceCapabilities.platenMaxWidth,
-    inputSource === "Adf" ? deviceCapabilities.adfMaxHeight : deviceCapabilities.platenMaxHeight,
+    inputSource === "Adf"
+      ? deviceCapabilities.adfMaxWidth
+      : deviceCapabilities.platenMaxWidth,
+    inputSource === "Adf"
+      ? deviceCapabilities.adfMaxHeight
+      : deviceCapabilities.platenMaxHeight,
     isDuplex,
   );
 
