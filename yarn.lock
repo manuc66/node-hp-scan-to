@@ -513,9 +513,9 @@
   integrity sha512-taW5/WYqo36N7V39oYyHP9Ipfd5pNFvGTIQsNGj86xV88YQ7GnI30/yMfKDF7Zgin0m3e+ikX88FvImnK4RjGw==
 
 "@types/xml2js@^0.4.11":
-  version "0.4.13"
-  resolved "https://registry.yarnpkg.com/@types/xml2js/-/xml2js-0.4.13.tgz#219134d550c21e2f1d7b0e2fbb9174144c6053ed"
-  integrity sha512-nuT42GzgoUa4zZgBoF4d+Zqc12/FlVxXCT4xU6j3RfqTFVQWrUAClI/0sNJ5ImM9Wv6KB42KMG2xsVMn4cSBzA==
+  version "0.4.14"
+  resolved "https://registry.yarnpkg.com/@types/xml2js/-/xml2js-0.4.14.tgz#5d462a2a7330345e2309c6b549a183a376de8f9a"
+  integrity sha512-4YnrRemBShWRO2QjvUin8ESA41rH+9nQGLUGZV/1IDhi3SL9OhdpNC/MrulTWuptXKwhx/aDxE7toV0f/ypIXQ==
   dependencies:
     "@types/node" "*"
 
