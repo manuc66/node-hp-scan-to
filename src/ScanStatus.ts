@@ -2,6 +2,7 @@
 import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
+import { InputSource } from "./InputSource";
 const parseString = promisify<string, ScanStatusData>(parser.parseString);
 
 export interface ScanStatusData {
@@ -41,7 +42,7 @@ export default class ScanStatus {
     return this.adfState === "Loaded";
   }
 
-  getInputSource(): "Adf" | "Platen" {
-    return this.isLoaded() ? "Adf" : "Platen";
+  getInputSource(): InputSource {
+    return this.isLoaded() ? InputSource.Adf : InputSource.Platen;
   }
 }
