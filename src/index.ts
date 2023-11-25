@@ -108,6 +108,8 @@ async function adfAutoscanCmd(
   );
   console.log(`Temp folder: ${tempFolder}`);
 
+  const deviceCapabilities = await readDeviceCapabilities();
+
   let scanCount = 0;
   let keepActive = true;
   let errorCount = 0;
@@ -123,7 +125,13 @@ async function adfAutoscanCmd(
 
       console.log(`Scan event captured, saving scan #${scanCount}`);
 
-      await scanFromAdf(scanCount, folder, tempFolder, adfAutoScanConfig);
+      await scanFromAdf(
+        scanCount,
+        folder,
+        tempFolder,
+        adfAutoScanConfig,
+        deviceCapabilities,
+      );
     } catch (e) {
       console.log(e);
       if (await HPApi.isAlive()) {
@@ -204,6 +212,14 @@ function setupScanParameters(command: Command): Command {
     "-r, --resolution <dpi>",
     "Resolution in DPI of the scans (default: 200)",
   );
+  command.option(
+    "-w, --width <width>",
+    "With in pixel of the scans (default: 2481)",
+  );
+  command.option(
+    "-h, --height <height>",
+    "Height in pixel of the scans (default: 3507)",
+  );
   return command;
 }
 
@@ -253,11 +269,33 @@ function getScanConfiguration(parentOption: OptionValues) {
     filePattern: parentOption.pattern || getConfig("pattern"),
   };
 
+  const configWidth = (
+    parentOption.width ||
+    getConfig("width") ||
+    0
+  ).toString();
+  const width =
+    configWidth.toLowerCase() === "max"
+      ? Number.MAX_SAFE_INTEGER
+      : parseInt(configWidth, 10);
+
+  const configHeight = (
+    parentOption.width ||
+    getConfig("height") ||
+    "0"
+  ).toString();
+  const height =
+    configWidth.toLowerCase() === "max"
+      ? Number.MAX_SAFE_INTEGER
+      : parseInt(configHeight, 10);
+
   const scanConfig: ScanConfig = {
     resolution: parseInt(
-      parentOption.resolution || getConfig("resolution") || 200,
+      parentOption.resolution || getConfig("resolution") || "200",
       10,
     ),
+    width: width,
+    height: height,
     directoryConfig,
   };
   return scanConfig;
