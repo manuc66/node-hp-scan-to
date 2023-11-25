@@ -45,7 +45,7 @@ export default class Destination {
       "</WalkupScanDestination>";
 
     const parsed = await util.promisify<string, WalkupScanDestinationData>(
-      parser.parseString
+      parser.parseString,
     )(rawDestination);
 
     parsed.WalkupScanDestination.Hostname[0]._ = this.hostname;

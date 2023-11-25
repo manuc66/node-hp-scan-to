@@ -28,7 +28,7 @@ export default class DiscoveryTree {
     const hpLedmWalkupScanToCompManifest = this.data["ledm:DiscoveryTree"][
       "ledm:SupportedIfc"
     ].find(
-      (x) => x["dd:ResourceType"][0] === "ledm:hpLedmWalkupScanToCompManifest"
+      (x) => x["dd:ResourceType"][0] === "ledm:hpLedmWalkupScanToCompManifest",
     );
     if (hpLedmWalkupScanToCompManifest !== undefined) {
       return hpLedmWalkupScanToCompManifest["ledm:ManifestURI"][0];

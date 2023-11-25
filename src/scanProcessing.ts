@@ -14,7 +14,7 @@ import PathHelper from "./PathHelper";
 import ScanStatus from "./ScanStatus";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
-  jobUrl: string
+  jobUrl: string,
 ): Promise<Job> {
   let job = null;
   let isReadyToUpload = false;
@@ -38,7 +38,7 @@ async function waitDeviceUntilItIsReadyToUploadOrCompleted(
 }
 
 async function TryGetDestination(
-  event: Event
+  event: Event,
 ): Promise<WalkupScanDestination | WalkupScanToCompDestination | null> {
   //this code can in some cases be executed before the user actually chooses between Document or Photo
   //so lets fetch the contentType (Document or Photo) until we get a value
@@ -83,7 +83,7 @@ function createScanPage(
   job: Job,
   currentPageNumber: number,
   filePath: string,
-  sizeFixed: number | null
+  sizeFixed: number | null,
 ): ScanPage {
   let height = sizeFixed ?? job.imageHeight;
   return {
@@ -102,7 +102,7 @@ async function handleProcessingState(
   folder: string,
   scanCount: number,
   currentPageNumber: number,
-  filePattern: string | undefined
+  filePattern: string | undefined,
 ): Promise<ScanPage | null> {
   if (
     job.pageState == "ReadyToUpload" &&
@@ -111,7 +111,7 @@ async function handleProcessingState(
   ) {
     console.log(
       `Ready to download page job page ${job.currentPageNumber} at:`,
-      job.binaryURL
+      job.binaryURL,
     );
 
     const destinationFilePath = PathHelper.getFileForPage(
@@ -119,11 +119,11 @@ async function handleProcessingState(
       scanCount,
       currentPageNumber,
       filePattern,
-      "jpg"
+      "jpg",
     );
     const filePath = await HPApi.downloadPage(
       job.binaryURL,
-      destinationFilePath
+      destinationFilePath,
     );
     console.log("Page downloaded to:", filePath);
 
@@ -132,7 +132,7 @@ async function handleProcessingState(
       sizeFixed = await scanProcessing(filePath);
       if (sizeFixed == null) {
         console.log(
-          `File size has not been fixed, DNF may not have been found and approximate height is: ${job.imageHeight}`
+          `File size has not been fixed, DNF may not have been found and approximate height is: ${job.imageHeight}`,
         );
       }
     }
@@ -150,7 +150,7 @@ async function executeScanJob(
   folder: string,
   scanCount: number,
   scanJobContent: ScanContent,
-  filePattern: string | undefined
+  filePattern: string | undefined,
 ): Promise<"Completed" | "Canceled"> {
   const jobUrl = await HPApi.postJob(scanJobSettings);
 
@@ -171,7 +171,7 @@ async function executeScanJob(
         folder,
         scanCount,
         scanJobContent.elements.length + 1,
-        filePattern
+        filePattern,
       );
       job = await HPApi.getJob(jobUrl);
       if (page != null && job.jobState != "Canceled") {
@@ -186,7 +186,7 @@ async function executeScanJob(
     }
   }
   console.log(
-    `Job state: ${job.jobState}, totalPages: ${scanJobContent.elements.length}:`
+    `Job state: ${job.jobState}, totalPages: ${scanJobContent.elements.length}:`,
   );
   return job.jobState;
 }
@@ -197,9 +197,8 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
   while (wait) {
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
 
-    let walkupScanToCompEvent = await HPApi.getWalkupScanToCompEvent(
-      compEventURI
-    );
+    let walkupScanToCompEvent =
+      await HPApi.getWalkupScanToCompEvent(compEventURI);
     let message = walkupScanToCompEvent.eventType;
 
     if (message === "ScanNewPageRequested") {
@@ -225,7 +224,7 @@ async function executeScanJobs(
   scanJobContent: ScanContent,
   firstEvent: Event,
   deviceCapabilities: DeviceCapabilities,
-  filePattern: string | undefined
+  filePattern: string | undefined,
 ) {
   let jobState = await executeScanJob(
     scanJobSettings,
@@ -233,7 +232,7 @@ async function executeScanJobs(
     folder,
     scanCount,
     scanJobContent,
-    filePattern
+    filePattern,
   );
   let lastEvent = firstEvent;
   if (
@@ -245,7 +244,7 @@ async function executeScanJobs(
   ) {
     lastEvent = await waitForScanEvent(
       lastEvent.destinationURI,
-      lastEvent.agingStamp
+      lastEvent.agingStamp,
     );
     if (!lastEvent.compEventURI) {
       return;
@@ -258,7 +257,7 @@ async function executeScanJobs(
         folder,
         scanCount,
         scanJobContent,
-        filePattern
+        filePattern,
       );
       if (jobState !== "Completed") {
         return;
@@ -268,7 +267,7 @@ async function executeScanJobs(
       }
       lastEvent = await waitForScanEvent(
         lastEvent.destinationURI,
-        lastEvent.agingStamp
+        lastEvent.agingStamp,
       );
       if (!lastEvent.compEventURI) {
         return;
@@ -282,14 +281,14 @@ async function mergeToPdf(
   folder: string,
   scanCount: number,
   scanJobContent: ScanContent,
-  filePattern: string | undefined
+  filePattern: string | undefined,
 ): Promise<string | null> {
   if (scanJobContent.elements.length > 0) {
     const pdfFilePath = PathHelper.getFileForScan(
       folder,
       scanCount,
       filePattern,
-      "pdf"
+      "pdf",
     );
     await createPdfFrom(scanJobContent, pdfFilePath);
     scanJobContent.elements.forEach((e) => fs.unlink(e.path));
@@ -301,21 +300,21 @@ async function mergeToPdf(
 
 function displayPdfScan(
   pdfFilePath: string | null,
-  scanJobContent: ScanContent
+  scanJobContent: ScanContent,
 ) {
   if (pdfFilePath === null) {
     console.log(`Pdf generated has not been generated`);
     return;
   }
   console.log(
-    `The following page(s) have been rendered inside '${pdfFilePath}': `
+    `The following page(s) have been rendered inside '${pdfFilePath}': `,
   );
   scanJobContent.elements.forEach((e) =>
     console.log(
       `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
         e.height
-      }`
-    )
+      }`,
+    ),
   );
 }
 
@@ -324,13 +323,13 @@ function displayJpegScan(scanJobContent: ScanContent) {
     console.log(
       `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
         e.height
-      } - ${e.path}`
-    )
+      } - ${e.path}`,
+    ),
   );
 }
 
 function isPdf(
-  destination: WalkupScanDestination | WalkupScanToCompDestination
+  destination: WalkupScanDestination | WalkupScanToCompDestination,
 ) {
   if (
     destination.shortcut === "SavePDF" ||
@@ -345,7 +344,7 @@ function isPdf(
     return false;
   } else {
     console.log(
-      `Unexpected shortcut received: ${destination.shortcut}, considering it as non pdf target!`
+      `Unexpected shortcut received: ${destination.shortcut}, considering it as non pdf target!`,
     );
     return false;
   }
@@ -357,7 +356,7 @@ export async function saveScan(
   tempFolder: string,
   scanCount: number,
   deviceCapabilities: DeviceCapabilities,
-  scanConfig: ScanConfig
+  scanConfig: ScanConfig,
 ): Promise<void> {
   if (event.compEventURI) {
     const proceedToScan = await waitScanRequest(event.compEventURI);
@@ -381,7 +380,7 @@ export async function saveScan(
     contentType = "Document";
     destinationFolder = tempFolder;
     console.log(
-      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`
+      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`,
     );
   } else {
     toPdf = false;
@@ -404,7 +403,7 @@ export async function saveScan(
     scanConfig.resolution,
     inputSource === "Adf" ? deviceCapabilities.adfMaxWidth : deviceCapabilities.platenMaxWidth,
     inputSource === "Adf" ? deviceCapabilities.adfMaxHeight : deviceCapabilities.platenMaxHeight,
-    isDuplex
+    isDuplex,
   );
 
   const scanJobContent: ScanContent = { elements: [] };
@@ -417,11 +416,11 @@ export async function saveScan(
     scanJobContent,
     event,
     deviceCapabilities,
-    scanConfig.directoryConfig.filePattern
+    scanConfig.directoryConfig.filePattern,
   );
 
   console.log(
-    `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`
+    `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`,
   );
 
   if (toPdf) {
@@ -429,7 +428,7 @@ export async function saveScan(
       folder,
       scanCount,
       scanJobContent,
-      scanConfig.directoryConfig.filePattern
+      scanConfig.directoryConfig.filePattern,
     );
     displayPdfScan(pdfFilePath, scanJobContent);
   } else {
@@ -457,7 +456,7 @@ export async function scanFromAdf(
   scanCount: number,
   folder: string,
   tempFolder: string,
-  adfAutoScanConfig: AdfAutoScanConfig
+  adfAutoScanConfig: AdfAutoScanConfig,
 ) {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
@@ -465,7 +464,7 @@ export async function scanFromAdf(
     contentType = "Document";
     destinationFolder = tempFolder;
     console.log(
-      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`
+      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`,
     );
   } else {
     contentType = "Photo";
@@ -478,7 +477,7 @@ export async function scanFromAdf(
     adfAutoScanConfig.resolution,
     null,
     null,
-    adfAutoScanConfig.isDuplex
+    adfAutoScanConfig.isDuplex,
   );
 
   const scanJobContent: ScanContent = { elements: [] };
@@ -489,11 +488,11 @@ export async function scanFromAdf(
     destinationFolder,
     scanCount,
     scanJobContent,
-    adfAutoScanConfig.directoryConfig.filePattern
+    adfAutoScanConfig.directoryConfig.filePattern,
   );
 
   console.log(
-    `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`
+    `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`,
   );
 
   if (adfAutoScanConfig.generatePdf) {
@@ -501,7 +500,7 @@ export async function scanFromAdf(
       folder,
       scanCount,
       scanJobContent,
-      adfAutoScanConfig.directoryConfig.filePattern
+      adfAutoScanConfig.directoryConfig.filePattern,
     );
     displayPdfScan(pdfFilePath, scanJobContent);
   } else {
@@ -511,7 +510,7 @@ export async function scanFromAdf(
 
 export async function waitAdfLoaded(
   pollingInterval: number,
-  startScanDelay: number
+  startScanDelay: number,
 ) {
   let ready = false;
   while (!ready) {

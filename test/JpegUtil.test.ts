@@ -1,9 +1,13 @@
 import { describe } from "mocha";
 import { expect } from "chai";
 import JpegUtil from "../src/JpegUtil";
-const fs = { ...require("fs"), ...require("fs/promises") };
-const path = require("path");
+import fs0 from "fs";
 
+import fs01 from "fs/promises";
+
+import path from "path";
+
+const fs = { ...(fs0), ...(fs01) };
 describe("JpegUtil", () => {
   describe("Work on sample.jpg", () => {
     it("Reading JPEG size is possible", async () => {

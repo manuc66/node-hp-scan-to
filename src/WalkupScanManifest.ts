@@ -3,7 +3,7 @@ import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
 const parseString = promisify<string, WalkupScanManifestData>(
-  parser.parseString
+  parser.parseString,
 );
 
 export interface WalkupScanManifestData {
@@ -31,7 +31,7 @@ export default class WalkupScanManifest {
     this.data = data;
   }
   static async createWalkupScanManifest(
-    content: string
+    content: string,
   ): Promise<WalkupScanManifest> {
     const parsed = await parseString(content);
     return new WalkupScanManifest(parsed);
@@ -43,7 +43,7 @@ export default class WalkupScanManifest {
     ]["map:ResourceNode"].find(
       (x) =>
         x["map:ResourceType"][0]["wus:WalkupScanResourceType"][0] ===
-        "WalkupScanDestinations"
+        "WalkupScanDestinations",
     );
 
     if (walkupScanToCompCaps === undefined) {
