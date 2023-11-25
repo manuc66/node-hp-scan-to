@@ -9,22 +9,22 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
   let walkupScanToCompCaps: WalkupScanToCompCaps | null = null;
   if (discoveryTree.WalkupScanToCompManifestURI != null) {
     const walkupScanToCompManifest = await HPApi.getWalkupScanToCompManifest(
-      discoveryTree.WalkupScanToCompManifestURI
+      discoveryTree.WalkupScanToCompManifestURI,
     );
     if (walkupScanToCompManifest.WalkupScanToCompCapsURI != null) {
       walkupScanToCompCaps = await HPApi.getWalkupScanToCompCaps(
-        walkupScanToCompManifest.WalkupScanToCompCapsURI
+        walkupScanToCompManifest.WalkupScanToCompCapsURI,
       );
       supportsMultiItemScanFromPlaten =
         walkupScanToCompCaps.supportsMultiItemScanFromPlaten;
     }
   } else if (discoveryTree.WalkupScanManifestURI != null) {
     const walkupScanManifest = await HPApi.getWalkupScanManifest(
-      discoveryTree.WalkupScanManifestURI
+      discoveryTree.WalkupScanManifestURI,
     );
     if (walkupScanManifest.walkupScanDestinationsURI != null) {
       await HPApi.getWalkupScanDestinations(
-        walkupScanManifest.walkupScanDestinationsURI
+        walkupScanManifest.walkupScanDestinationsURI,
       );
     }
   } else {
@@ -34,7 +34,7 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
   let scanCaps: ScanCaps | null = null;
   if (discoveryTree.ScanJobManifestURI != null) {
     const scanJobManifest = await HPApi.getScanJobManifest(
-      discoveryTree.ScanJobManifestURI
+      discoveryTree.ScanJobManifestURI,
     );
     if (scanJobManifest.ScanCapsURI != null) {
       scanCaps = await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);

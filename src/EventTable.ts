@@ -25,7 +25,7 @@ export default class EventTable {
 
   static async createEtagEventTable(
     content: string,
-    etagReceived: string
+    etagReceived: string,
   ): Promise<EtagEventTable> {
     const parsed = await parseString(content);
     return {

@@ -5,7 +5,7 @@ import { KnownShortcut } from "./KnownShortcut";
 
 const parser = new Parser();
 const parseString = promisify<string, WalkupScanDestinationsData>(
-  parser.parseString
+  parser.parseString,
 );
 
 interface WalkupScanDestinationsData {
@@ -32,11 +32,11 @@ export default class WalkupScanDestination {
     this.data = data;
   }
   static async createWalkupScanDestination(
-    content: string
+    content: string,
   ): Promise<WalkupScanDestination> {
     const parsed = await parseString(content);
     return new WalkupScanDestination(
-      parsed["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"][0]
+      parsed["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"][0],
     );
   }
 

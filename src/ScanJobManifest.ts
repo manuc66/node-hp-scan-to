@@ -29,7 +29,7 @@ export default class ScanJobManifest {
     this.data = data;
   }
   static async createScanJobManifest(
-    content: string
+    content: string,
   ): Promise<ScanJobManifest> {
     const parsed = await parseString(content);
     return new ScanJobManifest(parsed);
@@ -39,7 +39,8 @@ export default class ScanJobManifest {
     const scanCaps = this.data["man:Manifest"]["map:ResourceMap"]["0"][
       "map:ResourceNode"
     ].find(
-      (x) => x["map:ResourceType"][0]["scan:ScanResourceType"][0] === "ScanCaps"
+      (x) =>
+        x["map:ResourceType"][0]["scan:ScanResourceType"][0] === "ScanCaps",
     );
 
     if (scanCaps === undefined) {

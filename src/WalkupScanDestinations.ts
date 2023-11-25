@@ -3,7 +3,7 @@ import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
 const parseString = promisify<string, WalkupScanDestinationsData>(
-  parser.parseString
+  parser.parseString,
 );
 
 import WalkupScanDestination, {
@@ -22,7 +22,7 @@ export default class WalkupScanDestinations {
     this.data = data;
   }
   static async createWalkupScanDestinations(
-    content: string
+    content: string,
   ): Promise<WalkupScanDestinations> {
     const parsed = await parseString(content);
     return new WalkupScanDestinations(parsed);
@@ -33,11 +33,11 @@ export default class WalkupScanDestinations {
     if (
       Object.prototype.hasOwnProperty.call(
         walkupScanDestinations,
-        "wus:WalkupScanDestination"
+        "wus:WalkupScanDestination",
       )
     ) {
       return walkupScanDestinations["wus:WalkupScanDestination"].map(
-        (x) => new WalkupScanDestination(x)
+        (x) => new WalkupScanDestination(x),
       );
     } else {
       return [];

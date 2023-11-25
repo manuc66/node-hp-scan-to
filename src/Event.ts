@@ -30,7 +30,7 @@ export default class Event {
   get destinationURI(): string | undefined {
     if (Object.prototype.hasOwnProperty.call(this.data, "ev:Payload")) {
       const destination = this.data["ev:Payload"].find((v) =>
-        v["dd:ResourceType"]["0"].includes("Destination")
+        v["dd:ResourceType"]["0"].includes("Destination"),
       );
 
       return destination ? destination["dd:ResourceURI"]["0"] : undefined;
@@ -41,7 +41,7 @@ export default class Event {
   get compEventURI(): string | undefined {
     if (Object.prototype.hasOwnProperty.call(this.data, "ev:Payload")) {
       const compEvent = this.data["ev:Payload"].find((v) =>
-        v["dd:ResourceType"]["0"].includes("CompEvent")
+        v["dd:ResourceType"]["0"].includes("CompEvent"),
       );
 
       return compEvent ? compEvent["dd:ResourceURI"]["0"] : undefined;

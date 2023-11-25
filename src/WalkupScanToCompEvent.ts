@@ -3,7 +3,7 @@ import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
 const parseString = promisify<string, WalkupScanToCompEventData>(
-  parser.parseString
+  parser.parseString,
 );
 
 export interface WalkupScanToCompEventData {
