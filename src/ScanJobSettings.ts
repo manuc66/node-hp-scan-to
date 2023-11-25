@@ -5,17 +5,23 @@ export default class ScanJobSettings {
   private readonly inputSource: "Adf" | "Platen";
   private readonly contentType: "Document" | "Photo";
   private readonly resolution: number;
+  private readonly width: number | null;
+  private readonly height: number | null;
   private readonly isDuplex: boolean;
 
   constructor(
     inputSource: "Adf" | "Platen",
     contentType: "Document" | "Photo",
     resolution: number,
+    width: number | null,
+    height: number | null,
     isDuplex: boolean,
   ) {
     this.inputSource = inputSource;
     this.contentType = contentType;
     this.resolution = resolution;
+    this.width = width;
+    this.height = height;
     this.isDuplex = isDuplex;
   }
 
@@ -25,7 +31,7 @@ export default class ScanJobSettings {
       '<ScanSettings xmlns="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19 Scan Schema - 0.26.xsd">\n' +
       "\t<XResolution>200</XResolution>\n" +
       "\t<YResolution>200</YResolution>\n" +
-      "\t<XStart>33</XStart>\n" +
+      "\t<XStart>0</XStart>\n" +
       "\t<YStart>0</YStart>\n" +
       "\t<Width>2481</Width>\n" +
       "\t<Height>3507</Height>\n" +
@@ -52,6 +58,14 @@ export default class ScanJobSettings {
 
     parsed.ScanSettings.XResolution[0] = this.resolution;
     parsed.ScanSettings.YResolution[0] = this.resolution;
+
+    if (this.width !== null) {
+      parsed.ScanSettings.Width = this.width;
+    }
+
+    if (this.height !== null) {
+      parsed.ScanSettings.Height = this.height;
+    }
 
     parsed.ScanSettings.InputSource[0] = this.inputSource;
     if (this.inputSource === "Adf" && this.isDuplex) {
