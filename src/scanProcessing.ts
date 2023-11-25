@@ -12,6 +12,7 @@ import Job from "./Job";
 import { delay } from "./delay";
 import PathHelper from "./PathHelper";
 import ScanStatus from "./ScanStatus";
+import { InputSource } from "./InputSource";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -98,7 +99,7 @@ function createScanPage(
 
 async function handleProcessingState(
   job: Job,
-  inputSource: "Adf" | "Platen",
+  inputSource: InputSource,
   folder: string,
   scanCount: number,
   currentPageNumber: number,
@@ -128,7 +129,7 @@ async function handleProcessingState(
     console.log("Page downloaded to:", filePath);
 
     let sizeFixed: null | number = null;
-    if (inputSource == "Adf") {
+    if (inputSource == InputSource.Adf) {
       sizeFixed = await scanProcessing(filePath);
       if (sizeFixed == null) {
         console.log(
@@ -146,7 +147,7 @@ async function handleProcessingState(
 
 async function executeScanJob(
   scanJobSettings: ScanJobSettings,
-  inputSource: "Adf" | "Platen",
+  inputSource: InputSource,
   folder: string,
   scanCount: number,
   scanJobContent: ScanContent,
@@ -218,7 +219,7 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
 
 async function executeScanJobs(
   scanJobSettings: ScanJobSettings,
-  inputSource: "Adf" | "Platen",
+  inputSource: InputSource,
   folder: string,
   scanCount: number,
   scanJobContent: ScanContent,
@@ -238,7 +239,7 @@ async function executeScanJobs(
   if (
     jobState === "Completed" &&
     lastEvent.compEventURI &&
-    inputSource !== "Adf" &&
+    inputSource !== InputSource.Adf &&
     lastEvent.destinationURI &&
     deviceCapabilities.supportsMultiItemScanFromPlaten
   ) {
@@ -526,7 +527,7 @@ export async function scanFromAdf(
   );
 
   const scanJobSettings = new ScanJobSettings(
-    "Adf",
+    InputSource.Adf,
     contentType,
     adfAutoScanConfig.resolution,
     scanWidth,
@@ -538,7 +539,7 @@ export async function scanFromAdf(
 
   await executeScanJob(
     scanJobSettings,
-    "Adf",
+    InputSource.Adf,
     destinationFolder,
     scanCount,
     scanJobContent,
