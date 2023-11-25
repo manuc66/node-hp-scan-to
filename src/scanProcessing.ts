@@ -350,6 +350,48 @@ function isPdf(
   }
 }
 
+export function getScanWidth(
+  scanConfig: ScanConfig,
+  inputSource: "Adf" | "Platen",
+  deviceCapabilities: DeviceCapabilities,
+) {
+  if (scanConfig.width && scanConfig.width > 0) {
+    const maxWidth =
+      inputSource === "Adf"
+        ? deviceCapabilities.adfMaxWidth
+        : deviceCapabilities.platenMaxWidth;
+
+    if (maxWidth && scanConfig.width > maxWidth) {
+      return maxWidth;
+    } else {
+      return scanConfig.width;
+    }
+  } else {
+    return null;
+  }
+}
+
+export function getScanHeight(
+  scanConfig: ScanConfig,
+  inputSource: "Adf" | "Platen",
+  deviceCapabilities: DeviceCapabilities,
+) {
+  if (scanConfig.height && scanConfig.height > 0) {
+    const maxHeight =
+      inputSource === "Adf"
+        ? deviceCapabilities.adfMaxHeight
+        : deviceCapabilities.platenMaxHeight;
+
+    if (maxHeight && scanConfig.height > maxHeight) {
+      return maxHeight;
+    } else {
+      return scanConfig.height;
+    }
+  } else {
+    return null;
+  }
+}
+
 export async function saveScan(
   event: Event,
   folder: string,
@@ -396,17 +438,15 @@ export async function saveScan(
   console.log("Afd is : " + scanStatus.adfState);
 
   const inputSource = scanStatus.getInputSource();
+  const scanWidth = getScanWidth(scanConfig, inputSource, deviceCapabilities);
+  const scanHeight = getScanHeight(scanConfig, inputSource, deviceCapabilities);
 
   const scanJobSettings = new ScanJobSettings(
     inputSource,
     contentType,
     scanConfig.resolution,
-    inputSource === "Adf"
-      ? deviceCapabilities.adfMaxWidth
-      : deviceCapabilities.platenMaxWidth,
-    inputSource === "Adf"
-      ? deviceCapabilities.adfMaxHeight
-      : deviceCapabilities.platenMaxHeight,
+    scanWidth,
+    scanHeight,
     isDuplex,
   );
 
@@ -447,6 +487,8 @@ export type DirectoryConfig = {
 };
 export type ScanConfig = {
   resolution: number;
+  width: number | null;
+  height: number | null;
   directoryConfig: DirectoryConfig;
 };
 export type AdfAutoScanConfig = ScanConfig & {
@@ -461,6 +503,7 @@ export async function scanFromAdf(
   folder: string,
   tempFolder: string,
   adfAutoScanConfig: AdfAutoScanConfig,
+  deviceCapabilities: DeviceCapabilities,
 ) {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
@@ -475,12 +518,19 @@ export async function scanFromAdf(
     destinationFolder = folder;
   }
 
+  const scanWidth = getScanWidth(adfAutoScanConfig, "Adf", deviceCapabilities);
+  const scanHeight = getScanHeight(
+    adfAutoScanConfig,
+    "Adf",
+    deviceCapabilities,
+  );
+
   const scanJobSettings = new ScanJobSettings(
     "Adf",
     contentType,
     adfAutoScanConfig.resolution,
-    null,
-    null,
+    scanWidth,
+    scanHeight,
     adfAutoScanConfig.isDuplex,
   );
 
