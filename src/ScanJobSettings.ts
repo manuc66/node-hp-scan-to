@@ -1,8 +1,9 @@
 import xml2js from "xml2js";
+import { InputSource } from "./InputSource";
 
 const parser = new xml2js.Parser();
 export default class ScanJobSettings {
-  private readonly inputSource: "Adf" | "Platen";
+  private readonly inputSource: InputSource;
   private readonly contentType: "Document" | "Photo";
   private readonly resolution: number;
   private readonly width: number | null;
@@ -10,7 +11,7 @@ export default class ScanJobSettings {
   private readonly isDuplex: boolean;
 
   constructor(
-    inputSource: "Adf" | "Platen",
+    inputSource: InputSource,
     contentType: "Document" | "Photo",
     resolution: number,
     width: number | null,
@@ -68,7 +69,7 @@ export default class ScanJobSettings {
     }
 
     parsed.ScanSettings.InputSource[0] = this.inputSource;
-    if (this.inputSource === "Adf" && this.isDuplex) {
+    if (this.inputSource === InputSource.Adf && this.isDuplex) {
       parsed.ScanSettings["AdfOptions"] = [{ AdfOption: ["Duplex"] }];
     }
     parsed.ScanSettings.ContentType[0] = this.contentType;
