@@ -8,6 +8,8 @@ import os from "os";
 import path from "path";
 chai.use(chaiString);
 
+const now: Date = new Date();
+
 describe("PathHelper", () => {
   describe("getFileForPage", () => {
     it("Can format a file with formatted timestamp", async () => {
@@ -16,9 +18,9 @@ describe("PathHelper", () => {
         2,
         1,
         '"scan"_dd.mm.yyyy_HH:MM:ss',
-        "jpg"
+        "jpg",
+        now,
       );
-      const now = new Date();
       expect(nextFileName).to.be.eq(
         `someFolder${path.sep}scan_${("" + now.getDate()).padStart(2, "0")}.${(
           "" +
@@ -27,7 +29,7 @@ describe("PathHelper", () => {
           "" + now.getHours()
         ).padStart(2, "0")}:${("" + now.getMinutes()).padStart(2, "0")}:${(
           "" + now.getSeconds()
-        ).padStart(2, "0")}.jpg`
+        ).padStart(2, "0")}.jpg`,
       );
     });
     it("Can format a file based on scan count and page number", async () => {
@@ -36,7 +38,8 @@ describe("PathHelper", () => {
         2,
         1,
         undefined,
-        "jpg"
+        "jpg",
+        now,
       );
       expect(nextFileName).to.be.eq(`someFolder${path.sep}scan2_page1.jpg`);
     });
@@ -47,9 +50,9 @@ describe("PathHelper", () => {
         "someFolder",
         2,
         '"scan"_dd.mm.yyyy_HH:MM:ss',
-        "pdf"
+        "pdf",
+        now,
       );
-      const now = new Date();
       expect(nextFileName).to.be.eq(
         `someFolder${path.sep}scan_${("" + now.getDate()).padStart(2, "0")}.${(
           "" +
@@ -58,7 +61,7 @@ describe("PathHelper", () => {
           "" + now.getHours()
         ).padStart(2, "0")}:${("" + now.getMinutes()).padStart(2, "0")}:${(
           "" + now.getSeconds()
-        ).padStart(2, "0")}.pdf`
+        ).padStart(2, "0")}.pdf`,
       );
     });
     it("Can format a file based on scan count and page number", async () => {
@@ -66,7 +69,8 @@ describe("PathHelper", () => {
         "someFolder",
         2,
         undefined,
-        "pdf"
+        "pdf",
+        now,
       );
       expect(nextFileName).to.be.eq(`someFolder${path.sep}scan2.pdf`);
     });
@@ -98,7 +102,7 @@ describe("PathHelper", () => {
       const folder = await PathHelper.getOutputFolder();
       const filePath = path.join(folder, "someFolder.pdf");
 
-      const uniqueFile = PathHelper.makeUnique(filePath);
+      const uniqueFile = PathHelper.makeUnique(filePath, now);
 
       expect(filePath).to.be.eq(uniqueFile);
     });
@@ -108,7 +112,7 @@ describe("PathHelper", () => {
       const filePath = path.join(folder, "someFolder.pdf");
       fs.openSync(filePath, "w");
 
-      const uniqueFile = PathHelper.makeUnique(filePath);
+      const uniqueFile = PathHelper.makeUnique(filePath, now);
 
       expect(filePath).to.be.not.eq(uniqueFile);
     });
@@ -117,10 +121,10 @@ describe("PathHelper", () => {
       const folder = await PathHelper.getOutputFolder();
       let filePath = path.join(folder, "someFolder.pdf");
       fs.openSync(filePath, "w");
-      const another = PathHelper.makeUnique(filePath);
+      const another = PathHelper.makeUnique(filePath, now);
       fs.openSync(another, "w");
 
-      const uniqueFile = PathHelper.makeUnique(filePath);
+      const uniqueFile = PathHelper.makeUnique(filePath, now);
 
       expect(filePath).to.be.not.eq(uniqueFile);
       expect(another).to.be.not.eq(uniqueFile);
@@ -133,7 +137,7 @@ describe("PathHelper", () => {
 
       expect(() => {
         for (let i = 0; i < 50; ++i) {
-          const another = PathHelper.makeUnique(filePath);
+          const another = PathHelper.makeUnique(filePath, now);
           fs.openSync(another, "w");
         }
       }).to.throw(/Can not create unique file:/);

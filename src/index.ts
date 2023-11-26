@@ -131,6 +131,7 @@ async function adfAutoscanCmd(
         tempFolder,
         adfAutoScanConfig,
         deviceCapabilities,
+        new Date()
       );
     } catch (e) {
       console.log(e);
