@@ -11,12 +11,10 @@ export default class PathHelper {
     currentPageNumber: number,
     filePattern: string | undefined,
     extension: string,
+    date: Date,
   ): string {
     if (filePattern) {
-      return path.join(
-        folder,
-        `${dateformat(new Date(), filePattern)}.${extension}`,
-      );
+      return path.join(folder, `${dateformat(date, filePattern)}.${extension}`);
     }
 
     return this.makeUnique(
@@ -24,6 +22,7 @@ export default class PathHelper {
         folder,
         `scan${scanCount}_page${currentPageNumber}.${extension}`,
       ),
+      date,
     );
   }
 
@@ -56,14 +55,14 @@ export default class PathHelper {
     );
   }
 
-  static makeUnique(filePath: string): string {
+  static makeUnique(filePath: string, date: Date): string {
     if (!fs.existsSync(filePath)) {
       return filePath;
     }
 
     let parsed = path.parse(filePath);
     let tryName = `${parsed.dir}${path.sep}${parsed.name}_${dateformat(
-      new Date(),
+      date,
       "yyyymmdd",
     )}${parsed.ext}`;
     if (!fs.existsSync(tryName)) {
@@ -89,12 +88,10 @@ export default class PathHelper {
     scanCount: number,
     filePattern: string | undefined,
     extension: string,
+    date: Date,
   ): string {
     if (filePattern) {
-      return path.join(
-        folder,
-        `${dateformat(new Date(), filePattern)}.${extension}`,
-      );
+      return path.join(folder, `${dateformat(date, filePattern)}.${extension}`);
     }
 
     return path.join(folder, `scan${scanCount}.${extension}`);
