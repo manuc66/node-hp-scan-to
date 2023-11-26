@@ -104,6 +104,7 @@ async function handleProcessingState(
   scanCount: number,
   currentPageNumber: number,
   filePattern: string | undefined,
+  date: Date,
 ): Promise<ScanPage | null> {
   if (
     job.pageState == "ReadyToUpload" &&
@@ -121,6 +122,7 @@ async function handleProcessingState(
       currentPageNumber,
       filePattern,
       "jpg",
+      date,
     );
     const filePath = await HPApi.downloadPage(
       job.binaryURL,
@@ -152,6 +154,7 @@ async function executeScanJob(
   scanCount: number,
   scanJobContent: ScanContent,
   filePattern: string | undefined,
+  date: Date,
 ): Promise<"Completed" | "Canceled"> {
   const jobUrl = await HPApi.postJob(scanJobSettings);
 
@@ -173,6 +176,7 @@ async function executeScanJob(
         scanCount,
         scanJobContent.elements.length + 1,
         filePattern,
+        date,
       );
       job = await HPApi.getJob(jobUrl);
       if (page != null && job.jobState != "Canceled") {
@@ -226,6 +230,7 @@ async function executeScanJobs(
   firstEvent: Event,
   deviceCapabilities: DeviceCapabilities,
   filePattern: string | undefined,
+  date: Date,
 ) {
   let jobState = await executeScanJob(
     scanJobSettings,
@@ -234,6 +239,7 @@ async function executeScanJobs(
     scanCount,
     scanJobContent,
     filePattern,
+    date,
   );
   let lastEvent = firstEvent;
   if (
@@ -259,6 +265,7 @@ async function executeScanJobs(
         scanCount,
         scanJobContent,
         filePattern,
+        new Date(),
       );
       if (jobState !== "Completed") {
         return;
@@ -283,13 +290,15 @@ async function mergeToPdf(
   scanCount: number,
   scanJobContent: ScanContent,
   filePattern: string | undefined,
+  date: Date,
 ): Promise<string | null> {
   if (scanJobContent.elements.length > 0) {
-    const pdfFilePath = PathHelper.getFileForScan(
+    const pdfFilePath: string = PathHelper.getFileForScan(
       folder,
       scanCount,
       filePattern,
       "pdf",
+      date,
     );
     await createPdfFrom(scanJobContent, pdfFilePath);
     scanJobContent.elements.forEach((e) => fs.unlink(e.path));
@@ -453,6 +462,8 @@ export async function saveScan(
 
   const scanJobContent: ScanContent = { elements: [] };
 
+  const scanDate = new Date();
+
   await executeScanJobs(
     scanJobSettings,
     inputSource,
@@ -462,6 +473,7 @@ export async function saveScan(
     event,
     deviceCapabilities,
     scanConfig.directoryConfig.filePattern,
+    scanDate,
   );
 
   console.log(
@@ -474,6 +486,7 @@ export async function saveScan(
       scanCount,
       scanJobContent,
       scanConfig.directoryConfig.filePattern,
+      scanDate,
     );
     displayPdfScan(pdfFilePath, scanJobContent);
   } else {
@@ -505,6 +518,7 @@ export async function scanFromAdf(
   tempFolder: string,
   adfAutoScanConfig: AdfAutoScanConfig,
   deviceCapabilities: DeviceCapabilities,
+  date: Date,
 ) {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
@@ -544,10 +558,11 @@ export async function scanFromAdf(
     scanCount,
     scanJobContent,
     adfAutoScanConfig.directoryConfig.filePattern,
+    date,
   );
 
   console.log(
-    `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`,
+    `Scan of page(s) completed, total pages: ${scanJobContent.elements.length}:`,
   );
 
   if (adfAutoScanConfig.generatePdf) {
@@ -556,6 +571,7 @@ export async function scanFromAdf(
       scanCount,
       scanJobContent,
       adfAutoScanConfig.directoryConfig.filePattern,
+      date,
     );
     displayPdfScan(pdfFilePath, scanJobContent);
   } else {
