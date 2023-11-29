@@ -13,7 +13,7 @@ const now: Date = new Date();
 describe("PathHelper", () => {
   describe("getFileForPage", () => {
     it("Can format a file with formatted timestamp", async () => {
-      const nextFileName = PathHelper.getFileForPage(
+        const nextFileName = PathHelper.getFileForPage(
         "someFolder",
         2,
         1,
