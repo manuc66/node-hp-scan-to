@@ -48,14 +48,30 @@ export default class ScanCaps {
   }
 
   get AdfMaxWidth(): number | null {
-    return (
-      this.data["ScanCaps"]["Adf"][0]["InputSourceCaps"][0]["MaxWidth"] || null
-    );
+    try {
+      return (
+        this.data["ScanCaps"]["Adf"][0]["InputSourceCaps"][0]["MaxWidth"] || null
+      );
+    } catch (err) {
+      console.log("Caught error on setting Automatic Document Feeder Max Width.\
+       Some printers don't have this feature. This may not be an issue.\
+       Error printed below:");
+      console.log(err);
+      return null;
+    }
   }
 
   get AdfMaxHeight(): number | null {
-    return (
-      this.data["ScanCaps"]["Adf"][0]["InputSourceCaps"][0]["MaxHeight"] || null
-    );
+    try {
+      return (
+        this.data["ScanCaps"]["Adf"][0]["InputSourceCaps"][0]["MaxHeight"] || null
+      );
+    } catch (err) {
+      console.log("Caught error on setting Automatic Document Feeder Max Height.\
+       Some printers don't have this feature. This may not be an issue.\
+       Error printed below:");
+      console.log(err);
+      return null;
+    }
   }
 }
