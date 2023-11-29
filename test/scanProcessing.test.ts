@@ -6,6 +6,7 @@ import {
   ScanConfig,
 } from "../src/scanProcessing";
 import { DeviceCapabilities } from "../src/DeviceCapabilities";
+import { InputSource } from "../src/InputSource";
 
 describe("scanProcessing", () => {
   let scanConfig: ScanConfig;
@@ -33,7 +34,7 @@ describe("scanProcessing", () => {
   });
 
   describe("getScanWidth", async () => {
-    const inputSource = "Adf";
+    const inputSource = InputSource.Adf;
     describe("Adf", async () => {
       it("Does not define a value if nothing provided", async () => {
         const width = getScanWidth(scanConfig, inputSource, deviceCapabilities);
@@ -51,7 +52,7 @@ describe("scanProcessing", () => {
       });
     });
     describe("Platen", async () => {
-      const inputSource = "Platen";
+      const inputSource = InputSource.Platen;
       it("Does not define a value if nothing provided", async () => {
         const width = getScanWidth(scanConfig, inputSource, deviceCapabilities);
         expect(width).to.be.eq(null);
@@ -70,7 +71,7 @@ describe("scanProcessing", () => {
   });
 
   describe("getScanHeight", async () => {
-    const inputSource = "Adf";
+    const inputSource = InputSource.Adf;
     describe("Adf", async () => {
       it("Does not define a value if nothing provided", async () => {
         const height = getScanHeight(scanConfig, inputSource, deviceCapabilities);
@@ -88,7 +89,7 @@ describe("scanProcessing", () => {
       });
     });
     describe("Platen", async () => {
-      const inputSource = "Platen";
+      const inputSource = InputSource.Platen;
       it("Does not define a value if nothing provided", async () => {
         const height = getScanHeight(scanConfig, inputSource, deviceCapabilities);
         expect(height).to.be.eq(null);
