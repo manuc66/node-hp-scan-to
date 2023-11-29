@@ -362,12 +362,12 @@ function isPdf(
 
 export function getScanWidth(
   scanConfig: ScanConfig,
-  inputSource: "Adf" | "Platen",
+  inputSource: InputSource,
   deviceCapabilities: DeviceCapabilities,
 ) {
   if (scanConfig.width && scanConfig.width > 0) {
     const maxWidth =
-      inputSource === "Adf"
+      inputSource === InputSource.Adf
         ? deviceCapabilities.adfMaxWidth
         : deviceCapabilities.platenMaxWidth;
 
@@ -383,12 +383,12 @@ export function getScanWidth(
 
 export function getScanHeight(
   scanConfig: ScanConfig,
-  inputSource: "Adf" | "Platen",
+  inputSource: InputSource,
   deviceCapabilities: DeviceCapabilities,
 ) {
   if (scanConfig.height && scanConfig.height > 0) {
     const maxHeight =
-      inputSource === "Adf"
+      inputSource === InputSource.Adf
         ? deviceCapabilities.adfMaxHeight
         : deviceCapabilities.platenMaxHeight;
 
@@ -533,10 +533,10 @@ export async function scanFromAdf(
     destinationFolder = folder;
   }
 
-  const scanWidth = getScanWidth(adfAutoScanConfig, "Adf", deviceCapabilities);
+  const scanWidth = getScanWidth(adfAutoScanConfig, InputSource.Adf, deviceCapabilities);
   const scanHeight = getScanHeight(
     adfAutoScanConfig,
-    "Adf",
+    InputSource.Adf,
     deviceCapabilities,
   );
 
