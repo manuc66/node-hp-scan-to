@@ -44,9 +44,9 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
   return {
     supportsMultiItemScanFromPlaten,
     useWalkupScanToComp: walkupScanToCompCaps != null,
-    platenMaxWidth: scanCaps?.PlatenMaxWidth || null,
-    platenMaxHeight: scanCaps?.PlatenMaxHeight || null,
-    adfMaxWidth: scanCaps?.AdfMaxWidth || null,
-    adfMaxHeight: scanCaps?.AdfMaxHeight || null,
+    platenMaxWidth: scanCaps?.platenMaxWidth || null,
+    platenMaxHeight: scanCaps?.platenMaxHeight || null,
+    adfMaxWidth: scanCaps?.adfMaxWidth || null,
+    adfMaxHeight: scanCaps?.adfMaxHeight || null,
   };
 }
