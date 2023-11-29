@@ -8,14 +8,14 @@ export interface ScanCapsData {
   ScanCaps: {
     Platen: {
       InputSourceCaps: {
-        MaxWidth: number;
-        MaxHeight: number;
+        MaxWidth: string[];
+        MaxHeight: string[];
       }[];
     }[];
     Adf: {
       InputSourceCaps: {
-        MaxWidth: number;
-        MaxHeight: number;
+        MaxWidth: string[];
+        MaxHeight: string[];
       }[];
     }[];
   };
@@ -33,29 +33,39 @@ export default class ScanCaps {
     return new ScanCaps(parsed);
   }
 
-  get PlatenMaxWidth(): number | null {
-    return (
-      this.data["ScanCaps"]["Platen"][0]["InputSourceCaps"][0]["MaxWidth"] ||
-      null
+  get platenMaxWidth(): number | null {
+    return Number.parseInt(
+      this.data["ScanCaps"]["Platen"][0]["InputSourceCaps"][0]["MaxWidth"][0],
+      10,
     );
   }
 
-  get PlatenMaxHeight(): number | null {
-    return (
-      this.data["ScanCaps"]["Platen"][0]["InputSourceCaps"][0]["MaxHeight"] ||
-      null
+  get platenMaxHeight(): number | null {
+    return Number.parseInt(
+      this.data["ScanCaps"]["Platen"][0]["InputSourceCaps"][0]["MaxHeight"][0],
+      10,
     );
   }
 
-  get AdfMaxWidth(): number | null {
-    return (
-      this.data["ScanCaps"]["Adf"][0]["InputSourceCaps"][0]["MaxWidth"] || null
-    );
+  get adfMaxWidth(): number | null {
+    if (Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf")) {
+      return Number.parseInt(
+        this.data["ScanCaps"]["Adf"][0]["InputSourceCaps"][0]["MaxWidth"][0],
+        10,
+      );
+    } else {
+      return null;
+    }
   }
 
-  get AdfMaxHeight(): number | null {
-    return (
-      this.data["ScanCaps"]["Adf"][0]["InputSourceCaps"][0]["MaxHeight"] || null
-    );
+  get adfMaxHeight(): number | null {
+    if (Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf")) {
+      return Number.parseInt(
+        this.data["ScanCaps"]["Adf"][0]["InputSourceCaps"][0]["MaxHeight"][0],
+        10,
+      );
+    } else {
+      return null;
+    }
   }
 }
