@@ -1,6 +1,6 @@
 {
   "name": "node-hp-scan-to",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Scan document to Computer for HP All-in-One Printers",
   "keywords": [
     "Officejet",
