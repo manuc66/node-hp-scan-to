@@ -154,7 +154,6 @@ async function executeScanJob(
   scanCount: number,
   scanJobContent: ScanContent,
   filePattern: string | undefined,
-  date: Date,
 ): Promise<"Completed" | "Canceled"> {
   const jobUrl = await HPApi.postJob(scanJobSettings);
 
@@ -176,7 +175,7 @@ async function executeScanJob(
         scanCount,
         scanJobContent.elements.length + 1,
         filePattern,
-        date,
+        new Date(),
       );
       job = await HPApi.getJob(jobUrl);
       if (page != null && job.jobState != "Canceled") {
@@ -230,7 +229,6 @@ async function executeScanJobs(
   firstEvent: Event,
   deviceCapabilities: DeviceCapabilities,
   filePattern: string | undefined,
-  date: Date,
 ) {
   let jobState = await executeScanJob(
     scanJobSettings,
@@ -239,7 +237,6 @@ async function executeScanJobs(
     scanCount,
     scanJobContent,
     filePattern,
-    date,
   );
   let lastEvent = firstEvent;
   if (
@@ -265,7 +262,6 @@ async function executeScanJobs(
         scanCount,
         scanJobContent,
         filePattern,
-        new Date(),
       );
       if (jobState !== "Completed") {
         return;
@@ -473,7 +469,6 @@ export async function saveScan(
     event,
     deviceCapabilities,
     scanConfig.directoryConfig.filePattern,
-    scanDate,
   );
 
   console.log(
@@ -533,7 +528,11 @@ export async function scanFromAdf(
     destinationFolder = folder;
   }
 
-  const scanWidth = getScanWidth(adfAutoScanConfig, InputSource.Adf, deviceCapabilities);
+  const scanWidth = getScanWidth(
+    adfAutoScanConfig,
+    InputSource.Adf,
+    deviceCapabilities,
+  );
   const scanHeight = getScanHeight(
     adfAutoScanConfig,
     InputSource.Adf,
@@ -558,7 +557,6 @@ export async function scanFromAdf(
     scanCount,
     scanJobContent,
     adfAutoScanConfig.directoryConfig.filePattern,
-    date,
   );
 
   console.log(
