@@ -70,10 +70,13 @@ async function listenCmd(
         scanConfig,
       );
     } catch (e) {
-      console.log(e);
       if (await HPApi.isAlive()) {
+        console.log(e);
         errorCount++;
       } else {
+        if (HPApi.isDebug()) {
+          console.log(e);
+        }
         deviceUp = false;
       }
     }
