@@ -42,6 +42,9 @@ export default class HPApi {
   static setDebug(dbg: boolean): void {
     debug = dbg;
   }
+  static isDebug(): boolean {
+    return debug;
+  }
 
   private static logDebug(
     callId: number,
@@ -342,8 +345,8 @@ export default class HPApi {
   }
 
   static async getEvents(
-    etag = "",
-    decisecondTimeout = 0,
+    etag: string = "",
+    decisecondTimeout: number = 0,
   ): Promise<EtagEventTable> {
     let url = this.appendTimeout("/EventMgmt/EventTable", decisecondTimeout);
 
