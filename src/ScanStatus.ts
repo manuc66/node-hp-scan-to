@@ -23,7 +23,7 @@ export default class ScanStatus {
     return new ScanStatus(parsed);
   }
 
-  get scannerState(): string {
+  get scannerState(): string | "Idle" {
     return this.data["ScanStatus"].ScannerState["0"];
   }
 
