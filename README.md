@@ -24,6 +24,11 @@ Additionally, it has been reported to work on several other HP printer models.
 - HP Officejet 5740
 - HP Officejet 6950
 - HP OfficeJet Pro 8025e
+- HP OfficeJet Pro 7720 Wide Format All-in-One
+- HP Officejet 8010 series
+- HP Deskjet 5525
+- HP OfficeJet 8012
+- HP OfficeJet Pro 9012e
 
 There are good chances it also works on your HP All-in-One Printer.
 
