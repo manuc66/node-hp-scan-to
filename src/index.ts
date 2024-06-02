@@ -19,7 +19,8 @@ import {
 import {
   AdfAutoScanConfig,
   DirectoryConfig,
-  saveScan,
+  PaperlessConfig,
+  saveScanFromEvent,
   ScanConfig,
   scanFromAdf,
   waitAdfLoaded,
@@ -61,7 +62,7 @@ async function listenCmd(
         scanConfig.directoryConfig.filePattern,
       );
       console.log(`Scan event captured, saving scan #${scanCount}`);
-      await saveScan(
+      await saveScanFromEvent(
         event,
         folder,
         tempFolder,
@@ -224,6 +225,14 @@ function setupScanParameters(command: Command): Command {
     "-h, --height <height>",
     "Height in pixel of the scans (default: 3507)",
   );
+  command.option(
+    "-s, --paperless-host <paperless_host>",
+    "The paperless host name",
+  );
+  command.option(
+    "-t, --paperless-token <paperless_token>",
+    "The paperless token",
+  );
   return command;
 }
 
@@ -293,6 +302,21 @@ function getScanConfiguration(parentOption: OptionValues) {
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configHeight, 10);
 
+  const configPaperlessHost =
+    parentOption.paperless_host || getConfig("paperless_host");
+  const configPaperlessToken =
+    parentOption.paperless_token || getConfig("paperless_token");
+
+  let paperlessConfig: PaperlessConfig | undefined;
+  if (configPaperlessHost && configPaperlessToken) {
+    paperlessConfig = {
+      host: configPaperlessHost,
+      authToken: configPaperlessToken,
+    };
+  } else {
+    paperlessConfig = undefined;
+  }
+
   const scanConfig: ScanConfig = {
     resolution: parseInt(
       parentOption.resolution || getConfig("resolution") || "200",
@@ -301,6 +325,7 @@ function getScanConfiguration(parentOption: OptionValues) {
     width: width,
     height: height,
     directoryConfig,
+    paperlessConfig,
   };
   return scanConfig;
 }
