@@ -230,7 +230,7 @@ function setupScanParameters(command: Command): Command {
     "The paperless host name",
   );
   command.option(
-    "-t, --paperless-token <paperless_token>",
+    "-k, --paperless-token <paperless_token>",
     "The paperless token",
   );
   return command;
