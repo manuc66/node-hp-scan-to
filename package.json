@@ -15,6 +15,7 @@
   },
   "scripts": {
     "start": "ts-node src/index.ts",
+    "start:single-scan": "ts-node src/index.ts single-scan",
     "start-debug": "ts-node src/index.ts -D",
     "build": "tsc -p .",
     "built-start": "tsc -p . && node --trace-warnings ./dist/index.js",

@@ -655,6 +655,75 @@ export async function scanFromAdf(
   );
 }
 
+
+export async function singleScan(
+  scanCount: number,
+  folder: string,
+  tempFolder: string,
+  scanConfig: SingleScanConfig,
+  deviceCapabilities: DeviceCapabilities,
+  date: Date,
+) {
+  let destinationFolder: string;
+  let contentType: "Document" | "Photo";
+  if (scanConfig.generatePdf) {
+    contentType = "Document";
+    destinationFolder = tempFolder;
+    console.log(
+      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`,
+    );
+  } else {
+    contentType = "Photo";
+    destinationFolder = folder;
+  }
+
+  const scanWidth = getScanWidth(
+    scanConfig,
+    InputSource.Adf,
+    deviceCapabilities,
+  );
+  const scanHeight = getScanHeight(
+    scanConfig,
+    InputSource.Adf,
+    deviceCapabilities,
+  );
+
+  const inputSource = InputSource.Platen;
+
+  const scanJobSettings = new ScanJobSettings(
+    inputSource,
+    contentType,
+    scanConfig.resolution,
+    scanWidth,
+    scanHeight,
+    scanConfig.isDuplex,
+  );
+
+  const scanJobContent: ScanContent = { elements: [] };
+
+  await executeScanJob(
+    scanJobSettings,
+    inputSource,
+    destinationFolder,
+    scanCount,
+    scanJobContent,
+    scanConfig.directoryConfig.filePattern,
+  );
+
+  console.log(
+    `Scan of page(s) completed, total pages: ${scanJobContent.elements.length}:`,
+  );
+
+  await postProcessing(
+    scanConfig,
+    folder,
+    scanCount,
+    scanJobContent,
+    date,
+    scanConfig.generatePdf,
+  );
+}
+
 export async function waitAdfLoaded(
   pollingInterval: number,
   startScanDelay: number,
