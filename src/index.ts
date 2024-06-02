@@ -275,6 +275,22 @@ function getIsDebug(options: OptionValues) {
   return debug;
 }
 
+function getPaperlessConfig(parentOption: OptionValues):PaperlessConfig | undefined {
+  const configPaperlessHost =
+    parentOption.paperless_host || getConfig("paperless_host");
+  const configPaperlessToken =
+    parentOption.paperless_token || getConfig("paperless_token");
+
+  if (configPaperlessHost && configPaperlessToken) {
+    return {
+      host: configPaperlessHost,
+      authToken: configPaperlessToken
+    };
+  } else {
+    return undefined;
+  }
+}
+
 function getScanConfiguration(parentOption: OptionValues) {
   const directoryConfig: DirectoryConfig = {
     directory: parentOption.directory || getConfig("directory"),
@@ -302,20 +318,7 @@ function getScanConfiguration(parentOption: OptionValues) {
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configHeight, 10);
 
-  const configPaperlessHost =
-    parentOption.paperless_host || getConfig("paperless_host");
-  const configPaperlessToken =
-    parentOption.paperless_token || getConfig("paperless_token");
-
-  let paperlessConfig: PaperlessConfig | undefined;
-  if (configPaperlessHost && configPaperlessToken) {
-    paperlessConfig = {
-      host: configPaperlessHost,
-      authToken: configPaperlessToken,
-    };
-  } else {
-    paperlessConfig = undefined;
-  }
+  const paperlessConfig = getPaperlessConfig(parentOption);
 
   const scanConfig: ScanConfig = {
     resolution: parseInt(
