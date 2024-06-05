@@ -31,11 +31,11 @@ if [ ! -z "$RESOLUTION" ]; then
 fi
 
 if [ ! -z "$PAPERLESS_HOST" ]; then
-    ARGS="${ARGS} -s ${$PAPERLESS_HOST}"
+    ARGS="${ARGS} -s ${PAPERLESS_HOST}"
 fi
 
 if [ ! -z "$PAPERLESS_TOKEN" ]; then
-    ARGS="${ARGS} -k ${$PAPERLESS_TOKEN}"
+    ARGS="${ARGS} -k ${PAPERLESS_TOKEN}"
 fi
 
 if [ ! -z "$CMDLINE" ]; then
