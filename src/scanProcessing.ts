@@ -290,6 +290,7 @@ async function mergeToPdf(
   scanJobContent: ScanContent,
   filePattern: string | undefined,
   date: Date,
+  deleteFiles: boolean
 ): Promise<string | null> {
   if (scanJobContent.elements.length > 0) {
     const pdfFilePath: string = PathHelper.getFileForScan(
@@ -300,7 +301,7 @@ async function mergeToPdf(
       date,
     );
     await createPdfFrom(scanJobContent, pdfFilePath);
-    scanJobContent.elements.forEach((e) => fs.unlink(e.path));
+    await Promise.all(scanJobContent.elements.map((e) => fs.unlink(e.path)));
     return pdfFilePath;
   }
   console.log(`No page available to build a pdf file`);
@@ -408,36 +409,51 @@ export function getScanHeight(
 async function postProcessing(
   scanConfig: ScanConfig,
   folder: string,
+  tempFolder: string,
   scanCount: number,
   scanJobContent: ScanContent,
   scanDate: Date,
   toPdf: boolean,
 ) {
-  if (scanConfig.paperlessConfig) {
+
+  if (toPdf) {
     const pdfFilePath = await mergeToPdf(
-      folder,
+      tempFolder,
       scanCount,
       scanJobContent,
       scanConfig.directoryConfig.filePattern,
       scanDate,
+      true
     );
-    if (pdfFilePath) {
-      await uploadToPaperless(pdfFilePath, scanConfig.paperlessConfig);
-    } else {
-      console.log(
-        "Pdf generation has failed, nothing is going to be upladed to paperless",
-      );
+    if (scanConfig.paperlessConfig) {
+      if (pdfFilePath) {
+        await uploadToPaperless(pdfFilePath, scanConfig.paperlessConfig);
+      } else {
+        console.log(
+          "Pdf generation has failed, nothing is going to be uploaded to paperless",
+        );
+      }
     }
-  } else if (toPdf) {
-    const pdfFilePath = await mergeToPdf(
-      folder,
-      scanCount,
-      scanJobContent,
-      scanConfig.directoryConfig.filePattern,
-      scanDate,
-    );
     displayPdfScan(pdfFilePath, scanJobContent);
   } else {
+    if (scanConfig.paperlessConfig) {
+      const pdfFilePath = await mergeToPdf(
+        folder,
+        scanCount,
+        scanJobContent,
+        scanConfig.directoryConfig.filePattern,
+        scanDate,
+        false
+      );
+      if (pdfFilePath) {
+        await uploadToPaperless(pdfFilePath, scanConfig.paperlessConfig);
+        await fs.unlink(pdfFilePath);
+      } else {
+        console.log(
+          "Pdf generation has failed, nothing is going to be upladed to paperless",
+        );
+      }
+    }
     displayJpegScan(scanJobContent);
   }
 }
@@ -526,6 +542,7 @@ export async function saveScanFromEvent(
   await postProcessing(
     scanConfig,
     folder,
+    tempFolder,
     scanCount,
     scanJobContent,
     scanDate,
@@ -648,6 +665,7 @@ export async function scanFromAdf(
   await postProcessing(
     adfAutoScanConfig,
     folder,
+    tempFolder,
     scanCount,
     scanJobContent,
     date,
