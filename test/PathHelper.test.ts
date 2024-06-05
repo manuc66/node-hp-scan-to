@@ -119,7 +119,7 @@ describe("PathHelper", () => {
 
     it("return another two conflict", async () => {
       const folder = await PathHelper.getOutputFolder();
-      let filePath = path.join(folder, "someFolder.pdf");
+      const filePath = path.join(folder, "someFolder.pdf");
       fs.openSync(filePath, "w");
       const another = PathHelper.makeUnique(filePath, now);
       fs.openSync(another, "w");
@@ -132,7 +132,7 @@ describe("PathHelper", () => {
 
     it("conflict resolution terminate with error", async () => {
       const folder = await PathHelper.getOutputFolder();
-      let filePath = path.join(folder, "someFolder.pdf");
+      const filePath = path.join(folder, "someFolder.pdf");
       fs.openSync(filePath, "w");
 
       expect(() => {

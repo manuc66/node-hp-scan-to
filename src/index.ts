@@ -53,6 +53,7 @@ async function listenCmd(
   let keepActive = true;
   let errorCount = 0;
   while (keepActive) {
+    iteration++;
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
       const event = await waitScanEvent(deviceCapabilities, registrationConfig);
@@ -118,6 +119,7 @@ async function adfAutoscanCmd(
   let keepActive = true;
   let errorCount = 0;
   while (keepActive) {
+    iteration++
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
       await waitAdfLoaded(
@@ -173,7 +175,7 @@ function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
     const bonjour = Bonjour();
     console.log("Searching device...");
-    let browser = bonjour.find(
+    const browser = bonjour.find(
       {
         type: "http",
       },

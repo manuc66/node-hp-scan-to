@@ -29,7 +29,7 @@ export default class WalkupScanToCompDestinations {
   }
 
   get destinations(): WalkupScanToCompDestination[] {
-    let walkupScanToCompDestinations =
+    const walkupScanToCompDestinations =
       this.data["wus:WalkupScanToCompDestinations"];
     if (
       Object.prototype.hasOwnProperty.call(

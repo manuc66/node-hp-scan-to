@@ -74,7 +74,7 @@ async function TryGetDestination(
 async function scanProcessing(filePath: string): Promise<number | null> {
   const buffer: Buffer = await fs.readFile(filePath);
 
-  let height = JpegUtil.fixSizeWithDNL(buffer);
+  const height = JpegUtil.fixSizeWithDNL(buffer);
   if (height != null) {
     // rewrite the fixed file
     await fs.writeFile(filePath, buffer);
@@ -89,7 +89,7 @@ function createScanPage(
   filePath: string,
   sizeFixed: number | null,
 ): ScanPage {
-  let height = sizeFixed ?? job.imageHeight;
+  const height = sizeFixed ?? job.imageHeight;
   return {
     path: filePath,
     pageNumber: currentPageNumber,
@@ -204,9 +204,9 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
   while (wait) {
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
 
-    let walkupScanToCompEvent =
+    const walkupScanToCompEvent =
       await HPApi.getWalkupScanToCompEvent(compEventURI);
-    let message = walkupScanToCompEvent.eventType;
+    const message = walkupScanToCompEvent.eventType;
 
     if (message === "ScanNewPageRequested") {
       startNewScanJob = true;

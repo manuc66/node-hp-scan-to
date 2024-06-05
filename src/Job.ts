@@ -42,7 +42,7 @@ export default class Job {
   }
 
   get currentPageNumber(): string | null {
-    let preScanPage = this.data["j:Job"].ScanJob[0].PreScanPage;
+    const preScanPage = this.data["j:Job"].ScanJob[0].PreScanPage;
     if (preScanPage) {
       return preScanPage[0].PageNumber[0];
     } else {
@@ -70,7 +70,7 @@ export default class Job {
   }
 
   get pageState(): string | null {
-    let preScanPage = this.data["j:Job"].ScanJob[0].PreScanPage;
+    const preScanPage = this.data["j:Job"].ScanJob[0].PreScanPage;
     if (preScanPage) {
       return preScanPage[0].PageState[0];
     } else {
