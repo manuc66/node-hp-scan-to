@@ -27,7 +27,7 @@ export default class ScanJobSettings {
   }
 
   async toXML(): Promise<string> {
-    let rawJob =
+    const rawJob =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       '<ScanSettings xmlns="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19 Scan Schema - 0.26.xsd">\n' +
       "\t<XResolution>200</XResolution>\n" +
@@ -74,7 +74,7 @@ export default class ScanJobSettings {
     }
     parsed.ScanSettings.ContentType[0] = this.contentType;
 
-    let builder = new xml2js.Builder({
+    const builder = new xml2js.Builder({
       xmldec: { version: "1.0", encoding: "UTF-8", standalone: false },
       renderOpts: { pretty: true, indent: "\t", newline: "\n" },
     });
