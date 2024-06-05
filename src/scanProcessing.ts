@@ -301,7 +301,9 @@ async function mergeToPdf(
       date,
     );
     await createPdfFrom(scanJobContent, pdfFilePath);
-    await Promise.all(scanJobContent.elements.map((e) => fs.unlink(e.path)));
+    if (deleteFiles) {
+      await Promise.all(scanJobContent.elements.map((e) => fs.unlink(e.path)));
+    }
     return pdfFilePath;
   }
   console.log(`No page available to build a pdf file`);
