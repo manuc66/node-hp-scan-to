@@ -52,8 +52,8 @@ export default class Destination {
     parsed.WalkupScanDestination.Name[0]._ = this.name;
     parsed.WalkupScanDestination.LinkType[0] = this.linkType;
 
-    let builder = new Builder();
-    let xml = builder.buildObject(parsed);
+    const builder = new Builder();
+    const xml = builder.buildObject(parsed);
     if (this.toComp) {
       return xml.replace(/WalkupScan/g, "WalkupScanToComp");
     } else {

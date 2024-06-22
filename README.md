@@ -34,19 +34,24 @@ There are good chances it also works on your HP All-in-One Printer.
 
 Please note that the `node-hp-scan-to` project is not endorsed by nor affiliated with HP. The reverse engineering of the original HP Windows application's interaction with the device has been done independently.
 
-## Supported features
+## Supported device features
 - ✔️ JPG scan output
 - ✔️ PDF document scan output
 - ✔️ Scan from automatic document feeder
 - ✔️ Dual side with automatic document feeder
 - ✔️ Multi page from platen
 - ✔️ Automatic IP address discovery
+
+## Provided features
 - ✔️ Prebuilt Docker images (multi arch)
 - ✔️ Command line support (Cross platform)
 - ✔️ Customizable file names
 - ✔️ Customizable resolution
 - ✔️ Customizable label on the device
 - ✔️ Multi platform: Linux, Windows and most probably macOS
+- ✔️ Folder target or paperless-ngx upload
+- ✔️ Clear all registered target
+- ✔️ Automatic scan when automatic document feeder is getting loaded
 
 ## Usage
 
@@ -54,14 +59,34 @@ Please note that the `node-hp-scan-to` project is not endorsed by nor affiliated
 `npx node-hp-scan-to`
 
 - `-ip` or `--address` followed by the ip address of the printer, i.e. `-ip 192.168.0.5`. This overrides `-p`.
+- `--device-up-polling-interval` is the polling interval in milliseconds to detect if the device is up or not
 - `-l` or `--label` The label to display on the printer (default is the hostname).
 - `-n` or `--name` followed by the printer name, it probably contains spaces, so it needs to be quoted, i.e. `-name "Officejet 6500 E710n-z"`
 - `-d` or `--directory` followed by the directory path where the scanned documents should be saved, i.e. `-d ~/Documents/Scans`. Defaults to `/tmp/scan-to-pc<random value>` when not set.
 - `-t` or `--temp-directory` Temp directory used for processing. Defaults to `/tmp/scan-to-pc<random value>` when not set.
 - `-p` or `--pattern` followed by the pattern for the filename without file extension, i.e. `"scan"_dd.mm.yyyy_hh:MM:ss` to name the scanned file `scan_19.04.2021_17:26:47`. Date and time patterns are replaced by the current date and time, text that should not be replaced need to be inside quotes. Documentation for the pattern can be found [here](https://www.npmjs.com/package/dateformat) in the section `Mask options`. Defaults to `scan<increasing number>_page<page number>` when not set.
 - `-r` or `--resolution` Resolution in DPI of the scans (defaults is 200).
+- `-w` or `--width` followed by an integer, the with in pixel of the scans (default: 2481)
+- `-h` or `--height` followed by an integer, the height in pixel of the scans (default: 3507)
+- `-s` or `--paperless-host` followed by the paperless host name
+- `k` or `--paperless-token` followed by te paperless-ngx api token
 - `-D, --debug"` enables debug logs.
 
+#### `listen command`
+This is the default mode, it will listen the device for new job and trigger based on the selection on the device.
+
+Do run `npx node-hp-scan-to listen --help` to get command line usage help
+
+#### `adf-autoscan`
+This will trigger a scan job as soon as the adf is loaded with paper
+
+Do run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help
+
+#### `clear-registrations`
+This will clear all registered target on the device (useful for trial and error and debugging)
+Do run `npx node-hp-scan-to clear-registrations --help` to get command line usage help
+
+### How to run from the code
 If you wish to test it by cloning this repository:
 ```sh
 git clone ...
@@ -94,6 +119,8 @@ Exhaustive list of supported environment variables and their meaning, or corresp
 - `DIR`: command-line flag `-d`/`--directory`
 - `TEMP_DIR`: command-line flag `-t`/`--temp-directory`
 - `RESOLUTION`: command-line flag `-r`/`--resolution`
+- `PAPERLESS_HOST`: the paperless api host (if provided with token, a pdf is uploaded to paperless-ngx)
+- `PAPERLESS_TOKEN`: the paperless api token
 - `CMDLINE`: additional command-line flags that will be put at the end of the command.
 
 __To enable debug logs set the environment variable `CMDLINE` to `-D`.__

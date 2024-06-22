@@ -30,6 +30,14 @@ if [ ! -z "$RESOLUTION" ]; then
     ARGS="${ARGS} -r ${RESOLUTION}"
 fi
 
+if [ ! -z "$PAPERLESS_HOST" ]; then
+    ARGS="${ARGS} -s ${PAPERLESS_HOST}"
+fi
+
+if [ ! -z "$PAPERLESS_TOKEN" ]; then
+    ARGS="${ARGS} -k ${PAPERLESS_TOKEN}"
+fi
+
 if [ ! -z "$CMDLINE" ]; then
     ARGS="${ARGS} ${CMDLINE}"
 fi

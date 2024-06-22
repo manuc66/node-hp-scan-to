@@ -22,6 +22,7 @@ describe("scanProcessing", () => {
         tempDirectory: undefined,
         filePattern: undefined,
       },
+      paperlessConfig: undefined
     };
     deviceCapabilities = {
       supportsMultiItemScanFromPlaten: false,
