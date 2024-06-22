@@ -119,7 +119,7 @@ async function adfAutoscanCmd(
   let keepActive = true;
   let errorCount = 0;
   while (keepActive) {
-    iteration++
+    iteration++;
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
       await waitAdfLoaded(
@@ -232,8 +232,12 @@ function setupScanParameters(command: Command): Command {
     "The paperless host name",
   );
   command.option(
-    "-k, --paperless-token <paperless_token>",
+    "-o, --paperless-token <paperless_token>",
     "The paperless token",
+  );
+  command.option(
+    "-k, --paperless-keep-files <paperless_keep_files>",
+    "Keep the scan files on the file system (default: false)",
   );
   return command;
 }
@@ -277,16 +281,21 @@ function getIsDebug(options: OptionValues) {
   return debug;
 }
 
-function getPaperlessConfig(parentOption: OptionValues):PaperlessConfig | undefined {
+function getPaperlessConfig(
+  parentOption: OptionValues,
+): PaperlessConfig | undefined {
   const configPaperlessHost =
     parentOption.paperless_host || getConfig("paperless_host");
   const configPaperlessToken =
     parentOption.paperless_token || getConfig("paperless_token");
+  const configPaperlessKeepFiles =
+    parentOption.keepFiles || getConfig("paperless_keep_files") || false;
 
   if (configPaperlessHost && configPaperlessToken) {
     return {
       host: configPaperlessHost,
-      authToken: configPaperlessToken
+      authToken: configPaperlessToken,
+      keepFiles: configPaperlessKeepFiles
     };
   } else {
     return undefined;

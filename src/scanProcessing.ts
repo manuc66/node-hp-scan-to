@@ -290,7 +290,7 @@ async function mergeToPdf(
   scanJobContent: ScanContent,
   filePattern: string | undefined,
   date: Date,
-  deleteFiles: boolean
+  deleteFiles: boolean,
 ): Promise<string | null> {
   if (scanJobContent.elements.length > 0) {
     const pdfFilePath: string = PathHelper.getFileForScan(
@@ -417,7 +417,6 @@ async function postProcessing(
   scanDate: Date,
   toPdf: boolean,
 ) {
-
   if (toPdf) {
     const pdfFilePath = await mergeToPdf(
       tempFolder,
@@ -425,7 +424,7 @@ async function postProcessing(
       scanJobContent,
       scanConfig.directoryConfig.filePattern,
       scanDate,
-      true
+      true,
     );
     if (scanConfig.paperlessConfig) {
       if (pdfFilePath) {
@@ -445,7 +444,7 @@ async function postProcessing(
         scanJobContent,
         scanConfig.directoryConfig.filePattern,
         scanDate,
-        false
+        scanConfig.paperlessConfig.keepFiles,
       );
       if (pdfFilePath) {
         await uploadToPaperless(pdfFilePath, scanConfig.paperlessConfig);
@@ -560,6 +559,7 @@ export type DirectoryConfig = {
 export type PaperlessConfig = {
   host: string;
   authToken: string;
+  keepFiles: boolean;
 };
 export type ScanConfig = {
   resolution: number;
