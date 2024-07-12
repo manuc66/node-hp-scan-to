@@ -426,17 +426,22 @@ async function postProcessing(
       scanDate,
       true,
     );
+    displayPdfScan(pdfFilePath, scanJobContent);
     if (scanConfig.paperlessConfig) {
       if (pdfFilePath) {
         await uploadToPaperless(pdfFilePath, scanConfig.paperlessConfig);
+        if (!scanConfig.paperlessConfig.keepFiles) {
+          await fs.unlink(pdfFilePath);
+          console.log(`Pdf document ${pdfFilePath} has removed from the filesystem`);
+        }
       } else {
         console.log(
           "Pdf generation has failed, nothing is going to be uploaded to paperless",
         );
       }
     }
-    displayPdfScan(pdfFilePath, scanJobContent);
   } else {
+    displayJpegScan(scanJobContent);
     if (scanConfig.paperlessConfig) {
       const pdfFilePath = await mergeToPdf(
         folder,
@@ -449,13 +454,13 @@ async function postProcessing(
       if (pdfFilePath) {
         await uploadToPaperless(pdfFilePath, scanConfig.paperlessConfig);
         await fs.unlink(pdfFilePath);
+        console.log(`Pdf document ${pdfFilePath} has removed from the filesystem`);
       } else {
         console.log(
-          "Pdf generation has failed, nothing is going to be upladed to paperless",
+          "Pdf generation has failed, nothing is going to be uploaded to paperless",
         );
       }
     }
-    displayJpegScan(scanJobContent);
   }
 }
 
