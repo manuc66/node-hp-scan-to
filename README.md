@@ -219,10 +219,19 @@ I'm using Visual Studio Code to debug this application, so instead of running ts
 You may want to set your printers ip or name in `.vscode/launch.json`.
 
 ## 💖 Support this project
-If this project helped you save money or time or simply makes your life also easier, you can give me a cup of coffee =)
+
+Thank you so much to everyone who has already supported this project! Your generosity is greatly appreciated and it motivates me to keep improving and maintaining this project.
+
+If this project has helped you save money or time, or simply made your life easier, you can support me by buying me a cup of coffee:
 
 - [![Support via PayPal](https://cdn.rawgit.com/twolfson/paypal-github-button/1.0.0/dist/button.svg)](https://www.paypal.me/manuc66)
 - Bitcoin — You can send me bitcoins at this address: `33gxVjey6g4Beha26fSQZLFfWWndT1oY3F`
+
+Thank you for your support!
+
+## 🙏 Special Thanks
+
+A special thank you to [JetBrains](https://www.jetbrains.com/) for supporting this project with a free license for their amazing development tools. Their support helps make this project possible.
 
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmanuc66%2Fnode-hp-scan-to.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmanuc66%2Fnode-hp-scan-to?ref=badge_large)
