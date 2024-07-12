@@ -279,7 +279,7 @@ export default class HPApi {
     let path: string;
 
     if (walkupScanDestination.resourceURI.startsWith("http")) {
-      let urlInfo = new URL(walkupScanDestination.resourceURI);
+      const urlInfo = new URL(walkupScanDestination.resourceURI);
       if (urlInfo.pathname === null) {
         throw new Error(
           `invalid walkupScanDestination.resourceURI: ${walkupScanDestination.resourceURI}`,
@@ -348,9 +348,9 @@ export default class HPApi {
     etag: string = "",
     decisecondTimeout: number = 0,
   ): Promise<EtagEventTable> {
-    let url = this.appendTimeout("/EventMgmt/EventTable", decisecondTimeout);
+    const url = this.appendTimeout("/EventMgmt/EventTable", decisecondTimeout);
 
-    let headers = this.placeETagHeader(etag, {});
+    const headers = this.placeETagHeader(etag, {});
 
     let response: AxiosResponse<string>;
     try {
@@ -440,7 +440,7 @@ export default class HPApi {
     if (response.status !== 200) {
       throw response;
     } else {
-      let content = response.data;
+      const content = response.data;
       return ScanStatus.createScanStatus(content);
     }
   }
