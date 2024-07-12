@@ -295,7 +295,7 @@ function getPaperlessConfig(
     return {
       host: configPaperlessHost,
       authToken: configPaperlessToken,
-      keepFiles: configPaperlessKeepFiles
+      keepFiles: configPaperlessKeepFiles,
     };
   } else {
     return undefined;
