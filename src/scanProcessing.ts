@@ -432,7 +432,9 @@ async function postProcessing(
         await uploadToPaperless(pdfFilePath, scanConfig.paperlessConfig);
         if (!scanConfig.paperlessConfig.keepFiles) {
           await fs.unlink(pdfFilePath);
-          console.log(`Pdf document ${pdfFilePath} has removed from the filesystem`);
+          console.log(
+            `Pdf document ${pdfFilePath} has removed from the filesystem`,
+          );
         }
       } else {
         console.log(
@@ -454,7 +456,9 @@ async function postProcessing(
       if (pdfFilePath) {
         await uploadToPaperless(pdfFilePath, scanConfig.paperlessConfig);
         await fs.unlink(pdfFilePath);
-        console.log(`Pdf document ${pdfFilePath} has removed from the filesystem`);
+        console.log(
+          `Pdf document ${pdfFilePath} has removed from the filesystem`,
+        );
       } else {
         console.log(
           "Pdf generation has failed, nothing is going to be uploaded to paperless",
