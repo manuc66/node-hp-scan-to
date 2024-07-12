@@ -9,9 +9,14 @@
 [![CodeFactor](https://www.codefactor.io/repository/github/manuc66/node-hp-scan-to/badge)](https://www.codefactor.io/repository/github/manuc66/node-hp-scan-to)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmanuc66%2Fnode-hp-scan-to.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmanuc66%2Fnode-hp-scan-to?ref=badge_shield)
 
+# node-hp-scan-to
+
 The `node-hp-scan-to` is a Node.js application that replicates the functionality of the "Scan to Computer" from HP. For this purpose, the original HP Windows application's interaction with the device has been [reverse engineered](protocol_doc/HP%20Officejet%206500%20E710n-z.md)
 
-Its primary purpose is to enable users to scan documents directly from an HP device and seamlessly transfer them to a computer. Unlike the original program, this program is designed to be compatible with Linux (including Docker), and is expected to work on Windows and macOS, making it accessible to a wider range of users and usages. It has been developed and tested with the following HP All-in-One Printers:
+Its primary purpose is to enable users to scan documents directly from an HP device and seamlessly transfer them to a computer. Unlike the original program, this program is designed to be compatible with Linux (including Docker), and is expected to work on Windows and macOS, making it accessible to a wider range of users and usages. 
+
+## Supported devices
+It has been developed and tested with the following HP All-in-One Printers:
 - HP Officejet 6500A Plus
 - HP Deskjet 3520
 - HP Smart Tank Plus 570 series
@@ -86,17 +91,6 @@ Do run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help
 This will clear all registered target on the device (useful for trial and error and debugging)
 Do run `npx node-hp-scan-to clear-registrations --help` to get command line usage help
 
-### How to run from the code
-If you wish to test it by cloning this repository:
-```sh
-git clone ...
-cd node-hp-scan-to
-yarn install -d
-yarn build
-# now start the program with the ip or name of the desired printer
-node dist/index.js -ip 192.168.1.4 # or -n "Officejet 6500 E710n-z"
-```
-
 ### Run with docker
 
 Public Pre-built Docker image:
@@ -164,7 +158,7 @@ Apply the following manifest (the PersistentVolumeClaim must also be deployed be
 ```yml
 apiVersion: apps/v1
 kind: Deployment
-  name: hp-scan-to
+name: hp-scan-to
 spec:
   replicas: 1
   selector:
@@ -209,10 +203,20 @@ spec:
             claimName: incoming-scans
 ```
 
-## Debugging
+### How to run from the code
+If you wish to test it by cloning this repository:
+```sh
+git clone ...
+cd node-hp-scan-to
+yarn install -d
+yarn build
+# now start the program with the ip or name of the desired printer
+node dist/index.js -ip 192.168.1.4 # or -n "Officejet 6500 E710n-z"
+```
+
+#### Debugging
 I'm using Visual Studio Code to debug this application, so instead of running ts-node just enter `code .` and press F5 to start debugging.
 You may want to set your printers ip or name in `.vscode/launch.json`.
-
 
 ## 💖 Support this project
 If this project helped you save money or time or simply makes your life also easier, you can give me a cup of coffee =)
