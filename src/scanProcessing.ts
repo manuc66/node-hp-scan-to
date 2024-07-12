@@ -3,6 +3,7 @@ import WalkupScanDestination from "./WalkupScanDestination";
 import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
 import HPApi from "./HPApi";
 import fs from "fs/promises";
+import fsSync from "fs";
 import JpegUtil from "./JpegUtil";
 import { DeviceCapabilities } from "./DeviceCapabilities";
 import { waitForScanEvent, waitScanRequest } from "./listening";
@@ -13,6 +14,8 @@ import { delay } from "./delay";
 import PathHelper from "./PathHelper";
 import ScanStatus from "./ScanStatus";
 import { InputSource } from "./InputSource";
+import axios from "axios";
+import FormData from "form-data";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -71,7 +74,7 @@ async function TryGetDestination(
 async function scanProcessing(filePath: string): Promise<number | null> {
   const buffer: Buffer = await fs.readFile(filePath);
 
-  let height = JpegUtil.fixSizeWithDNL(buffer);
+  const height = JpegUtil.fixSizeWithDNL(buffer);
   if (height != null) {
     // rewrite the fixed file
     await fs.writeFile(filePath, buffer);
@@ -86,7 +89,7 @@ function createScanPage(
   filePath: string,
   sizeFixed: number | null,
 ): ScanPage {
-  let height = sizeFixed ?? job.imageHeight;
+  const height = sizeFixed ?? job.imageHeight;
   return {
     path: filePath,
     pageNumber: currentPageNumber,
@@ -201,9 +204,9 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
   while (wait) {
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
 
-    let walkupScanToCompEvent =
+    const walkupScanToCompEvent =
       await HPApi.getWalkupScanToCompEvent(compEventURI);
-    let message = walkupScanToCompEvent.eventType;
+    const message = walkupScanToCompEvent.eventType;
 
     if (message === "ScanNewPageRequested") {
       startNewScanJob = true;
@@ -287,6 +290,7 @@ async function mergeToPdf(
   scanJobContent: ScanContent,
   filePattern: string | undefined,
   date: Date,
+  deleteFiles: boolean,
 ): Promise<string | null> {
   if (scanJobContent.elements.length > 0) {
     const pdfFilePath: string = PathHelper.getFileForScan(
@@ -297,7 +301,9 @@ async function mergeToPdf(
       date,
     );
     await createPdfFrom(scanJobContent, pdfFilePath);
-    scanJobContent.elements.forEach((e) => fs.unlink(e.path));
+    if (deleteFiles) {
+      await Promise.all(scanJobContent.elements.map((e) => fs.unlink(e.path)));
+    }
     return pdfFilePath;
   }
   console.log(`No page available to build a pdf file`);
@@ -360,7 +366,7 @@ export function getScanWidth(
   scanConfig: ScanConfig,
   inputSource: InputSource,
   deviceCapabilities: DeviceCapabilities,
-) {
+): number | null {
   if (scanConfig.width && scanConfig.width > 0) {
     const maxWidth =
       inputSource === InputSource.Adf
@@ -373,7 +379,9 @@ export function getScanWidth(
       return scanConfig.width;
     }
   } else {
-    return null;
+    return inputSource === InputSource.Adf
+      ? deviceCapabilities.adfMaxWidth
+      : deviceCapabilities.platenMaxWidth;
   }
 }
 
@@ -381,7 +389,7 @@ export function getScanHeight(
   scanConfig: ScanConfig,
   inputSource: InputSource,
   deviceCapabilities: DeviceCapabilities,
-) {
+): number | null {
   if (scanConfig.height && scanConfig.height > 0) {
     const maxHeight =
       inputSource === InputSource.Adf
@@ -394,11 +402,73 @@ export function getScanHeight(
       return scanConfig.height;
     }
   } else {
-    return null;
+    return inputSource === InputSource.Adf
+      ? deviceCapabilities.adfMaxHeight
+      : deviceCapabilities.platenMaxHeight;
   }
 }
 
-export async function saveScan(
+async function postProcessing(
+  scanConfig: ScanConfig,
+  folder: string,
+  tempFolder: string,
+  scanCount: number,
+  scanJobContent: ScanContent,
+  scanDate: Date,
+  toPdf: boolean,
+) {
+  if (toPdf) {
+    const pdfFilePath = await mergeToPdf(
+      tempFolder,
+      scanCount,
+      scanJobContent,
+      scanConfig.directoryConfig.filePattern,
+      scanDate,
+      true,
+    );
+    displayPdfScan(pdfFilePath, scanJobContent);
+    if (scanConfig.paperlessConfig) {
+      if (pdfFilePath) {
+        await uploadToPaperless(pdfFilePath, scanConfig.paperlessConfig);
+        if (!scanConfig.paperlessConfig.keepFiles) {
+          await fs.unlink(pdfFilePath);
+          console.log(
+            `Pdf document ${pdfFilePath} has removed from the filesystem`,
+          );
+        }
+      } else {
+        console.log(
+          "Pdf generation has failed, nothing is going to be uploaded to paperless",
+        );
+      }
+    }
+  } else {
+    displayJpegScan(scanJobContent);
+    if (scanConfig.paperlessConfig) {
+      const pdfFilePath = await mergeToPdf(
+        folder,
+        scanCount,
+        scanJobContent,
+        scanConfig.directoryConfig.filePattern,
+        scanDate,
+        !scanConfig.paperlessConfig.keepFiles,
+      );
+      if (pdfFilePath) {
+        await uploadToPaperless(pdfFilePath, scanConfig.paperlessConfig);
+        await fs.unlink(pdfFilePath);
+        console.log(
+          `Pdf document ${pdfFilePath} has removed from the filesystem`,
+        );
+      } else {
+        console.log(
+          "Pdf generation has failed, nothing is going to be uploaded to paperless",
+        );
+      }
+    }
+  }
+}
+
+export async function saveScanFromEvent(
   event: Event,
   folder: string,
   tempFolder: string,
@@ -443,7 +513,7 @@ export async function saveScan(
   const scanStatus = await HPApi.getScanStatus();
 
   if (scanStatus.scannerState !== "Idle") {
-    console.log("Scanner state is not Idle, aborting scan attempt...!")
+    console.log("Scanner state is not Idle, aborting scan attempt...!");
   }
 
   console.log("Afd is : " + scanStatus.adfState);
@@ -479,19 +549,15 @@ export async function saveScan(
   console.log(
     `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`,
   );
-
-  if (toPdf) {
-    const pdfFilePath = await mergeToPdf(
-      folder,
-      scanCount,
-      scanJobContent,
-      scanConfig.directoryConfig.filePattern,
-      scanDate,
-    );
-    displayPdfScan(pdfFilePath, scanJobContent);
-  } else {
-    displayJpegScan(scanJobContent);
-  }
+  await postProcessing(
+    scanConfig,
+    folder,
+    tempFolder,
+    scanCount,
+    scanJobContent,
+    scanDate,
+    toPdf,
+  );
 }
 
 export type DirectoryConfig = {
@@ -499,11 +565,17 @@ export type DirectoryConfig = {
   tempDirectory: string | undefined;
   filePattern: string | undefined;
 };
+export type PaperlessConfig = {
+  host: string;
+  authToken: string;
+  keepFiles: boolean;
+};
 export type ScanConfig = {
   resolution: number;
   width: number | null;
   height: number | null;
   directoryConfig: DirectoryConfig;
+  paperlessConfig: PaperlessConfig | undefined;
 };
 export type AdfAutoScanConfig = ScanConfig & {
   isDuplex: boolean;
@@ -511,6 +583,39 @@ export type AdfAutoScanConfig = ScanConfig & {
   pollingInterval: number;
   startScanDelay: number;
 };
+
+export type SingleScanConfig = ScanConfig & {
+  isDuplex: boolean;
+  generatePdf: boolean;
+};
+
+async function uploadToPaperless(
+  filePath: string,
+  paperlessConfig: PaperlessConfig,
+) {
+  const url = `https://${paperlessConfig.host}/api/documents/post_document/`;
+
+  const authToken = paperlessConfig.authToken;
+
+  const fileStream = fsSync.createReadStream(filePath);
+
+  const form = new FormData();
+  form.append("document", fileStream);
+
+  try {
+    const response = await axios.post(url, form, {
+      headers: {
+        ...form.getHeaders(),
+        Authorization: `Token ${authToken}`,
+      },
+    });
+
+    console.log("Document successfully uploaded to paperless:", response.data);
+  } catch (error) {
+    console.error("Fail to upload document:", error);
+  }
+  fileStream.close();
+}
 
 export async function scanFromAdf(
   scanCount: number,
@@ -568,18 +673,15 @@ export async function scanFromAdf(
     `Scan of page(s) completed, total pages: ${scanJobContent.elements.length}:`,
   );
 
-  if (adfAutoScanConfig.generatePdf) {
-    const pdfFilePath = await mergeToPdf(
-      folder,
-      scanCount,
-      scanJobContent,
-      adfAutoScanConfig.directoryConfig.filePattern,
-      date,
-    );
-    displayPdfScan(pdfFilePath, scanJobContent);
-  } else {
-    displayJpegScan(scanJobContent);
-  }
+  await postProcessing(
+    adfAutoScanConfig,
+    folder,
+    tempFolder,
+    scanCount,
+    scanJobContent,
+    date,
+    adfAutoScanConfig.generatePdf,
+  );
 }
 
 export async function waitAdfLoaded(

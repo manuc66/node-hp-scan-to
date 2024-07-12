@@ -19,7 +19,8 @@ import {
 import {
   AdfAutoScanConfig,
   DirectoryConfig,
-  saveScan,
+  PaperlessConfig,
+  saveScanFromEvent,
   ScanConfig,
   scanFromAdf,
   waitAdfLoaded,
@@ -52,6 +53,7 @@ async function listenCmd(
   let keepActive = true;
   let errorCount = 0;
   while (keepActive) {
+    iteration++;
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
       const event = await waitScanEvent(deviceCapabilities, registrationConfig);
@@ -61,7 +63,7 @@ async function listenCmd(
         scanConfig.directoryConfig.filePattern,
       );
       console.log(`Scan event captured, saving scan #${scanCount}`);
-      await saveScan(
+      await saveScanFromEvent(
         event,
         folder,
         tempFolder,
@@ -117,6 +119,7 @@ async function adfAutoscanCmd(
   let keepActive = true;
   let errorCount = 0;
   while (keepActive) {
+    iteration++;
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
       await waitAdfLoaded(
@@ -172,7 +175,7 @@ function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
     const bonjour = Bonjour();
     console.log("Searching device...");
-    let browser = bonjour.find(
+    const browser = bonjour.find(
       {
         type: "http",
       },
@@ -224,6 +227,18 @@ function setupScanParameters(command: Command): Command {
     "-h, --height <height>",
     "Height in pixel of the scans (default: 3507)",
   );
+  command.option(
+    "-s, --paperless-host <paperless_host>",
+    "The paperless host name",
+  );
+  command.option(
+    "-o, --paperless-token <paperless_token>",
+    "The paperless token",
+  );
+  command.option(
+    "-k, --paperless-keep-files <paperless_keep_files>",
+    "Keep the scan files on the file system (default: false)",
+  );
   return command;
 }
 
@@ -266,6 +281,27 @@ function getIsDebug(options: OptionValues) {
   return debug;
 }
 
+function getPaperlessConfig(
+  parentOption: OptionValues,
+): PaperlessConfig | undefined {
+  const configPaperlessHost =
+    parentOption.paperless_host || getConfig("paperless_host");
+  const configPaperlessToken =
+    parentOption.paperless_token || getConfig("paperless_token");
+  const configPaperlessKeepFiles =
+    parentOption.keepFiles || getConfig("paperless_keep_files") || false;
+
+  if (configPaperlessHost && configPaperlessToken) {
+    return {
+      host: configPaperlessHost,
+      authToken: configPaperlessToken,
+      keepFiles: configPaperlessKeepFiles,
+    };
+  } else {
+    return undefined;
+  }
+}
+
 function getScanConfiguration(parentOption: OptionValues) {
   const directoryConfig: DirectoryConfig = {
     directory: parentOption.directory || getConfig("directory"),
@@ -293,6 +329,8 @@ function getScanConfiguration(parentOption: OptionValues) {
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configHeight, 10);
 
+  const paperlessConfig = getPaperlessConfig(parentOption);
+
   const scanConfig: ScanConfig = {
     resolution: parseInt(
       parentOption.resolution || getConfig("resolution") || "200",
@@ -301,6 +339,7 @@ function getScanConfiguration(parentOption: OptionValues) {
     width: width,
     height: height,
     directoryConfig,
+    paperlessConfig,
   };
   return scanConfig;
 }
