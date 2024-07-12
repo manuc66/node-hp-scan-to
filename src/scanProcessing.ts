@@ -449,7 +449,7 @@ async function postProcessing(
         scanJobContent,
         scanConfig.directoryConfig.filePattern,
         scanDate,
-        scanConfig.paperlessConfig.keepFiles,
+        !scanConfig.paperlessConfig.keepFiles,
       );
       if (pdfFilePath) {
         await uploadToPaperless(pdfFilePath, scanConfig.paperlessConfig);
