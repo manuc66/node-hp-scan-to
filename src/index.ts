@@ -236,7 +236,7 @@ function setupScanParameters(command: Command): Command {
     "The paperless token",
   );
   command.option(
-    "-k, --paperless-keep-files <paperless_keep_files>",
+    "-k, --paperless-keep-files",
     "Keep the scan files on the file system (default: false)",
   );
   return command;
@@ -285,11 +285,11 @@ function getPaperlessConfig(
   parentOption: OptionValues,
 ): PaperlessConfig | undefined {
   const configPaperlessHost =
-    parentOption.paperless_host || getConfig("paperless_host");
+    parentOption.paperlessHost || getConfig("paperless_host");
   const configPaperlessToken =
-    parentOption.paperless_token || getConfig("paperless_token");
+    parentOption.paperlessToken || getConfig("paperless_token");
   const configPaperlessKeepFiles =
-    parentOption.keepFiles || getConfig("paperless_keep_files") || false;
+    parentOption.paperlessKeepFiles || getConfig("paperless_keep_files") || false;
 
   if (configPaperlessHost && configPaperlessToken) {
     console.log(
@@ -305,15 +305,15 @@ function getPaperlessConfig(
   }
 }
 
-function getScanConfiguration(parentOption: OptionValues) {
+function getScanConfiguration(option: OptionValues) {
   const directoryConfig: DirectoryConfig = {
-    directory: parentOption.directory || getConfig("directory"),
-    tempDirectory: parentOption.tempDirectory || getConfig("tempDirectory"),
-    filePattern: parentOption.pattern || getConfig("pattern"),
+    directory: option.directory || getConfig("directory"),
+    tempDirectory: option.tempDirectory || getConfig("tempDirectory"),
+    filePattern: option.pattern || getConfig("pattern"),
   };
 
   const configWidth = (
-    parentOption.width ||
+    option.width ||
     getConfig("width") ||
     0
   ).toString();
@@ -323,7 +323,7 @@ function getScanConfiguration(parentOption: OptionValues) {
       : parseInt(configWidth, 10);
 
   const configHeight = (
-    parentOption.width ||
+    option.width ||
     getConfig("height") ||
     "0"
   ).toString();
@@ -332,11 +332,11 @@ function getScanConfiguration(parentOption: OptionValues) {
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configHeight, 10);
 
-  const paperlessConfig = getPaperlessConfig(parentOption);
+  const paperlessConfig = getPaperlessConfig(option);
 
   const scanConfig: ScanConfig = {
     resolution: parseInt(
-      parentOption.resolution || getConfig("resolution") || "200",
+      option.resolution || getConfig("resolution") || "200",
       10,
     ),
     width: width,
