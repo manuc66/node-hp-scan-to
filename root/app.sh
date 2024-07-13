@@ -35,7 +35,11 @@ if [ ! -z "$PAPERLESS_HOST" ]; then
 fi
 
 if [ ! -z "$PAPERLESS_TOKEN" ]; then
-    ARGS="${ARGS} -k ${PAPERLESS_TOKEN}"
+    ARGS="${ARGS} -o ${PAPERLESS_TOKEN}"
+fi
+
+if [ ! -z "$PAPERLESS_KEEP_FILES" ]; then
+    ARGS="${ARGS} -k"
 fi
 
 if [ ! -z "$CMDLINE" ]; then
