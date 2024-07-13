@@ -292,6 +292,9 @@ function getPaperlessConfig(
     parentOption.keepFiles || getConfig("paperless_keep_files") || false;
 
   if (configPaperlessHost && configPaperlessToken) {
+    console.log(
+      `Paperless configuration provided, host: ${configPaperlessHost}, the token length: ${configPaperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
+    );
     return {
       host: configPaperlessHost,
       authToken: configPaperlessToken,
