@@ -592,7 +592,7 @@ export type SingleScanConfig = ScanConfig & {
 async function uploadToPaperless(
   filePath: string,
   paperlessConfig: PaperlessConfig,
-) {
+): Promise<void> {
   const url = `https://${paperlessConfig.host}/api/documents/post_document/`;
 
   const authToken = paperlessConfig.authToken;
@@ -602,6 +602,7 @@ async function uploadToPaperless(
   const form = new FormData();
   form.append("document", fileStream);
 
+  console.log(`Start uploading to paperless: ${filePath}`);
   try {
     const response = await axios.post(url, form, {
       headers: {
