@@ -30,8 +30,8 @@ if [ ! -z "$RESOLUTION" ]; then
     ARGS="${ARGS} -r ${RESOLUTION}"
 fi
 
-if [ ! -z "$PAPERLESS_HOST" ]; then
-    ARGS="${ARGS} -s ${PAPERLESS_HOST}"
+if [ ! -z "$PAPERLESS_POST_DOCUMENT_URL" ]; then
+    ARGS="${ARGS} -s ${PAPERLESS_POST_DOCUMENT_URL}"
 fi
 
 if [ ! -z "$PAPERLESS_TOKEN" ]; then
