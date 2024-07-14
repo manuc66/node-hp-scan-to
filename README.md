@@ -73,7 +73,7 @@ Please note that the `node-hp-scan-to` project is not endorsed by nor affiliated
 - `-r` or `--resolution` Resolution in DPI of the scans (defaults is 200).
 - `-w` or `--width` followed by an integer, the with in pixel of the scans (default: 2481)
 - `-h` or `--height` followed by an integer, the height in pixel of the scans (default: 3507)
-- `-s` or `--paperless-host` followed by the paperless host name
+- `-s` or `--paperless-post-document-url` followed by the paperless post document url (example: https://domain.tld/api/documents/post_document/)
 - `k` or `--paperless-token` followed by te paperless-ngx api token
 - `-D, --debug"` enables debug logs.
 
@@ -113,7 +113,7 @@ Exhaustive list of supported environment variables and their meaning, or corresp
 - `DIR`: command-line flag `-d`/`--directory`
 - `TEMP_DIR`: command-line flag `-t`/`--temp-directory`
 - `RESOLUTION`: command-line flag `-r`/`--resolution`
-- `PAPERLESS_HOST`: the paperless api host (if provided with token, a pdf is uploaded to paperless-ngx)
+- `PAPERLESS_POST_DOCUMENT_URL`: the paperless api host (if provided with token, a pdf is uploaded to paperless-ngx)
 - `PAPERLESS_TOKEN`: the paperless api token
 - `CMDLINE`: additional command-line flags that will be put at the end of the command.
 

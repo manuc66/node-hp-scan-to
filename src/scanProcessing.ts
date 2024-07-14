@@ -566,7 +566,7 @@ export type DirectoryConfig = {
   filePattern: string | undefined;
 };
 export type PaperlessConfig = {
-  host: string;
+  postDocumentUrl: string;
   authToken: string;
   keepFiles: boolean;
 };
@@ -593,7 +593,7 @@ async function uploadToPaperless(
   filePath: string,
   paperlessConfig: PaperlessConfig,
 ): Promise<void> {
-  const url = `https://${paperlessConfig.host}/api/documents/post_document/`;
+  const url = paperlessConfig.postDocumentUrl;
 
   const authToken = paperlessConfig.authToken;
 
