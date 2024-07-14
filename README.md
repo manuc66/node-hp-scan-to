@@ -113,8 +113,8 @@ Exhaustive list of supported environment variables and their meaning, or corresp
 - `DIR`: command-line flag `-d`/`--directory`
 - `TEMP_DIR`: command-line flag `-t`/`--temp-directory`
 - `RESOLUTION`: command-line flag `-r`/`--resolution`
-- `PAPERLESS_POST_DOCUMENT_URL`: the paperless api host (if provided with token, a pdf is uploaded to paperless-ngx)
-- `PAPERLESS_TOKEN`: the paperless api token
+- `PAPERLESS_POST_DOCUMENT_URL`: the paperless post document url (if provided with token, a pdf is uploaded to paperless-ngx) for example: `PAPERLESS_POST_DOCUMENT_URL= "http://<paperless-host>:<port>/api/documents/post_document/"`
+- `PAPERLESS_TOKEN`: the paperless api token for example: `PAPERLESS_TOKEN= "xxxxxxxxxxxx..."`
 - `CMDLINE`: additional command-line flags that will be put at the end of the command.
 
 __To enable debug logs set the environment variable `CMDLINE` to `-D`.__
