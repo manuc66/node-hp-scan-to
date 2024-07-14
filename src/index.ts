@@ -205,15 +205,15 @@ function getConfig<T>(name: string): T | undefined {
 function setupScanParameters(command: Command): Command {
   command.option(
     "-d, --directory <dir>",
-    "Directory where scans are saved (default: /tmp/scan-to-pc<random>)",
+    "Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)",
   );
   command.option(
     "-t, --temp-directory <dir>",
-    "Temp directory used for processing (default: /tmp/scan-to-pc<random>)",
+    "Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)",
   );
   command.option(
     "-p, --pattern <pattern>",
-    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)',
+    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPageNUMBER)',
   );
   command.option(
     "-r, --resolution <dpi>",
@@ -228,9 +228,10 @@ function setupScanParameters(command: Command): Command {
     "Height in pixel of the scans (default: 3507)",
   );
   command.option(
-    "-s, --paperless-host <paperless_host>",
-    "The paperless host name",
+    "-s, --paperless-post-document-url <paperless_post_document_url>",
+    "The paperless post document url (example: https://domain.tld/api/documents/post_document/)",
   );
+
   command.option(
     "-o, --paperless-token <paperless_token>",
     "The paperless token",
@@ -284,19 +285,19 @@ function getIsDebug(options: OptionValues) {
 function getPaperlessConfig(
   parentOption: OptionValues,
 ): PaperlessConfig | undefined {
-  const configPaperlessHost =
-    parentOption.paperlessHost || getConfig("paperless_host");
+  const paperlessPostDocumentUrl =
+    parentOption.paperlessPostDocumentUrl || getConfig("paperless_post_document_url");
   const configPaperlessToken =
     parentOption.paperlessToken || getConfig("paperless_token");
   const configPaperlessKeepFiles =
     parentOption.paperlessKeepFiles || getConfig("paperless_keep_files") || false;
 
-  if (configPaperlessHost && configPaperlessToken) {
+  if (paperlessPostDocumentUrl && configPaperlessToken) {
     console.log(
-      `Paperless configuration provided, host: ${configPaperlessHost}, the token length: ${configPaperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
+      `Paperless configuration provided, post document url: ${paperlessPostDocumentUrl}, the token length: ${configPaperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
     );
     return {
-      host: configPaperlessHost,
+      postDocumentUrl: paperlessPostDocumentUrl,
       authToken: configPaperlessToken,
       keepFiles: configPaperlessKeepFiles,
     };
