@@ -19,6 +19,7 @@
     "start-debug": "ts-node src/index.ts -D",
     "prebuild": "node getCommitId.js",
     "build": "tsc -p .",
+    "build:docker": "tsc -p .",
     "built-start": "tsc -p . && node --trace-warnings ./dist/index.js",
     "start-dev": "nodemon",
     "prepublishOnly": "tsc -p ./ --outDir dist/",

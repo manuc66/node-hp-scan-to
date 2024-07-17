@@ -1,16 +1,11 @@
 FROM node:18-alpine AS build
 WORKDIR /app
 
-# Install Git and other dependencies
-RUN apk update && apk add --no-cache git
-
 ADD . .
-COPY .git /app/.git
 
 RUN yarn install -d \
- && yarn build \
- && rm dist/*.d.ts dist/*.js.map \
- && rm -rf .git
+ && yarn build:docker \
+ && rm dist/*.d.ts dist/*.js.map
 
 FROM node:18-alpine AS app
 ENV NODE_ENV=production
