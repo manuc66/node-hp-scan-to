@@ -5,9 +5,12 @@ WORKDIR /app
 RUN apk update && apk add --no-cache git
 
 ADD . .
+COPY .git .git
+
 RUN yarn install -d \
  && yarn build \
- && rm dist/*.d.ts dist/*.js.map
+ && rm dist/*.d.ts dist/*.js.map \
+ && rm -rf .git
 
 FROM node:18-alpine AS app
 ENV NODE_ENV=production
