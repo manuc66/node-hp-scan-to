@@ -1,4 +1,4 @@
-FROM node:18-alpine  as build
+FROM node:18-alpine AS build
 WORKDIR /app
 
 ADD . .
@@ -6,8 +6,8 @@ RUN yarn install -d \
  && yarn build \
  && rm dist/*.d.ts dist/*.js.map
 
-FROM node:18-alpine as app
-ENV NODE_ENV production
+FROM node:18-alpine AS app
+ENV NODE_ENV=production
 ADD root/ /
 
 # sets version for s6 overlay
