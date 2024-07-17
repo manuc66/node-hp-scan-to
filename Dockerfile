@@ -7,7 +7,7 @@ RUN yarn install -d \
  && rm dist/*.d.ts dist/*.js.map
 
 FROM node:18-alpine AS app
-ENV NODE_ENV production
+ENV NODE_ENV=production
 ADD root/ /
 
 # sets version for s6 overlay
