@@ -1,6 +1,9 @@
 FROM node:18-alpine AS build
 WORKDIR /app
 
+# Install Git and other dependencies
+RUN apk update && apk add --no-cache git
+
 ADD . .
 RUN yarn install -d \
  && yarn build \
