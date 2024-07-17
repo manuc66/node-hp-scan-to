@@ -2,6 +2,7 @@ FROM node:18-alpine AS build
 WORKDIR /app
 
 ADD . .
+COPY src/commitInfo.json /app/src/commitInfo.json
 
 RUN yarn install -d \
  && yarn build:docker \
