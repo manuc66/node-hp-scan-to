@@ -5,7 +5,7 @@ WORKDIR /app
 RUN apk update && apk add --no-cache git
 
 ADD . .
-COPY .git .git
+COPY .git/ ./.git/
 
 RUN yarn install -d \
  && yarn build \
