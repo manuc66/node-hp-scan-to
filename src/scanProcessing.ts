@@ -419,7 +419,7 @@ async function postProcessing(
 ) {
   if (toPdf) {
     const pdfFilePath = await mergeToPdf(
-      tempFolder,
+      scanConfig.paperlessConfig ? tempFolder : folder,
       scanCount,
       scanJobContent,
       scanConfig.directoryConfig.filePattern,
