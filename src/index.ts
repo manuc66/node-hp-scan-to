@@ -25,6 +25,7 @@ import {
   scanFromAdf,
   waitAdfLoaded,
 } from "./scanProcessing";
+import * as commitInfo from './commitInfo.json';
 
 let iteration = 0;
 
@@ -457,4 +458,5 @@ async function main() {
   await program.parseAsync(process.argv);
 }
 
+console.log(`Current commit ID: ${commitInfo.commitId}`);
 main().catch((err) => console.log(err));
