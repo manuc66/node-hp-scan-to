@@ -14,8 +14,10 @@
     "node-hp-scan-to": "dist/index.js"
   },
   "scripts": {
+    "prestart": "node getCommitId.js",
     "start": "ts-node src/index.ts",
     "start-debug": "ts-node src/index.ts -D",
+    "prebuild": "node getCommitId.js",
     "build": "tsc -p .",
     "built-start": "tsc -p . && node --trace-warnings ./dist/index.js",
     "start-dev": "nodemon",
