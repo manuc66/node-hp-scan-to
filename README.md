@@ -34,6 +34,7 @@ Additionally, it has been reported to work on several other HP printer models.
 - HP Deskjet 5525
 - HP OfficeJet 8012
 - HP OfficeJet Pro 9012e
+- HP PageWide 377dw MFP
 
 There are good chances it also works on your HP All-in-One Printer.
 
