@@ -34,17 +34,27 @@ export default class ScanCaps {
   }
 
   get platenMaxWidth(): number | null {
-    return Number.parseInt(
-      this.data["ScanCaps"]["Platen"][0]["InputSourceCaps"][0]["MaxWidth"][0],
-      10,
-    );
+    if (Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Platen")) {
+      return Number.parseInt(
+        this.data["ScanCaps"]["Platen"][0]["InputSourceCaps"][0]["MaxWidth"][0],
+        10,
+      );
+    } else {
+      return null;
+    }
   }
 
   get platenMaxHeight(): number | null {
-    return Number.parseInt(
-      this.data["ScanCaps"]["Platen"][0]["InputSourceCaps"][0]["MaxHeight"][0],
-      10,
-    );
+    if (Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Platen")) {
+      return Number.parseInt(
+        this.data["ScanCaps"]["Platen"][0]["InputSourceCaps"][0][
+          "MaxHeight"
+        ][0],
+        10,
+      );
+    } else {
+      return null;
+    }
   }
 
   get adfMaxWidth(): number | null {
