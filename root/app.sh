@@ -1,6 +1,6 @@
 #!/command/with-contenv sh
 
-ARGS="-d /scan "
+ARGS="--health-check -d /scan "
 
 if [ ! -z "$IP" ]; then
     ARGS="${ARGS} -ip ${IP}"
