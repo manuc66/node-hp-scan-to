@@ -25,7 +25,8 @@ import {
   scanFromAdf,
   waitAdfLoaded,
 } from "./scanProcessing";
-import * as commitInfo from './commitInfo.json';
+import * as commitInfo from "./commitInfo.json";
+import { startHealthCheckServer } from "./healthcheck";
 
 let iteration = 0;
 
@@ -287,11 +288,14 @@ function getPaperlessConfig(
   parentOption: OptionValues,
 ): PaperlessConfig | undefined {
   const paperlessPostDocumentUrl =
-    parentOption.paperlessPostDocumentUrl || getConfig("paperless_post_document_url");
+    parentOption.paperlessPostDocumentUrl ||
+    getConfig("paperless_post_document_url");
   const configPaperlessToken =
     parentOption.paperlessToken || getConfig("paperless_token");
   const configPaperlessKeepFiles =
-    parentOption.paperlessKeepFiles || getConfig("paperless_keep_files") || false;
+    parentOption.paperlessKeepFiles ||
+    getConfig("paperless_keep_files") ||
+    false;
 
   if (paperlessPostDocumentUrl && configPaperlessToken) {
     console.log(
@@ -307,6 +311,21 @@ function getPaperlessConfig(
   }
 }
 
+function getHealthCheckSetting(option: OptionValues) {
+  const healthCheckEnabled: boolean =
+    option.healthCheck || getConfig("enableHealthCheck") === true;
+  let healthCheckPort: number;
+  if (option.healthCheckPort) {
+    healthCheckPort = parseInt(option.healthCheckPort, 10);
+  } else {
+    healthCheckPort = getConfig<number>("healthCheckPort") || 3000;
+  }
+  return {
+    isHealthCheckEnabled: healthCheckEnabled,
+    healthCheckPort: healthCheckPort,
+  };
+}
+
 function getScanConfiguration(option: OptionValues) {
   const directoryConfig: DirectoryConfig = {
     directory: option.directory || getConfig("directory"),
@@ -314,21 +333,13 @@ function getScanConfiguration(option: OptionValues) {
     filePattern: option.pattern || getConfig("pattern"),
   };
 
-  const configWidth = (
-    option.width ||
-    getConfig("width") ||
-    0
-  ).toString();
+  const configWidth = (option.width || getConfig("width") || 0).toString();
   const width =
     configWidth.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configWidth, 10);
 
-  const configHeight = (
-    option.width ||
-    getConfig("height") ||
-    "0"
-  ).toString();
+  const configHeight = (option.width || getConfig("height") || "0").toString();
   const height =
     configWidth.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
@@ -366,6 +377,15 @@ async function main() {
       "-l, --label <label>",
       "The label to display on the device (the default is the hostname)",
     )
+    .addOption(
+      new Option("--health-check", "Start an http health check endpoint"),
+    )
+    .addOption(
+      new Option(
+        "--health-check-port <health-check-port>",
+        "Start an http health check endpoint",
+      ),
+    )
     .action(async (options, cmd) => {
       const parentOption = cmd.parent.opts();
 
@@ -380,6 +400,11 @@ async function main() {
       };
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
+
+      const healthCheckSetting = getHealthCheckSetting(options);
+      if (healthCheckSetting.isHealthCheckEnabled) {
+        startHealthCheckServer(healthCheckSetting.healthCheckPort);
+      }
 
       const scanConfig = getScanConfiguration(options);
 
@@ -413,6 +438,15 @@ async function main() {
         "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan",
       ),
     )
+    .addOption(
+      new Option("--health-check", "Start an http health check endpoint"),
+    )
+    .addOption(
+      new Option(
+        "--health-check-port <port>",
+        "Start an http health check endpoint",
+      ),
+    )
     .description(
       "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
     )
@@ -426,6 +460,11 @@ async function main() {
       HPApi.setDebug(isDebug);
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
+
+      const healthCheckSetting = getHealthCheckSetting(options);
+      if (healthCheckSetting.isHealthCheckEnabled) {
+        startHealthCheckServer(healthCheckSetting.healthCheckPort);
+      }
 
       const scanConfig = getScanConfiguration(options);
 
