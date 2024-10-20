@@ -17,23 +17,24 @@ Its primary purpose is to enable users to scan documents directly from an HP dev
 
 ## Supported devices
 It has been developed and tested with the following HP All-in-One Printers:
-- HP Officejet 6500A Plus
 - HP Deskjet 3520
+- HP Officejet 6500A Plus
 - HP Smart Tank Plus 570 series
 
 Additionally, it has been reported to work on several other HP printer models.
 - HP Deskjet 3050 All-in-One Printer - J610a
+- HP Deskjet 5525
 - HP Officejet 3830
 - HP Officejet 5230
-- HP Officejet 6700 premium
 - HP Officejet 5740
+- HP Officejet 6700 premium
 - HP Officejet 6950
-- HP OfficeJet Pro 8025e
-- HP OfficeJet Pro 7720 Wide Format All-in-One
 - HP Officejet 8010 series
-- HP Deskjet 5525
 - HP OfficeJet 8012
+- HP OfficeJet Pro 7720 Wide Format All-in-One
+- HP OfficeJet Pro 8025e
 - HP OfficeJet Pro 9012e
+- HP PageWide 377dw MFP
 
 There are good chances it also works on your HP All-in-One Printer.
 
