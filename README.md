@@ -56,7 +56,7 @@ Please note that the `node-hp-scan-to` project is not endorsed by nor affiliated
 - ✔️ Customizable resolution
 - ✔️ Customizable label on the device
 - ✔️ Multi platform: Linux, Windows and most probably macOS
-- ✔️ Folder target or paperless-ngx upload
+- ✔️ Folder target or paperless-ngx api upload
 - ✔️ Clear all registered target
 - ✔️ Automatic scan when automatic document feeder is getting loaded
 
