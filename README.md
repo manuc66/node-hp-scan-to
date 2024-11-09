@@ -24,6 +24,7 @@ It has been developed and tested with the following HP All-in-One Printers:
 Additionally, it has been reported to work on several other HP printer models.
 - HP DeskJet 3050 All-in-One - J610a
 - HP DeskJet 3775 All-in-One
+- HP DeskJet 4670 All-in-One
 - HP DeskJet 5525
 - HP OfficeJet 3830
 - HP OfficeJet 5230
