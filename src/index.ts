@@ -305,11 +305,11 @@ function getPaperlessConfig(
       parentOption.paperlessKeepFiles ||
       getConfig("paperless_keep_files") ||
       false;
-    let groupMultiPageScanIntoAPdf: boolean =
+    const groupMultiPageScanIntoAPdf: boolean =
       parentOption.paperlessGroupMultiPageScanIntoAPdf ||
       getConfig("paperless_group_multi_page_scan_into_a_pdf") ||
       false;
-    let alwaysSendAsPdfFile: boolean =
+    const alwaysSendAsPdfFile: boolean =
       parentOption.paperlessAlwaysSendAsPdfFile ||
       getConfig("paperless_always_send_as_pdf_file") ||
       false;
