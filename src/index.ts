@@ -19,13 +19,13 @@ import {
 import {
   AdfAutoScanConfig,
   DirectoryConfig,
-  PaperlessConfig,
   saveScanFromEvent,
   ScanConfig,
   scanFromAdf,
   waitAdfLoaded,
 } from "./scanProcessing";
-import * as commitInfo from './commitInfo.json';
+import * as commitInfo from "./commitInfo.json";
+import { PaperlessConfig } from "./paperless/PaperlessConfig";
 
 let iteration = 0;
 
@@ -238,6 +238,14 @@ function setupScanParameters(command: Command): Command {
     "The paperless token",
   );
   command.option(
+    "--paperless-group-multi-page-scan-into-a-pdf",
+    "Combine multiple scanned images into a single PDF document",
+  );
+  command.option(
+    "--paperless-always-send-as-pdf-file",
+    "Always convert scan job to pdf before sending to paperless",
+  );
+  command.option(
     "-k, --paperless-keep-files",
     "Keep the scan files on the file system (default: false)",
   );
@@ -286,14 +294,26 @@ function getIsDebug(options: OptionValues) {
 function getPaperlessConfig(
   parentOption: OptionValues,
 ): PaperlessConfig | undefined {
-  const paperlessPostDocumentUrl =
-    parentOption.paperlessPostDocumentUrl || getConfig("paperless_post_document_url");
-  const configPaperlessToken =
+  const paperlessPostDocumentUrl: string =
+    parentOption.paperlessPostDocumentUrl ||
+    getConfig("paperless_post_document_url");
+  const configPaperlessToken: string =
     parentOption.paperlessToken || getConfig("paperless_token");
-  const configPaperlessKeepFiles =
-    parentOption.paperlessKeepFiles || getConfig("paperless_keep_files") || false;
 
   if (paperlessPostDocumentUrl && configPaperlessToken) {
+    const configPaperlessKeepFiles: boolean =
+      parentOption.paperlessKeepFiles ||
+      getConfig("paperless_keep_files") ||
+      false;
+    let groupMultiPageScanIntoAPdf: boolean =
+      parentOption.paperlessGroupMultiPageScanIntoAPdf ||
+      getConfig("paperless_group_multi_page_scan_into_a_pdf") ||
+      false;
+    let alwaysSendAsPdfFile: boolean =
+      parentOption.paperlessAlwaysSendAsPdfFile ||
+      getConfig("paperless_always_send_as_pdf_file") ||
+      false;
+
     console.log(
       `Paperless configuration provided, post document url: ${paperlessPostDocumentUrl}, the token length: ${configPaperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
     );
@@ -301,6 +321,8 @@ function getPaperlessConfig(
       postDocumentUrl: paperlessPostDocumentUrl,
       authToken: configPaperlessToken,
       keepFiles: configPaperlessKeepFiles,
+      groupMultiPageScanIntoAPdf: groupMultiPageScanIntoAPdf,
+      alwaysSendAsPdfFile: alwaysSendAsPdfFile,
     };
   } else {
     return undefined;
@@ -314,21 +336,13 @@ function getScanConfiguration(option: OptionValues) {
     filePattern: option.pattern || getConfig("pattern"),
   };
 
-  const configWidth = (
-    option.width ||
-    getConfig("width") ||
-    0
-  ).toString();
+  const configWidth = (option.width || getConfig("width") || 0).toString();
   const width =
     configWidth.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configWidth, 10);
 
-  const configHeight = (
-    option.width ||
-    getConfig("height") ||
-    "0"
-  ).toString();
+  const configHeight = (option.width || getConfig("height") || "0").toString();
   const height =
     configWidth.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
