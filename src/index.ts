@@ -26,6 +26,8 @@ import {
 } from "./scanProcessing";
 import * as commitInfo from "./commitInfo.json";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
+import { startHealthCheckServer } from "./healthcheck";
+
 
 let iteration = 0;
 
