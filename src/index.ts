@@ -26,6 +26,8 @@ import {
 } from "./scanProcessing";
 import * as commitInfo from "./commitInfo.json";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
+import { startHealthCheckServer } from "./healthcheck";
+
 
 let iteration = 0;
 
@@ -299,6 +301,10 @@ function getPaperlessConfig(
     getConfig("paperless_post_document_url");
   const configPaperlessToken: string =
     parentOption.paperlessToken || getConfig("paperless_token");
+  const configPaperlessKeepFiles =
+    parentOption.paperlessKeepFiles ||
+    getConfig("paperless_keep_files") ||
+    false;
 
   if (paperlessPostDocumentUrl && configPaperlessToken) {
     const configPaperlessKeepFiles: boolean =
@@ -327,6 +333,21 @@ function getPaperlessConfig(
   } else {
     return undefined;
   }
+}
+
+function getHealthCheckSetting(option: OptionValues) {
+  const healthCheckEnabled: boolean =
+    option.healthCheck || getConfig("enableHealthCheck") === true;
+  let healthCheckPort: number;
+  if (option.healthCheckPort) {
+    healthCheckPort = parseInt(option.healthCheckPort, 10);
+  } else {
+    healthCheckPort = getConfig<number>("healthCheckPort") || 3000;
+  }
+  return {
+    isHealthCheckEnabled: healthCheckEnabled,
+    healthCheckPort: healthCheckPort,
+  };
 }
 
 function getScanConfiguration(option: OptionValues) {
@@ -380,6 +401,15 @@ async function main() {
       "-l, --label <label>",
       "The label to display on the device (the default is the hostname)",
     )
+    .addOption(
+      new Option("--health-check", "Start an http health check endpoint"),
+    )
+    .addOption(
+      new Option(
+        "--health-check-port <health-check-port>",
+        "Start an http health check endpoint",
+      ),
+    )
     .action(async (options, cmd) => {
       const parentOption = cmd.parent.opts();
 
@@ -394,6 +424,11 @@ async function main() {
       };
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
+
+      const healthCheckSetting = getHealthCheckSetting(options);
+      if (healthCheckSetting.isHealthCheckEnabled) {
+        startHealthCheckServer(healthCheckSetting.healthCheckPort);
+      }
 
       const scanConfig = getScanConfiguration(options);
 
@@ -427,6 +462,15 @@ async function main() {
         "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan",
       ),
     )
+    .addOption(
+      new Option("--health-check", "Start an http health check endpoint"),
+    )
+    .addOption(
+      new Option(
+        "--health-check-port <port>",
+        "Start an http health check endpoint",
+      ),
+    )
     .description(
       "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
     )
@@ -440,6 +484,11 @@ async function main() {
       HPApi.setDebug(isDebug);
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
+
+      const healthCheckSetting = getHealthCheckSetting(options);
+      if (healthCheckSetting.isHealthCheckEnabled) {
+        startHealthCheckServer(healthCheckSetting.healthCheckPort);
+      }
 
       const scanConfig = getScanConfiguration(options);
 
