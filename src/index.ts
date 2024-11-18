@@ -5,7 +5,7 @@
 
 import os from "os";
 import { Command, Option, OptionValues, program } from "commander";
-import Bonjour from "bonjour";
+import { Bonjour } from "bonjour-service";
 import config from "config";
 import HPApi from "./HPApi";
 import PathHelper from "./PathHelper";
@@ -19,7 +19,6 @@ import {
 import {
   AdfAutoScanConfig,
   DirectoryConfig,
-  PaperlessConfig,
   saveScanFromEvent,
   ScanConfig,
   scanFromAdf,
@@ -27,6 +26,10 @@ import {
   SingleScanConfig,
   waitAdfLoaded,
 } from "./scanProcessing";
+import * as commitInfo from "./commitInfo.json";
+import { PaperlessConfig } from "./paperless/PaperlessConfig";
+import { startHealthCheckServer } from "./healthcheck";
+
 
 let iteration = 0;
 
@@ -55,6 +58,7 @@ async function listenCmd(
   let keepActive = true;
   let errorCount = 0;
   while (keepActive) {
+    iteration++;
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
       const event = await waitScanEvent(deviceCapabilities, registrationConfig);
@@ -153,6 +157,7 @@ async function adfAutoscanCmd(
   let keepActive = true;
   let errorCount = 0;
   while (keepActive) {
+    iteration++;
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
       await waitAdfLoaded(
@@ -206,9 +211,9 @@ async function clearRegistrationsCmd(cmd: Command) {
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
-    const bonjour = Bonjour();
+    const bonjour = new Bonjour();
     console.log("Searching device...");
-    let browser = bonjour.find(
+    const browser = bonjour.find(
       {
         type: "http",
       },
@@ -238,15 +243,15 @@ function getConfig<T>(name: string): T | undefined {
 function setupScanParameters(command: Command): Command {
   command.option(
     "-d, --directory <dir>",
-    "Directory where scans are saved (default: /tmp/scan-to-pc<random>)",
+    "Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)",
   );
   command.option(
     "-t, --temp-directory <dir>",
-    "Temp directory used for processing (default: /tmp/scan-to-pc<random>)",
+    "Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)",
   );
   command.option(
     "-p, --pattern <pattern>",
-    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPage<number>)',
+    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPageNUMBER)',
   );
   command.option(
     "-r, --resolution <dpi>",
@@ -261,12 +266,25 @@ function setupScanParameters(command: Command): Command {
     "Height in pixel of the scans (default: 3507)",
   );
   command.option(
-    "-s, --paperless-host <paperless_host>",
-    "The paperless host name",
+    "-s, --paperless-post-document-url <paperless_post_document_url>",
+    "The paperless post document url (example: https://domain.tld/api/documents/post_document/)",
+  );
+
+  command.option(
+    "-o, --paperless-token <paperless_token>",
+    "The paperless token",
   );
   command.option(
-    "-t, --paperless-token <paperless_token>",
-    "The paperless token",
+    "--paperless-group-multi-page-scan-into-a-pdf",
+    "Combine multiple scanned images into a single PDF document",
+  );
+  command.option(
+    "--paperless-always-send-as-pdf-file",
+    "Always convert scan job to pdf before sending to paperless",
+  );
+  command.option(
+    "-k, --paperless-keep-files",
+    "Keep the scan files on the file system (default: false)",
   );
   return command;
 }
@@ -310,51 +328,87 @@ function getIsDebug(options: OptionValues) {
   return debug;
 }
 
-function getScanConfiguration(parentOption: OptionValues) {
+function getPaperlessConfig(
+  parentOption: OptionValues,
+): PaperlessConfig | undefined {
+  const paperlessPostDocumentUrl: string =
+    parentOption.paperlessPostDocumentUrl ||
+    getConfig("paperless_post_document_url");
+  const configPaperlessToken: string =
+    parentOption.paperlessToken || getConfig("paperless_token");
+  const configPaperlessKeepFiles =
+    parentOption.paperlessKeepFiles ||
+    getConfig("paperless_keep_files") ||
+    false;
+
+  if (paperlessPostDocumentUrl && configPaperlessToken) {
+    const configPaperlessKeepFiles: boolean =
+      parentOption.paperlessKeepFiles ||
+      getConfig("paperless_keep_files") ||
+      false;
+    const groupMultiPageScanIntoAPdf: boolean =
+      parentOption.paperlessGroupMultiPageScanIntoAPdf ||
+      getConfig("paperless_group_multi_page_scan_into_a_pdf") ||
+      false;
+    const alwaysSendAsPdfFile: boolean =
+      parentOption.paperlessAlwaysSendAsPdfFile ||
+      getConfig("paperless_always_send_as_pdf_file") ||
+      false;
+
+    console.log(
+      `Paperless configuration provided, post document url: ${paperlessPostDocumentUrl}, the token length: ${configPaperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
+    );
+    return {
+      postDocumentUrl: paperlessPostDocumentUrl,
+      authToken: configPaperlessToken,
+      keepFiles: configPaperlessKeepFiles,
+      groupMultiPageScanIntoAPdf: groupMultiPageScanIntoAPdf,
+      alwaysSendAsPdfFile: alwaysSendAsPdfFile,
+    };
+  } else {
+    return undefined;
+  }
+}
+
+function getHealthCheckSetting(option: OptionValues) {
+  const healthCheckEnabled: boolean =
+    option.healthCheck || getConfig("enableHealthCheck") === true;
+  let healthCheckPort: number;
+  if (option.healthCheckPort) {
+    healthCheckPort = parseInt(option.healthCheckPort, 10);
+  } else {
+    healthCheckPort = getConfig<number>("healthCheckPort") || 3000;
+  }
+  return {
+    isHealthCheckEnabled: healthCheckEnabled,
+    healthCheckPort: healthCheckPort,
+  };
+}
+
+function getScanConfiguration(option: OptionValues) {
   const directoryConfig: DirectoryConfig = {
-    directory: parentOption.directory || getConfig("directory"),
-    tempDirectory: parentOption.tempDirectory || getConfig("tempDirectory"),
-    filePattern: parentOption.pattern || getConfig("pattern"),
+    directory: option.directory || getConfig("directory"),
+    tempDirectory: option.tempDirectory || getConfig("tempDirectory"),
+    filePattern: option.pattern || getConfig("pattern"),
   };
 
-  const configWidth = (
-    parentOption.width ||
-    getConfig("width") ||
-    0
-  ).toString();
+  const configWidth = (option.width || getConfig("width") || 0).toString();
   const width =
     configWidth.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configWidth, 10);
 
-  const configHeight = (
-    parentOption.width ||
-    getConfig("height") ||
-    "0"
-  ).toString();
+  const configHeight = (option.width || getConfig("height") || "0").toString();
   const height =
     configWidth.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configHeight, 10);
 
-  const configPaperlessHost =
-    parentOption.paperless_host || getConfig("paperless_host");
-  const configPaperlessToken =
-    parentOption.paperless_token || getConfig("paperless_token");
-
-  let paperlessConfig: PaperlessConfig | undefined;
-  if (configPaperlessHost && configPaperlessToken) {
-    paperlessConfig = {
-      host: configPaperlessHost,
-      authToken: configPaperlessToken,
-    };
-  } else {
-    paperlessConfig = undefined;
-  }
+  const paperlessConfig = getPaperlessConfig(option);
 
   const scanConfig: ScanConfig = {
     resolution: parseInt(
-      parentOption.resolution || getConfig("resolution") || "200",
+      option.resolution || getConfig("resolution") || "200",
       10,
     ),
     width: width,
@@ -382,6 +436,15 @@ async function main() {
       "-l, --label <label>",
       "The label to display on the device (the default is the hostname)",
     )
+    .addOption(
+      new Option("--health-check", "Start an http health check endpoint"),
+    )
+    .addOption(
+      new Option(
+        "--health-check-port <health-check-port>",
+        "Start an http health check endpoint",
+      ),
+    )
     .action(async (options, cmd) => {
       const parentOption = cmd.parent.opts();
 
@@ -396,6 +459,11 @@ async function main() {
       };
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
+
+      const healthCheckSetting = getHealthCheckSetting(options);
+      if (healthCheckSetting.isHealthCheckEnabled) {
+        startHealthCheckServer(healthCheckSetting.healthCheckPort);
+      }
 
       const scanConfig = getScanConfiguration(options);
 
@@ -429,6 +497,15 @@ async function main() {
         "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan",
       ),
     )
+    .addOption(
+      new Option("--health-check", "Start an http health check endpoint"),
+    )
+    .addOption(
+      new Option(
+        "--health-check-port <port>",
+        "Start an http health check endpoint",
+      ),
+    )
     .description(
       "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
     )
@@ -442,6 +519,11 @@ async function main() {
       HPApi.setDebug(isDebug);
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
+
+      const healthCheckSetting = getHealthCheckSetting(options);
+      if (healthCheckSetting.isHealthCheckEnabled) {
+        startHealthCheckServer(healthCheckSetting.healthCheckPort);
+      }
 
       const scanConfig = getScanConfiguration(options);
 
@@ -509,4 +591,5 @@ async function main() {
   await program.parseAsync(process.argv);
 }
 
+console.log(`Current commit ID: ${commitInfo.commitId}`);
 main().catch((err) => console.log(err));

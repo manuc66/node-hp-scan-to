@@ -3,19 +3,18 @@ import WalkupScanDestination from "./WalkupScanDestination";
 import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
 import HPApi from "./HPApi";
 import fs from "fs/promises";
-import fsSync from "fs";
 import JpegUtil from "./JpegUtil";
 import { DeviceCapabilities } from "./DeviceCapabilities";
 import { waitForScanEvent, waitScanRequest } from "./listening";
 import ScanJobSettings from "./ScanJobSettings";
-import { createPdfFrom, ScanContent, ScanPage } from "./ScanContent";
+import { ScanContent, ScanPage } from "./ScanContent";
 import Job from "./Job";
 import { delay } from "./delay";
 import PathHelper from "./PathHelper";
 import ScanStatus from "./ScanStatus";
 import { InputSource } from "./InputSource";
-import axios from "axios";
-import FormData from "form-data";
+import { PaperlessConfig } from "./paperless/PaperlessConfig";
+import { postProcessing } from "./postProcessing";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -41,7 +40,7 @@ async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   return job;
 }
 
-async function TryGetDestination(
+async function tryGetDestination(
   event: Event,
 ): Promise<WalkupScanDestination | WalkupScanToCompDestination | null> {
   //this code can in some cases be executed before the user actually chooses between Document or Photo
@@ -74,7 +73,7 @@ async function TryGetDestination(
 async function scanProcessing(filePath: string): Promise<number | null> {
   const buffer: Buffer = await fs.readFile(filePath);
 
-  let height = JpegUtil.fixSizeWithDNL(buffer);
+  const height = JpegUtil.fixSizeWithDNL(buffer);
   if (height != null) {
     // rewrite the fixed file
     await fs.writeFile(filePath, buffer);
@@ -89,7 +88,7 @@ function createScanPage(
   filePath: string,
   sizeFixed: number | null,
 ): ScanPage {
-  let height = sizeFixed ?? job.imageHeight;
+  const height = sizeFixed ?? job.imageHeight;
   return {
     path: filePath,
     pageNumber: currentPageNumber,
@@ -100,7 +99,7 @@ function createScanPage(
   };
 }
 
-async function handleProcessingState(
+async function handleScanProcessingState(
   job: Job,
   inputSource: InputSource,
   folder: string,
@@ -171,7 +170,7 @@ async function executeScanJob(
     }
 
     if (job.jobState === "Processing") {
-      const page = await handleProcessingState(
+      const page = await handleScanProcessingState(
         job,
         inputSource,
         folder,
@@ -204,9 +203,9 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
   while (wait) {
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
 
-    let walkupScanToCompEvent =
+    const walkupScanToCompEvent =
       await HPApi.getWalkupScanToCompEvent(compEventURI);
-    let message = walkupScanToCompEvent.eventType;
+    const message = walkupScanToCompEvent.eventType;
 
     if (message === "ScanNewPageRequested") {
       startNewScanJob = true;
@@ -284,59 +283,6 @@ async function executeScanJobs(
   }
 }
 
-async function mergeToPdf(
-  folder: string,
-  scanCount: number,
-  scanJobContent: ScanContent,
-  filePattern: string | undefined,
-  date: Date,
-): Promise<string | null> {
-  if (scanJobContent.elements.length > 0) {
-    const pdfFilePath: string = PathHelper.getFileForScan(
-      folder,
-      scanCount,
-      filePattern,
-      "pdf",
-      date,
-    );
-    await createPdfFrom(scanJobContent, pdfFilePath);
-    scanJobContent.elements.forEach((e) => fs.unlink(e.path));
-    return pdfFilePath;
-  }
-  console.log(`No page available to build a pdf file`);
-  return null;
-}
-
-function displayPdfScan(
-  pdfFilePath: string | null,
-  scanJobContent: ScanContent,
-) {
-  if (pdfFilePath === null) {
-    console.log(`Pdf generated has not been generated`);
-    return;
-  }
-  console.log(
-    `The following page(s) have been rendered inside '${pdfFilePath}': `,
-  );
-  scanJobContent.elements.forEach((e) =>
-    console.log(
-      `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
-        e.height
-      }`,
-    ),
-  );
-}
-
-function displayJpegScan(scanJobContent: ScanContent) {
-  scanJobContent.elements.forEach((e) =>
-    console.log(
-      `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
-        e.height
-      } - ${e.path}`,
-    ),
-  );
-}
-
 function isPdf(
   destination: WalkupScanDestination | WalkupScanToCompDestination,
 ) {
@@ -405,43 +351,6 @@ export function getScanHeight(
   }
 }
 
-async function postProcessing(
-  scanConfig: ScanConfig,
-  folder: string,
-  scanCount: number,
-  scanJobContent: ScanContent,
-  scanDate: Date,
-  toPdf: boolean,
-) {
-  if (scanConfig.paperlessConfig) {
-    const pdfFilePath = await mergeToPdf(
-      folder,
-      scanCount,
-      scanJobContent,
-      scanConfig.directoryConfig.filePattern,
-      scanDate,
-    );
-    if (pdfFilePath) {
-      await uploadToPaperless(pdfFilePath, scanConfig.paperlessConfig);
-    } else {
-      console.log(
-        "Pdf generation has failed, nothing is going to be upladed to paperless",
-      );
-    }
-  } else if (toPdf) {
-    const pdfFilePath = await mergeToPdf(
-      folder,
-      scanCount,
-      scanJobContent,
-      scanConfig.directoryConfig.filePattern,
-      scanDate,
-    );
-    displayPdfScan(pdfFilePath, scanJobContent);
-  } else {
-    displayJpegScan(scanJobContent);
-  }
-}
-
 export async function saveScanFromEvent(
   event: Event,
   folder: string,
@@ -457,7 +366,7 @@ export async function saveScanFromEvent(
     }
   }
 
-  const destination = await TryGetDestination(event);
+  const destination = await tryGetDestination(event);
   if (!destination) {
     console.log("No shortcut selected!");
     return;
@@ -526,6 +435,7 @@ export async function saveScanFromEvent(
   await postProcessing(
     scanConfig,
     folder,
+    tempFolder,
     scanCount,
     scanJobContent,
     scanDate,
@@ -538,10 +448,7 @@ export type DirectoryConfig = {
   tempDirectory: string | undefined;
   filePattern: string | undefined;
 };
-export type PaperlessConfig = {
-  host: string;
-  authToken: string;
-};
+
 export type ScanConfig = {
   resolution: number;
   width: number | null;
@@ -560,34 +467,6 @@ export type SingleScanConfig = ScanConfig & {
   isDuplex: boolean;
   generatePdf: boolean;
 };
-
-async function uploadToPaperless(
-  filePath: string,
-  paperlessConfig: PaperlessConfig,
-) {
-  const url = `https://${paperlessConfig.host}/api/documents/post_document/`;
-
-  const authToken = paperlessConfig.authToken;
-
-  const fileStream = fsSync.createReadStream(filePath);
-
-  const form = new FormData();
-  form.append("document", fileStream);
-
-  try {
-    const response = await axios.post(url, form, {
-      headers: {
-        ...form.getHeaders(),
-        Authorization: `Token ${authToken}`,
-      },
-    });
-
-    console.log("Document successfully uploaded to paperless:", response.data);
-  } catch (error) {
-    console.error("Fail to upload document:", error);
-  }
-  fileStream.close();
-}
 
 export async function scanFromAdf(
   scanCount: number,
@@ -648,6 +527,7 @@ export async function scanFromAdf(
   await postProcessing(
     adfAutoScanConfig,
     folder,
+    tempFolder,
     scanCount,
     scanJobContent,
     date,

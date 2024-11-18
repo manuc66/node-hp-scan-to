@@ -6,9 +6,9 @@ import { DeviceCapabilities } from "./DeviceCapabilities";
 export async function waitScanRequest(compEventURI: string): Promise<boolean> {
   const waitMax = 50;
   for (let i = 0; i < waitMax; i++) {
-    let walkupScanToCompEvent =
+    const walkupScanToCompEvent =
       await HPApi.getWalkupScanToCompEvent(compEventURI);
-    let message = walkupScanToCompEvent.eventType;
+    const message = walkupScanToCompEvent.eventType;
     if (message === "HostSelected") {
       // this ok to wait
     } else if (message === "ScanRequested") {

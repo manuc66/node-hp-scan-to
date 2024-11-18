@@ -59,4 +59,31 @@ describe("ScanCaps", () => {
       expect(scanCaps.platenMaxHeight).to.be.eq(3508);
     });
   });
+  describe("Parsing ScanCaps_only_adf.xml", async () => {
+    let scanCaps: ScanCaps;
+
+    before(async () => {
+      const content: string = await fs.readFile(
+        path.resolve(
+          __dirname,
+          "./asset/ScanCaps_only_adf.xml"
+        ),
+        { encoding: "utf8" } //
+      );
+      scanCaps = await ScanCaps.createScanCaps(content);
+    });
+
+    it("AdfMaxWidth", async () => {
+      expect(scanCaps.adfMaxWidth).to.be.eq(2550);
+    });
+    it("AdfMaxHeight", async () => {
+      expect(scanCaps.adfMaxHeight).to.be.eq(5100);
+    });
+    it("PlatenMaxWidth", async () => {
+      expect(scanCaps.platenMaxWidth).to.be.eq(null);
+    });
+    it("PlatenMaxHeight", async () => {
+      expect(scanCaps.platenMaxHeight).to.be.eq(null);
+    });
+  });
 });
