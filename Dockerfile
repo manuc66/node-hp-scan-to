@@ -1,13 +1,15 @@
-FROM node:18-alpine  as build
+FROM node:18-alpine AS build
 WORKDIR /app
 
 ADD . .
+COPY src/commitInfo.json /app/src/commitInfo.json
+
 RUN yarn install -d \
- && yarn build \
+ && yarn build:docker \
  && rm dist/*.d.ts dist/*.js.map
 
-FROM node:18-alpine as app
-ENV NODE_ENV production
+FROM node:18-alpine AS app
+ENV NODE_ENV=production
 ADD root/ /
 
 # sets version for s6 overlay
@@ -48,4 +50,8 @@ RUN yarn install -d \
 VOLUME ["/scan"]
 ENTRYPOINT ["/init"]
 CMD ["/app.sh"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
 

@@ -1,6 +1,6 @@
 #!/command/with-contenv sh
 
-ARGS="-d /scan "
+ARGS="--health-check -d /scan "
 
 if [ ! -z "$IP" ]; then
     ARGS="${ARGS} -ip ${IP}"
@@ -28,6 +28,18 @@ fi
 
 if [ ! -z "$RESOLUTION" ]; then
     ARGS="${ARGS} -r ${RESOLUTION}"
+fi
+
+if [ ! -z "$PAPERLESS_POST_DOCUMENT_URL" ]; then
+    ARGS="${ARGS} -s ${PAPERLESS_POST_DOCUMENT_URL}"
+fi
+
+if [ ! -z "$PAPERLESS_TOKEN" ]; then
+    ARGS="${ARGS} -o ${PAPERLESS_TOKEN}"
+fi
+
+if [ ! -z "$PAPERLESS_KEEP_FILES" ]; then
+    ARGS="${ARGS} -k"
 fi
 
 if [ ! -z "$CMDLINE" ]; then

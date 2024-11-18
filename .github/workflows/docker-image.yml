@@ -45,6 +45,8 @@ jobs:
         run: yarn test
       - name: Build
         run: yarn build
+      - name: cat build
+        run: cat src/commitInfo.json
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
