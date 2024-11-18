@@ -597,6 +597,7 @@ export async function singleScan(
   await postProcessing(
     scanConfig,
     folder,
+    tempFolder,
     scanCount,
     scanJobContent,
     date,
