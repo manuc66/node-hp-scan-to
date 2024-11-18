@@ -17,19 +17,21 @@ Its primary purpose is to enable users to scan documents directly from an HP dev
 
 ## Supported devices
 It has been developed and tested with the following HP All-in-One Printers:
-- HP Deskjet 3520
-- HP Officejet 6500A Plus
+- HP DeskJet 3520
+- HP OfficeJet 6500A Plus
 - HP Smart Tank Plus 570 series
 
 Additionally, it has been reported to work on several other HP printer models.
-- HP Deskjet 3050 All-in-One Printer - J610a
-- HP Deskjet 5525
-- HP Officejet 3830
-- HP Officejet 5230
-- HP Officejet 5740
-- HP Officejet 6700 premium
-- HP Officejet 6950
-- HP Officejet 8010 series
+- HP DeskJet 3050 All-in-One - J610a
+- HP DeskJet 3775 All-in-One
+- HP DeskJet 4670 All-in-One
+- HP DeskJet 5525
+- HP OfficeJet 3830
+- HP OfficeJet 5230
+- HP OfficeJet 5740
+- HP OfficeJet 6700 Premium
+- HP OfficeJet 6950
+- HP OfficeJet 8010 series
 - HP OfficeJet 8012
 - HP OfficeJet Pro 7720 Wide Format All-in-One
 - HP OfficeJet Pro 8025e
@@ -55,7 +57,7 @@ Please note that the `node-hp-scan-to` project is not endorsed by nor affiliated
 - ✔️ Customizable resolution
 - ✔️ Customizable label on the device
 - ✔️ Multi platform: Linux, Windows and most probably macOS
-- ✔️ Folder target or paperless-ngx upload
+- ✔️ Folder target or paperless-ngx api upload
 - ✔️ Clear all registered target
 - ✔️ Automatic scan when automatic document feeder is getting loaded
 
