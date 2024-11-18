@@ -2,8 +2,9 @@ import { ScanContent } from "./ScanContent";
 import { mergeToPdf } from "./pdfProcessing";
 import {
   convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless,
-  mergeToPdfAndUploadAsSingleDocumentToPaperless, uploadImagesAsSeparateDocumentsToPaperless,
-  uploadPdfToPaperless
+  mergeToPdfAndUploadAsSingleDocumentToPaperless,
+  uploadImagesAsSeparateDocumentsToPaperless,
+  uploadPdfToPaperless,
 } from "./paperless/paperless";
 import { ScanConfig } from "./scanProcessing";
 

@@ -5,7 +5,7 @@
 
 import os from "os";
 import { Command, Option, OptionValues, program } from "commander";
-import Bonjour from "bonjour";
+import { Bonjour } from "bonjour-service";
 import config from "config";
 import HPApi from "./HPApi";
 import PathHelper from "./PathHelper";
@@ -174,7 +174,7 @@ async function clearRegistrationsCmd(cmd: Command) {
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
-    const bonjour = Bonjour();
+    const bonjour = new Bonjour();
     console.log("Searching device...");
     const browser = bonjour.find(
       {

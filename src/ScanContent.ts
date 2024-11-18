@@ -13,5 +13,3 @@ export interface ScanPage {
   xResolution: number;
   yResolution: number;
 }
-
-

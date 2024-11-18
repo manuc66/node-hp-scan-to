@@ -7,24 +7,30 @@ import fs from "fs/promises";
 import { convertToPdf, mergeToPdf } from "../pdfProcessing";
 import { PaperlessConfig } from "./PaperlessConfig";
 
-export async function uploadImagesAsSeparateDocumentsToPaperless(scanJobContent: ScanContent, paperlessConfig: PaperlessConfig) {
+export async function uploadImagesAsSeparateDocumentsToPaperless(
+  scanJobContent: ScanContent,
+  paperlessConfig: PaperlessConfig,
+) {
   for (let i = 0; i < scanJobContent.elements.length; ++i) {
     const filePath = scanJobContent.elements[i].path;
     await uploadToPaperless(filePath, paperlessConfig);
     if (!paperlessConfig.keepFiles) {
       await fs.unlink(filePath);
       console.log(
-        `Image document ${filePath} has been removed from the filesystem`
+        `Image document ${filePath} has been removed from the filesystem`,
       );
     }
   }
 }
 
-export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(scanJobContent: ScanContent, paperlessConfig: PaperlessConfig) {
+export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
+  scanJobContent: ScanContent,
+  paperlessConfig: PaperlessConfig,
+) {
   for (let i = 0; i < scanJobContent.elements.length; ++i) {
     const pdfFilePath = await convertToPdf(
       scanJobContent.elements[i],
-      !paperlessConfig.keepFiles
+      !paperlessConfig.keepFiles,
     );
     if (pdfFilePath) {
       await uploadToPaperless(pdfFilePath, paperlessConfig);
@@ -32,41 +38,51 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
     } else {
       console.log(
         "Pdf generation has failed, nothing is going to be uploaded to paperless for: " +
-        scanJobContent.elements[i].path
+          scanJobContent.elements[i].path,
       );
     }
   }
 }
 
-export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(folder: string, scanCount: number, scanJobContent: ScanContent, scanConfig: ScanConfig, scanDate: Date, paperlessConfig: PaperlessConfig) {
+export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
+  folder: string,
+  scanCount: number,
+  scanJobContent: ScanContent,
+  scanConfig: ScanConfig,
+  scanDate: Date,
+  paperlessConfig: PaperlessConfig,
+) {
   const pdfFilePath = await mergeToPdf(
     folder,
     scanCount,
     scanJobContent,
     scanConfig.directoryConfig.filePattern,
     scanDate,
-    !paperlessConfig.keepFiles
+    !paperlessConfig.keepFiles,
   );
   if (pdfFilePath) {
     await uploadToPaperless(pdfFilePath, paperlessConfig);
     await fs.unlink(pdfFilePath);
     console.log(
-      `Pdf document ${pdfFilePath} has been removed from the filesystem`
+      `Pdf document ${pdfFilePath} has been removed from the filesystem`,
     );
   } else {
     console.log(
-      "Pdf generation has failed, nothing is going to be uploaded to paperless"
+      "Pdf generation has failed, nothing is going to be uploaded to paperless",
     );
   }
 }
 
-export async function uploadPdfToPaperless(pdfFilePath: string | null, paperlessConfig: PaperlessConfig) {
+export async function uploadPdfToPaperless(
+  pdfFilePath: string | null,
+  paperlessConfig: PaperlessConfig,
+) {
   if (pdfFilePath) {
     await uploadToPaperless(pdfFilePath, paperlessConfig);
     if (!paperlessConfig.keepFiles) {
       await fs.unlink(pdfFilePath);
       console.log(
-        `Pdf document ${pdfFilePath} has been removed from the filesystem`
+        `Pdf document ${pdfFilePath} has been removed from the filesystem`,
       );
     }
   } else {
