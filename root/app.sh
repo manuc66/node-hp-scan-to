@@ -46,6 +46,10 @@ if [ ! -z "$CMDLINE" ]; then
     ARGS="${ARGS} ${CMDLINE}"
 fi
 
+if [ ! -z "$MAIN_COMMAND" ]; then
+    ARGS="${MAIN_COMMAND} ${ARGS}"
+fi
+
 cd /app
 
 echo "Starting"

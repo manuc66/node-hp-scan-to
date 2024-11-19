@@ -90,9 +90,13 @@ This will trigger a scan job as soon as the adf is loaded with paper
 
 Do run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help
 
+You can also set the environment `MAIN_COMMAND` to `adf-autoscan` with docker
+
 #### `clear-registrations`
 This will clear all registered target on the device (useful for trial and error and debugging)
 Do run `npx node-hp-scan-to clear-registrations --help` to get command line usage help
+
+You can also set the environment `MAIN_COMMAND` to `clear-registrations` with docker
 
 ### Run with docker
 
