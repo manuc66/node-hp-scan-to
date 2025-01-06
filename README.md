@@ -66,7 +66,7 @@ Please note that the `node-hp-scan-to` project is not endorsed by nor affiliated
 ### Command line
 `npx node-hp-scan-to`
 
-- `-ip` or `--address` followed by the ip address of the printer, i.e. `-ip 192.168.0.5`. This overrides `-p`.
+- `-a` or `--address` followed by the ip address of the printer, i.e. `-a 192.168.0.5`.
 - `--device-up-polling-interval` is the polling interval in milliseconds to detect if the device is up or not
 - `-l` or `--label` The label to display on the printer (default is the hostname).
 - `-n` or `--name` followed by the printer name, it probably contains spaces, so it needs to be quoted, i.e. `-name "Officejet 6500 E710n-z"`
@@ -113,7 +113,7 @@ For the correct permissions to the volume set the environment variables `PUID` a
 Exhaustive list of supported environment variables and their meaning, or correspondence with [command-line flags](#command-line):
 - `PUID`: id of user that will run the program
 - `PGID`: id of group that will run the program
-- `IP`: command-line flag `-ip`/`--address`
+- `IP`: command-line flag `-a`/`--address`
 - `PATTERN`: command-line flag `-p`/`--pattern`
 - `LABEL`: command-line flag `-l`/`--label`
 - `NAME`: command-line flag `-n`/`--name`
@@ -218,7 +218,7 @@ cd node-hp-scan-to
 yarn install -d
 yarn build
 # now start the program with the ip or name of the desired printer
-node dist/index.js -ip 192.168.1.4 # or -n "Officejet 6500 E710n-z"
+node dist/index.js -a 192.168.1.4 # or -n "Officejet 6500 E710n-z"
 ```
 
 #### Debugging

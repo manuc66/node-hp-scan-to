@@ -256,7 +256,7 @@ function setupScanParameters(command: Command): Command {
 
 function setupParameterOpts(command: Command): Command {
   command.option(
-    "-ip, --address <ip>",
+    "-a, --address <ip>",
     "IP address of the device (this overrides -p)",
   );
   command.option(
