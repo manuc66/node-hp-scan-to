@@ -26,6 +26,7 @@ import {
 } from "./scanProcessing";
 import * as commitInfo from "./commitInfo.json";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
+import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { startHealthCheckServer } from "./healthcheck";
 
 
@@ -251,6 +252,23 @@ function setupScanParameters(command: Command): Command {
     "-k, --paperless-keep-files",
     "Keep the scan files on the file system (default: false)",
   );
+
+  command.option(
+    "--nextcloud-url <nextcloud_url>",
+    "The nextcloud post document url (example: https://domain.tld)",
+  );
+  command.option(
+    "--nextcloud-username <nextcloud_username>",
+    "The nextcloud username",
+  );
+  command.option(
+    "--nextcloud-password <nextcloud_app_password>",
+    "The nextcloud app password for username",
+  );
+  command.option(
+    "--nextcloud-upload-folder <nextcloud_upload_folder>",
+    "The nextcloud post document url (default: scan)",
+  );
   return command;
 }
 
@@ -335,6 +353,35 @@ function getPaperlessConfig(
   }
 }
 
+function getNextcloudConfig(
+  parentOption: OptionValues,
+): NextcloudConfig | undefined {
+  const configNextcloudUrl: string =
+    parentOption.nextcloudUrl || getConfig("nextcloud_url");
+  const configNextcloudUsername: string =
+    parentOption.nextcloudUsername || getConfig("nextcloud_username");
+  const configNextcloudPassword: string =
+    parentOption.nextcloudPassword || getConfig("nextcloud_password");
+  const configNextUploadFolder =
+    parentOption.nextcloudUploadFolder ||
+    getConfig("nextcloud_upload_folder") ||
+    "scan";
+
+  if (configNextcloudUrl && configNextcloudUsername && configNextcloudPassword) {
+    console.log(
+      `Nextcloud configuration provided, url: ${configNextcloudUrl}, the username: ${configNextcloudUsername}, the password length: ${configNextcloudPassword.length}, upload folder: ${configNextUploadFolder}`,
+    );
+    return {
+      baseUrl: configNextcloudUrl,
+      uploadFolder: configNextUploadFolder,
+      userName: configNextcloudUsername,
+      password: configNextcloudPassword,
+    };
+  } else {
+   return undefined;
+  }
+}
+
 function getHealthCheckSetting(option: OptionValues) {
   const healthCheckEnabled: boolean =
     option.healthCheck || getConfig("enableHealthCheck") === true;
@@ -370,6 +417,7 @@ function getScanConfiguration(option: OptionValues) {
       : parseInt(configHeight, 10);
 
   const paperlessConfig = getPaperlessConfig(option);
+  const nextcloudConfig = getNextcloudConfig(option);
 
   const scanConfig: ScanConfig = {
     resolution: parseInt(
@@ -380,6 +428,7 @@ function getScanConfiguration(option: OptionValues) {
     height: height,
     directoryConfig,
     paperlessConfig,
+    nextcloudConfig,
   };
   return scanConfig;
 }

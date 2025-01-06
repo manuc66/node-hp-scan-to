@@ -14,6 +14,7 @@ import PathHelper from "./PathHelper";
 import ScanStatus from "./ScanStatus";
 import { InputSource } from "./InputSource";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
+import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { postProcessing } from "./postProcessing";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
@@ -455,6 +456,7 @@ export type ScanConfig = {
   height: number | null;
   directoryConfig: DirectoryConfig;
   paperlessConfig: PaperlessConfig | undefined;
+  nextcloudConfig: NextcloudConfig | undefined;
 };
 export type AdfAutoScanConfig = ScanConfig & {
   isDuplex: boolean;
