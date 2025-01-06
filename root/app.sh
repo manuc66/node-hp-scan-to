@@ -3,7 +3,7 @@
 ARGS="--health-check -d /scan "
 
 if [ ! -z "$IP" ]; then
-    ARGS="${ARGS} -ip ${IP}"
+    ARGS="${ARGS} -a ${IP}"
 fi
 
 if [ ! -z "$LABEL" ]; then
