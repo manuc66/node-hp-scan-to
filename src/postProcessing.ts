@@ -6,6 +6,10 @@ import {
   uploadImagesAsSeparateDocumentsToPaperless,
   uploadPdfToPaperless,
 } from "./paperless/paperless";
+import {
+  uploadPdfToNextcloud,
+  uploadImageToNextcloud,
+} from "./nextcloud/nextcloud";
 import { ScanConfig } from "./scanProcessing";
 
 export async function postProcessing(
@@ -18,6 +22,7 @@ export async function postProcessing(
   toPdf: boolean,
 ) {
   const paperlessConfig = scanConfig.paperlessConfig;
+  const nextcloudConfig = scanConfig.nextcloudConfig;
   if (toPdf) {
     const pdfFilePath = await mergeToPdf(
       paperlessConfig ? tempFolder : folder,
@@ -30,6 +35,9 @@ export async function postProcessing(
     displayPdfScan(pdfFilePath, scanJobContent);
     if (paperlessConfig) {
       await uploadPdfToPaperless(pdfFilePath, paperlessConfig);
+    }
+    if (nextcloudConfig) {
+      await uploadPdfToNextcloud(pdfFilePath, nextcloudConfig);
     }
   } else {
     displayJpegScan(scanJobContent);
@@ -56,6 +64,9 @@ export async function postProcessing(
           );
         }
       }
+    }
+    if (nextcloudConfig) {
+      await uploadImageToNextcloud(scanJobContent, nextcloudConfig);
     }
   }
 }
