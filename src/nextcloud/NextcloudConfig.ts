@@ -1,6 +1,7 @@
 export type NextcloudConfig = {
   baseUrl: string;
-  uploadFolder: string;
-  userName: string;
+  username: string;
   password: string;
+  uploadFolder: string;
+  keepFiles: boolean;
 };

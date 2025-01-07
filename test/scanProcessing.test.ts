@@ -22,7 +22,8 @@ describe("scanProcessing", () => {
         tempDirectory: undefined,
         filePattern: undefined,
       },
-      paperlessConfig: undefined
+      paperlessConfig: undefined,
+      nextcloudConfig: undefined
     };
     deviceCapabilities = {
       supportsMultiItemScanFromPlaten: false,
