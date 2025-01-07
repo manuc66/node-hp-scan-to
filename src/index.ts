@@ -28,7 +28,7 @@ import * as commitInfo from "./commitInfo.json";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
 import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { startHealthCheckServer } from "./healthcheck";
-
+import fs from "fs";
 
 let iteration = 0;
 
@@ -263,7 +263,11 @@ function setupScanParameters(command: Command): Command {
   );
   command.option(
     "--nextcloud-password <nextcloud_app_password>",
-    "The nextcloud app password for username",
+    "The nextcloud app password for username. Either this or nextcloud-password-file is required",
+  );
+  command.option(
+    "--nextcloud-password-file <nextcloud_app_password_file>",
+    "File name that contains the nextcloud app password for username. Either this or nextcloud-password is required",
   );
   command.option(
     "--nextcloud-upload-folder <nextcloud_upload_folder>",
@@ -319,10 +323,6 @@ function getPaperlessConfig(
     getConfig("paperless_post_document_url");
   const configPaperlessToken: string =
     parentOption.paperlessToken || getConfig("paperless_token");
-  const configPaperlessKeepFiles =
-    parentOption.paperlessKeepFiles ||
-    getConfig("paperless_keep_files") ||
-    false;
 
   if (paperlessPostDocumentUrl && configPaperlessToken) {
     const configPaperlessKeepFiles: boolean =
@@ -360,25 +360,44 @@ function getNextcloudConfig(
     parentOption.nextcloudUrl || getConfig("nextcloud_url");
   const configNextcloudUsername: string =
     parentOption.nextcloudUsername || getConfig("nextcloud_username");
-  const configNextcloudPassword: string =
+  let configNextcloudPassword: string =
     parentOption.nextcloudPassword || getConfig("nextcloud_password");
-  const configNextUploadFolder =
-    parentOption.nextcloudUploadFolder ||
-    getConfig("nextcloud_upload_folder") ||
-    "scan";
+  const configNextcloudPasswordFile: string =
+    parentOption.nextcloudPasswordFile || getConfig("nextcloud_password_file");
 
-  if (configNextcloudUrl && configNextcloudUsername && configNextcloudPassword) {
+  if (
+    configNextcloudUrl &&
+    configNextcloudUsername &&
+    (configNextcloudPassword || configNextcloudPasswordFile)
+  ) {
+    const configNextcloudUploadFolder =
+      parentOption.nextcloudUploadFolder ||
+      getConfig("nextcloud_upload_folder") ||
+      "scan";
+    const configNextcloudKeepFiles: boolean =
+      parentOption.nextcloudKeepFiles || false;
+
+    if(configNextcloudPasswordFile) {
+      configNextcloudPassword = fs.readFileSync(configNextcloudPasswordFile, "utf8");
+    }
+
     console.log(
-      `Nextcloud configuration provided, url: ${configNextcloudUrl}, the username: ${configNextcloudUsername}, the password length: ${configNextcloudPassword.length}, upload folder: ${configNextUploadFolder}`,
+      "Nextcloud configuration provided, url: %s, username: %s, password length: %d, upload folder: %s, keepFiles: %s",
+      configNextcloudUrl,
+      configNextcloudUsername,
+      configNextcloudPassword.length,
+      configNextcloudUploadFolder,
+      configNextcloudKeepFiles,
     );
     return {
       baseUrl: configNextcloudUrl,
-      uploadFolder: configNextUploadFolder,
-      userName: configNextcloudUsername,
+      username: configNextcloudUsername,
       password: configNextcloudPassword,
+      uploadFolder: configNextcloudUploadFolder,
+      keepFiles: configNextcloudKeepFiles,
     };
   } else {
-   return undefined;
+    return undefined;
   }
 }
 

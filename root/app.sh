@@ -54,7 +54,9 @@ if [ ! -z "$NEXTCLOUD_USERNAME" ]; then
     ARGS="${ARGS} --nextcloud-username ${NEXTCLOUD_USERNAME}"
 fi
 
-if [ ! -z "$NEXTCLOUD_PASSWORD" ]; then
+if [ ! -z "$NEXTCLOUD_PASSWORD_FILE" ]; then
+    ARGS="${ARGS} --nextcloud-password-file ${NEXTCLOUD_PASSWORD_FILE}"
+elif [ ! -z "$NEXTCLOUD_PASSWORD" ]; then
     ARGS="${ARGS} --nextcloud-password ${NEXTCLOUD_PASSWORD}"
 fi
 
