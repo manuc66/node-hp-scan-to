@@ -26,6 +26,7 @@ Additionally, it has been reported to work on several other HP printer models.
 - HP DeskJet 3775 All-in-One
 - HP DeskJet 4670 All-in-One
 - HP DeskJet 5525
+- HP Envy 4504 All-in-One
 - HP OfficeJet 3830
 - HP OfficeJet 5230
 - HP OfficeJet 5740
