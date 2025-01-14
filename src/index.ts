@@ -249,13 +249,13 @@ function setupScanParameters(command: Command): Command {
     "Always convert scan job to pdf before sending to paperless",
   );
   command.option(
-    "-k, --paperless-keep-files",
+    "-k, --keep-files",
     "Keep the scan files on the file system (default: false)",
   );
 
   command.option(
     "--nextcloud-url <nextcloud_url>",
-    "The nextcloud post document url (example: https://domain.tld)",
+    "The nextcloud url (example: https://domain.tld)",
   );
   command.option(
     "--nextcloud-username <nextcloud_username>",
@@ -271,7 +271,7 @@ function setupScanParameters(command: Command): Command {
   );
   command.option(
     "--nextcloud-upload-folder <nextcloud_upload_folder>",
-    "The nextcloud post document url (default: scan)",
+    "The upload folder where documents or images are uploaded (default: scan)",
   );
   return command;
 }
@@ -326,9 +326,7 @@ function getPaperlessConfig(
 
   if (paperlessPostDocumentUrl && configPaperlessToken) {
     const configPaperlessKeepFiles: boolean =
-      parentOption.paperlessKeepFiles ||
-      getConfig("paperless_keep_files") ||
-      false;
+      parentOption.keepFiles || getConfig("keep_files") || false;
     const groupMultiPageScanIntoAPdf: boolean =
       parentOption.paperlessGroupMultiPageScanIntoAPdf ||
       getConfig("paperless_group_multi_page_scan_into_a_pdf") ||
@@ -375,19 +373,17 @@ function getNextcloudConfig(
       getConfig("nextcloud_upload_folder") ||
       "scan";
     const configNextcloudKeepFiles: boolean =
-      parentOption.nextcloudKeepFiles || false;
+      parentOption.keepFiles || getConfig("keep_files") || false;
 
-    if(configNextcloudPasswordFile) {
-      configNextcloudPassword = fs.readFileSync(configNextcloudPasswordFile, "utf8");
+    if (configNextcloudPasswordFile) {
+      configNextcloudPassword = fs.readFileSync(
+        configNextcloudPasswordFile,
+        "utf8",
+      );
     }
 
     console.log(
-      "Nextcloud configuration provided, url: %s, username: %s, password length: %d, upload folder: %s, keepFiles: %s",
-      configNextcloudUrl,
-      configNextcloudUsername,
-      configNextcloudPassword.length,
-      configNextcloudUploadFolder,
-      configNextcloudKeepFiles,
+      `Nextcloud configuration provided, url: ${configNextcloudUrl}, username: ${configNextcloudUsername}, password length: ${configNextcloudPassword.length}, upload folder: ${configNextcloudUploadFolder}, keepFiles: ${configNextcloudKeepFiles}`,
     );
     return {
       baseUrl: configNextcloudUrl,

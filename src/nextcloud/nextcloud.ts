@@ -1,23 +1,19 @@
-import axios, {AxiosError} from "axios";
+import axios, { AxiosError } from "axios";
 import { ScanContent } from "../ScanContent";
 import { NextcloudConfig } from "./NextcloudConfig";
 import fs from "fs/promises";
 import path from "path";
 
-export async function uploadImageToNextcloud(
+export async function uploadImagesToNextcloud(
   scanJobContent: ScanContent,
   nextcloudConfig: NextcloudConfig,
 ) {
-  scanJobContent.elements.map(async (element) => {
-    const { path: filePath } = element;
-    await uploadToNextcloud(filePath, nextcloudConfig);
-    if (!nextcloudConfig.keepFiles) {
-      await fs.unlink(filePath);
-      console.log(
-        `Image document ${filePath} has been removed from the filesystem`,
-      );
-    }
-  });
+  await Promise.all(
+    scanJobContent.elements.map(async (element) => {
+      const { path: filePath } = element;
+      await uploadToNextcloud(filePath, nextcloudConfig);
+    }),
+  );
 }
 
 export async function uploadPdfToNextcloud(
@@ -26,15 +22,9 @@ export async function uploadPdfToNextcloud(
 ) {
   if (pdfFilePath) {
     await uploadToNextcloud(pdfFilePath, nextcloudConfig);
-    if (!nextcloudConfig.keepFiles) {
-      await fs.unlink(pdfFilePath);
-      console.log(
-        `Pdf document ${pdfFilePath} has been removed from the filesystem`,
-      );
-    }
   } else {
     console.log(
-      "Pdf generation has failed, nothing is going to be uploaded to paperless",
+      "Pdf generation has failed, nothing is going to be uploaded to Nextcloud",
     );
   }
 }
@@ -45,8 +35,8 @@ async function uploadToNextcloud(
 ): Promise<void> {
   const { baseUrl, username, password, uploadFolder } = nextcloudConfig;
   const fileName = path.basename(filePath);
-  const folderUrl = `${baseUrl}/remote.php/dav/files/${username}/${uploadFolder}`;
-  const uploadUrl = `${folderUrl}/${fileName}`;
+  const folderUrl = buildFolderUrl(baseUrl, username, uploadFolder);
+  const uploadUrl = buildUrl(folderUrl, [fileName]);
 
   const folderExists = await checkNextcloudFolderExists(nextcloudConfig);
   if (!folderExists) {
@@ -58,7 +48,7 @@ async function uploadToNextcloud(
 
   const auth = { username, password };
 
-  console.log(`Start uploading to nextcloud: ${fileName}`);
+  console.log(`Start uploading to Nextcloud: ${fileName}`);
   try {
     await axios({
       method: "PUT",
@@ -68,7 +58,7 @@ async function uploadToNextcloud(
     });
 
     console.log(
-      `Document successfully uploaded to Nextcloud: ${uploadFolder}/${fileName}`,
+      `Document successfully uploaded to Nextcloud. (Folder: ${uploadFolder}, File: ${fileName}`,
     );
   } catch (error) {
     console.error("Fail to upload document:", error);
@@ -79,7 +69,7 @@ async function checkNextcloudFolderExists(
   nextcloudConfig: NextcloudConfig,
 ): Promise<boolean> {
   const { baseUrl, username, password, uploadFolder } = nextcloudConfig;
-  const folderUrl = `${baseUrl}/remote.php/dav/files/${username}/${uploadFolder}`;
+  const folderUrl = buildFolderUrl(baseUrl, username, uploadFolder);
   const auth = { username, password };
 
   console.log("Check if upload folder exists");
@@ -101,4 +91,27 @@ async function checkNextcloudFolderExists(
     throw error;
   }
   return true;
+}
+
+function buildFolderUrl(
+  baseUrl: string,
+  username: string,
+  uploadFolder: string,
+) {
+  return buildUrl(baseUrl, [
+    "remote.php",
+    "dav",
+    "files",
+    username,
+    uploadFolder,
+  ]);
+}
+
+function buildUrl(baseUrl: string, path: string[]): string {
+  const url = new URL(baseUrl);
+  const search = /^\/+|\/+$/g;
+  path.forEach((part) => {
+    url.pathname = `${url.pathname.replace(search, "")}/${encodeURIComponent(part.replace(search, ""))}`;
+  });
+  return url.toString();
 }
