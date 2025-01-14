@@ -38,8 +38,26 @@ if [ ! -z "$PAPERLESS_TOKEN" ]; then
     ARGS="${ARGS} -o ${PAPERLESS_TOKEN}"
 fi
 
-if [ ! -z "$PAPERLESS_KEEP_FILES" ]; then
+if [ ! -z "$KEEP_FILES" ]; then
     ARGS="${ARGS} -k"
+fi
+
+if [ ! -z "$NEXTCLOUD_URL" ]; then
+    ARGS="${ARGS} --nextcloud-url ${NEXTCLOUD_URL}"
+fi
+
+if [ ! -z "$NEXTCLOUD_UPLOAD_FOLDER" ]; then
+    ARGS="${ARGS} --nextcloud-upload-folder ${NEXTCLOUD_UPLOAD_FOLDER}"
+fi
+
+if [ ! -z "$NEXTCLOUD_USERNAME" ]; then
+    ARGS="${ARGS} --nextcloud-username ${NEXTCLOUD_USERNAME}"
+fi
+
+if [ ! -z "$NEXTCLOUD_PASSWORD_FILE" ]; then
+    ARGS="${ARGS} --nextcloud-password-file ${NEXTCLOUD_PASSWORD_FILE}"
+elif [ ! -z "$NEXTCLOUD_PASSWORD" ]; then
+    ARGS="${ARGS} --nextcloud-password ${NEXTCLOUD_PASSWORD}"
 fi
 
 if [ ! -z "$CMDLINE" ]; then
