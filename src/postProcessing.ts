@@ -8,9 +8,10 @@ import {
 } from "./paperless/paperless";
 import {
   uploadPdfToNextcloud,
-  uploadImageToNextcloud,
+  uploadImagesToNextcloud,
 } from "./nextcloud/nextcloud";
 import { ScanConfig } from "./scanProcessing";
+import fs from "fs/promises";
 
 export async function postProcessing(
   scanConfig: ScanConfig,
@@ -39,6 +40,16 @@ export async function postProcessing(
     if (nextcloudConfig) {
       await uploadPdfToNextcloud(pdfFilePath, nextcloudConfig);
     }
+    if (
+      !paperlessConfig?.keepFiles &&
+      !nextcloudConfig?.keepFiles &&
+      pdfFilePath
+    ) {
+      await fs.unlink(pdfFilePath);
+      console.log(
+        `Pdf document ${pdfFilePath} has been removed from the filesystem`,
+      );
+    }
   } else {
     displayJpegScan(scanJobContent);
     if (paperlessConfig) {
@@ -66,7 +77,16 @@ export async function postProcessing(
       }
     }
     if (nextcloudConfig) {
-      await uploadImageToNextcloud(scanJobContent, nextcloudConfig);
+      await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+    }
+    if (!paperlessConfig?.keepFiles && !nextcloudConfig?.keepFiles) {
+      scanJobContent.elements.map(async (element) => {
+        const { path: filePath } = element;
+        await fs.unlink(filePath);
+        console.log(
+          `Image document ${filePath} has been removed from the filesystem`,
+        );
+      });
     }
   }
 }
