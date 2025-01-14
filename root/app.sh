@@ -38,7 +38,7 @@ if [ ! -z "$PAPERLESS_TOKEN" ]; then
     ARGS="${ARGS} -o ${PAPERLESS_TOKEN}"
 fi
 
-if [ ! -z "$PAPERLESS_KEEP_FILES" ]; then
+if [ ! -z "$KEEP_FILES" ]; then
     ARGS="${ARGS} -k"
 fi
 
