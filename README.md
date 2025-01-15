@@ -33,6 +33,7 @@ Additionally, it has been reported to work on several other HP printer models.
 - HP OfficeJet 6950
 - HP OfficeJet 8010 series
 - HP OfficeJet 8012
+- HP OfficeJet 8014
 - HP OfficeJet Pro 7720 Wide Format All-in-One
 - HP OfficeJet Pro 8025e
 - HP OfficeJet Pro 9012e
