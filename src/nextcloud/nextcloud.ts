@@ -8,25 +8,27 @@ export async function uploadImagesToNextcloud(
   scanJobContent: ScanContent,
   nextcloudConfig: NextcloudConfig,
 ) {
-  await Promise.all(
-    scanJobContent.elements.map(async (element) => {
+  await checkFolderAndUpload(nextcloudConfig, async () => {
+    for (const element of scanJobContent.elements) {
       const { path: filePath } = element;
       await uploadToNextcloud(filePath, nextcloudConfig);
-    }),
-  );
+    }
+  });
 }
 
 export async function uploadPdfToNextcloud(
   pdfFilePath: string | null,
   nextcloudConfig: NextcloudConfig,
 ) {
-  if (pdfFilePath) {
-    await uploadToNextcloud(pdfFilePath, nextcloudConfig);
-  } else {
-    console.log(
-      "Pdf generation has failed, nothing is going to be uploaded to Nextcloud",
-    );
-  }
+  await checkFolderAndUpload(nextcloudConfig, async () => {
+    if (pdfFilePath) {
+      await uploadToNextcloud(pdfFilePath, nextcloudConfig);
+    } else {
+      console.log(
+        "Pdf generation has failed, nothing is going to be uploaded to Nextcloud",
+      );
+    }
+  });
 }
 
 async function uploadToNextcloud(
@@ -35,17 +37,11 @@ async function uploadToNextcloud(
 ): Promise<void> {
   const { baseUrl, username, password, uploadFolder } = nextcloudConfig;
   const fileName = path.basename(filePath);
+
   const folderUrl = buildFolderUrl(baseUrl, username, uploadFolder);
   const uploadUrl = buildUrl(folderUrl, [fileName]);
 
-  const folderExists = await checkNextcloudFolderExists(nextcloudConfig);
-  if (!folderExists) {
-    console.error("Upload folder does not exist; skipping upload");
-    return;
-  }
-
   const fileBuffer: Buffer = await fs.readFile(filePath);
-
   const auth = { username, password };
 
   console.log(`Start uploading to Nextcloud: ${fileName}`);
@@ -58,11 +54,24 @@ async function uploadToNextcloud(
     });
 
     console.log(
-      `Document successfully uploaded to Nextcloud. (Folder: ${uploadFolder}, File: ${fileName}`,
+      `Document successfully uploaded to Nextcloud. (Folder: ${uploadFolder}, File: ${fileName})`,
     );
   } catch (error) {
     console.error("Fail to upload document:", error);
   }
+}
+
+async function checkFolderAndUpload(
+  nextcloudConfig: NextcloudConfig,
+  uploadFunction: () => Promise<void>,
+) {
+  const folderExists = await checkNextcloudFolderExists(nextcloudConfig);
+  if (!folderExists) {
+    console.error("Upload folder does not exist; skipping upload");
+    return;
+  }
+
+  await uploadFunction();
 }
 
 async function checkNextcloudFolderExists(
