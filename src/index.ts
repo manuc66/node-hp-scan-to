@@ -376,10 +376,9 @@ function getNextcloudConfig(
       parentOption.keepFiles || getConfig("keep_files") || false;
 
     if (configNextcloudPasswordFile) {
-      configNextcloudPassword = fs.readFileSync(
-        configNextcloudPasswordFile,
-        "utf8",
-      );
+      configNextcloudPassword = fs
+        .readFileSync(configNextcloudPasswordFile, "utf8")
+        .trimEnd();
     }
 
     console.log(
