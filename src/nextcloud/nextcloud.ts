@@ -41,20 +41,32 @@ async function uploadToNextcloud(
   const folderUrl = buildFolderUrl(baseUrl, username, uploadFolder);
   const uploadUrl = buildUrl(folderUrl, [fileName]);
 
-  const fileBuffer: Buffer = await fs.readFile(filePath);
+  let fileBuffer: Buffer;
+  try {
+    fileBuffer = await fs.readFile(filePath);
+  } catch (e) {
+    console.error("Fail to read file:", e);
+    return;
+  }
   const auth = { username, password };
 
   console.log(`Start uploading to Nextcloud: ${fileName}`);
   try {
-    await axios({
+    const response = await axios({
       method: "PUT",
       url: uploadUrl,
       auth,
       data: fileBuffer,
     });
 
+    let action: string;
+    if (response.status === 201) {
+      action = "created";
+    } else {
+      action = "updated";
+    }
     console.log(
-      `Document successfully uploaded to Nextcloud. (Folder: ${uploadFolder}, File: ${fileName})`,
+      `Document successfully ${action} file at Nextcloud. (Folder: ${uploadFolder}, File: ${fileName})`,
     );
   } catch (error) {
     console.error("Fail to upload document:", error);
@@ -67,7 +79,9 @@ async function checkFolderAndUpload(
 ) {
   const folderExists = await checkNextcloudFolderExists(nextcloudConfig);
   if (!folderExists) {
-    console.error("Upload folder does not exist; skipping upload");
+    console.log(
+      "Upload folder does not exist or user has no permission; skipping upload",
+    );
     return;
   }
 
@@ -94,10 +108,16 @@ async function checkNextcloudFolderExists(
   } catch (error) {
     const axiosError = error as AxiosError;
     if (axiosError.response?.status === 404) {
-      console.error(`Upload folder '${uploadFolder}' not found in Nextcloud`);
-      return false;
+      console.warn(`Upload folder '${uploadFolder}' not found in Nextcloud`);
+    } else if (axiosError.response?.status === 401) {
+      console.warn(
+        `User has no permission to access upload folder '${uploadFolder}' in Nextcloud`,
+      );
+    } else {
+      console.error("Fail to check upload folder exists:", axiosError.toJSON());
     }
-    throw error;
+    console.trace("Error response:", axiosError.response);
+    return false;
   }
   return true;
 }
