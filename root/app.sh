@@ -81,6 +81,5 @@ fi
 cd /app
 
 echo "Starting"
-echo "Executing command: node index.js " "${ARGS[@]}"
 s6-setuidgid node \
     node index.js "${ARGS[@]}"
