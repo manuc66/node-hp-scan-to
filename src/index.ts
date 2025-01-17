@@ -26,8 +26,9 @@ import {
 } from "./scanProcessing";
 import * as commitInfo from "./commitInfo.json";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
+import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { startHealthCheckServer } from "./healthcheck";
-
+import fs from "fs";
 
 let iteration = 0;
 
@@ -248,8 +249,29 @@ function setupScanParameters(command: Command): Command {
     "Always convert scan job to pdf before sending to paperless",
   );
   command.option(
-    "-k, --paperless-keep-files",
+    "-k, --keep-files",
     "Keep the scan files on the file system (default: false)",
+  );
+
+  command.option(
+    "--nextcloud-url <nextcloud_url>",
+    "The nextcloud url (example: https://domain.tld)",
+  );
+  command.option(
+    "--nextcloud-username <nextcloud_username>",
+    "The nextcloud username",
+  );
+  command.option(
+    "--nextcloud-password <nextcloud_app_password>",
+    "The nextcloud app password for username. Either this or nextcloud-password-file is required",
+  );
+  command.option(
+    "--nextcloud-password-file <nextcloud_app_password_file>",
+    "File name that contains the nextcloud app password for username. Either this or nextcloud-password is required",
+  );
+  command.option(
+    "--nextcloud-upload-folder <nextcloud_upload_folder>",
+    "The upload folder where documents or images are uploaded (default: scan)",
   );
   return command;
 }
@@ -301,16 +323,10 @@ function getPaperlessConfig(
     getConfig("paperless_post_document_url");
   const configPaperlessToken: string =
     parentOption.paperlessToken || getConfig("paperless_token");
-  const configPaperlessKeepFiles =
-    parentOption.paperlessKeepFiles ||
-    getConfig("paperless_keep_files") ||
-    false;
 
   if (paperlessPostDocumentUrl && configPaperlessToken) {
     const configPaperlessKeepFiles: boolean =
-      parentOption.paperlessKeepFiles ||
-      getConfig("paperless_keep_files") ||
-      false;
+      parentOption.keepFiles || getConfig("keep_files") || false;
     const groupMultiPageScanIntoAPdf: boolean =
       parentOption.paperlessGroupMultiPageScanIntoAPdf ||
       getConfig("paperless_group_multi_page_scan_into_a_pdf") ||
@@ -329,6 +345,51 @@ function getPaperlessConfig(
       keepFiles: configPaperlessKeepFiles,
       groupMultiPageScanIntoAPdf: groupMultiPageScanIntoAPdf,
       alwaysSendAsPdfFile: alwaysSendAsPdfFile,
+    };
+  } else {
+    return undefined;
+  }
+}
+
+function getNextcloudConfig(
+  parentOption: OptionValues,
+): NextcloudConfig | undefined {
+  const configNextcloudUrl: string =
+    parentOption.nextcloudUrl || getConfig("nextcloud_url");
+  const configNextcloudUsername: string =
+    parentOption.nextcloudUsername || getConfig("nextcloud_username");
+  let configNextcloudPassword: string =
+    parentOption.nextcloudPassword || getConfig("nextcloud_password");
+  const configNextcloudPasswordFile: string =
+    parentOption.nextcloudPasswordFile || getConfig("nextcloud_password_file");
+
+  if (
+    configNextcloudUrl &&
+    configNextcloudUsername &&
+    (configNextcloudPassword || configNextcloudPasswordFile)
+  ) {
+    const configNextcloudUploadFolder =
+      parentOption.nextcloudUploadFolder ||
+      getConfig("nextcloud_upload_folder") ||
+      "scan";
+    const configNextcloudKeepFiles: boolean =
+      parentOption.keepFiles || getConfig("keep_files") || false;
+
+    if (configNextcloudPasswordFile) {
+      configNextcloudPassword = fs
+        .readFileSync(configNextcloudPasswordFile, "utf8")
+        .trimEnd();
+    }
+
+    console.log(
+      `Nextcloud configuration provided, url: ${configNextcloudUrl}, username: ${configNextcloudUsername}, password length: ${configNextcloudPassword.length}, upload folder: ${configNextcloudUploadFolder}, keepFiles: ${configNextcloudKeepFiles}`,
+    );
+    return {
+      baseUrl: configNextcloudUrl,
+      username: configNextcloudUsername,
+      password: configNextcloudPassword,
+      uploadFolder: configNextcloudUploadFolder,
+      keepFiles: configNextcloudKeepFiles,
     };
   } else {
     return undefined;
@@ -370,6 +431,7 @@ function getScanConfiguration(option: OptionValues) {
       : parseInt(configHeight, 10);
 
   const paperlessConfig = getPaperlessConfig(option);
+  const nextcloudConfig = getNextcloudConfig(option);
 
   const scanConfig: ScanConfig = {
     resolution: parseInt(
@@ -380,6 +442,7 @@ function getScanConfiguration(option: OptionValues) {
     height: height,
     directoryConfig,
     paperlessConfig,
+    nextcloudConfig,
   };
   return scanConfig;
 }

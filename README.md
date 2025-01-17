@@ -26,6 +26,7 @@ Additionally, it has been reported to work on several other HP printer models.
 - HP DeskJet 3775 All-in-One
 - HP DeskJet 4670 All-in-One
 - HP DeskJet 5525
+- HP Envy 4504 All-in-One
 - HP OfficeJet 3830
 - HP OfficeJet 5230
 - HP OfficeJet 5740
@@ -78,7 +79,13 @@ Please note that the `node-hp-scan-to` project is not endorsed by nor affiliated
 - `-w` or `--width` followed by an integer, the with in pixel of the scans (default: 2481)
 - `-h` or `--height` followed by an integer, the height in pixel of the scans (default: 3507)
 - `-s` or `--paperless-post-document-url` followed by the paperless post document url (example: https://domain.tld/api/documents/post_document/)
-- `k` or `--paperless-token` followed by te paperless-ngx api token
+- `-o` or `--paperless-token` followed by te paperless-ngx api token
+- `--nextcloud-url` followed by the nextcloud url (example: https://domain.tld)
+- `--nextcloud-username` followed by the nextcloud username, must have write access to the upload folder
+- `--nextcloud-password` followed by the nextcloud app password for the username. Either this or `nextcloud-password-file` is required. If both are provided, `nextcloud-password-file` is used.
+- `--nextcloud-password-file` File name that contains the nextcloud app password for the username. Either this or `nextcloud-password` is required. If both are provided, `nextcloud-password-file` is used.
+- `--nextcloud-upload-folder` followed by the upload folder where documents or images are uploaded (default: scan)
+- `-k` or `--keep-files`: if set the scanned files will not be deleted, after uploading to paperless-ngx or nextcloud
 - `-D, --debug"` enables debug logs.
 
 #### `listen command`
@@ -123,6 +130,12 @@ Exhaustive list of supported environment variables and their meaning, or corresp
 - `RESOLUTION`: command-line flag `-r`/`--resolution`
 - `PAPERLESS_POST_DOCUMENT_URL`: the paperless post document url (if provided with token, a pdf is uploaded to paperless-ngx) for example: `PAPERLESS_POST_DOCUMENT_URL= "http://<paperless-host>:<port>/api/documents/post_document/"`
 - `PAPERLESS_TOKEN`: the paperless api token for example: `PAPERLESS_TOKEN= "xxxxxxxxxxxx..."`
+- `NEXTCLOUD_URL`: the nextcloud URL, for example `https://nextcloud.example.tld`
+- `NEXTCLOUD_UPLOAD_FOLDER`: upload folder where documents or images are uploaded. User must have write permission on this folder. If not provided, `scan` is used
+- `NEXTCLOUD_USERNAME`: nextcloud user name
+- `NEXTCLOUD_PASSWORD`: password of nextcloud user. Either this or `NEXTCLOUD_PASSWORD_FILE` is required. If both are provided, value of `NEXTCLOUD_PASSWORD_FILE` is used.
+- `NEXTCLOUD_PASSWORD_FILE`: file name containing password of nextcloud user. Either this or `NEXTCLOUD_PASSWORD` is required. If both are provided, this value is used. For example: `NEXTCLOUD_PASSWORD_FILE=./nextcloud_password.secret`. Preferably for use in [docker compose secrets](https://docs.docker.com/reference/compose-file/secrets/)
+- `$KEEP_FILES`: if set the scanned files will not be deleted, after uploading to paperless-ngx or nextcloud
 - `CMDLINE`: additional command-line flags that will be put at the end of the command.
 
 __To enable debug logs set the environment variable `CMDLINE` to `-D`.__
