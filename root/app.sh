@@ -14,8 +14,10 @@ if [ -n "$IP" ]; then
     ARGS+=("-a" "$IP")
 fi
 
-if [ -n "$LABEL" ]; then
-    ARGS+=("-l" "$LABEL")
+if [ "$MAIN_COMMAND" != "adf-autoscan" ]; then
+  if [ -n "$LABEL" ]; then
+      ARGS+=("-l" "$LABEL")
+  fi
 fi
 
 if [ -n "$NAME" ]; then
@@ -79,5 +81,6 @@ fi
 cd /app
 
 echo "Starting"
+echo "Executing command: node index.js " "${ARGS[@]}"
 s6-setuidgid node \
-    node index.js "${ARGS[@]}" "$@"
+    node index.js "${ARGS[@]}"
