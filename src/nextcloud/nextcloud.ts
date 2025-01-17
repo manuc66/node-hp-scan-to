@@ -79,7 +79,7 @@ async function checkFolderAndUpload(
 ) {
   const folderExists = await checkNextcloudFolderExists(nextcloudConfig);
   if (!folderExists) {
-    console.info(
+    console.log(
       "Upload folder does not exist or user has no permission; skipping upload",
     );
     return;
@@ -116,6 +116,7 @@ async function checkNextcloudFolderExists(
     } else {
       console.error("Fail to check upload folder exists:", axiosError.toJSON());
     }
+    console.trace("Error response:", axiosError.response);
     return false;
   }
   return true;
