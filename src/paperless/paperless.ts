@@ -14,12 +14,6 @@ export async function uploadImagesAsSeparateDocumentsToPaperless(
   for (let i = 0; i < scanJobContent.elements.length; ++i) {
     const filePath = scanJobContent.elements[i].path;
     await uploadToPaperless(filePath, paperlessConfig);
-    if (!paperlessConfig.keepFiles) {
-      await fs.unlink(filePath);
-      console.log(
-        `Image document ${filePath} has been removed from the filesystem`,
-      );
-    }
   }
 }
 
@@ -79,12 +73,6 @@ export async function uploadPdfToPaperless(
 ) {
   if (pdfFilePath) {
     await uploadToPaperless(pdfFilePath, paperlessConfig);
-    if (!paperlessConfig.keepFiles) {
-      await fs.unlink(pdfFilePath);
-      console.log(
-        `Pdf document ${pdfFilePath} has been removed from the filesystem`,
-      );
-    }
   } else {
     console.log(
       "Pdf generation has failed, nothing is going to be uploaded to paperless",
