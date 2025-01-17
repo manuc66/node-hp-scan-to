@@ -41,7 +41,8 @@ RUN export SYS_ARCH=$(uname -m); \
     echo "⬇️ Install shadow (for groupmod and usermod) and tzdata (for TZ env variable)" \
     && apk add --no-cache shadow tzdata curl
 
-
+# add bash
+RUN apk add --no-cache bash
 
 # add builded app
 WORKDIR /app
