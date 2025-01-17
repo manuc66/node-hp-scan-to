@@ -2,7 +2,7 @@
 
 # Initialize an array for arguments
 
-if [ ! -z "$MAIN_COMMAND" ]; then
+if [ -n "$MAIN_COMMAND" ]; then
     ARGS=("${MAIN_COMMAND}")
 else
     ARGS=("listen")
@@ -10,67 +10,67 @@ fi
 
 ARGS+=("--health-check")
 
-if [ ! -z "$IP" ]; then
+if [ -n "$IP" ]; then
     ARGS+=("-a" "$IP")
 fi
 
-if [ ! -z "$LABEL" ]; then
+if [ -n "$LABEL" ]; then
     ARGS+=("-l" "$LABEL")
 fi
 
-if [ ! -z "$NAME" ]; then
+if [ -n "$NAME" ]; then
     ARGS+=("-n" "$NAME")
 fi
 
-if [ ! -z "$DIR" ]; then
+if [ -n "$DIR" ]; then
     ARGS+=("-d" "$DIR")
 else
     ARGS+=("-d" "/scan")
 fi
 
-if [ ! -z "$TEMP_DIR" ]; then
+if [ -n "$TEMP_DIR" ]; then
     ARGS+=("-t" "$TEMP_DIR")
 fi
 
-if [ ! -z "$PATTERN" ]; then
+if [ -n "$PATTERN" ]; then
     ARGS+=("-p" "$PATTERN")
 fi
 
-if [ ! -z "$RESOLUTION" ]; then
+if [ -n "$RESOLUTION" ]; then
     ARGS+=("-r" "$RESOLUTION")
 fi
 
-if [ ! -z "$PAPERLESS_POST_DOCUMENT_URL" ]; then
+if [ -n "$PAPERLESS_POST_DOCUMENT_URL" ]; then
     ARGS+=("-s" "$PAPERLESS_POST_DOCUMENT_URL")
 fi
 
-if [ ! -z "$PAPERLESS_TOKEN" ]; then
+if [ -n "$PAPERLESS_TOKEN" ]; then
     ARGS+=("-o" "$PAPERLESS_TOKEN")
 fi
 
-if [ ! -z "$KEEP_FILES" ]; then
+if [ -n "$KEEP_FILES" ]; then
     ARGS+=("-k")
 fi
 
-if [ ! -z "$NEXTCLOUD_URL" ]; then
+if [ -n "$NEXTCLOUD_URL" ]; then
     ARGS+=("--nextcloud-url" "$NEXTCLOUD_URL")
 fi
 
-if [ ! -z "$NEXTCLOUD_UPLOAD_FOLDER" ]; then
+if [ -n "$NEXTCLOUD_UPLOAD_FOLDER" ]; then
     ARGS+=("--nextcloud-upload-folder" "$NEXTCLOUD_UPLOAD_FOLDER")
 fi
 
-if [ ! -z "$NEXTCLOUD_USERNAME" ]; then
+if [ -n "$NEXTCLOUD_USERNAME" ]; then
     ARGS+=("--nextcloud-username" "$NEXTCLOUD_USERNAME")
 fi
 
-if [ ! -z "$NEXTCLOUD_PASSWORD_FILE" ]; then
+if [ -n "$NEXTCLOUD_PASSWORD_FILE" ]; then
     ARGS+=("--nextcloud-password-file" "$NEXTCLOUD_PASSWORD_FILE")
-elif [ ! -z "$NEXTCLOUD_PASSWORD" ]; then
+elif [ -n "$NEXTCLOUD_PASSWORD" ]; then
     ARGS+=("--nextcloud-password" "$NEXTCLOUD_PASSWORD")
 fi
 
-if [ ! -z "$CMDLINE" ]; then
+if [ -n "$CMDLINE" ]; then
     # Split CMDLINE into words and add to ARGS
     set -- $CMDLINE
     ARGS+=("$@")
