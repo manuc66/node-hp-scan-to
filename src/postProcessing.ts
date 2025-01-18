@@ -25,7 +25,7 @@ export async function postProcessing(
   toPdf: boolean,
 ) {
   if (toPdf) {
-    await handlePdfProcessing(
+    await handlePdfPostProcessing(
       folder,
       tempFolder,
       scanCount,
@@ -34,7 +34,7 @@ export async function postProcessing(
       scanConfig,
     );
   } else {
-    await handleImageProcessing(
+    await handleImagePostProcessing(
       folder,
       scanCount,
       scanJobContent,
@@ -44,7 +44,7 @@ export async function postProcessing(
   }
 }
 
-async function handlePdfProcessing(
+async function handlePdfPostProcessing(
   folder: string,
   tempFolder: string,
   scanCount: number,
@@ -63,17 +63,19 @@ async function handlePdfProcessing(
     scanDate,
     true,
   );
-  displayPdfScan(pdfFilePath, scanJobContent);
-  if (paperlessConfig) {
-    await uploadPdfToPaperless(pdfFilePath, paperlessConfig);
+  if (pdfFilePath != null) {
+    displayPdfScan(pdfFilePath, scanJobContent);
+    if (paperlessConfig) {
+      await uploadPdfToPaperless(pdfFilePath, paperlessConfig);
+    }
+    if (nextcloudConfig) {
+      await uploadPdfToNextcloud(pdfFilePath, nextcloudConfig);
+    }
+    await cleanUpFilesIfNeeded([pdfFilePath], paperlessConfig, nextcloudConfig);
   }
-  if (nextcloudConfig) {
-    await uploadPdfToNextcloud(pdfFilePath, nextcloudConfig);
-  }
-  await cleanUpFilesIfNeeded([pdfFilePath], paperlessConfig, nextcloudConfig);
 }
 
-async function handleImageProcessing(
+async function handleImagePostProcessing(
   folder: string,
   scanCount: number,
   scanJobContent: ScanContent,
@@ -146,17 +148,17 @@ function displayJpegScan(scanJobContent: ScanContent) {
 }
 
 async function cleanUpFilesIfNeeded(
-  filePaths: (string | null)[],
+  filePaths: string[],
   paperlessConfig: PaperlessConfig | undefined,
   nextcloudConfig: NextcloudConfig | undefined,
 ) {
-  if (!paperlessConfig?.keepFiles && !nextcloudConfig?.keepFiles) {
+  let keepFiles: boolean =
+    paperlessConfig?.keepFiles ?? nextcloudConfig?.keepFiles ?? true;
+  if (!keepFiles) {
     await Promise.all(
       filePaths.map(async (filePath) => {
-        if (filePath) {
-          await fs.unlink(filePath);
-          console.log(`File ${filePath} has been removed from the filesystem`);
-        }
+        await fs.unlink(filePath);
+        console.log(`File ${filePath} has been removed from the filesystem`);
       }),
     );
   }
