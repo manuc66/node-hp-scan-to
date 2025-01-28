@@ -48,5 +48,7 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
     platenMaxHeight: scanCaps?.platenMaxHeight || null,
     adfMaxWidth: scanCaps?.adfMaxWidth || null,
     adfMaxHeight: scanCaps?.adfMaxHeight || null,
+    adfDuplexMaxWidth: scanCaps?.adfDuplexMaxWidth || null,
+    adfDuplexMaxHeight: scanCaps?.adfDUplexMaxHeight || null,
   };
 }
