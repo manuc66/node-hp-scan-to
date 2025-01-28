@@ -1,6 +1,6 @@
-<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!-- THIS DATA SUBJECT TO DISCLAIMER(S) INCLUDED WITH THE PRODUCT OF ORIGIN. -->
-<ScanCaps xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns=\"http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19\">
+<ScanCaps xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.hp.com/schemas/imaging/con/cnx/scan/2008/08/19">
     <DeviceCaps>
         <ModelName>HP OfficeJet Pro 9010 series</ModelName>
         <DerivativeNumber>58</DerivativeNumber>
