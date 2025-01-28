@@ -314,7 +314,9 @@ export function getScanWidth(
 ): number | null {
   const maxWidth =
     inputSource === InputSource.Adf
-      ? (isDuplex ? deviceCapabilities.adfDuplexMaxWidth : deviceCapabilities.adfMaxWidth)
+      ? isDuplex
+        ? deviceCapabilities.adfDuplexMaxWidth
+        : deviceCapabilities.adfMaxWidth
       : deviceCapabilities.platenMaxWidth;
 
   if (scanConfig.width && scanConfig.width > 0) {
@@ -336,7 +338,9 @@ export function getScanHeight(
 ): number | null {
   const maxHeight =
     inputSource === InputSource.Adf
-      ? (isDuplex ? deviceCapabilities.adfDuplexMaxHeight : deviceCapabilities.adfMaxHeight)
+      ? isDuplex
+        ? deviceCapabilities.adfDuplexMaxHeight
+        : deviceCapabilities.adfMaxHeight
       : deviceCapabilities.platenMaxHeight;
 
   if (scanConfig.height && scanConfig.height > 0) {
@@ -401,8 +405,18 @@ export async function saveScanFromEvent(
   console.log("Afd is : " + scanStatus.adfState);
 
   const inputSource = scanStatus.getInputSource();
-  const scanWidth = getScanWidth(scanConfig, inputSource, deviceCapabilities, isDuplex);
-  const scanHeight = getScanHeight(scanConfig, inputSource, deviceCapabilities, isDuplex);
+  const scanWidth = getScanWidth(
+    scanConfig,
+    inputSource,
+    deviceCapabilities,
+    isDuplex,
+  );
+  const scanHeight = getScanHeight(
+    scanConfig,
+    inputSource,
+    deviceCapabilities,
+    isDuplex,
+  );
 
   const scanJobSettings = new ScanJobSettings(
     inputSource,
