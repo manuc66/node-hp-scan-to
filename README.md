@@ -20,6 +20,7 @@ It has been developed and tested with the following HP All-in-One Printers:
 - HP DeskJet 3520
 - HP OfficeJet 6500A Plus
 - HP Smart Tank Plus 570 series
+- HP OfficeJet Pro 9019e
 
 Additionally, it has been reported to work on several other HP printer models.
 - HP DeskJet 3050 All-in-One - J610a
