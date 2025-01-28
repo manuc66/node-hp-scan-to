@@ -85,11 +85,16 @@ export default class ScanCaps {
 
   get adfDuplexMaxWidth(): number | null {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf")
-      && Object.prototype.hasOwnProperty.call(this.data["ScanCaps"]["Adf"][0], "AdfDuplexer")
+      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf") &&
+      Object.prototype.hasOwnProperty.call(
+        this.data["ScanCaps"]["Adf"][0],
+        "AdfDuplexer",
+      )
     ) {
       return Number.parseInt(
-        this.data["ScanCaps"]["Adf"][0]["AdfDuplexer"][0]["AdfDuplexMaxWidth"][0],
+        this.data["ScanCaps"]["Adf"][0]["AdfDuplexer"][0][
+          "AdfDuplexMaxWidth"
+        ][0],
         10,
       );
     } else {
@@ -99,11 +104,16 @@ export default class ScanCaps {
 
   get adfDuplexMaxHeight(): number | null {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf")
-      && Object.prototype.hasOwnProperty.call(this.data["ScanCaps"]["Adf"][0], "AdfDuplexer")
+      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf") &&
+      Object.prototype.hasOwnProperty.call(
+        this.data["ScanCaps"]["Adf"][0],
+        "AdfDuplexer",
+      )
     ) {
       return Number.parseInt(
-        this.data["ScanCaps"]["Adf"][0]["AdfDuplexer"][0]["AdfDuplexMaxHeight"][0],
+        this.data["ScanCaps"]["Adf"][0]["AdfDuplexer"][0][
+          "AdfDuplexMaxHeight"
+        ][0],
         10,
       );
     } else {
