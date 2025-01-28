@@ -85,7 +85,7 @@ export default class ScanCaps {
 
   get adfDuplexMaxWidth(): number | null {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf"))
+      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf")
       && Object.prototype.hasOwnProperty.call(this.data["ScanCaps"]["Adf"], "AdfDuplexer")
     ) {
       return Number.parseInt(
@@ -99,7 +99,7 @@ export default class ScanCaps {
 
   get adfDuplexMaxHeight(): number | null {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf"))
+      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf")
       && Object.prototype.hasOwnProperty.call(this.data["ScanCaps"]["Adf"], "AdfDuplexer")
     ) {
       return Number.parseInt(
