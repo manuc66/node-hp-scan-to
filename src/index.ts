@@ -424,9 +424,9 @@ function getScanConfiguration(option: OptionValues) {
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configWidth, 10);
 
-  const configHeight = (option.width || getConfig("height") || "0").toString();
+  const configHeight = (option.height || getConfig("height") || 0).toString();
   const height =
-    configWidth.toLowerCase() === "max"
+    configHeight.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configHeight, 10);
 
