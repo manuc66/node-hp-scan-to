@@ -54,6 +54,23 @@ describe("scanProcessing", () => {
         const width = getScanWidth(scanConfig, inputSource, deviceCapabilities, false);
         expect(width).to.be.eq(2583);
       });
+      it("Limits the value if available from device", async () => {
+        scanConfig.width = 2583;
+        deviceCapabilities.adfMaxWidth = 1000;
+        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities, false);
+        expect(width).to.be.eq(1000);
+      });
+      it("Uses the max value if available from device", async () => {
+        deviceCapabilities.adfMaxWidth = 1000;
+        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities, false);
+        expect(width).to.be.eq(1000);
+      });
+      it("Uses the duplexer value if available from device", async () => {
+        deviceCapabilities.adfMaxWidth = 1000;
+        deviceCapabilities.adfDuplexMaxWidth = 2000;
+        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities, true);
+        expect(width).to.be.eq(2000);
+      });
     });
     describe("Platen", async () => {
       const inputSource = InputSource.Platen;
@@ -90,6 +107,23 @@ describe("scanProcessing", () => {
         scanConfig.height = 1269;
         const width = getScanHeight(scanConfig, inputSource, deviceCapabilities, false);
         expect(width).to.be.eq(1269);
+      });
+      it("Limits the value if available from device", async () => {
+        scanConfig.height = 1269;
+        deviceCapabilities.adfMaxHeight = 1000;
+        const width = getScanHeight(scanConfig, inputSource, deviceCapabilities, false);
+        expect(width).to.be.eq(1000);
+      });
+      it("Uses the max value if available from device", async () => {
+        deviceCapabilities.adfMaxHeight = 1000;
+        const width = getScanHeight(scanConfig, inputSource, deviceCapabilities, false);
+        expect(width).to.be.eq(1000);
+      });
+      it("Uses the duplexer value if available from device", async () => {
+        deviceCapabilities.adfMaxHeight = 1000;
+        deviceCapabilities.adfDuplexMaxHeight = 2000;
+        const width = getScanHeight(scanConfig, inputSource, deviceCapabilities, true);
+        expect(width).to.be.eq(2000);
       });
     });
     describe("Platen", async () => {
