@@ -41,34 +41,34 @@ describe("scanProcessing", () => {
     const inputSource = InputSource.Adf;
     describe("Adf", async () => {
       it("Does not define a value if nothing provided", async () => {
-        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities);
+        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities, false);
         expect(width).to.be.eq(null);
       });
       it("Does not define a value if negative provided", async () => {
         scanConfig.width = -1;
-        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities);
+        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities, false);
         expect(width).to.be.eq(null);
       });
       it("Define the value if no max available from device", async () => {
         scanConfig.width = 2583;
-        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities);
+        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities, false);
         expect(width).to.be.eq(2583);
       });
     });
     describe("Platen", async () => {
       const inputSource = InputSource.Platen;
       it("Does not define a value if nothing provided", async () => {
-        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities);
+        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities, false);
         expect(width).to.be.eq(null);
       });
       it("Does not define a value if negative provided", async () => {
         scanConfig.width = -1;
-        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities);
+        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities, false);
         expect(width).to.be.eq(null);
       });
       it("Define the value if no max available from device", async () => {
         scanConfig.width = 2583;
-        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities);
+        const width = getScanWidth(scanConfig, inputSource, deviceCapabilities, false);
         expect(width).to.be.eq(2583);
       });
     });
@@ -78,34 +78,34 @@ describe("scanProcessing", () => {
     const inputSource = InputSource.Adf;
     describe("Adf", async () => {
       it("Does not define a value if nothing provided", async () => {
-        const height = getScanHeight(scanConfig, inputSource, deviceCapabilities);
+        const height = getScanHeight(scanConfig, inputSource, deviceCapabilities, false);
         expect(height).to.be.eq(null);
       });
       it("Does not define a value if negative provided", async () => {
         scanConfig.height = -1;
-        const height = getScanHeight(scanConfig, inputSource, deviceCapabilities);
+        const height = getScanHeight(scanConfig, inputSource, deviceCapabilities, false);
         expect(height).to.be.eq(null);
       });
       it("Define the value if no max available from device", async () => {
         scanConfig.height = 1269;
-        const width = getScanHeight(scanConfig, inputSource, deviceCapabilities);
+        const width = getScanHeight(scanConfig, inputSource, deviceCapabilities, false);
         expect(width).to.be.eq(1269);
       });
     });
     describe("Platen", async () => {
       const inputSource = InputSource.Platen;
       it("Does not define a value if nothing provided", async () => {
-        const height = getScanHeight(scanConfig, inputSource, deviceCapabilities);
+        const height = getScanHeight(scanConfig, inputSource, deviceCapabilities, false);
         expect(height).to.be.eq(null);
       });
       it("Does not define a value if negative provided", async () => {
         scanConfig.height = -1;
-        const height = getScanHeight(scanConfig, inputSource, deviceCapabilities);
+        const height = getScanHeight(scanConfig, inputSource, deviceCapabilities, false);
         expect(height).to.be.eq(null);
       });
       it("Define the value if no max available from device", async () => {
         scanConfig.height = 1269;
-        const height = getScanHeight(scanConfig, inputSource, deviceCapabilities);
+        const height = getScanHeight(scanConfig, inputSource, deviceCapabilities, false);
         expect(height).to.be.eq(1269);
       });
     });
