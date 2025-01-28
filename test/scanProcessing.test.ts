@@ -32,6 +32,8 @@ describe("scanProcessing", () => {
       platenMaxHeight: null,
       adfMaxWidth: null,
       adfMaxHeight: null,
+      adfDuplexMaxWidth: null,
+      adfDuplexMaxHeight: null,
     };
   });
 
