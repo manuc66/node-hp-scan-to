@@ -20,6 +20,7 @@ It has been developed and tested with the following HP All-in-One Printers:
 - HP DeskJet 3520
 - HP OfficeJet 6500A Plus
 - HP Smart Tank Plus 570 series
+- HP OfficeJet Pro 9019e
 
 Additionally, it has been reported to work on several other HP printer models.
 - HP DeskJet 3050 All-in-One - J610a
@@ -59,7 +60,7 @@ Please note that the `node-hp-scan-to` project is not endorsed by nor affiliated
 - ✔️ Customizable resolution
 - ✔️ Customizable label on the device
 - ✔️ Multi platform: Linux, Windows and most probably macOS
-- ✔️ Mutile target supported: folder, [paperless-ngx](https://docs.paperless-ngx.com/) api upload, nextcloud webdav upload
+- ✔️ Mutiple target supported: folder, [paperless-ngx](https://docs.paperless-ngx.com/) api upload, nextcloud webdav upload
 - ✔️ Clear all registered target
 - ✔️ Automatic scan when automatic document feeder is getting loaded
 
@@ -135,7 +136,7 @@ Exhaustive list of supported environment variables and their meaning, or corresp
 - `NEXTCLOUD_USERNAME`: nextcloud user name
 - `NEXTCLOUD_PASSWORD`: password of nextcloud user. Either this or `NEXTCLOUD_PASSWORD_FILE` is required. If both are provided, value of `NEXTCLOUD_PASSWORD_FILE` is used.
 - `NEXTCLOUD_PASSWORD_FILE`: file name containing password of nextcloud user. Either this or `NEXTCLOUD_PASSWORD` is required. If both are provided, this value is used. For example: `NEXTCLOUD_PASSWORD_FILE=./nextcloud_password.secret`. Preferably for use in [docker compose secrets](https://docs.docker.com/reference/compose-file/secrets/)
-- `$KEEP_FILES`: if set the scanned files will not be deleted, after uploading to paperless-ngx or nextcloud
+- `KEEP_FILES`: if set the scanned files will not be deleted, after uploading to paperless-ngx or nextcloud
 - `CMDLINE`: additional command-line flags that will be put at the end of the command.
 
 __To enable debug logs set the environment variable `CMDLINE` to `-D`.__
