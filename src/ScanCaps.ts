@@ -17,6 +17,10 @@ export interface ScanCapsData {
         MaxWidth: string[];
         MaxHeight: string[];
       }[];
+      AdfDuplexer: {
+        AdfDuplexMaxWidth: string[];
+        AdfDuplexMaxHeight: string[];
+      }[];
     }[];
   };
 }
@@ -76,6 +80,44 @@ export default class ScanCaps {
       );
     } else {
       return null;
+    }
+  }
+
+  get adfDuplexMaxWidth(): number | null {
+    if (
+      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf") &&
+      Object.prototype.hasOwnProperty.call(
+        this.data["ScanCaps"]["Adf"][0],
+        "AdfDuplexer",
+      )
+    ) {
+      return Number.parseInt(
+        this.data["ScanCaps"]["Adf"][0]["AdfDuplexer"][0][
+          "AdfDuplexMaxWidth"
+        ][0],
+        10,
+      );
+    } else {
+      return this.adfMaxWidth;
+    }
+  }
+
+  get adfDuplexMaxHeight(): number | null {
+    if (
+      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf") &&
+      Object.prototype.hasOwnProperty.call(
+        this.data["ScanCaps"]["Adf"][0],
+        "AdfDuplexer",
+      )
+    ) {
+      return Number.parseInt(
+        this.data["ScanCaps"]["Adf"][0]["AdfDuplexer"][0][
+          "AdfDuplexMaxHeight"
+        ][0],
+        10,
+      );
+    } else {
+      return this.adfMaxHeight;
     }
   }
 }
