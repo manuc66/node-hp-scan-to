@@ -1,32 +1,30 @@
 import { DeviceCapabilities } from "./DeviceCapabilities";
 import HPApi from "./HPApi";
-import WalkupScanToCompCaps from "./WalkupScanToCompCaps";
 import ScanCaps from "./ScanCaps";
 
 export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
+  let useWalkupScanToComp = false;
+
   const discoveryTree = await HPApi.getDiscoveryTree();
-  let walkupScanToCompCaps: WalkupScanToCompCaps | null = null;
+
   if (discoveryTree.WalkupScanToCompManifestURI != null) {
+    useWalkupScanToComp = true;
     const walkupScanToCompManifest = await HPApi.getWalkupScanToCompManifest(
       discoveryTree.WalkupScanToCompManifestURI,
     );
     if (walkupScanToCompManifest.WalkupScanToCompCapsURI != null) {
-      walkupScanToCompCaps = await HPApi.getWalkupScanToCompCaps(
+      const walkupScanToCompCaps = await HPApi.getWalkupScanToCompCaps(
         walkupScanToCompManifest.WalkupScanToCompCapsURI,
       );
       supportsMultiItemScanFromPlaten =
         walkupScanToCompCaps.supportsMultiItemScanFromPlaten;
     }
   } else if (discoveryTree.WalkupScanManifestURI != null) {
-    const walkupScanManifest = await HPApi.getWalkupScanManifest(
+    // No caps to load here but check we can load the specified manifest
+    await HPApi.getWalkupScanManifest(
       discoveryTree.WalkupScanManifestURI,
     );
-    if (walkupScanManifest.walkupScanDestinationsURI != null) {
-      await HPApi.getWalkupScanDestinations(
-        walkupScanManifest.walkupScanDestinationsURI,
-      );
-    }
   } else {
     console.log("Unknown device!");
   }
@@ -43,7 +41,7 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
 
   return {
     supportsMultiItemScanFromPlaten,
-    useWalkupScanToComp: walkupScanToCompCaps != null,
+    useWalkupScanToComp,
     platenMaxWidth: scanCaps?.platenMaxWidth || null,
     platenMaxHeight: scanCaps?.platenMaxHeight || null,
     adfMaxWidth: scanCaps?.adfMaxWidth || null,
