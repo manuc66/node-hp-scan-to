@@ -78,7 +78,7 @@
     "commander": "^13.0.0",
     "config": "^3.3.8",
     "dateformat": "^4.6.3",
-    "jspdf": "^2.5.1",
+    "jspdf": "^3.0.0",
     "xml2js": "^0.6.0"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
