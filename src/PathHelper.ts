@@ -101,6 +101,10 @@ export default class PathHelper {
     if (typeof folder !== "string") {
       return Fs.mkdtemp(path.join(os.tmpdir(), "scan-to-pc"));
     }
+
+    if (folder.startsWith('~'))
+        return folder.replace(/^~/, os.homedir());
+
     return folder;
   }
 }
