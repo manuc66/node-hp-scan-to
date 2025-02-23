@@ -42,7 +42,7 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
   } else {
     console.log("Unknown device!");
   }
-  let scanCaps = await getScanCaps(discoveryTree);
+  const scanCaps = await getScanCaps(discoveryTree);
 
   return {
     supportsMultiItemScanFromPlaten,
