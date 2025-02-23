@@ -1,6 +1,20 @@
 import { DeviceCapabilities } from "./DeviceCapabilities";
 import HPApi from "./HPApi";
 import ScanCaps from "./ScanCaps";
+import DiscoveryTree from "./DiscoveryTree";
+
+async function getScanCaps(discoveryTree: DiscoveryTree) {
+  let scanCaps: ScanCaps | null = null;
+  if (discoveryTree.ScanJobManifestURI != null) {
+    const scanJobManifest = await HPApi.getScanJobManifest(
+      discoveryTree.ScanJobManifestURI
+    );
+    if (scanJobManifest.ScanCapsURI != null) {
+      scanCaps = await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);
+    }
+  }
+  return scanCaps;
+}
 
 export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
@@ -28,16 +42,7 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
   } else {
     console.log("Unknown device!");
   }
-
-  let scanCaps: ScanCaps | null = null;
-  if (discoveryTree.ScanJobManifestURI != null) {
-    const scanJobManifest = await HPApi.getScanJobManifest(
-      discoveryTree.ScanJobManifestURI,
-    );
-    if (scanJobManifest.ScanCapsURI != null) {
-      scanCaps = await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);
-    }
-  }
+  let scanCaps = await getScanCaps(discoveryTree);
 
   return {
     supportsMultiItemScanFromPlaten,

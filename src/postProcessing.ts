@@ -152,7 +152,7 @@ async function cleanUpFilesIfNeeded(
   paperlessConfig: PaperlessConfig | undefined,
   nextcloudConfig: NextcloudConfig | undefined,
 ) {
-  let keepFiles: boolean =
+  const keepFiles: boolean =
     paperlessConfig?.keepFiles ?? nextcloudConfig?.keepFiles ?? true;
   if (!keepFiles) {
     await Promise.all(
