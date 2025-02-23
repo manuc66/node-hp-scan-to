@@ -97,7 +97,7 @@ describe("PathHelper", () => {
       });
       it("it return a folder that exist", async () => {
         const folder = await PathHelper.getOutputFolder();
-        expect(fs.existsSync(folder)).to.be.true;
+        expect(fs.existsSync(folder)).to.be.eq(true);
       });
       it("it return a different folder for every call", async () => {
         const folder = await PathHelper.getOutputFolder();
