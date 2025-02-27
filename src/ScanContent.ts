@@ -1,7 +1,3 @@
-import fs from "fs/promises";
-
-import { jsPDF } from "jspdf";
-
 export interface ScanContent {
   elements: ScanPage[];
 }

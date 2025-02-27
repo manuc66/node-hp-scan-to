@@ -576,7 +576,7 @@ async function main() {
   const cmdClearRegistrations = program.createCommand("clear-registrations");
   cmdClearRegistrations
     .description("Clear the list or registered target on the device")
-    .action(async (options, cmd) => {
+    .action(async (_, cmd) => {
       await clearRegistrationsCmd(cmd);
     });
   program.addCommand(cmdClearRegistrations);

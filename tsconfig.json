@@ -15,7 +15,11 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "declaration": true,
-    "jsx": "preserve",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noEmitOnError": true,
     "baseUrl": ".",
 	"paths": {
 		"*": [

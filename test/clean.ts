@@ -1,5 +1,4 @@
 import { describe } from "mocha";
-import { EtagEventTable } from "../src/EventTable";
 import HPApi from "../src/HPApi";
 
 describe("EtagEventTable", () => {
