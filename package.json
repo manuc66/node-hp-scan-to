@@ -22,16 +22,13 @@
     "build:docker": "tsc -p .",
     "built-start": "tsc -p . && node --trace-warnings ./dist/index.js",
     "start-dev": "nodemon",
-    "prepublishOnly": "tsc -p ./ --outDir dist/",
+    "prepublishOnly": "npm run prebuild && tsc -p ./ --outDir dist/",
     "prettier": "prettier --write \"src/**/*.ts\"",
     "test": "npx mocha --require ts-node/register ./test/**/*.test.ts",
     "test-ci": "npx nyc --reporter=lcov mocha -r ts-node/register ./test/**/*.test.ts && codecov"
   },
   "files": [
     "dist",
-    "src",
-    "tsconfig.json",
-    "nodemon.json",
     "README.md"
   ],
   "engines": {
