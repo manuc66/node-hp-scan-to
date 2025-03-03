@@ -217,7 +217,7 @@ function setupScanParameters(command: Command): Command {
   );
   command.option(
     "-p, --pattern <pattern>",
-    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, without this its scanPageNUMBER)',
+    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes',
   );
   command.option(
     "-r, --resolution <dpi>",
