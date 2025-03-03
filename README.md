@@ -61,7 +61,7 @@ Please note that the `node-hp-scan-to` project is not endorsed by nor affiliated
 - ✔️ Customizable resolution
 - ✔️ Customizable label on the device
 - ✔️ Multi platform: Linux, Windows and most probably macOS
-- ✔️ Mutiple target supported: folder, [paperless-ngx](https://docs.paperless-ngx.com/) api upload, nextcloud webdav upload
+- ✔️ Multiple target supported: folder, [paperless-ngx](https://docs.paperless-ngx.com/) api upload, nextcloud webdav upload
 - ✔️ Clear all registered target
 - ✔️ Automatic scan when automatic document feeder is getting loaded
 
@@ -76,7 +76,7 @@ Please note that the `node-hp-scan-to` project is not endorsed by nor affiliated
 - `-n` or `--name` followed by the printer name, it probably contains spaces, so it needs to be quoted, i.e. `-name "Officejet 6500 E710n-z"`
 - `-d` or `--directory` followed by the directory path where the scanned documents should be saved, i.e. `-d ~/Documents/Scans`. Defaults to `/tmp/scan-to-pc<random value>` when not set.
 - `-t` or `--temp-directory` Temp directory used for processing. Defaults to `/tmp/scan-to-pc<random value>` when not set.
-- `-p` or `--pattern` followed by the pattern for the filename without file extension, i.e. `"scan"_dd.mm.yyyy_hh:MM:ss` to name the scanned file `scan_19.04.2021_17:26:47`. Date and time patterns are replaced by the current date and time, text that should not be replaced need to be inside quotes. Documentation for the pattern can be found [here](https://www.npmjs.com/package/dateformat) in the section `Mask options`. Defaults to `scan<increasing number>_page<page number>` when not set.
+- `-p` or `--pattern` followed by the pattern for the filename (enclosed in extra quotes) without file extension, i.e. `"scan"_dd.mm.yyyy_hh:MM:ss` to name the scanned file `scan_19.04.2021_17:26:47`. Date and time patterns are replaced by the current date and time, text that should not be replaced must be inside double quotes. Documentation for the pattern can be found [here](https://www.npmjs.com/package/dateformat) in the section `Mask options`. Defaults to `scan<increasing number>_page<page number>` when not set.
 - `-r` or `--resolution` Resolution in DPI of the scans (defaults is 200).
 - `-w` or `--width` followed by an integer, the with in pixel of the scans (default: 2481)
 - `-h` or `--height` followed by an integer, the height in pixel of the scans (default: 3507)
@@ -243,7 +243,7 @@ You may want to set your printers ip or name in `.vscode/launch.json`.
 
 ## 💖 Support this project
 
-Thank you so much to everyone who has already supported this project! Your generosity is greatly appreciated and it motivates me to keep improving and maintaining this project.
+Thank you so much to everyone who has already supported this project! Your generosity is greatly appreciated, and it motivates me to keep improving and maintaining this project.
 
 If this project has helped you save money or time, or simply made your life easier, you can support me by buying me a cup of coffee:
 
