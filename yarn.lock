@@ -713,9 +713,9 @@ canvg@^3.0.6:
     svg-pathdata "^6.0.3"
 
 chai-string@^1.5.0:
-  version "1.5.0"
-  resolved "https://registry.yarnpkg.com/chai-string/-/chai-string-1.5.0.tgz#0bdb2d8a5f1dbe90bc78ec493c1c1c180dd4d3d2"
-  integrity sha512-sydDC3S3pNAQMYwJrs6dQX0oBQ6KfIPuOZ78n7rocW0eJJlsHPh2t3kwW7xfwYA/1Bf6/arGtSUo16rxR2JFlw==
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/chai-string/-/chai-string-1.6.0.tgz#8365011c3b6d0543a73dd9e1aeecea82f44a79aa"
+  integrity sha512-sXV7whDmpax+8H++YaZelgin7aur1LGf9ZhjZa3ojETFJ0uPVuS4XEXuIagpZ/c8uVOtsSh4MwOjy5CBLjJSXA==
 
 chai@^4.5.0:
   version "4.5.0"
