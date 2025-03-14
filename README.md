@@ -165,7 +165,7 @@ Run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help.
 You can also set the environment variable `MAIN_COMMAND="adf-autoscan"` with Docker. Example:
 
 ```sh
-docker run -e MAIN_COMMAND="adf-autoscan --pdf" docker.io/manuc66/node-hp-scan-to:latest
+docker run -e MAIN_COMMAND="adf-autoscan" CMDLINE=--debug docker.io/manuc66/node-hp-scan-to:latest
 ```
 
 ##### `clear-registrations`
@@ -257,7 +257,9 @@ services:
       - PGID=1000
       - PUID=1000
       # Optional - enable autoscanning a document when loaded into the scanner:
-      # - MAIN_COMMAND=adf-autoscan --pdf
+      # - MAIN_COMMAND=adf-autoscan
+      # If you need to pass additional configuration flag use the CMDLINE env, thy will be appened to the
+      # - CMDLINE=--debug --pdf
       # If using Paperless-ngx, you can use its API to upload files:
       # - PAPERLESS_POST_DOCUMENT_URL="http://<paperless-host>:<port>/api/documents/post_document/"
       # - PAPERLESS_TOKEN= "xxxxxxxxxxxx..."
