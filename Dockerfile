@@ -1,7 +1,7 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
-ADD . .
+COPY . .
 COPY src/commitInfo.json /app/src/commitInfo.json
 
 RUN yarn install -d \
