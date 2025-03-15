@@ -40,7 +40,7 @@ jobs:
           node-version: '18'
           cache: 'yarn'
       - name: Install project dependencies
-        run: yarn
+        run: yarn install --frozen-lockfile
       - name: Test
         run: yarn test
       - name: Build
