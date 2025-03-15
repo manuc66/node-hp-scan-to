@@ -1,10 +1,10 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
-ADD . .
+COPY . .
 COPY src/commitInfo.json /app/src/commitInfo.json
 
-RUN yarn install -d \
+RUN yarn install --frozen-lockfile --dev \
  && yarn build:docker \
  && rm dist/*.d.ts dist/*.js.map
 
@@ -15,7 +15,7 @@ ADD root/ /
 # sets version for s6 overlay
 ARG S6_SRC_DEP="ca-certificates xz-utils wget"
 ARG S6_SRC_URL="https://github.com/just-containers/s6-overlay/releases/download"
-ARG S6_VERSION=v3.1.1.2
+ARG S6_VERSION=v3.2.0.2
 
 # detect system arch then select the right version of s6
 RUN export SYS_ARCH=$(uname -m); \
@@ -39,15 +39,12 @@ RUN export SYS_ARCH=$(uname -m); \
         && untar ${S6_SRC_URL}/${S6_VERSION}/s6-overlay-noarch.tar.xz \
         && untar ${S6_SRC_URL}/${S6_VERSION}/s6-overlay-${S6_ARCH}.tar.xz \
     echo "⬇️ Install shadow (for groupmod and usermod) and tzdata (for TZ env variable)" \
-    && apk add --no-cache shadow tzdata curl
-
-# add bash
-RUN apk add --no-cache bash
+    && apk add --no-cache shadow tzdata curl bash
 
 # add builded app
 WORKDIR /app
 COPY --from=build /app/dist/ /app/package.json ./
-RUN yarn install -d \
+RUN yarn install --frozen-lockfile --production \
  && yarn cache clean --force
 
 VOLUME ["/scan"]
