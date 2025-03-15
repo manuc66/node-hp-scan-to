@@ -1,4 +1,4 @@
-FROM node:18-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
 
 ADD . .
@@ -8,7 +8,7 @@ RUN yarn install -d \
  && yarn build:docker \
  && rm dist/*.d.ts dist/*.js.map
 
-FROM node:18-alpine AS app
+FROM node:22-alpine AS app
 ENV NODE_ENV=production
 ADD root/ /
 
