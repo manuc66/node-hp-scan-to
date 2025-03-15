@@ -2,7 +2,7 @@
   "compilerOptions": {
     "outDir": "dist",
     "module": "commonjs",
-    "target": "es2019",
+    "target": "ES2021",
     "noImplicitAny": true,
     "sourceMap": true,
     "inlineSources": true,
