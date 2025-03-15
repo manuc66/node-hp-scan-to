@@ -15,7 +15,7 @@ ADD root/ /
 # sets version for s6 overlay
 ARG S6_SRC_DEP="ca-certificates xz-utils wget"
 ARG S6_SRC_URL="https://github.com/just-containers/s6-overlay/releases/download"
-ARG S6_VERSION=v3.1.1.2
+ARG S6_VERSION=v3.2.0.2
 
 # detect system arch then select the right version of s6
 RUN export SYS_ARCH=$(uname -m); \
