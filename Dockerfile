@@ -4,7 +4,7 @@ WORKDIR /app
 COPY . .
 COPY src/commitInfo.json /app/src/commitInfo.json
 
-RUN yarn install -d \
+RUN yarn install --frozen-lockfile --dev \
  && yarn build:docker \
  && rm dist/*.d.ts dist/*.js.map
 
@@ -44,7 +44,7 @@ RUN export SYS_ARCH=$(uname -m); \
 # add builded app
 WORKDIR /app
 COPY --from=build /app/dist/ /app/package.json ./
-RUN yarn install -d \
+RUN yarn install --frozen-lockfile --production \
  && yarn cache clean --force
 
 VOLUME ["/scan"]
