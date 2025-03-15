@@ -39,10 +39,7 @@ RUN export SYS_ARCH=$(uname -m); \
         && untar ${S6_SRC_URL}/${S6_VERSION}/s6-overlay-noarch.tar.xz \
         && untar ${S6_SRC_URL}/${S6_VERSION}/s6-overlay-${S6_ARCH}.tar.xz \
     echo "⬇️ Install shadow (for groupmod and usermod) and tzdata (for TZ env variable)" \
-    && apk add --no-cache shadow tzdata curl
-
-# add bash
-RUN apk add --no-cache bash
+    && apk add --no-cache shadow tzdata curl bash
 
 # add builded app
 WORKDIR /app
