@@ -440,9 +440,9 @@
     "@types/chai" "*"
 
 "@types/chai@*", "@types/chai@^5.2.0":
-  version "5.2.0"
-  resolved "https://registry.yarnpkg.com/@types/chai/-/chai-5.2.0.tgz#fe62a18d33001800d3590792ceb6126142f814a4"
-  integrity sha512-FWnQYdrG9FAC8KgPVhDFfrPL1FBsL3NtIt2WsxKvwu/61K6HiuDF3xAb7c7w/k9ML2QOUHcwTgU7dKLFPK6sBg==
+  version "5.2.1"
+  resolved "https://registry.yarnpkg.com/@types/chai/-/chai-5.2.1.tgz#85687a58b27eac736ec0e87e5cb98f21e57a0bb1"
+  integrity sha512-iu1JLYmGmITRzUgNiLMZD3WCoFzpYtueuyAgHTXqgwSRAMIlFTnZqG6/xenkpUGRJEzSfklUTI4GNSzks/dc0w==
   dependencies:
     "@types/deep-eql" "*"
 
