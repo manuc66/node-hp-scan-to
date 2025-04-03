@@ -30,7 +30,7 @@ describe("JpegUtil", () => {
         height: 1200,
         width: 800,
       });
-      expect(sizeWritten).to.be.true;
+      expect(sizeWritten).to.be.eq(true);
 
       const size = JpegUtil.GetJpgSize(buffer);
 
@@ -48,7 +48,7 @@ describe("JpegUtil", () => {
         height: 2322,
         width: 1654,
       });
-      expect(sizeWritten).to.be.true;
+      expect(sizeWritten).to.be.eq(true);
 
       fs.writeFileSync(
         path.resolve(__dirname, "./asset/adf_bytes_scan_height_fixed.jpg"),
