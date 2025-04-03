@@ -56,7 +56,7 @@ describe("WalkupScanDestinations", () => {
     });
 
     it("Parse destinations", async () => {
-      expect(destinations.destinations).to.be.empty;
+      expect(destinations.destinations).to.be.instanceOf(Array).and.lengthOf(0);
     });
   });
 });
