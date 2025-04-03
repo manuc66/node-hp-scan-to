@@ -5,7 +5,7 @@
     "target": "ES2021",
     "noImplicitAny": true,
     "sourceMap": true,
-    "inlineSources": true,
+    "inlineSources": false,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
