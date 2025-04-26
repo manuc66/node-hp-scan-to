@@ -557,7 +557,7 @@ async function main() {
 
       const adfScanConfig: AdfAutoScanConfig = {
         ...scanConfig,
-        isDuplex: options.isDuplex || getConfig("autoscan_duplex") || false,
+        isDuplex: options.duplex || getConfig("autoscan_duplex") || false,
         generatePdf: options.pdf || getConfig("autoscan_pdf") || false,
         pollingInterval:
           options.pollingInterval ||
