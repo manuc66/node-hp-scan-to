@@ -6,7 +6,14 @@ import {
   uploadImagesAsSeparateDocumentsToPaperless,
   uploadPdfToPaperless,
 } from "./paperless/paperless";
+import {
+  uploadPdfToNextcloud,
+  uploadImagesToNextcloud,
+} from "./nextcloud/nextcloud";
 import { ScanConfig } from "./scanProcessing";
+import fs from "fs/promises";
+import { PaperlessConfig } from "./paperless/PaperlessConfig";
+import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 
 export async function postProcessing(
   scanConfig: ScanConfig,
@@ -17,47 +24,97 @@ export async function postProcessing(
   scanDate: Date,
   toPdf: boolean,
 ) {
-  const paperlessConfig = scanConfig.paperlessConfig;
   if (toPdf) {
-    const pdfFilePath = await mergeToPdf(
-      paperlessConfig ? tempFolder : folder,
+    await handlePdfPostProcessing(
+      folder,
+      tempFolder,
       scanCount,
       scanJobContent,
-      scanConfig.directoryConfig.filePattern,
       scanDate,
-      true,
+      scanConfig,
     );
+  } else {
+    await handleImagePostProcessing(
+      folder,
+      scanCount,
+      scanJobContent,
+      scanDate,
+      scanConfig,
+    );
+  }
+}
+
+async function handlePdfPostProcessing(
+  folder: string,
+  tempFolder: string,
+  scanCount: number,
+  scanJobContent: ScanContent,
+  scanDate: Date,
+  scanConfig: ScanConfig,
+) {
+  const paperlessConfig = scanConfig.paperlessConfig;
+  const nextcloudConfig = scanConfig.nextcloudConfig;
+
+  const pdfFilePath = await mergeToPdf(
+    paperlessConfig ? tempFolder : folder,
+    scanCount,
+    scanJobContent,
+    scanConfig.directoryConfig.filePattern,
+    scanDate,
+    true,
+  );
+  if (pdfFilePath != null) {
     displayPdfScan(pdfFilePath, scanJobContent);
     if (paperlessConfig) {
       await uploadPdfToPaperless(pdfFilePath, paperlessConfig);
     }
-  } else {
-    displayJpegScan(scanJobContent);
-    if (paperlessConfig) {
-      if (paperlessConfig.groupMultiPageScanIntoAPdf) {
-        await mergeToPdfAndUploadAsSingleDocumentToPaperless(
-          folder,
-          scanCount,
+    if (nextcloudConfig) {
+      await uploadPdfToNextcloud(pdfFilePath, nextcloudConfig);
+    }
+    await cleanUpFilesIfNeeded([pdfFilePath], paperlessConfig, nextcloudConfig);
+  }
+}
+
+async function handleImagePostProcessing(
+  folder: string,
+  scanCount: number,
+  scanJobContent: ScanContent,
+  scanDate: Date,
+  scanConfig: ScanConfig,
+) {
+  const paperlessConfig = scanConfig.paperlessConfig;
+  const nextcloudConfig = scanConfig.nextcloudConfig;
+
+  displayJpegScan(scanJobContent);
+  if (paperlessConfig) {
+    if (paperlessConfig.groupMultiPageScanIntoAPdf) {
+      await mergeToPdfAndUploadAsSingleDocumentToPaperless(
+        folder,
+        scanCount,
+        scanJobContent,
+        scanConfig,
+        scanDate,
+        paperlessConfig,
+      );
+    } else {
+      if (paperlessConfig.alwaysSendAsPdfFile) {
+        await convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
           scanJobContent,
-          scanConfig,
-          scanDate,
           paperlessConfig,
         );
       } else {
-        if (paperlessConfig.alwaysSendAsPdfFile) {
-          await convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
-            scanJobContent,
-            paperlessConfig,
-          );
-        } else {
-          await uploadImagesAsSeparateDocumentsToPaperless(
-            scanJobContent,
-            paperlessConfig,
-          );
-        }
+        await uploadImagesAsSeparateDocumentsToPaperless(
+          scanJobContent,
+          paperlessConfig,
+        );
       }
     }
   }
+  if (nextcloudConfig) {
+    await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+  }
+  const filePaths = scanJobContent.elements.map((element) => element.path);
+  await cleanUpFilesIfNeeded(filePaths, paperlessConfig, nextcloudConfig);
 }
 
 function displayPdfScan(
@@ -88,4 +145,21 @@ function displayJpegScan(scanJobContent: ScanContent) {
       } - ${e.path}`,
     ),
   );
+}
+
+async function cleanUpFilesIfNeeded(
+  filePaths: string[],
+  paperlessConfig: PaperlessConfig | undefined,
+  nextcloudConfig: NextcloudConfig | undefined,
+) {
+  const keepFiles: boolean =
+    paperlessConfig?.keepFiles ?? nextcloudConfig?.keepFiles ?? true;
+  if (!keepFiles) {
+    await Promise.all(
+      filePaths.map(async (filePath) => {
+        await fs.unlink(filePath);
+        console.log(`File ${filePath} has been removed from the filesystem`);
+      }),
+    );
+  }
 }
