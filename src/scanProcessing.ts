@@ -577,11 +577,13 @@ export async function singleScan(
     scanConfig,
     InputSource.Adf,
     deviceCapabilities,
+    scanConfig.isDuplex,
   );
   const scanHeight = getScanHeight(
     scanConfig,
     InputSource.Adf,
     deviceCapabilities,
+    scanConfig.isDuplex,
   );
 
   const inputSource = InputSource.Platen;
