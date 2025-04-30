@@ -635,8 +635,8 @@ async function main() {
 
       const singleScanConfig: SingleScanConfig = {
         ...scanConfig,
-        isDuplex: options.isDuplex || getConfig("autoscan_duplex") || false,
-        generatePdf: options.pdf || getConfig("autoscan_pdf") || false,
+        isDuplex: options.duplex || getConfig("single_scan_duplex") || false,
+        generatePdf: options.pdf || getConfig("single_scan_pdf") || false,
       };
 
       await singleScanCmd(singleScanConfig, deviceUpPollingInterval);
