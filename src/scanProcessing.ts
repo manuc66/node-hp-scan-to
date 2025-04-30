@@ -572,20 +572,28 @@ export async function singleScan(
     destinationFolder = folder;
   }
 
+  const scanStatus = await HPApi.getScanStatus();
+
+  if (scanStatus.scannerState !== "Idle") {
+    console.log("Scanner state is not Idle, aborting scan attempt...!");
+  }
+
+  console.log("Afd is : " + scanStatus.adfState);
+
+  const inputSource = scanStatus.getInputSource();
+
   const scanWidth = getScanWidth(
     scanConfig,
-    InputSource.Adf,
+    inputSource,
     deviceCapabilities,
     scanConfig.isDuplex,
   );
   const scanHeight = getScanHeight(
     scanConfig,
-    InputSource.Adf,
+    inputSource,
     deviceCapabilities,
     scanConfig.isDuplex,
   );
-
-  const inputSource = InputSource.Platen;
 
   const scanJobSettings = new ScanJobSettings(
     inputSource,
