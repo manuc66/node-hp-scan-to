@@ -551,7 +551,6 @@ export async function scanFromAdf(
   );
 }
 
-
 export async function singleScan(
   scanCount: number,
   folder: string,
