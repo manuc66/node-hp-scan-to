@@ -14,6 +14,7 @@ import PathHelper from "./PathHelper";
 import ScanStatus from "./ScanStatus";
 import { InputSource } from "./InputSource";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
+import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { postProcessing } from "./postProcessing";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
@@ -309,22 +310,23 @@ export function getScanWidth(
   scanConfig: ScanConfig,
   inputSource: InputSource,
   deviceCapabilities: DeviceCapabilities,
+  isDuplex: boolean,
 ): number | null {
-  if (scanConfig.width && scanConfig.width > 0) {
-    const maxWidth =
-      inputSource === InputSource.Adf
-        ? deviceCapabilities.adfMaxWidth
-        : deviceCapabilities.platenMaxWidth;
+  const maxWidth =
+    inputSource === InputSource.Adf
+      ? isDuplex
+        ? deviceCapabilities.adfDuplexMaxWidth
+        : deviceCapabilities.adfMaxWidth
+      : deviceCapabilities.platenMaxWidth;
 
+  if (scanConfig.width && scanConfig.width > 0) {
     if (maxWidth && scanConfig.width > maxWidth) {
       return maxWidth;
     } else {
       return scanConfig.width;
     }
   } else {
-    return inputSource === InputSource.Adf
-      ? deviceCapabilities.adfMaxWidth
-      : deviceCapabilities.platenMaxWidth;
+    return maxWidth;
   }
 }
 
@@ -332,22 +334,23 @@ export function getScanHeight(
   scanConfig: ScanConfig,
   inputSource: InputSource,
   deviceCapabilities: DeviceCapabilities,
+  isDuplex: boolean,
 ): number | null {
-  if (scanConfig.height && scanConfig.height > 0) {
-    const maxHeight =
-      inputSource === InputSource.Adf
-        ? deviceCapabilities.adfMaxHeight
-        : deviceCapabilities.platenMaxHeight;
+  const maxHeight =
+    inputSource === InputSource.Adf
+      ? isDuplex
+        ? deviceCapabilities.adfDuplexMaxHeight
+        : deviceCapabilities.adfMaxHeight
+      : deviceCapabilities.platenMaxHeight;
 
+  if (scanConfig.height && scanConfig.height > 0) {
     if (maxHeight && scanConfig.height > maxHeight) {
       return maxHeight;
     } else {
       return scanConfig.height;
     }
   } else {
-    return inputSource === InputSource.Adf
-      ? deviceCapabilities.adfMaxHeight
-      : deviceCapabilities.platenMaxHeight;
+    return maxHeight;
   }
 }
 
@@ -402,8 +405,18 @@ export async function saveScanFromEvent(
   console.log("Afd is : " + scanStatus.adfState);
 
   const inputSource = scanStatus.getInputSource();
-  const scanWidth = getScanWidth(scanConfig, inputSource, deviceCapabilities);
-  const scanHeight = getScanHeight(scanConfig, inputSource, deviceCapabilities);
+  const scanWidth = getScanWidth(
+    scanConfig,
+    inputSource,
+    deviceCapabilities,
+    isDuplex,
+  );
+  const scanHeight = getScanHeight(
+    scanConfig,
+    inputSource,
+    deviceCapabilities,
+    isDuplex,
+  );
 
   const scanJobSettings = new ScanJobSettings(
     inputSource,
@@ -455,6 +468,7 @@ export type ScanConfig = {
   height: number | null;
   directoryConfig: DirectoryConfig;
   paperlessConfig: PaperlessConfig | undefined;
+  nextcloudConfig: NextcloudConfig | undefined;
 };
 export type AdfAutoScanConfig = ScanConfig & {
   isDuplex: boolean;
@@ -493,11 +507,13 @@ export async function scanFromAdf(
     adfAutoScanConfig,
     InputSource.Adf,
     deviceCapabilities,
+    adfAutoScanConfig.isDuplex,
   );
   const scanHeight = getScanHeight(
     adfAutoScanConfig,
     InputSource.Adf,
     deviceCapabilities,
+    adfAutoScanConfig.isDuplex,
   );
 
   const scanJobSettings = new ScanJobSettings(

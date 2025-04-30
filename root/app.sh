@@ -1,53 +1,85 @@
-#!/command/with-contenv sh
+#!/command/with-contenv bash
 
-ARGS="--health-check -d /scan "
+# Initialize an array for arguments
 
-if [ ! -z "$IP" ]; then
-    ARGS="${ARGS} -ip ${IP}"
+if [ -n "$MAIN_COMMAND" ]; then
+    ARGS=("${MAIN_COMMAND}")
+else
+    ARGS=("listen")
 fi
 
-if [ ! -z "$LABEL" ]; then
-    ARGS="${ARGS} -l ${LABEL}"
+ARGS+=("--health-check")
+
+if [ -n "$IP" ]; then
+    ARGS+=("-a" "$IP")
 fi
 
-if [ ! -z "$NAME" ]; then
-    ARGS="${ARGS} -n ${NAME}"
+if [ "$MAIN_COMMAND" != "adf-autoscan" ]; then
+  if [ -n "$LABEL" ]; then
+      ARGS+=("-l" "$LABEL")
+  fi
 fi
 
-if [ ! -z "$DIR" ]; then
-    ARGS="${ARGS} -d ${DIR}"
+if [ -n "$NAME" ]; then
+    ARGS+=("-n" "$NAME")
 fi
 
-if [ ! -z "$TEMP_DIR" ]; then
-    ARGS="${ARGS} -t ${TEMP_DIR}"
+if [ -n "$DIR" ]; then
+    ARGS+=("-d" "$DIR")
+else
+    ARGS+=("-d" "/scan")
 fi
 
-if [ ! -z "$PATTERN" ]; then
-    ARGS="${ARGS} -p ${PATTERN}"
+if [ -n "$TEMP_DIR" ]; then
+    ARGS+=("-t" "$TEMP_DIR")
 fi
 
-if [ ! -z "$RESOLUTION" ]; then
-    ARGS="${ARGS} -r ${RESOLUTION}"
+if [ -n "$PATTERN" ]; then
+    ARGS+=("-p" "$PATTERN")
 fi
 
-if [ ! -z "$PAPERLESS_POST_DOCUMENT_URL" ]; then
-    ARGS="${ARGS} -s ${PAPERLESS_POST_DOCUMENT_URL}"
+if [ -n "$RESOLUTION" ]; then
+    ARGS+=("-r" "$RESOLUTION")
 fi
 
-if [ ! -z "$PAPERLESS_TOKEN" ]; then
-    ARGS="${ARGS} -o ${PAPERLESS_TOKEN}"
+if [ -n "$PAPERLESS_POST_DOCUMENT_URL" ]; then
+    ARGS+=("-s" "$PAPERLESS_POST_DOCUMENT_URL")
 fi
 
-if [ ! -z "$PAPERLESS_KEEP_FILES" ]; then
-    ARGS="${ARGS} -k"
+if [ -n "$PAPERLESS_TOKEN" ]; then
+    ARGS+=("-o" "$PAPERLESS_TOKEN")
 fi
 
-if [ ! -z "$CMDLINE" ]; then
-    ARGS="${ARGS} ${CMDLINE}"
+if [ -n "$KEEP_FILES" ]; then
+    ARGS+=("-k")
+fi
+
+if [ -n "$NEXTCLOUD_URL" ]; then
+    ARGS+=("--nextcloud-url" "$NEXTCLOUD_URL")
+fi
+
+if [ -n "$NEXTCLOUD_UPLOAD_FOLDER" ]; then
+    ARGS+=("--nextcloud-upload-folder" "$NEXTCLOUD_UPLOAD_FOLDER")
+fi
+
+if [ -n "$NEXTCLOUD_USERNAME" ]; then
+    ARGS+=("--nextcloud-username" "$NEXTCLOUD_USERNAME")
+fi
+
+if [ -n "$NEXTCLOUD_PASSWORD_FILE" ]; then
+    ARGS+=("--nextcloud-password-file" "$NEXTCLOUD_PASSWORD_FILE")
+elif [ -n "$NEXTCLOUD_PASSWORD" ]; then
+    ARGS+=("--nextcloud-password" "$NEXTCLOUD_PASSWORD")
+fi
+
+if [ -n "$CMDLINE" ]; then
+    # Split CMDLINE into words and add to ARGS
+    set -- $CMDLINE
+    ARGS+=("$@")
 fi
 
 cd /app
 
 echo "Starting"
 s6-setuidgid node \
-    node index.js $ARGS "$@"
+    node index.js "${ARGS[@]}"

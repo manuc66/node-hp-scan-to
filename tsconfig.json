@@ -2,10 +2,10 @@
   "compilerOptions": {
     "outDir": "dist",
     "module": "commonjs",
-    "target": "es2019",
+    "target": "ES2021",
     "noImplicitAny": true,
     "sourceMap": true,
-    "inlineSources": true,
+    "inlineSources": false,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -15,7 +15,11 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "declaration": true,
-    "jsx": "preserve",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noEmitOnError": true,
     "baseUrl": ".",
 	"paths": {
 		"*": [

@@ -5,4 +5,6 @@ export interface DeviceCapabilities {
   platenMaxHeight: number | null;
   adfMaxWidth: number | null;
   adfMaxHeight: number | null;
+  adfDuplexMaxWidth: number | null;
+  adfDuplexMaxHeight: number | null;
 }

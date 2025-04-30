@@ -1,12 +1,9 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import chai from "chai";
-import chaiString from "chai-string";
 import PathHelper from "../src/PathHelper";
 import fs from "fs";
 import os from "os";
 import path from "path";
-chai.use(chaiString);
 
 const now: Date = new Date();
 
@@ -81,15 +78,23 @@ describe("PathHelper", () => {
         const folder = await PathHelper.getOutputFolder("someFolder");
         expect(folder).to.be.eq("someFolder");
       });
+      it("it replaces ~ with home directory", async () => {
+        const folder = await PathHelper.getOutputFolder("~/someFolder");
+        expect(folder).to.be.eq(path.join(os.homedir(), "someFolder"));
+      });
+      it("it replaces ~ with home directory only if ~ is at the start", async () => {
+        const folder = await PathHelper.getOutputFolder("someFolder/~/anotherFolder");
+        expect(folder).to.be.eq("someFolder/~/anotherFolder");
+      });
     });
     describe("No folder given", () => {
       it("it return a temp folder", async () => {
         const folder = await PathHelper.getOutputFolder();
-        expect(folder).to.startWith(os.tmpdir());
+        expect(folder).to.satisfy((str: string) => str.startsWith(os.tmpdir()));
       });
       it("it return a folder that exist", async () => {
         const folder = await PathHelper.getOutputFolder();
-        expect(fs.existsSync(folder)).to.be.true;
+        expect(fs.existsSync(folder)).to.be.eq(true);
       });
       it("it return a different folder for every call", async () => {
         const folder = await PathHelper.getOutputFolder();
