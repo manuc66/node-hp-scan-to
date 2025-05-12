@@ -2,6 +2,7 @@ import HPApi from "./HPApi";
 import Event from "./Event";
 import Destination from "./Destination";
 import { DeviceCapabilities } from "./DeviceCapabilities";
+import { RegistrationConfig, ScanTarget, SelectedScanTarget } from "./scanTargetDefinitions";
 
 export async function waitScanRequest(compEventURI: string): Promise<boolean> {
   const waitMax = 50;
@@ -29,27 +30,38 @@ export async function waitScanRequest(compEventURI: string): Promise<boolean> {
   return true;
 }
 
-export async function waitForScanEvent(
-  resourceURI: string,
+export async function waitForScanEventFromTarget(
+  scanTarget: ScanTarget,
   afterEtag: string | null = null,
 ): Promise<Event> {
+ return (await waitForScanEvent([scanTarget], afterEtag)).event
+}
+
+export async function waitForScanEvent(
+  scanTargets: ScanTarget[],
+  afterEtag: string | null = null,
+): Promise<SelectedScanTarget> {
   console.log("Start listening for new ScanEvent");
 
   let eventTable = await HPApi.getEvents(afterEtag ?? "");
-  let acceptedScanEvent = null;
+  let acceptedScanEvent: Event | undefined = undefined;
+  let scanTarget: ScanTarget;
   let currentEtag = eventTable.etag;
   while (acceptedScanEvent == null) {
     eventTable = await HPApi.getEvents(currentEtag, 1200);
     currentEtag = eventTable.etag;
 
-    acceptedScanEvent = eventTable.eventTable.events.find(
-      (ev) =>
-        ev.isScanEvent &&
-        ev.destinationURI &&
-        ev.destinationURI.indexOf(resourceURI) >= 0,
-    );
+    for (let i = 0; i < scanTargets.length && acceptedScanEvent == null; i++) {
+      scanTarget = scanTargets[i];
+      acceptedScanEvent = eventTable.eventTable.events.find(
+        (ev) =>
+          ev.isScanEvent &&
+          ev.destinationURI &&
+          ev.destinationURI.indexOf(scanTarget.resourceURI) >= 0,
+      );
+    }
   }
-  return acceptedScanEvent;
+  return {event: acceptedScanEvent, ...scanTarget!};
 }
 
 async function registerWalkupScanToCompDestination(
@@ -116,23 +128,28 @@ async function registerWalkupScanDestination(
   return resourceURI;
 }
 
-export type RegistrationConfig = {
-  label: string;
-};
-
 export async function waitScanEvent(
   deviceCapabilities: DeviceCapabilities,
-  registrationConfig: RegistrationConfig,
-): Promise<Event> {
-  let resourceURI: string;
-  if (deviceCapabilities.useWalkupScanToComp) {
-    resourceURI = await registerWalkupScanToCompDestination(registrationConfig);
-  } else {
-    resourceURI = await registerWalkupScanDestination(registrationConfig);
+  registrationConfigs: RegistrationConfig[],
+): Promise<SelectedScanTarget> {
+  const scanTargets: ScanTarget[] = [];
+  for (let i = 0; i < registrationConfigs.length; i++) {
+    const registrationConfig = registrationConfigs[i];
+    let resourceURI: string;
+    if (deviceCapabilities.useWalkupScanToComp) {
+      resourceURI = await registerWalkupScanToCompDestination(registrationConfig);
+    } else {
+      resourceURI = await registerWalkupScanDestination(registrationConfig);
+    }
+    scanTargets.push({
+      resourceURI: resourceURI,
+      ...registrationConfig,
+    });
   }
 
-  console.log("Waiting scan event for:", resourceURI);
-  return await waitForScanEvent(resourceURI);
+  const targetList = scanTargets.map(x => `${x.label}@${x.resourceURI}`).join(", ");
+  console.log(`Waiting scan event for: ${targetList}`);
+  return await waitForScanEvent(scanTargets);
 }
 
 export async function clearRegistrations() {
