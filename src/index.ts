@@ -22,6 +22,8 @@ import {
   saveScanFromEvent,
   ScanConfig,
   scanFromAdf,
+  singleScan,
+  SingleScanConfig,
   waitAdfLoaded,
 } from "./scanProcessing";
 import * as commitInfo from "./commitInfo.json";
@@ -96,6 +98,39 @@ async function listenCmd(
     } else {
       await delay(1000);
     }
+  }
+}
+
+async function singleScanCmd(
+  singleScanConfig: SingleScanConfig,
+  deviceUpPollingInterval: number,
+) {
+  // first make sure the device is reachable
+  await HPApi.waitDeviceUp(deviceUpPollingInterval);
+
+  const folder = await PathHelper.getOutputFolder(
+    singleScanConfig.directoryConfig.directory,
+  );
+  console.log(`Target folder: ${folder}`);
+
+  const tempFolder = await PathHelper.getOutputFolder(
+    singleScanConfig.directoryConfig.tempDirectory,
+  );
+  console.log(`Temp folder: ${tempFolder}`);
+
+  const deviceCapabilities = await readDeviceCapabilities();
+
+  try {
+    await singleScan(
+      0,
+      folder,
+      tempFolder,
+      singleScanConfig,
+      deviceCapabilities,
+      new Date(),
+    );
+  } catch (e) {
+    console.log(e);
   }
 }
 
@@ -572,6 +607,41 @@ async function main() {
       await adfAutoscanCmd(adfScanConfig, deviceUpPollingInterval);
     });
   program.addCommand(cmdAdfAutoscan);
+
+  const cmdSingleScan = program.createCommand("single-scan");
+  setupScanParameters(cmdSingleScan)
+    .addOption(
+      new Option("--duplex", "If specified, the scan will be in duplex"),
+    )
+    .addOption(
+      new Option(
+        "--pdf",
+        "If specified, the scan result will be a pdf document, the default is multiple jpeg files",
+      ),
+    )
+    .description("Trigger a new scan job")
+    .action(async (options, cmd) => {
+      const parentOption = cmd.parent.opts();
+
+      const ip = await getDeviceIp(parentOption);
+      HPApi.setDeviceIP(ip);
+
+      const isDebug = getIsDebug(parentOption);
+      HPApi.setDebug(isDebug);
+
+      const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
+
+      const scanConfig = getScanConfiguration(options);
+
+      const singleScanConfig: SingleScanConfig = {
+        ...scanConfig,
+        isDuplex: options.duplex || getConfig("single_scan_duplex") || false,
+        generatePdf: options.pdf || getConfig("single_scan_pdf") || false,
+      };
+
+      await singleScanCmd(singleScanConfig, deviceUpPollingInterval);
+    });
+  program.addCommand(cmdSingleScan);
 
   const cmdClearRegistrations = program.createCommand("clear-registrations");
   cmdClearRegistrations
