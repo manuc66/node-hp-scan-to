@@ -7,7 +7,7 @@ async function getScanCaps(discoveryTree: DiscoveryTree) {
   let scanCaps: ScanCaps | null = null;
   if (discoveryTree.ScanJobManifestURI != null) {
     const scanJobManifest = await HPApi.getScanJobManifest(
-      discoveryTree.ScanJobManifestURI
+      discoveryTree.ScanJobManifestURI,
     );
     if (scanJobManifest.ScanCapsURI != null) {
       scanCaps = await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);
@@ -36,9 +36,7 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
     }
   } else if (discoveryTree.WalkupScanManifestURI != null) {
     // No caps to load here but check we can load the specified manifest
-    await HPApi.getWalkupScanManifest(
-      discoveryTree.WalkupScanManifestURI,
-    );
+    await HPApi.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
   } else {
     console.log("Unknown device!");
   }
