@@ -5,7 +5,7 @@ import HPApi from "./HPApi";
 import fs from "fs/promises";
 import JpegUtil from "./JpegUtil";
 import { DeviceCapabilities } from "./DeviceCapabilities";
-import { waitForScanEvent, waitScanRequest } from "./listening";
+import { waitForScanEventFromTarget } from "./listening";
 import ScanJobSettings from "./ScanJobSettings";
 import { ScanContent, ScanPage } from "./ScanContent";
 import Job from "./Job";
@@ -16,6 +16,7 @@ import { InputSource } from "./InputSource";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
 import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { postProcessing } from "./postProcessing";
+import { SelectedScanTarget } from "./scanTargetDefinitions";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -41,11 +42,11 @@ async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   return job;
 }
 
-async function tryGetDestination(
+export async function tryGetDestination(
   event: Event,
 ): Promise<WalkupScanDestination | WalkupScanToCompDestination | null> {
-  //this code can in some cases be executed before the user actually chooses between Document or Photo
-  //so lets fetch the contentType (Document or Photo) until we get a value
+  // this code can in some cases be executed before the user actually chooses between Document or Photo
+  // so, let's fetch the contentType (Document or Photo) until we get a value
   let destination: WalkupScanDestination | WalkupScanToCompDestination | null =
     null;
 
@@ -222,6 +223,17 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
   }
   return startNewScanJob;
 }
+export enum TargetDuplexMode {
+  Simplex = "Simplex",
+  Duplex = "Duplex",
+  EmulatedDuplex = "EmulatedDuplex"
+}
+export enum DuplexMode {
+  Simplex = "Simplex",
+  Duplex = "Duplex",
+  FrontOfDoubleSided = "FrontOfDoubleSided",
+  BackOfDoubleSided = "BackOfDoubleSided",
+}
 
 async function executeScanJobs(
   scanJobSettings: ScanJobSettings,
@@ -229,7 +241,7 @@ async function executeScanJobs(
   folder: string,
   scanCount: number,
   scanJobContent: ScanContent,
-  firstEvent: Event,
+  selectedScanTarget: SelectedScanTarget,
   deviceCapabilities: DeviceCapabilities,
   filePattern: string | undefined,
 ) {
@@ -241,7 +253,8 @@ async function executeScanJobs(
     scanJobContent,
     filePattern,
   );
-  let lastEvent = firstEvent;
+  const scanTarget = {resourceURI: selectedScanTarget.resourceURI, label: selectedScanTarget.label, isDuplexSingleSide: selectedScanTarget.isDuplexSingleSide};
+  let lastEvent = selectedScanTarget.event;
   if (
     jobState === "Completed" &&
     lastEvent.compEventURI &&
@@ -249,8 +262,7 @@ async function executeScanJobs(
     lastEvent.destinationURI &&
     deviceCapabilities.supportsMultiItemScanFromPlaten
   ) {
-    lastEvent = await waitForScanEvent(
-      lastEvent.destinationURI,
+    lastEvent = await waitForScanEventFromTarget(scanTarget,
       lastEvent.agingStamp,
     );
     if (!lastEvent.compEventURI) {
@@ -272,8 +284,7 @@ async function executeScanJobs(
       if (!lastEvent.destinationURI) {
         break;
       }
-      lastEvent = await waitForScanEvent(
-        lastEvent.destinationURI,
+      lastEvent = await waitForScanEventFromTarget(scanTarget,
         lastEvent.agingStamp,
       );
       if (!lastEvent.compEventURI) {
@@ -284,7 +295,7 @@ async function executeScanJobs(
   }
 }
 
-function isPdf(
+export function isPdf(
   destination: WalkupScanDestination | WalkupScanToCompDestination,
 ) {
   if (
@@ -355,46 +366,28 @@ export function getScanHeight(
 }
 
 export async function saveScanFromEvent(
-  event: Event,
+  selectedScanTarget: SelectedScanTarget,
   folder: string,
   tempFolder: string,
   scanCount: number,
   deviceCapabilities: DeviceCapabilities,
   scanConfig: ScanConfig,
-): Promise<void> {
-  if (event.compEventURI) {
-    const proceedToScan = await waitScanRequest(event.compEventURI);
-    if (!proceedToScan) {
-      return;
-    }
-  }
+  isDuplex: boolean,
+  isPdf: boolean
+): Promise<ScanContent> {
 
-  const destination = await tryGetDestination(event);
-  if (!destination) {
-    console.log("No shortcut selected!");
-    return;
-  }
-  console.log("Selected shortcut: " + destination.shortcut);
-
-  let toPdf: boolean;
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
-  if (isPdf(destination)) {
-    toPdf = true;
+  if (isPdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
     console.log(
       `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`,
     );
   } else {
-    toPdf = false;
     contentType = "Photo";
     destinationFolder = folder;
   }
-
-  const isDuplex =
-    destination.scanPlexMode != null && destination.scanPlexMode != "Simplex";
-  console.log("ScanPlexMode is : " + destination.scanPlexMode);
 
   const scanStatus = await HPApi.getScanStatus();
 
@@ -429,7 +422,7 @@ export async function saveScanFromEvent(
 
   const scanJobContent: ScanContent = { elements: [] };
 
-  const scanDate = new Date();
+
 
   await executeScanJobs(
     scanJobSettings,
@@ -437,7 +430,7 @@ export async function saveScanFromEvent(
     destinationFolder,
     scanCount,
     scanJobContent,
-    event,
+    selectedScanTarget,
     deviceCapabilities,
     scanConfig.directoryConfig.filePattern,
   );
@@ -445,15 +438,9 @@ export async function saveScanFromEvent(
   console.log(
     `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`,
   );
-  await postProcessing(
-    scanConfig,
-    folder,
-    tempFolder,
-    scanCount,
-    scanJobContent,
-    scanDate,
-    toPdf,
-  );
+
+
+  return scanJobContent;
 }
 
 export type DirectoryConfig = {

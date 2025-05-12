@@ -13,17 +13,21 @@ import { delay } from "./delay";
 import { readDeviceCapabilities } from "./readDeviceCapabilities";
 import {
   clearRegistrations,
-  RegistrationConfig,
   waitScanEvent,
+  waitScanRequest,
 } from "./listening";
 import {
   AdfAutoScanConfig,
   DirectoryConfig,
+  DuplexMode,
+  isPdf,
   saveScanFromEvent,
   ScanConfig,
   scanFromAdf,
   singleScan,
   SingleScanConfig,
+  TargetDuplexMode,
+  tryGetDestination,
   waitAdfLoaded,
 } from "./scanProcessing";
 import * as commitInfo from "./commitInfo.json";
@@ -31,11 +35,36 @@ import { PaperlessConfig } from "./paperless/PaperlessConfig";
 import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { startHealthCheckServer } from "./healthcheck";
 import fs from "fs";
+import {
+  RegistrationConfig,
+  SelectedScanTarget,
+} from "./scanTargetDefinitions";
+import { ScanContent } from "./ScanContent";
+import { postProcessing } from "./postProcessing";
 
 let iteration = 0;
 
+function assembleEmulatedDoubleSideScan(previousScanContent: ScanContent, scanJobContent: ScanContent) {
+  const frontContent = previousScanContent.elements;
+  const backContent = scanJobContent.elements;
+  const duplexScanJobContent: ScanContent = { elements: [] };
+  for (
+    let i = 0;
+    i < Math.max(frontContent.length, backContent.length);
+    i++
+  ) {
+    if (i < frontContent.length) {
+      duplexScanJobContent.elements.push(frontContent[i]);
+    }
+    if (i < backContent.length) {
+      duplexScanJobContent.elements.push(backContent[i]);
+    }
+  }
+  return duplexScanJobContent;
+}
+
 async function listenCmd(
-  registrationConfig: RegistrationConfig,
+  registrationConfigs: RegistrationConfig[],
   scanConfig: ScanConfig,
   deviceUpPollingInterval: number,
 ) {
@@ -55,28 +84,156 @@ async function listenCmd(
 
   const deviceCapabilities = await readDeviceCapabilities();
 
+  let previousScanCount = 0;
   let scanCount = 0;
   let keepActive = true;
   let errorCount = 0;
+  let lastScanTarget: SelectedScanTarget | undefined = undefined;
+  let scanToPdf: boolean = false;
+  let scanDate = new Date();
+  let scanJobContent: ScanContent = { elements: [] };
+  let duplexMode: DuplexMode = DuplexMode.Simplex;
   while (keepActive) {
     iteration++;
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
     try {
-      const event = await waitScanEvent(deviceCapabilities, registrationConfig);
-      scanCount = await PathHelper.getNextScanNumber(
-        folder,
-        scanCount,
-        scanConfig.directoryConfig.filePattern,
-      );
-      console.log(`Scan event captured, saving scan #${scanCount}`);
-      await saveScanFromEvent(
-        event,
+      const selectedScanTarget = await waitScanEvent(deviceCapabilities,       registrationConfigs);
+
+      if (selectedScanTarget.event.compEventURI) {
+        const proceedToScan = await waitScanRequest(
+          selectedScanTarget.event.compEventURI,
+        );
+        if (!proceedToScan) {
+          return;
+        }
+      }
+
+      const destination = await tryGetDestination(selectedScanTarget.event);
+      if (!destination) {
+        console.log("No shortcut selected!");
+        return;
+      }
+      console.log("Selected shortcut: " + destination.shortcut);
+
+      const isDuplex =
+        destination.scanPlexMode != null &&
+        destination.scanPlexMode != "Simplex";
+
+      let targetDuplexMode: TargetDuplexMode;
+      previousScanCount = scanCount;
+      if (isDuplex) {
+        targetDuplexMode = TargetDuplexMode.Duplex;
+        duplexMode = DuplexMode.Duplex;
+      } else if (selectedScanTarget.isDuplexSingleSide) {
+        targetDuplexMode = TargetDuplexMode.EmulatedDuplex;
+        if (
+          lastScanTarget != null &&
+          selectedScanTarget.resourceURI === lastScanTarget.resourceURI && duplexMode !== DuplexMode.BackOfDoubleSided
+        ) {
+          duplexMode = DuplexMode.BackOfDoubleSided;
+        } else {
+          duplexMode = DuplexMode.FrontOfDoubleSided;
+        }
+      } else {
+        targetDuplexMode = TargetDuplexMode.Simplex;
+        duplexMode = DuplexMode.Simplex;
+      }
+
+      if (
+        lastScanTarget != null &&
+        selectedScanTarget.isDuplexSingleSide &&
+        duplexMode !== DuplexMode.BackOfDoubleSided
+      ) {
+        console.log(
+          `Scan target changed from ${lastScanTarget.label} to ${selectedScanTarget.label}, saving scan #${scanCount} before processing`,
+        );
+
+        await postProcessing(
+          scanConfig,
+          folder,
+          tempFolder,
+          previousScanCount,
+          scanJobContent,
+          scanDate,
+          scanToPdf,
+        );
+      }
+
+      if (duplexMode == DuplexMode.Duplex) {
+        scanToPdf = isPdf(destination);
+        scanDate = new Date();
+        scanCount = await PathHelper.getNextScanNumber(
+          folder,
+          scanCount,
+          scanConfig.directoryConfig.filePattern,
+        );
+
+        console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
+        console.log(`Scan event captured, saving scan #${scanCount}`);
+      } else if (targetDuplexMode == TargetDuplexMode.EmulatedDuplex) {
+        if (
+          duplexMode == DuplexMode.FrontOfDoubleSided
+        ) {
+          scanToPdf = isPdf(destination);
+          scanDate = new Date();
+          scanCount = await PathHelper.getNextScanNumber(
+            folder,
+            scanCount,
+            scanConfig.directoryConfig.filePattern,
+          );
+          console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
+          console.log(`Scan event captured, saving front sides of scan #${scanCount}`);
+        }
+        else {
+          console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
+          console.log(`Scan event captured, saving back sides of scan #${scanCount}`);
+        }
+      } else {
+        scanToPdf = isPdf(destination);
+        scanDate = new Date();
+        scanCount = await PathHelper.getNextScanNumber(
+          folder,
+          scanCount,
+          scanConfig.directoryConfig.filePattern,
+        );
+
+        console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
+        console.log(`Scan event captured, saving scan #${scanCount}`);
+      }
+
+      lastScanTarget = selectedScanTarget;
+
+      const previousScanContent = scanJobContent;
+      scanJobContent = await saveScanFromEvent(
+        selectedScanTarget,
         folder,
         tempFolder,
         scanCount,
         deviceCapabilities,
         scanConfig,
+        targetDuplexMode == TargetDuplexMode.Duplex,
+        scanToPdf,
       );
+
+      let finalScanJobContent : ScanContent = { elements: []};
+      if (duplexMode == DuplexMode.BackOfDoubleSided) {
+        finalScanJobContent = assembleEmulatedDoubleSideScan(previousScanContent, scanJobContent);
+
+      } else if (duplexMode != DuplexMode.FrontOfDoubleSided) {
+        finalScanJobContent =  scanJobContent;
+      }
+
+      if (duplexMode != DuplexMode.FrontOfDoubleSided) {
+        await postProcessing(
+          scanConfig,
+          folder,
+          tempFolder,
+          scanCount,
+          finalScanJobContent,
+          scanDate,
+          scanToPdf,
+        );
+      }
     } catch (e) {
       if (await HPApi.isAlive()) {
         console.log(e);
@@ -499,6 +656,14 @@ async function main() {
       "-l, --label <label>",
       "The label to display on the device (the default is the hostname)",
     )
+    .option(
+      "--add-emulated-duplex",
+      "Enable emulated duplex scanning",
+    )
+    .option(
+      "--emulated-duplex-label <label>",
+      "The emulated duplex label to display on the device (the default is to suffix the main label with duplex)",
+    )
     .addOption(
       new Option("--health-check", "Start an http health check endpoint"),
     )
@@ -517,9 +682,20 @@ async function main() {
       const isDebug = getIsDebug(parentOption);
       HPApi.setDebug(isDebug);
 
+      const registrationConfigs : RegistrationConfig[] = [];
+
       const registrationConfig: RegistrationConfig = {
         label: options.label || getConfig("label") || os.hostname(),
+        isDuplexSingleSide: false,
       };
+      registrationConfigs.push(registrationConfig);
+
+      if (options.addEmulatedDuplex || getConfig("add_emulated_duplex")) {
+        registrationConfigs.push( {
+          label: options.emulatedDuplexLabel || getConfig("emulated_duplex_label")  || `${registrationConfig.label} duplex`,
+          isDuplexSingleSide: true,
+        })
+      }
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
 
@@ -530,7 +706,7 @@ async function main() {
 
       const scanConfig = getScanConfiguration(options);
 
-      await listenCmd(registrationConfig, scanConfig, deviceUpPollingInterval);
+      await listenCmd(registrationConfigs, scanConfig, deviceUpPollingInterval);
     });
   program.addCommand(cmdListen, { isDefault: true });
 

@@ -34,7 +34,7 @@ export default class EventTable {
     };
   }
 
-  get events() {
+  get events(): Event[] {
     const eventTable = this.data["ev:EventTable"];
     if (eventTable != null && eventTable["ev:Event"] != null) {
       return eventTable["ev:Event"].map((x) => new Event(x));
