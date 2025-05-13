@@ -72,15 +72,11 @@ async function listenCmd(
   await HPApi.waitDeviceUp(deviceUpPollingInterval);
   let deviceUp = true;
 
-  const folder = await PathHelper.getOutputFolder(
-    scanConfig.directoryConfig.directory,
-  );
-  console.log(`Target folder: ${folder}`);
+  const folder = await getTargetFolder(scanConfig.directoryConfig.directory);
 
-  const tempFolder = await PathHelper.getOutputFolder(
+  const tempFolder = await getTempFolder(
     scanConfig.directoryConfig.tempDirectory,
   );
-  console.log(`Temp folder: ${tempFolder}`);
 
   const deviceCapabilities = await readDeviceCapabilities();
 
@@ -258,6 +254,12 @@ async function listenCmd(
   }
 }
 
+async function getTargetFolder(directory: string | undefined) {
+  const folder = await PathHelper.getOutputFolder(directory);
+  console.log(`Target folder: ${folder}`);
+  return folder;
+}
+
 async function singleScanCmd(
   singleScanConfig: SingleScanConfig,
   deviceUpPollingInterval: number,
@@ -265,15 +267,13 @@ async function singleScanCmd(
   // first make sure the device is reachable
   await HPApi.waitDeviceUp(deviceUpPollingInterval);
 
-  const folder = await PathHelper.getOutputFolder(
+  const folder = await getTargetFolder(
     singleScanConfig.directoryConfig.directory,
   );
-  console.log(`Target folder: ${folder}`);
 
-  const tempFolder = await PathHelper.getOutputFolder(
+  const tempFolder = await getTempFolder(
     singleScanConfig.directoryConfig.tempDirectory,
   );
-  console.log(`Temp folder: ${tempFolder}`);
 
   const deviceCapabilities = await readDeviceCapabilities();
 
@@ -291,6 +291,12 @@ async function singleScanCmd(
   }
 }
 
+async function getTempFolder(directory: string | undefined) {
+  const tempFolder = await PathHelper.getOutputFolder(directory);
+  console.log(`Temp folder: ${tempFolder}`);
+  return tempFolder;
+}
+
 async function adfAutoscanCmd(
   adfAutoScanConfig: AdfAutoScanConfig,
   deviceUpPollingInterval: number,
@@ -299,15 +305,12 @@ async function adfAutoscanCmd(
   await HPApi.waitDeviceUp(deviceUpPollingInterval);
   let deviceUp = true;
 
-  const folder = await PathHelper.getOutputFolder(
+  const folder = await getTargetFolder(
     adfAutoScanConfig.directoryConfig.directory,
   );
-  console.log(`Target folder: ${folder}`);
-
-  const tempFolder = await PathHelper.getOutputFolder(
+  const tempFolder = await getTempFolder(
     adfAutoScanConfig.directoryConfig.tempDirectory,
   );
-  console.log(`Temp folder: ${tempFolder}`);
 
   const deviceCapabilities = await readDeviceCapabilities();
 
