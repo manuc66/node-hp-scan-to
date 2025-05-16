@@ -17,16 +17,10 @@ import {
   waitScanRequest,
 } from "./listening";
 import {
-  AdfAutoScanConfig,
-  DirectoryConfig,
-  DuplexMode,
   isPdf,
   saveScanFromEvent,
-  ScanConfig,
   scanFromAdf,
   singleScan,
-  SingleScanConfig,
-  TargetDuplexMode,
   tryGetDestination,
   waitAdfLoaded,
 } from "./scanProcessing";
@@ -43,6 +37,10 @@ import { ScanContent } from "./ScanContent";
 import { postProcessing } from "./postProcessing";
 import WalkupScanDestination from "./WalkupScanDestination";
 import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
+import { TargetDuplexMode } from "targetDuplexMode";
+import { DuplexMode } from "duplexMode";
+import { DirectoryConfig } from "directoryConfig";
+import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "scanConfigs";
 
 let iteration = 0;
 
