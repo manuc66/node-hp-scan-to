@@ -2,7 +2,7 @@
 import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
-import { KnownShortcut } from "./KnownShortcut";
+import { KnownShortcut } from "KnownShortcut";
 const parseString = promisify<string, WalkupScanToCompDestinationRoot>(
   parser.parseString,
 );

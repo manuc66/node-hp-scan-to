@@ -1,7 +1,7 @@
 "use strict";
 import { Parser } from "xml2js";
 import { promisify } from "util";
-import { KnownShortcut } from "./KnownShortcut";
+import { KnownShortcut } from "KnownShortcut";
 
 const parser = new Parser();
 const parseString = promisify<string, WalkupScanDestinationsData>(

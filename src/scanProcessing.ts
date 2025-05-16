@@ -13,10 +13,9 @@ import { delay } from "./delay";
 import PathHelper from "./PathHelper";
 import ScanStatus from "./ScanStatus";
 import { InputSource } from "./InputSource";
-import { PaperlessConfig } from "./paperless/PaperlessConfig";
-import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { postProcessing } from "./postProcessing";
 import { SelectedScanTarget } from "./scanTargetDefinitions";
+import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "scanConfigs";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -222,17 +221,6 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
     }
   }
   return startNewScanJob;
-}
-export enum TargetDuplexMode {
-  Simplex = "Simplex",
-  Duplex = "Duplex",
-  EmulatedDuplex = "EmulatedDuplex"
-}
-export enum DuplexMode {
-  Simplex = "Simplex",
-  Duplex = "Duplex",
-  FrontOfDoubleSided = "FrontOfDoubleSided",
-  BackOfDoubleSided = "BackOfDoubleSided",
 }
 
 async function executeScanJobs(
@@ -443,31 +431,7 @@ export async function saveScanFromEvent(
   return scanJobContent;
 }
 
-export type DirectoryConfig = {
-  directory: string | undefined;
-  tempDirectory: string | undefined;
-  filePattern: string | undefined;
-};
 
-export type ScanConfig = {
-  resolution: number;
-  width: number | null;
-  height: number | null;
-  directoryConfig: DirectoryConfig;
-  paperlessConfig: PaperlessConfig | undefined;
-  nextcloudConfig: NextcloudConfig | undefined;
-};
-export type AdfAutoScanConfig = ScanConfig & {
-  isDuplex: boolean;
-  generatePdf: boolean;
-  pollingInterval: number;
-  startScanDelay: number;
-};
-
-export type SingleScanConfig = ScanConfig & {
-  isDuplex: boolean;
-  generatePdf: boolean;
-};
 
 export async function scanFromAdf(
   scanCount: number,
