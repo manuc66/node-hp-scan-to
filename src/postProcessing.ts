@@ -10,10 +10,10 @@ import {
   uploadPdfToNextcloud,
   uploadImagesToNextcloud,
 } from "./nextcloud/nextcloud";
-import { ScanConfig } from "./scanProcessing";
 import fs from "fs/promises";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
 import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
+import { ScanConfig } from "scanConfigs";
 
 export async function postProcessing(
   scanConfig: ScanConfig,
