@@ -12,6 +12,7 @@ import { postProcessing } from "./postProcessing";
 import { SelectedScanTarget } from "./scanTargetDefinitions";
 import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "scanConfigs";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers";
+import { KnownShortcut } from "KnownShortcut";
 
 
 
@@ -50,14 +51,14 @@ export function isPdf(
   destination: WalkupScanDestination | WalkupScanToCompDestination,
 ) {
   if (
-    destination.shortcut === "SavePDF" ||
-    destination.shortcut === "EmailPDF" ||
-    destination.shortcut == "SaveDocument1"
+    destination.shortcut ===  KnownShortcut.SavePDF ||
+    destination.shortcut ===  KnownShortcut.EmailPDF ||
+    destination.shortcut ==  KnownShortcut.SaveDocument1
   ) {
     return true;
   } else if (
-    destination.shortcut === "SaveJPEG" ||
-    destination.shortcut === "SavePhoto1"
+    destination.shortcut ===  KnownShortcut.SaveJPEG ||
+    destination.shortcut ===  KnownShortcut.SavePhoto1
   ) {
     return false;
   } else {
