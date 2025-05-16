@@ -1,0 +1,70 @@
+import { AdfAutoScanConfig } from "scanConfigs";
+import HPApi from "../HPApi";
+import { getTargetFolder, getTempFolder } from "../scanConfigUtils";
+import { readDeviceCapabilities } from "../readDeviceCapabilities";
+import { scanFromAdf, waitAdfLoaded } from "../scanProcessing";
+import { delay } from "../delay";
+
+
+let iteration = 0;
+export async function adfAutoscanCmd(
+  adfAutoScanConfig: AdfAutoScanConfig,
+  deviceUpPollingInterval: number,
+) {
+  // first make sure the device is reachable
+  await HPApi.waitDeviceUp(deviceUpPollingInterval);
+  let deviceUp = true;
+
+  const folder = await getTargetFolder(
+    adfAutoScanConfig.directoryConfig.directory,
+  );
+  const tempFolder = await getTempFolder(
+    adfAutoScanConfig.directoryConfig.tempDirectory,
+  );
+
+  const deviceCapabilities = await readDeviceCapabilities();
+
+  let scanCount = 0;
+  let keepActive = true;
+  let errorCount = 0;
+  while (keepActive) {
+    iteration++;
+    console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
+    try {
+      await waitAdfLoaded(
+        adfAutoScanConfig.pollingInterval,
+        adfAutoScanConfig.startScanDelay,
+      );
+
+      scanCount++;
+
+      console.log(`Scan event captured, saving scan #${scanCount}`);
+
+      await scanFromAdf(
+        scanCount,
+        folder,
+        tempFolder,
+        adfAutoScanConfig,
+        deviceCapabilities,
+        new Date(),
+      );
+    } catch (e) {
+      console.log(e);
+      if (await HPApi.isAlive()) {
+        errorCount++;
+      } else {
+        deviceUp = false;
+      }
+    }
+
+    if (errorCount === 50) {
+      keepActive = false;
+    }
+
+    if (!deviceUp) {
+      await HPApi.waitDeviceUp(deviceUpPollingInterval);
+    } else {
+      await delay(1000);
+    }
+  }
+}
