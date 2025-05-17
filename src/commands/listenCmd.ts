@@ -64,14 +64,15 @@ export async function listenCmd(
           selectedScanTarget.event.compEventURI,
         );
         if (!proceedToScan) {
-          return;
+          console.log("Device state doesn't match expectations - Unable to proceed with scan, skipping.");
+          continue;
         }
       }
 
       const destination = await tryGetDestination(selectedScanTarget.event);
       if (!destination) {
-        console.log("No shortcut selected!");
-        return;
+        console.log("No shortcut selected - Impossible to proceed with scan, skipping.");
+        continue;
       }
       console.log("Selected shortcut: " + destination.shortcut);
 
