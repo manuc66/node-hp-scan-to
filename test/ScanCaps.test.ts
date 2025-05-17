@@ -37,6 +37,12 @@ describe("ScanCaps", () => {
     it("PlatenMaxHeight", async () => {
       expect(scanCaps.platenMaxHeight).to.be.eq(3508);
     });
+    it("AdfDetectPaperLoaded", async () => {
+      expect(scanCaps.hasAdfDetectPaperLoaded).to.be.eq(true);
+    });
+    it("AdfDuplex", async () => {
+      expect(scanCaps.hasAdfDuplex).to.be.eq(false);
+    });
   });
   describe("Parsing ScanCaps_no_adf.xml", async () => {
     let scanCaps: ScanCaps;
@@ -69,6 +75,12 @@ describe("ScanCaps", () => {
     });
     it("PlatenMaxHeight", async () => {
       expect(scanCaps.platenMaxHeight).to.be.eq(3508);
+    });
+    it("AdfDetectPaperLoaded", async () => {
+      expect(scanCaps.hasAdfDetectPaperLoaded).to.be.eq(false);
+    });
+    it("AdfDuplex", async () => {
+      expect(scanCaps.hasAdfDuplex).to.be.eq(false);
     });
   });
   describe("Parsing ScanCaps_only_adf.xml", async () => {
@@ -103,6 +115,12 @@ describe("ScanCaps", () => {
     it("PlatenMaxHeight", async () => {
       expect(scanCaps.platenMaxHeight).to.be.eq(null);
     });
+    it("AdfDetectPaperLoaded", async () => {
+      expect(scanCaps.hasAdfDetectPaperLoaded).to.be.eq(true);
+    });
+    it("AdfDuplex", async () => {
+      expect(scanCaps.hasAdfDuplex).to.be.eq(false);
+    });
   });
   describe("Parsing ScanCaps_with_duplex_adf.xml", async () => {
     let scanCaps: ScanCaps;
@@ -135,6 +153,12 @@ describe("ScanCaps", () => {
     });
     it("PlatenMaxHeight", async () => {
       expect(scanCaps.platenMaxHeight).to.be.eq(3534);
+    });
+    it("AdfDetectPaperLoaded", async () => {
+      expect(scanCaps.hasAdfDetectPaperLoaded).to.be.eq(true);
+    });
+    it("AdfDuplex", async () => {
+      expect(scanCaps.hasAdfDuplex).to.be.eq(true);
     });
   });
 });

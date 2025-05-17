@@ -24,6 +24,14 @@ export async function adfAutoscanCmd(
 
   const deviceCapabilities = await readDeviceCapabilities();
 
+  if (!deviceCapabilities.hasAdfDetectPaperLoaded) {
+    console.log("WARNING: The automatic scan feature is likely unsupported on this device, as its advertised capabilities do not include this feature.");
+  }
+
+  if (adfAutoScanConfig.isDuplex && !deviceCapabilities.hasAdfDuplex) {
+    console.log("WARNING: The requested duplex scan method is likely unsupported on this device, as its advertised capabilities do not include this feature.");
+  }
+
   let scanCount = 0;
   let keepActive = true;
   let errorCount = 0;

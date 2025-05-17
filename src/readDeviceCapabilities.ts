@@ -3,7 +3,7 @@ import HPApi from "./HPApi";
 import ScanCaps from "./ScanCaps";
 import DiscoveryTree from "./DiscoveryTree";
 
-async function getScanCaps(discoveryTree: DiscoveryTree) {
+async function getScanCaps(discoveryTree: DiscoveryTree): Promise<ScanCaps | null> {
   let scanCaps: ScanCaps | null = null;
   if (discoveryTree.ScanJobManifestURI != null) {
     const scanJobManifest = await HPApi.getScanJobManifest(
@@ -51,5 +51,7 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
     adfMaxHeight: scanCaps?.adfMaxHeight || null,
     adfDuplexMaxWidth: scanCaps?.adfDuplexMaxWidth || null,
     adfDuplexMaxHeight: scanCaps?.adfDuplexMaxHeight || null,
+    hasAdfDuplex: scanCaps?.hasAdfDuplex || false,
+    hasAdfDetectPaperLoaded: scanCaps?.hasAdfDetectPaperLoaded || false,
   };
 }
