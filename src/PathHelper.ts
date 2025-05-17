@@ -6,12 +6,7 @@ import fs from "fs";
 
 export default class PathHelper {
   static getFileForPage(
-    folder: string,
-    scanCount: number,
-    currentPageNumber: number,
-    filePattern: string | undefined,
-    extension: string,
-    date: Date,
+    folder: string, scanCount: number, currentPageNumber: number, filePattern: string | undefined, extension: string, date: Date
   ): string {
     if (filePattern) {
       return path.join(folder, `${dateformat(date, filePattern)}.${extension}`);

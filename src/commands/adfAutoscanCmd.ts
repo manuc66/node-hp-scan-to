@@ -10,7 +10,7 @@ let iteration = 0;
 export async function adfAutoscanCmd(
   adfAutoScanConfig: AdfAutoScanConfig,
   deviceUpPollingInterval: number,
-) {
+): Promise<void> {
   // first make sure the device is reachable
   await HPApi.waitDeviceUp(deviceUpPollingInterval);
   let deviceUp = true;

@@ -34,6 +34,8 @@ describe("scanProcessing", () => {
       adfMaxHeight: null,
       adfDuplexMaxWidth: null,
       adfDuplexMaxHeight: null,
+      hasAdfDetectPaperLoaded: false,
+      hasAdfDuplex: false,
     };
   });
 
