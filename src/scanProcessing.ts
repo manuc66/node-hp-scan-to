@@ -10,9 +10,9 @@ import ScanStatus from "./ScanStatus";
 import { InputSource } from "./InputSource";
 import { postProcessing } from "./postProcessing";
 import { SelectedScanTarget } from "./scanTargetDefinitions";
-import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "scanConfigs";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers";
-import { KnownShortcut } from "KnownShortcut";
+import { KnownShortcut } from "./type/KnownShortcut";
+import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs";
 
 
 

@@ -1,8 +1,8 @@
-import { SingleScanConfig } from "scanConfigs";
 import HPApi from "../HPApi";
 import { getTargetFolder, getTempFolder } from "../scanConfigUtils";
 import { readDeviceCapabilities } from "../readDeviceCapabilities";
 import { singleScan } from "../scanProcessing";
+import { SingleScanConfig } from "../type/scanConfigs";
 
 export async function singleScanCmd(
   singleScanConfig: SingleScanConfig,
