@@ -57,108 +57,83 @@ export async function listenCmd(
         registrationConfigs,
       );
 
+      let proceedToScan = true;
       if (selectedScanTarget.event.compEventURI) {
-        const proceedToScan = await waitScanRequest(
+        proceedToScan = await waitScanRequest(
           selectedScanTarget.event.compEventURI,
         );
-        if (!proceedToScan) {
-          console.log(
-            "Device state doesn't match expectations - Unable to proceed with scan, skipping.",
-          );
-          continue;
-        }
       }
 
-      const destination = await tryGetDestination(selectedScanTarget.event);
-      if (!destination) {
+      let destination: WalkupScanDestination | WalkupScanToCompDestination | null = null;
+      if (!proceedToScan) {
         console.log(
-          "No shortcut selected - Impossible to proceed with scan, skipping.",
-        );
-        continue;
-      }
-      console.log("Selected shortcut: " + destination.shortcut);
-
-      const { duplexMode, targetDuplexMode } = determineDuplexModes(
-        destination,
-        selectedScanTarget,
-        lastDuplexMode,
-        lastScanTarget,
-      );
-      if (
-        lastScanTarget != null &&
-        frontOfDoubleSidedScanContext != null &&
-        selectedScanTarget.isDuplexSingleSide &&
-        duplexMode !== DuplexMode.BackOfDoubleSided
-      ) {
-        await processFinishedPartialDuplexScan(
-          lastScanTarget,
-          selectedScanTarget,
-          scanCount,
-          frontOfDoubleSidedScanContext,
+          "Device state doesn't match expectations - Unable to proceed with scan, skipping.",
         );
       }
-
-      const {
-        pageCountingStrategy,
-        scanToPdf,
-        scanDate,
-        scanCount: newScanCount,
-      } = await setupScanParameters(
-        duplexMode,
-        targetDuplexMode,
-        destination,
-        scanCount,
-        folder,
-        scanConfig,
-      );
-      scanCount = newScanCount;
-
-      const scanJobContent = await saveScanFromEvent(
-        selectedScanTarget,
-        folder,
-        tempFolder,
-        scanCount,
-        deviceCapabilities,
-        scanConfig,
-        targetDuplexMode == TargetDuplexMode.Duplex,
-        scanToPdf,
-        pageCountingStrategy,
-      );
-
-      if (duplexMode == DuplexMode.FrontOfDoubleSided) {
-        frontOfDoubleSidedScanContext = {
-          scanConfig,
-          folder,
-          tempFolder,
-          scanCount,
-          scanJobContent,
-          scanDate,
-          scanToPdf,
-        };
-      } else {
-        let finalScanJobContent: ScanContent;
-        if (duplexMode == DuplexMode.BackOfDoubleSided) {
-          finalScanJobContent = assembleDuplexScan(
-            frontOfDoubleSidedScanContext,
-            scanJobContent,
+      else {
+        destination = await tryGetDestination(selectedScanTarget.event);
+        if (!destination) {
+          console.log(
+            "No shortcut selected - Impossible to proceed with scan, skipping.",
           );
-        } else {
-          finalScanJobContent = scanJobContent;
+        }
+      }
+
+      if (destination) {
+        console.log("Selected shortcut: " + destination.shortcut);
+
+        const { duplexMode, targetDuplexMode } = determineDuplexModes(
+          destination,
+          selectedScanTarget,
+          lastDuplexMode,
+          lastScanTarget,
+        );
+        if (
+          lastScanTarget != null &&
+          frontOfDoubleSidedScanContext != null &&
+          selectedScanTarget.isDuplexSingleSide &&
+          duplexMode !== DuplexMode.BackOfDoubleSided
+        ) {
+          await processFinishedPartialDuplexScan(
+            lastScanTarget,
+            selectedScanTarget,
+            scanCount,
+            frontOfDoubleSidedScanContext,
+          );
         }
 
-        await postProcessing(
+        const {
+          pageCountingStrategy,
+          scanToPdf,
+          scanDate,
+          scanCount: newScanCount,
+        } = await setupScanParameters(
+          duplexMode,
+          targetDuplexMode,
+          destination,
+          scanCount,
+          folder,
           scanConfig,
+        );
+        scanCount = newScanCount;
+
+        const scanJobContent = await saveScanFromEvent(
+          selectedScanTarget,
           folder,
           tempFolder,
           scanCount,
-          finalScanJobContent,
-          scanDate,
+          deviceCapabilities,
+          scanConfig,
+          targetDuplexMode == TargetDuplexMode.Duplex,
           scanToPdf,
+          pageCountingStrategy,
         );
-      }
 
-      lastScanTarget = selectedScanTarget;
-      lastDuplexMode = duplexMode;
+        frontOfDoubleSidedScanContext = await handleScanResult(duplexMode, frontOfDoubleSidedScanContext, scanConfig, folder, tempFolder, scanCount, scanJobContent, scanDate, scanToPdf);
+
+        lastScanTarget = selectedScanTarget;
+        lastDuplexMode = duplexMode;
+      }
     } catch (e) {
       if (await HPApi.isAlive()) {
         console.log(e);
@@ -181,6 +156,42 @@ export async function listenCmd(
       await delay(1000);
     }
   }
+}
+
+
+async function handleScanResult(duplexMode: DuplexMode.Simplex | DuplexMode.Duplex | DuplexMode.BackOfDoubleSided | DuplexMode.FrontOfDoubleSided, frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null, scanConfig: ScanConfig, folder: string, tempFolder: string, scanCount: number, scanJobContent: ScanContent, scanDate: Date, scanToPdf: boolean) {
+  if (duplexMode == DuplexMode.FrontOfDoubleSided) {
+    frontOfDoubleSidedScanContext = {
+      scanConfig,
+      folder,
+      tempFolder,
+      scanCount,
+      scanJobContent,
+      scanDate,
+      scanToPdf
+    };
+  } else {
+    let finalScanJobContent: ScanContent;
+    if (duplexMode == DuplexMode.BackOfDoubleSided) {
+      finalScanJobContent = assembleDuplexScan(
+        frontOfDoubleSidedScanContext,
+        scanJobContent
+      );
+    } else {
+      finalScanJobContent = scanJobContent;
+    }
+
+    await postProcessing(
+      scanConfig,
+      folder,
+      tempFolder,
+      scanCount,
+      finalScanJobContent,
+      scanDate,
+      scanToPdf
+    );
+  }
+  return frontOfDoubleSidedScanContext;
 }
 
 function determineDuplexModes(
