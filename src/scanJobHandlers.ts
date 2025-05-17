@@ -10,6 +10,7 @@ import { InputSource } from "./InputSource";
 import { SelectedScanTarget } from "./scanTargetDefinitions";
 import fs from "fs/promises";
 import JpegUtil from "./JpegUtil";
+import { PageCountingStrategy } from "./type/pageCountingStrategy";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -114,14 +115,14 @@ async function handleScanProcessingState(
 }
 
 export async function executeScanJob(
-  scanJobSettings: ScanJobSettings,
-  inputSource: InputSource,
-  folder: string,
-  scanCount: number,
-  scanJobContent: ScanContent,
-  filePattern: string | undefined,
+  scanJobSettings: ScanJobSettings, inputSource: InputSource, folder: string, scanCount: number, scanJobContent: ScanContent, filePattern: string | undefined, pageCountingStrategy: PageCountingStrategy
 ): Promise<"Completed" | "Canceled"> {
   const jobUrl = await HPApi.postJob(scanJobSettings);
+
+
+  console.log(
+    `Creating job with settings: ${JSON.stringify(scanJobSettings)}`,
+  )
 
   console.log("New job created:", jobUrl);
 
@@ -134,12 +135,26 @@ export async function executeScanJob(
     }
 
     if (job.jobState === "Processing") {
+      let pageNumber;
+      if (pageCountingStrategy === PageCountingStrategy.Normal) {
+        pageNumber= scanJobContent.elements.length + 1;
+      }
+      else if (pageCountingStrategy === PageCountingStrategy.OddOnly) {
+        pageNumber = scanJobContent.elements.length * 2 + 1;
+      }
+      else if (pageCountingStrategy === PageCountingStrategy.EvenOnly) {
+        pageNumber = (scanJobContent.elements.length + 1) * 2;
+      }
+      else {
+        throw new Error(`Unknown page counting strategy: ${pageCountingStrategy}`);
+      }
+
       const page = await handleScanProcessingState(
         job,
         inputSource,
         folder,
         scanCount,
-        scanJobContent.elements.length + 1,
+        pageNumber,
         filePattern,
         new Date(),
       );
@@ -188,14 +203,7 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
 }
 
 export async function executeScanJobs(
-  scanJobSettings: ScanJobSettings,
-  inputSource: InputSource,
-  folder: string,
-  scanCount: number,
-  scanJobContent: ScanContent,
-  selectedScanTarget: SelectedScanTarget,
-  deviceCapabilities: DeviceCapabilities,
-  filePattern: string | undefined,
+  scanJobSettings: ScanJobSettings, inputSource: InputSource, folder: string, scanCount: number, scanJobContent: ScanContent, selectedScanTarget: SelectedScanTarget, deviceCapabilities: DeviceCapabilities, filePattern: string | undefined, pageCountingStrategy: PageCountingStrategy
 ) {
   let jobState = await executeScanJob(
     scanJobSettings,
@@ -204,6 +212,7 @@ export async function executeScanJobs(
     scanCount,
     scanJobContent,
     filePattern,
+    pageCountingStrategy
   );
   const scanTarget = {resourceURI: selectedScanTarget.resourceURI, label: selectedScanTarget.label, isDuplexSingleSide: selectedScanTarget.isDuplexSingleSide};
   let lastEvent = selectedScanTarget.event;
@@ -229,6 +238,7 @@ export async function executeScanJobs(
         scanCount,
         scanJobContent,
         filePattern,
+        pageCountingStrategy
       );
       if (jobState !== "Completed") {
         return;

@@ -13,7 +13,7 @@ import { SelectedScanTarget } from "./scanTargetDefinitions";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers";
 import { KnownShortcut } from "./type/KnownShortcut";
 import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs";
-
+import { PageCountingStrategy } from "./type/pageCountingStrategy";
 
 
 export async function tryGetDestination(
@@ -118,15 +118,7 @@ export function getScanHeight(
 }
 
 export async function saveScanFromEvent(
-  selectedScanTarget: SelectedScanTarget,
-  folder: string,
-  tempFolder: string,
-  scanCount: number,
-  deviceCapabilities: DeviceCapabilities,
-  scanConfig: ScanConfig,
-  isDuplex: boolean,
-  isPdf: boolean
-): Promise<ScanContent> {
+  selectedScanTarget: SelectedScanTarget, folder: string, tempFolder: string, scanCount: number, deviceCapabilities: DeviceCapabilities, scanConfig: ScanConfig, isDuplex: boolean, isPdf: boolean, pageCountingStrategy: PageCountingStrategy): Promise<ScanContent> {
 
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
@@ -185,12 +177,12 @@ export async function saveScanFromEvent(
     selectedScanTarget,
     deviceCapabilities,
     scanConfig.directoryConfig.filePattern,
+    pageCountingStrategy
   );
 
   console.log(
     `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`,
   );
-
 
   return scanJobContent;
 }
@@ -203,7 +195,7 @@ export async function scanFromAdf(
   tempFolder: string,
   adfAutoScanConfig: AdfAutoScanConfig,
   deviceCapabilities: DeviceCapabilities,
-  date: Date,
+  date: Date
 ) {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
@@ -249,6 +241,7 @@ export async function scanFromAdf(
     scanCount,
     scanJobContent,
     adfAutoScanConfig.directoryConfig.filePattern,
+    PageCountingStrategy.Normal
   );
 
   console.log(
@@ -328,6 +321,7 @@ export async function singleScan(
     scanCount,
     scanJobContent,
     scanConfig.directoryConfig.filePattern,
+    PageCountingStrategy.Normal
   );
 
   console.log(

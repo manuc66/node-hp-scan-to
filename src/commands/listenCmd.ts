@@ -13,6 +13,7 @@ import { getTargetFolder, getTempFolder } from "../scanConfigUtils";
 import { DuplexMode } from "../type/duplexMode";
 import { TargetDuplexMode } from "../type/targetDuplexMode";
 import { ScanConfig } from "../type/scanConfigs";
+import { PageCountingStrategy } from "../type/pageCountingStrategy";
 
 type WalkupDestination = WalkupScanDestination | WalkupScanToCompDestination;
 
@@ -102,11 +103,13 @@ export async function listenCmd(
         );
       }
 
+      let pageCountingStrategy: PageCountingStrategy;
       let scanToPdf: boolean = false;
       let scanDate = new Date();
       let scanJobContent: ScanContent = { elements: [] };
       if (duplexMode == DuplexMode.Duplex) {
         console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
+        pageCountingStrategy = PageCountingStrategy.Normal;
         scanToPdf = isPdf(destination);
         scanDate = new Date();
         scanCount = await PathHelper.getNextScanNumber(
@@ -118,6 +121,7 @@ export async function listenCmd(
       } else if (targetDuplexMode == TargetDuplexMode.EmulatedDuplex) {
         if (duplexMode == DuplexMode.FrontOfDoubleSided) {
           console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
+          pageCountingStrategy = PageCountingStrategy.OddOnly;
           scanToPdf = isPdf(destination);
           scanDate = new Date();
           scanCount = await PathHelper.getNextScanNumber(
@@ -131,12 +135,14 @@ export async function listenCmd(
           );
         } else {
           console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
+          pageCountingStrategy = PageCountingStrategy.EvenOnly;
           console.log(
             `Scan event captured, saving back sides of scan #${scanCount}`,
           );
         }
       } else {
         console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
+        pageCountingStrategy = PageCountingStrategy.Normal;
         scanToPdf = isPdf(destination);
         scanDate = new Date();
         scanCount = await PathHelper.getNextScanNumber(
@@ -147,7 +153,6 @@ export async function listenCmd(
         console.log(`Scan event captured, saving scan #${scanCount}`);
       }
 
-      const previousScanContent = scanJobContent;
       scanJobContent = await saveScanFromEvent(
         selectedScanTarget,
         folder,
@@ -157,6 +162,7 @@ export async function listenCmd(
         scanConfig,
         targetDuplexMode == TargetDuplexMode.Duplex,
         scanToPdf,
+        pageCountingStrategy
       );
 
       if (duplexMode == DuplexMode.FrontOfDoubleSided) {
@@ -172,8 +178,9 @@ export async function listenCmd(
       } else {
         let finalScanJobContent: ScanContent;
         if (duplexMode == DuplexMode.BackOfDoubleSided) {
+          console.log("Emulated duplex scan completed; front and back pages are being assembled");
           finalScanJobContent = assembleEmulatedDoubleSideScan(
-            previousScanContent,
+            frontOfDoubleSidedScanContext?.scanJobContent ?? { elements: [] },
             scanJobContent
           );
         } else {
