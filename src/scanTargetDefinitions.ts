@@ -11,5 +11,3 @@ export type ScanTarget = RegistrationConfig & {
 export type SelectedScanTarget = ScanTarget & {
   event: Event;
 };
-
-

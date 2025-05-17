@@ -3,7 +3,9 @@ import HPApi from "./HPApi";
 import ScanCaps from "./ScanCaps";
 import DiscoveryTree from "./DiscoveryTree";
 
-async function getScanCaps(discoveryTree: DiscoveryTree): Promise<ScanCaps | null> {
+async function getScanCaps(
+  discoveryTree: DiscoveryTree,
+): Promise<ScanCaps | null> {
   let scanCaps: ScanCaps | null = null;
   if (discoveryTree.ScanJobManifestURI != null) {
     const scanJobManifest = await HPApi.getScanJobManifest(

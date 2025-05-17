@@ -12,9 +12,12 @@ import { postProcessing } from "./postProcessing";
 import { SelectedScanTarget } from "./scanTargetDefinitions";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers";
 import { KnownShortcut } from "./type/KnownShortcut";
-import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs";
+import {
+  AdfAutoScanConfig,
+  ScanConfig,
+  SingleScanConfig,
+} from "./type/scanConfigs";
 import { PageCountingStrategy } from "./type/pageCountingStrategy";
-
 
 export async function tryGetDestination(
   event: Event,
@@ -46,19 +49,18 @@ export async function tryGetDestination(
   return null;
 }
 
-
 export function isPdf(
   destination: WalkupScanDestination | WalkupScanToCompDestination,
 ) {
   if (
-    destination.shortcut ===  KnownShortcut.SavePDF ||
-    destination.shortcut ===  KnownShortcut.EmailPDF ||
-    destination.shortcut ==  KnownShortcut.SaveDocument1
+    destination.shortcut === KnownShortcut.SavePDF ||
+    destination.shortcut === KnownShortcut.EmailPDF ||
+    destination.shortcut == KnownShortcut.SaveDocument1
   ) {
     return true;
   } else if (
-    destination.shortcut ===  KnownShortcut.SaveJPEG ||
-    destination.shortcut ===  KnownShortcut.SavePhoto1
+    destination.shortcut === KnownShortcut.SaveJPEG ||
+    destination.shortcut === KnownShortcut.SavePhoto1
   ) {
     return false;
   } else {
@@ -118,8 +120,16 @@ export function getScanHeight(
 }
 
 export async function saveScanFromEvent(
-  selectedScanTarget: SelectedScanTarget, folder: string, tempFolder: string, scanCount: number, deviceCapabilities: DeviceCapabilities, scanConfig: ScanConfig, isDuplex: boolean, isPdf: boolean, pageCountingStrategy: PageCountingStrategy): Promise<ScanContent> {
-
+  selectedScanTarget: SelectedScanTarget,
+  folder: string,
+  tempFolder: string,
+  scanCount: number,
+  deviceCapabilities: DeviceCapabilities,
+  scanConfig: ScanConfig,
+  isDuplex: boolean,
+  isPdf: boolean,
+  pageCountingStrategy: PageCountingStrategy,
+): Promise<ScanContent> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
   if (isPdf) {
@@ -166,8 +176,6 @@ export async function saveScanFromEvent(
 
   const scanJobContent: ScanContent = { elements: [] };
 
-
-
   await executeScanJobs(
     scanJobSettings,
     inputSource,
@@ -177,7 +185,7 @@ export async function saveScanFromEvent(
     selectedScanTarget,
     deviceCapabilities,
     scanConfig.directoryConfig.filePattern,
-    pageCountingStrategy
+    pageCountingStrategy,
   );
 
   console.log(
@@ -187,15 +195,13 @@ export async function saveScanFromEvent(
   return scanJobContent;
 }
 
-
-
 export async function scanFromAdf(
   scanCount: number,
   folder: string,
   tempFolder: string,
   adfAutoScanConfig: AdfAutoScanConfig,
   deviceCapabilities: DeviceCapabilities,
-  date: Date
+  date: Date,
 ) {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
@@ -241,7 +247,7 @@ export async function scanFromAdf(
     scanCount,
     scanJobContent,
     adfAutoScanConfig.directoryConfig.filePattern,
-    PageCountingStrategy.Normal
+    PageCountingStrategy.Normal,
   );
 
   console.log(
@@ -321,7 +327,7 @@ export async function singleScan(
     scanCount,
     scanJobContent,
     scanConfig.directoryConfig.filePattern,
-    PageCountingStrategy.Normal
+    PageCountingStrategy.Normal,
   );
 
   console.log(

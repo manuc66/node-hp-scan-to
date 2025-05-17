@@ -118,7 +118,9 @@ async function handleImagePostProcessing(
 }
 
 function displayPdfScan(
-  pdfFilePath: string | null, scanJobContent: ScanContent, scanCount: number
+  pdfFilePath: string | null,
+  scanJobContent: ScanContent,
+  scanCount: number,
 ) {
   if (pdfFilePath === null) {
     console.log(`Pdf generated has not been generated`);
@@ -126,7 +128,8 @@ function displayPdfScan(
   }
 
   console.log(
-    `The following page(s) have been rendered inside '${pdfFilePath}' as part of scan #${scanCount}: `);
+    `The following page(s) have been rendered inside '${pdfFilePath}' as part of scan #${scanCount}: `,
+  );
   scanJobContent.elements.forEach((e) =>
     console.log(
       `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
