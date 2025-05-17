@@ -5,7 +5,7 @@ import { ScanContent } from "../ScanContent";
 import fs from "fs/promises";
 import { convertToPdf, mergeToPdf } from "../pdfProcessing";
 import { PaperlessConfig } from "./PaperlessConfig";
-import { ScanConfig } from "scanConfigs";
+import { ScanConfig } from "../type/scanConfigs";
 
 export async function uploadImagesAsSeparateDocumentsToPaperless(
   scanJobContent: ScanContent,

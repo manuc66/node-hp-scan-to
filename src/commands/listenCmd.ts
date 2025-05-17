@@ -1,18 +1,18 @@
 import { RegistrationConfig, SelectedScanTarget } from "../scanTargetDefinitions";
-import { ScanConfig } from "scanConfigs";
 import HPApi from "../HPApi";
 import { readDeviceCapabilities } from "../readDeviceCapabilities";
-import { DuplexMode } from "duplexMode";
 import { ScanContent } from "../ScanContent";
 import { waitScanEvent, waitScanRequest } from "../listening";
 import { isPdf, saveScanFromEvent, tryGetDestination } from "../scanProcessing";
 import { postProcessing } from "../postProcessing";
 import PathHelper from "../PathHelper";
-import { TargetDuplexMode } from "targetDuplexMode";
 import { delay } from "../delay";
 import WalkupScanDestination from "../WalkupScanDestination";
 import WalkupScanToCompDestination from "../WalkupScanToCompDestination";
 import { getTargetFolder, getTempFolder } from "../scanConfigUtils";
+import { DuplexMode } from "../type/duplexMode";
+import { TargetDuplexMode } from "../type/targetDuplexMode";
+import { ScanConfig } from "../type/scanConfigs";
 
 type WalkupDestination = WalkupScanDestination | WalkupScanToCompDestination;
 

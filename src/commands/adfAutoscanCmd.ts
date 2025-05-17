@@ -1,9 +1,9 @@
-import { AdfAutoScanConfig } from "scanConfigs";
 import HPApi from "../HPApi";
 import { getTargetFolder, getTempFolder } from "../scanConfigUtils";
 import { readDeviceCapabilities } from "../readDeviceCapabilities";
 import { scanFromAdf, waitAdfLoaded } from "../scanProcessing";
 import { delay } from "../delay";
+import { AdfAutoScanConfig } from "../type/scanConfigs";
 
 
 let iteration = 0;

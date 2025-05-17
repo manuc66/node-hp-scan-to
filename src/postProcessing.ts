@@ -13,7 +13,7 @@ import {
 import fs from "fs/promises";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
 import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
-import { ScanConfig } from "scanConfigs";
+import { ScanConfig } from "./type/scanConfigs";
 
 export async function postProcessing(
   scanConfig: ScanConfig,

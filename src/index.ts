@@ -14,12 +14,12 @@ import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { startHealthCheckServer } from "./healthcheck";
 import fs from "fs";
 import { RegistrationConfig } from "./scanTargetDefinitions";
-import { DirectoryConfig } from "directoryConfig";
-import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "scanConfigs";
 import { listenCmd } from "./commands/listenCmd";
 import { adfAutoscanCmd } from "./commands/adfAutoscanCmd";
 import { singleScanCmd } from "./commands/singleScanCmd";
 import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd";
+import { DirectoryConfig } from "./type/directoryConfig";
+import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
