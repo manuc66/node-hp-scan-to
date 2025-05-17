@@ -62,7 +62,7 @@ export default class WalkupScanDestination {
     return null;
   }
 
-  get scanPlexMode(): string | null {
+  get scanPlexMode(): "Simplex" | string | null {
     if (
       Object.prototype.hasOwnProperty.call(this.data, "wus:WalkupScanSettings")
     ) {
