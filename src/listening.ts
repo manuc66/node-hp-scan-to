@@ -2,7 +2,11 @@ import HPApi from "./HPApi";
 import Event from "./Event";
 import Destination from "./Destination";
 import { DeviceCapabilities } from "./DeviceCapabilities";
-import { RegistrationConfig, ScanTarget, SelectedScanTarget } from "./scanTargetDefinitions";
+import {
+  RegistrationConfig,
+  ScanTarget,
+  SelectedScanTarget,
+} from "./scanTargetDefinitions";
 
 export async function waitScanRequest(compEventURI: string): Promise<boolean> {
   const waitMax = 50;
@@ -34,7 +38,7 @@ export async function waitForScanEventFromTarget(
   scanTarget: ScanTarget,
   afterEtag: string | null = null,
 ): Promise<Event> {
- return (await waitForScanEvent([scanTarget], afterEtag)).event
+  return (await waitForScanEvent([scanTarget], afterEtag)).event;
 }
 
 export async function waitForScanEvent(
@@ -61,7 +65,7 @@ export async function waitForScanEvent(
       );
     }
   }
-  return {event: acceptedScanEvent, ...scanTarget!};
+  return { event: acceptedScanEvent, ...scanTarget! };
 }
 
 async function registerWalkupScanToCompDestination(
@@ -137,7 +141,8 @@ export async function waitScanEvent(
     const registrationConfig = registrationConfigs[i];
     let resourceURI: string;
     if (deviceCapabilities.useWalkupScanToComp) {
-      resourceURI = await registerWalkupScanToCompDestination(registrationConfig);
+      resourceURI =
+        await registerWalkupScanToCompDestination(registrationConfig);
     } else {
       resourceURI = await registerWalkupScanDestination(registrationConfig);
     }
@@ -147,9 +152,9 @@ export async function waitScanEvent(
     });
   }
 
-  const targetList = scanTargets.map(x => `${x.label}@${x.resourceURI}`).join(", ");
+  const targetList = scanTargets
+    .map((x) => `${x.label}@${x.resourceURI}`)
+    .join(", ");
   console.log(`Waiting scan event for: ${targetList}`);
   return await waitForScanEvent(scanTargets);
 }
-
-

@@ -3,7 +3,6 @@ import { Parser } from "xml2js";
 import { promisify } from "util";
 import { KnownShortcut } from "./type/KnownShortcut";
 
-
 const parser = new Parser();
 const parseString = promisify<string, WalkupScanDestinationsData>(
   parser.parseString,

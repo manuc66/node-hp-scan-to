@@ -5,7 +5,6 @@ import { scanFromAdf, waitAdfLoaded } from "../scanProcessing";
 import { delay } from "../delay";
 import { AdfAutoScanConfig } from "../type/scanConfigs";
 
-
 let iteration = 0;
 export async function adfAutoscanCmd(
   adfAutoScanConfig: AdfAutoScanConfig,
@@ -25,11 +24,15 @@ export async function adfAutoscanCmd(
   const deviceCapabilities = await readDeviceCapabilities();
 
   if (!deviceCapabilities.hasAdfDetectPaperLoaded) {
-    console.log("WARNING: The automatic scan feature is likely unsupported on this device, as its advertised capabilities do not include this feature.");
+    console.log(
+      "WARNING: The automatic scan feature is likely unsupported on this device, as its advertised capabilities do not include this feature.",
+    );
   }
 
   if (adfAutoScanConfig.isDuplex && !deviceCapabilities.hasAdfDuplex) {
-    console.log("WARNING: The requested duplex scan method is likely unsupported on this device, as its advertised capabilities do not include this feature.");
+    console.log(
+      "WARNING: The requested duplex scan method is likely unsupported on this device, as its advertised capabilities do not include this feature.",
+    );
   }
 
   let scanCount = 0;

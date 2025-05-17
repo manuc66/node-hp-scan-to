@@ -127,9 +127,13 @@ export default class ScanCaps {
   get hasAdfDetectPaperLoaded(): boolean {
     if (
       Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf") &&
-      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"]["Adf"][0], "AdfOptions")
+      Object.prototype.hasOwnProperty.call(
+        this.data["ScanCaps"]["Adf"][0],
+        "AdfOptions",
+      )
     ) {
-      const options = this.data["ScanCaps"]["Adf"][0]["AdfOptions"][0]["AdfOption"];
+      const options =
+        this.data["ScanCaps"]["Adf"][0]["AdfOptions"][0]["AdfOption"];
       return options.includes("DetectPaperLoaded");
     }
     return false;
@@ -138,12 +142,15 @@ export default class ScanCaps {
   get hasAdfDuplex(): boolean {
     if (
       Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf") &&
-      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"]["Adf"][0], "AdfOptions")
+      Object.prototype.hasOwnProperty.call(
+        this.data["ScanCaps"]["Adf"][0],
+        "AdfOptions",
+      )
     ) {
-      const options = this.data["ScanCaps"]["Adf"][0]["AdfOptions"][0]["AdfOption"];
+      const options =
+        this.data["ScanCaps"]["Adf"][0]["AdfOptions"][0]["AdfOption"];
       return options.includes("Duplex");
     }
     return false;
   }
-
 }

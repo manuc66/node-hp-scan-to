@@ -19,7 +19,11 @@ import { adfAutoscanCmd } from "./commands/adfAutoscanCmd";
 import { singleScanCmd } from "./commands/singleScanCmd";
 import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd";
 import { DirectoryConfig } from "./type/directoryConfig";
-import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs";
+import {
+  AdfAutoScanConfig,
+  ScanConfig,
+  SingleScanConfig,
+} from "./type/scanConfigs";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
@@ -307,21 +311,21 @@ function createListenCliCmd() {
     .description("Listen the device for new scan job to save to this target")
     .option(
       "-l, --label <label>",
-      "The label to display on the device (the default is the hostname)"
+      "The label to display on the device (the default is the hostname)",
     )
     .option("--add-emulated-duplex", "Enable emulated duplex scanning")
     .option(
       "--emulated-duplex-label <label>",
-      "The emulated duplex label to display on the device (the default is to suffix the main label with duplex)"
+      "The emulated duplex label to display on the device (the default is to suffix the main label with duplex)",
     )
     .addOption(
-      new Option("--health-check", "Start an http health check endpoint")
+      new Option("--health-check", "Start an http health check endpoint"),
     )
     .addOption(
       new Option(
         "--health-check-port <health-check-port>",
-        "Start an http health check endpoint"
-      )
+        "Start an http health check endpoint",
+      ),
     )
     .action(async (options, cmd) => {
       const parentOption = cmd.parent.opts();
@@ -336,7 +340,7 @@ function createListenCliCmd() {
 
       const registrationConfig: RegistrationConfig = {
         label: options.label || getConfig("label") || os.hostname(),
-        isDuplexSingleSide: false
+        isDuplexSingleSide: false,
       };
       registrationConfigs.push(registrationConfig);
 
@@ -346,7 +350,7 @@ function createListenCliCmd() {
             options.emulatedDuplexLabel ||
             getConfig("emulated_duplex_label") ||
             `${registrationConfig.label} duplex`,
-          isDuplexSingleSide: true
+          isDuplexSingleSide: true,
         });
       }
 
@@ -368,40 +372,40 @@ function createAdfAutoscanCliCmd() {
   const cmdAdfAutoscan = program.createCommand("adf-autoscan");
   setupScanParameters(cmdAdfAutoscan)
     .addOption(
-      new Option("--duplex", "If specified, the scan will be in duplex")
+      new Option("--duplex", "If specified, the scan will be in duplex"),
     )
     .addOption(
       new Option(
         "--pdf",
-        "If specified, the scan result will be a pdf document, the default is multiple jpeg files"
-      )
+        "If specified, the scan result will be a pdf document, the default is multiple jpeg files",
+      ),
     )
     .addOption(
       new Option(
         "--pollingInterval <pollingInterval>",
-        "Time interval in millisecond between each lookup for content in the automatic document feeder"
-      )
+        "Time interval in millisecond between each lookup for content in the automatic document feeder",
+      ),
     )
     .description(
-      "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)"
+      "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
     )
     .addOption(
       new Option(
         "--start-scan-delay <startScanDelay>",
-        "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan"
-      )
+        "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan",
+      ),
     )
     .addOption(
-      new Option("--health-check", "Start an http health check endpoint")
+      new Option("--health-check", "Start an http health check endpoint"),
     )
     .addOption(
       new Option(
         "--health-check-port <port>",
-        "Start an http health check endpoint"
-      )
+        "Start an http health check endpoint",
+      ),
     )
     .description(
-      "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)"
+      "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
     )
     .action(async (options, cmd) => {
       const parentOption = cmd.parent.opts();
@@ -432,7 +436,7 @@ function createAdfAutoscanCliCmd() {
         startScanDelay:
           options.startScanDelay ||
           getConfig("autoscan_startScanDelay") ||
-          5000
+          5000,
       };
 
       await adfAutoscanCmd(adfScanConfig, deviceUpPollingInterval);
@@ -444,13 +448,13 @@ function createSingleScanCliCmd() {
   const cmdSingleScan = program.createCommand("single-scan");
   setupScanParameters(cmdSingleScan)
     .addOption(
-      new Option("--duplex", "If specified, the scan will be in duplex")
+      new Option("--duplex", "If specified, the scan will be in duplex"),
     )
     .addOption(
       new Option(
         "--pdf",
-        "If specified, the scan result will be a pdf document, the default is multiple jpeg files"
-      )
+        "If specified, the scan result will be a pdf document, the default is multiple jpeg files",
+      ),
     )
     .description("Trigger a new scan job")
     .action(async (options, cmd) => {
@@ -469,7 +473,7 @@ function createSingleScanCliCmd() {
       const singleScanConfig: SingleScanConfig = {
         ...scanConfig,
         isDuplex: options.duplex || getConfig("single_scan_duplex") || false,
-        generatePdf: options.pdf || getConfig("single_scan_pdf") || false
+        generatePdf: options.pdf || getConfig("single_scan_pdf") || false,
       };
 
       await singleScanCmd(singleScanConfig, deviceUpPollingInterval);

@@ -1,4 +1,7 @@
-import { RegistrationConfig, SelectedScanTarget } from "../scanTargetDefinitions";
+import {
+  RegistrationConfig,
+  SelectedScanTarget,
+} from "../scanTargetDefinitions";
 import HPApi from "../HPApi";
 import { readDeviceCapabilities } from "../readDeviceCapabilities";
 import { ScanContent } from "../ScanContent";
@@ -49,7 +52,7 @@ export async function listenCmd(
     scanCount: number;
     scanJobContent: ScanContent;
     scanDate: Date;
-    scanToPdf: boolean
+    scanToPdf: boolean;
   } | null = null;
   while (keepActive) {
     iteration++;
@@ -65,14 +68,18 @@ export async function listenCmd(
           selectedScanTarget.event.compEventURI,
         );
         if (!proceedToScan) {
-          console.log("Device state doesn't match expectations - Unable to proceed with scan, skipping.");
+          console.log(
+            "Device state doesn't match expectations - Unable to proceed with scan, skipping.",
+          );
           continue;
         }
       }
 
       const destination = await tryGetDestination(selectedScanTarget.event);
       if (!destination) {
-        console.log("No shortcut selected - Impossible to proceed with scan, skipping.");
+        console.log(
+          "No shortcut selected - Impossible to proceed with scan, skipping.",
+        );
         continue;
       }
       console.log("Selected shortcut: " + destination.shortcut);
@@ -84,7 +91,8 @@ export async function listenCmd(
         lastScanTarget,
       );
       if (
-        lastScanTarget != null && frontOfDoubleSidedScanContext != null &&
+        lastScanTarget != null &&
+        frontOfDoubleSidedScanContext != null &&
         selectedScanTarget.isDuplexSingleSide &&
         duplexMode !== DuplexMode.BackOfDoubleSided
       ) {
@@ -162,7 +170,7 @@ export async function listenCmd(
         scanConfig,
         targetDuplexMode == TargetDuplexMode.Duplex,
         scanToPdf,
-        pageCountingStrategy
+        pageCountingStrategy,
       );
 
       if (duplexMode == DuplexMode.FrontOfDoubleSided) {
@@ -174,14 +182,16 @@ export async function listenCmd(
           scanJobContent,
           scanDate,
           scanToPdf,
-        }
+        };
       } else {
         let finalScanJobContent: ScanContent;
         if (duplexMode == DuplexMode.BackOfDoubleSided) {
-          console.log("Emulated duplex scan completed; front and back pages are being assembled");
+          console.log(
+            "Emulated duplex scan completed; front and back pages are being assembled",
+          );
           finalScanJobContent = assembleEmulatedDoubleSideScan(
             frontOfDoubleSidedScanContext?.scanJobContent ?? { elements: [] },
-            scanJobContent
+            scanJobContent,
           );
         } else {
           finalScanJobContent = scanJobContent;
@@ -194,7 +204,7 @@ export async function listenCmd(
           scanCount,
           finalScanJobContent,
           scanDate,
-          scanToPdf
+          scanToPdf,
         );
       }
 
