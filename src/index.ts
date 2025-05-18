@@ -344,7 +344,7 @@ function createListenCliCmd() {
       };
       registrationConfigs.push(registrationConfig);
 
-      if (!options.addEmulatedDuplex || getConfig("add_emulated_duplex")) {
+      if (options.addEmulatedDuplex || getConfig("add_emulated_duplex")) {
         registrationConfigs.push({
           label:
             options.emulatedDuplexLabel ||
