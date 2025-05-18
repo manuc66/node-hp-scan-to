@@ -11,7 +11,7 @@
 
 **`node-hp-scan-to`** is a Node.js application that replicates HP's "_Scan to Computer_" functionality by [reverse engineering](protocol_doc/HP%20Officejet%206500%20E710n-z.md) the original protocol, allowing you to scan documents directly from your HP printer's scanner to your Linux, Windows, or macOS computer.
 
-Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be ran on a bare-metal desktop or server, or in a container on Docker or Kubernetes. It can also be integrated with third-party document management solutions such as [Paperless-ngx](https://docs.paperless-ngx.com/) and [Nextcloud](https://Nextcloud.com/).
+Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be run on a bare-metal desktop or server, or in a container on Docker or Kubernetes. It can also be integrated with third-party document management solutions such as [Paperless-ngx](https://docs.paperless-ngx.com/) and [Nextcloud](https://Nextcloud.com/).
 
 **Disclaimer:** `node-hp-scan-to` is not endorsed by nor affiliated with HP. The reverse engineering of the original HP Windows application's interaction with the device has been done independently.
 
@@ -76,7 +76,8 @@ There is a good chance it also works on other unlisted HP All-in-One Printer.
 - ✔️ Command line (CLI) support
 - ✔️ Customizable file names, resolutions, and device labels
 - ✔️ Clear all registered targets
-- ✔️ Mutiple output target support:
+- ✔️ Emulated double side scan
+- ✔️ Multiple output target support:
   - Local folders
   - [Paperless-ngx API](https://docs.paperless-ngx.com/api/) upload
   - [Nextcloud WebDAV](https://docs.Nextcloud.com/server/latest/user_manual/en/files/access_webdav.html) upload
