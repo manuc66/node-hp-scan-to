@@ -2,7 +2,7 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
-import DiscoveryTree from "../src/DiscoveryTree";
+import DiscoveryTree from "../src/type/DiscoveryTree";
 
 describe("DiscoveryTree", () => {
   describe("Parsing discoveryTree.xml", async () => {

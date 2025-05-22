@@ -2,7 +2,7 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
-import WalkupScanManifest from "../src/WalkupScanManifest";
+import WalkupScanManifest from "../src/hpModels/WalkupScanManifest";
 
 describe("WalkupScanManifest", () => {
   describe("Parsing walkupScanManifest.xml", async () => {

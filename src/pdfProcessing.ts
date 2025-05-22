@@ -1,4 +1,4 @@
-import { ScanContent, ScanPage } from "./ScanContent";
+import { ScanContent, ScanPage } from "./type/ScanContent";
 import PathHelper from "./PathHelper";
 import fs from "fs/promises";
 import path from "path";

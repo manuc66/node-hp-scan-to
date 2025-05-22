@@ -106,4 +106,16 @@ export default class PathHelper {
 
     return folder;
   }
+
+  static async getTargetFolder(directory: string | undefined) {
+    const folder = await PathHelper.getOutputFolder(directory);
+    console.log(`Target folder: ${folder}`);
+    return folder;
+  }
+
+  static async getTempFolder(directory: string | undefined) {
+    const tempFolder = await PathHelper.getOutputFolder(directory);
+    console.log(`Temp folder: ${tempFolder}`);
+    return tempFolder;
+  }
 }

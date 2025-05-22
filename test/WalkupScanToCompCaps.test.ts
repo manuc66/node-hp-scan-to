@@ -2,7 +2,7 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
-import WalkupScanToCompCaps from "../src/WalkupScanToCompCaps";
+import WalkupScanToCompCaps from "../src/hpModels/WalkupScanToCompCaps";
 
 describe("WalkupScanToCompCaps", () => {
   describe("Parsing walkupScanToCompCaps.xml", async () => {
