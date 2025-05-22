@@ -1,5 +1,5 @@
 import axios, { AxiosError } from "axios";
-import { ScanContent } from "../ScanContent";
+import { ScanContent } from "../type/ScanContent";
 import { NextcloudConfig } from "./NextcloudConfig";
 import fs from "fs/promises";
 import path from "path";

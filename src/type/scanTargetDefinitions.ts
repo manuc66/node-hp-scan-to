@@ -1,4 +1,4 @@
-import Event from "./Event";
+import Event from "../hpModels/Event";
 
 export type RegistrationConfig = {
   label: string;

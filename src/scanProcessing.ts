@@ -1,15 +1,15 @@
-import Event from "./Event";
-import WalkupScanDestination from "./WalkupScanDestination";
-import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
+import Event from "./hpModels/Event";
+import WalkupScanDestination from "./hpModels/WalkupScanDestination";
+import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination";
 import HPApi from "./HPApi";
-import { DeviceCapabilities } from "./DeviceCapabilities";
-import ScanJobSettings from "./ScanJobSettings";
-import { ScanContent } from "./ScanContent";
+import { DeviceCapabilities } from "./type/DeviceCapabilities";
+import ScanJobSettings from "./hpModels/ScanJobSettings";
+import { ScanContent } from "./type/ScanContent";
 import { delay } from "./delay";
-import ScanStatus from "./ScanStatus";
-import { InputSource } from "./InputSource";
+import ScanStatus from "./hpModels/ScanStatus";
+import { InputSource } from "./type/InputSource";
 import { postProcessing } from "./postProcessing";
-import { SelectedScanTarget } from "./scanTargetDefinitions";
+import { SelectedScanTarget } from "./type/scanTargetDefinitions";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers";
 import { KnownShortcut } from "./type/KnownShortcut";
 import {

@@ -13,7 +13,7 @@ import { PaperlessConfig } from "./paperless/PaperlessConfig";
 import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { startHealthCheckServer } from "./healthcheck";
 import fs from "fs";
-import { RegistrationConfig } from "./scanTargetDefinitions";
+import { RegistrationConfig } from "./type/scanTargetDefinitions";
 import { listenCmd } from "./commands/listenCmd";
 import { adfAutoscanCmd } from "./commands/adfAutoscanCmd";
 import { singleScanCmd } from "./commands/singleScanCmd";

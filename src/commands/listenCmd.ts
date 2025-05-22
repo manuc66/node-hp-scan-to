@@ -1,18 +1,17 @@
 import {
   RegistrationConfig,
   SelectedScanTarget,
-} from "../scanTargetDefinitions";
+} from "../type/scanTargetDefinitions";
 import HPApi from "../HPApi";
 import { readDeviceCapabilities } from "../readDeviceCapabilities";
-import { ScanContent } from "../ScanContent";
+import { ScanContent } from "../type/ScanContent";
 import { waitScanEvent, waitScanRequest } from "../listening";
 import { isPdf, saveScanFromEvent, tryGetDestination } from "../scanProcessing";
 import { postProcessing } from "../postProcessing";
 import PathHelper from "../PathHelper";
 import { delay } from "../delay";
-import WalkupScanDestination from "../WalkupScanDestination";
-import WalkupScanToCompDestination from "../WalkupScanToCompDestination";
-import { getTargetFolder, getTempFolder } from "../scanConfigUtils";
+import WalkupScanDestination from "../hpModels/WalkupScanDestination";
+import WalkupScanToCompDestination from "../hpModels/WalkupScanToCompDestination";
 import { DuplexMode } from "../type/duplexMode";
 import { TargetDuplexMode } from "../type/targetDuplexMode";
 import { ScanConfig } from "../type/scanConfigs";
@@ -31,9 +30,9 @@ export async function listenCmd(
   await HPApi.waitDeviceUp(deviceUpPollingInterval);
   let deviceUp = true;
 
-  const folder = await getTargetFolder(scanConfig.directoryConfig.directory);
+  const folder = await PathHelper.getTargetFolder(scanConfig.directoryConfig.directory);
 
-  const tempFolder = await getTempFolder(
+  const tempFolder = await PathHelper.getTempFolder(
     scanConfig.directoryConfig.tempDirectory,
   );
 

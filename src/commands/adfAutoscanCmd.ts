@@ -1,9 +1,9 @@
 import HPApi from "../HPApi";
-import { getTargetFolder, getTempFolder } from "../scanConfigUtils";
 import { readDeviceCapabilities } from "../readDeviceCapabilities";
 import { scanFromAdf, waitAdfLoaded } from "../scanProcessing";
 import { delay } from "../delay";
 import { AdfAutoScanConfig } from "../type/scanConfigs";
+import PathHelper from "../PathHelper";
 
 let iteration = 0;
 export async function adfAutoscanCmd(
@@ -14,10 +14,10 @@ export async function adfAutoscanCmd(
   await HPApi.waitDeviceUp(deviceUpPollingInterval);
   let deviceUp = true;
 
-  const folder = await getTargetFolder(
+  const folder = await PathHelper.getTargetFolder(
     adfAutoScanConfig.directoryConfig.directory,
   );
-  const tempFolder = await getTempFolder(
+  const tempFolder = await PathHelper.getTempFolder(
     adfAutoScanConfig.directoryConfig.tempDirectory,
   );
 

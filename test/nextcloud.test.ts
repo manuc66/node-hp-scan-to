@@ -3,7 +3,7 @@ import path from "path";
 import {
     ScanContent,
     ScanPage
-} from "../src/ScanContent";
+} from "../src/type/ScanContent";
 import {
     uploadImagesToNextcloud,
     uploadPdfToNextcloud

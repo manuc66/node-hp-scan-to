@@ -2,7 +2,7 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
-import ScanCaps from "../src/ScanCaps";
+import ScanCaps from "../src/hpModels/ScanCaps";
 
 describe("ScanCaps", () => {
   describe("Parsing ScanCaps_with_adf.xml", async () => {

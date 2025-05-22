@@ -2,7 +2,7 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
-import Job from "../src/Job";
+import Job from "../src/hpModels/Job";
 
 describe("Job", () => {
   describe("Parsing job_processing.xml", async () => {

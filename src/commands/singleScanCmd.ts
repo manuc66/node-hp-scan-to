@@ -1,8 +1,8 @@
 import HPApi from "../HPApi";
-import { getTargetFolder, getTempFolder } from "../scanConfigUtils";
 import { readDeviceCapabilities } from "../readDeviceCapabilities";
 import { singleScan } from "../scanProcessing";
 import { SingleScanConfig } from "../type/scanConfigs";
+import PathHelper from "../PathHelper";
 
 export async function singleScanCmd(
   singleScanConfig: SingleScanConfig,
@@ -11,11 +11,11 @@ export async function singleScanCmd(
   // first make sure the device is reachable
   await HPApi.waitDeviceUp(deviceUpPollingInterval);
 
-  const folder = await getTargetFolder(
+  const folder = await PathHelper.getTargetFolder(
     singleScanConfig.directoryConfig.directory,
   );
 
-  const tempFolder = await getTempFolder(
+  const tempFolder = await PathHelper.getTempFolder(
     singleScanConfig.directoryConfig.tempDirectory,
   );
 
