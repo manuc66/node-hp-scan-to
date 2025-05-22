@@ -2,7 +2,7 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
-import ScanStatus from "../src/ScanStatus";
+import ScanStatus from "../src/hpModels/ScanStatus";
 
 describe("ScanStatus", () => {
   describe("Parsing scanStatus.xml", async () => {

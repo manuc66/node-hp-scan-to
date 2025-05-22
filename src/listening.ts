@@ -1,12 +1,12 @@
 import HPApi from "./HPApi";
-import Event from "./Event";
-import Destination from "./Destination";
-import { DeviceCapabilities } from "./DeviceCapabilities";
+import Event from "./hpModels/Event";
+import Destination from "./hpModels/Destination";
+import { DeviceCapabilities } from "./type/DeviceCapabilities";
 import {
   RegistrationConfig,
   ScanTarget,
   SelectedScanTarget,
-} from "./scanTargetDefinitions";
+} from "./type/scanTargetDefinitions";
 
 export async function waitScanRequest(compEventURI: string): Promise<boolean> {
   const waitMax = 50;

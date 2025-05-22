@@ -1,7 +1,7 @@
 import fsSync from "fs";
 import FormData from "form-data";
 import axios from "axios";
-import { ScanContent } from "../ScanContent";
+import { ScanContent } from "../type/ScanContent";
 import fs from "fs/promises";
 import { convertToPdf, mergeToPdf } from "../pdfProcessing";
 import { PaperlessConfig } from "./PaperlessConfig";

@@ -4,8 +4,8 @@ import {
   getScanWidth,
   getScanHeight,
 } from "../src/scanProcessing";
-import { DeviceCapabilities } from "../src/DeviceCapabilities";
-import { InputSource } from "../src/InputSource";
+import { DeviceCapabilities } from "../src/type/DeviceCapabilities";
+import { InputSource } from "../src/type/InputSource";
 import { ScanConfig } from "../src/type/scanConfigs";
 
 describe("scanProcessing", () => {

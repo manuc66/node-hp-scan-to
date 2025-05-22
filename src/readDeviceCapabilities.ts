@@ -1,7 +1,7 @@
-import { DeviceCapabilities } from "./DeviceCapabilities";
+import { DeviceCapabilities } from "./type/DeviceCapabilities";
 import HPApi from "./HPApi";
-import ScanCaps from "./ScanCaps";
-import DiscoveryTree from "./DiscoveryTree";
+import ScanCaps from "./hpModels/ScanCaps";
+import DiscoveryTree from "./type/DiscoveryTree";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,

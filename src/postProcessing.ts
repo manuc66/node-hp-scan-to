@@ -1,4 +1,4 @@
-import { ScanContent } from "./ScanContent";
+import { ScanContent } from "./type/ScanContent";
 import { mergeToPdf } from "./pdfProcessing";
 import {
   convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless,

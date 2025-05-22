@@ -2,7 +2,7 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
-import WalkupScanToCompDestinations from "../src/WalkupScanToCompDestinations";
+import WalkupScanToCompDestinations from "../src/hpModels/WalkupScanToCompDestinations";
 
 describe("WalkupScanToCompDestinations", () => {
   describe("Parsing walkupScanToCompDestination_with_ScanPlexMode.xml", async () => {
