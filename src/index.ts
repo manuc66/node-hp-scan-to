@@ -8,207 +8,22 @@ import { Command, Option, OptionValues, program } from "commander";
 import { Bonjour } from "bonjour-service";
 import config from "config";
 import HPApi from "./HPApi";
-import PathHelper from "./PathHelper";
-import { delay } from "./delay";
-import { readDeviceCapabilities } from "./readDeviceCapabilities";
-import {
-  clearRegistrations,
-  RegistrationConfig,
-  waitScanEvent,
-} from "./listening";
-import {
-  AdfAutoScanConfig,
-  DirectoryConfig,
-  saveScanFromEvent,
-  ScanConfig,
-  scanFromAdf,
-  singleScan,
-  SingleScanConfig,
-  waitAdfLoaded,
-} from "./scanProcessing";
 import * as commitInfo from "./commitInfo.json";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
 import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { startHealthCheckServer } from "./healthcheck";
 import fs from "fs";
-
-let iteration = 0;
-
-async function listenCmd(
-  registrationConfig: RegistrationConfig,
-  scanConfig: ScanConfig,
-  deviceUpPollingInterval: number,
-) {
-  // first make sure the device is reachable
-  await HPApi.waitDeviceUp(deviceUpPollingInterval);
-  let deviceUp = true;
-
-  const folder = await PathHelper.getOutputFolder(
-    scanConfig.directoryConfig.directory,
-  );
-  console.log(`Target folder: ${folder}`);
-
-  const tempFolder = await PathHelper.getOutputFolder(
-    scanConfig.directoryConfig.tempDirectory,
-  );
-  console.log(`Temp folder: ${tempFolder}`);
-
-  const deviceCapabilities = await readDeviceCapabilities();
-
-  let scanCount = 0;
-  let keepActive = true;
-  let errorCount = 0;
-  while (keepActive) {
-    iteration++;
-    console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
-    try {
-      const event = await waitScanEvent(deviceCapabilities, registrationConfig);
-      scanCount = await PathHelper.getNextScanNumber(
-        folder,
-        scanCount,
-        scanConfig.directoryConfig.filePattern,
-      );
-      console.log(`Scan event captured, saving scan #${scanCount}`);
-      await saveScanFromEvent(
-        event,
-        folder,
-        tempFolder,
-        scanCount,
-        deviceCapabilities,
-        scanConfig,
-      );
-    } catch (e) {
-      if (await HPApi.isAlive()) {
-        console.log(e);
-        errorCount++;
-      } else {
-        if (HPApi.isDebug()) {
-          console.log(e);
-        }
-        deviceUp = false;
-      }
-    }
-
-    if (errorCount === 50) {
-      keepActive = false;
-    }
-
-    if (!deviceUp) {
-      await HPApi.waitDeviceUp(deviceUpPollingInterval);
-    } else {
-      await delay(1000);
-    }
-  }
-}
-
-async function singleScanCmd(
-  singleScanConfig: SingleScanConfig,
-  deviceUpPollingInterval: number,
-) {
-  // first make sure the device is reachable
-  await HPApi.waitDeviceUp(deviceUpPollingInterval);
-
-  const folder = await PathHelper.getOutputFolder(
-    singleScanConfig.directoryConfig.directory,
-  );
-  console.log(`Target folder: ${folder}`);
-
-  const tempFolder = await PathHelper.getOutputFolder(
-    singleScanConfig.directoryConfig.tempDirectory,
-  );
-  console.log(`Temp folder: ${tempFolder}`);
-
-  const deviceCapabilities = await readDeviceCapabilities();
-
-  try {
-    await singleScan(
-      0,
-      folder,
-      tempFolder,
-      singleScanConfig,
-      deviceCapabilities,
-      new Date(),
-    );
-  } catch (e) {
-    console.log(e);
-  }
-}
-
-async function adfAutoscanCmd(
-  adfAutoScanConfig: AdfAutoScanConfig,
-  deviceUpPollingInterval: number,
-) {
-  // first make sure the device is reachable
-  await HPApi.waitDeviceUp(deviceUpPollingInterval);
-  let deviceUp = true;
-
-  const folder = await PathHelper.getOutputFolder(
-    adfAutoScanConfig.directoryConfig.directory,
-  );
-  console.log(`Target folder: ${folder}`);
-
-  const tempFolder = await PathHelper.getOutputFolder(
-    adfAutoScanConfig.directoryConfig.tempDirectory,
-  );
-  console.log(`Temp folder: ${tempFolder}`);
-
-  const deviceCapabilities = await readDeviceCapabilities();
-
-  let scanCount = 0;
-  let keepActive = true;
-  let errorCount = 0;
-  while (keepActive) {
-    iteration++;
-    console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
-    try {
-      await waitAdfLoaded(
-        adfAutoScanConfig.pollingInterval,
-        adfAutoScanConfig.startScanDelay,
-      );
-
-      scanCount++;
-
-      console.log(`Scan event captured, saving scan #${scanCount}`);
-
-      await scanFromAdf(
-        scanCount,
-        folder,
-        tempFolder,
-        adfAutoScanConfig,
-        deviceCapabilities,
-        new Date(),
-      );
-    } catch (e) {
-      console.log(e);
-      if (await HPApi.isAlive()) {
-        errorCount++;
-      } else {
-        deviceUp = false;
-      }
-    }
-
-    if (errorCount === 50) {
-      keepActive = false;
-    }
-
-    if (!deviceUp) {
-      await HPApi.waitDeviceUp(deviceUpPollingInterval);
-    } else {
-      await delay(1000);
-    }
-  }
-}
-
-async function clearRegistrationsCmd(cmd: Command) {
-  const parentOption = cmd.parent!.opts();
-
-  const ip = await getDeviceIp(parentOption);
-  HPApi.setDeviceIP(ip);
-
-  const isDebug = getIsDebug(parentOption);
-  HPApi.setDebug(isDebug);
-  await clearRegistrations();
-}
+import { RegistrationConfig } from "./type/scanTargetDefinitions";
+import { listenCmd } from "./commands/listenCmd";
+import { adfAutoscanCmd } from "./commands/adfAutoscanCmd";
+import { singleScanCmd } from "./commands/singleScanCmd";
+import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd";
+import { DirectoryConfig } from "./type/directoryConfig";
+import {
+  AdfAutoScanConfig,
+  ScanConfig,
+  SingleScanConfig,
+} from "./type/scanConfigs";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
@@ -490,14 +305,18 @@ function getDeviceUpPollingInterval(parentOption: OptionValues) {
   );
 }
 
-async function main() {
-  setupParameterOpts(program);
+function createListenCliCmd() {
   const cmdListen = program.createCommand("listen");
   setupScanParameters(cmdListen)
     .description("Listen the device for new scan job to save to this target")
     .option(
       "-l, --label <label>",
       "The label to display on the device (the default is the hostname)",
+    )
+    .option("--add-emulated-duplex", "Enable emulated duplex scanning")
+    .option(
+      "--emulated-duplex-label <label>",
+      "The emulated duplex label to display on the device (the default is to suffix the main label with duplex)",
     )
     .addOption(
       new Option("--health-check", "Start an http health check endpoint"),
@@ -517,9 +336,23 @@ async function main() {
       const isDebug = getIsDebug(parentOption);
       HPApi.setDebug(isDebug);
 
+      const registrationConfigs: RegistrationConfig[] = [];
+
       const registrationConfig: RegistrationConfig = {
         label: options.label || getConfig("label") || os.hostname(),
+        isDuplexSingleSide: false,
       };
+      registrationConfigs.push(registrationConfig);
+
+      if (options.addEmulatedDuplex || getConfig("add_emulated_duplex")) {
+        registrationConfigs.push({
+          label:
+            options.emulatedDuplexLabel ||
+            getConfig("emulated_duplex_label") ||
+            `${registrationConfig.label} duplex`,
+          isDuplexSingleSide: true,
+        });
+      }
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
 
@@ -530,10 +363,12 @@ async function main() {
 
       const scanConfig = getScanConfiguration(options);
 
-      await listenCmd(registrationConfig, scanConfig, deviceUpPollingInterval);
+      await listenCmd(registrationConfigs, scanConfig, deviceUpPollingInterval);
     });
-  program.addCommand(cmdListen, { isDefault: true });
+  return cmdListen;
+}
 
+function createAdfAutoscanCliCmd() {
   const cmdAdfAutoscan = program.createCommand("adf-autoscan");
   setupScanParameters(cmdAdfAutoscan)
     .addOption(
@@ -606,8 +441,10 @@ async function main() {
 
       await adfAutoscanCmd(adfScanConfig, deviceUpPollingInterval);
     });
-  program.addCommand(cmdAdfAutoscan);
+  return cmdAdfAutoscan;
+}
 
+function createSingleScanCliCmd() {
   const cmdSingleScan = program.createCommand("single-scan");
   setupScanParameters(cmdSingleScan)
     .addOption(
@@ -641,14 +478,40 @@ async function main() {
 
       await singleScanCmd(singleScanConfig, deviceUpPollingInterval);
     });
-  program.addCommand(cmdSingleScan);
+  return cmdSingleScan;
+}
 
+function createClearRegistrationsCliCmd() {
   const cmdClearRegistrations = program.createCommand("clear-registrations");
   cmdClearRegistrations
     .description("Clear the list or registered target on the device")
     .action(async (_, cmd) => {
-      await clearRegistrationsCmd(cmd);
+      const parentOption = cmd.parent!.opts();
+
+      const ip = await getDeviceIp(parentOption);
+      HPApi.setDeviceIP(ip);
+
+      const isDebug = getIsDebug(parentOption);
+      HPApi.setDebug(isDebug);
+
+      await clearRegistrationsCmd();
     });
+  return cmdClearRegistrations;
+}
+
+async function main() {
+  setupParameterOpts(program);
+
+  const cmdListen = createListenCliCmd();
+  program.addCommand(cmdListen, { isDefault: true });
+
+  const cmdAdfAutoscan = createAdfAutoscanCliCmd();
+  program.addCommand(cmdAdfAutoscan);
+
+  const cmdSingleScan = createSingleScanCliCmd();
+  program.addCommand(cmdSingleScan);
+
+  const cmdClearRegistrations = createClearRegistrationsCliCmd();
   program.addCommand(cmdClearRegistrations);
 
   await program.parseAsync(process.argv);

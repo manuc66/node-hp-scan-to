@@ -1,9 +1,11 @@
-import { DeviceCapabilities } from "./DeviceCapabilities";
+import { DeviceCapabilities } from "./type/DeviceCapabilities";
 import HPApi from "./HPApi";
-import ScanCaps from "./ScanCaps";
-import DiscoveryTree from "./DiscoveryTree";
+import ScanCaps from "./hpModels/ScanCaps";
+import DiscoveryTree from "./type/DiscoveryTree";
 
-async function getScanCaps(discoveryTree: DiscoveryTree) {
+async function getScanCaps(
+  discoveryTree: DiscoveryTree,
+): Promise<ScanCaps | null> {
   let scanCaps: ScanCaps | null = null;
   if (discoveryTree.ScanJobManifestURI != null) {
     const scanJobManifest = await HPApi.getScanJobManifest(
@@ -38,7 +40,7 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
     // No caps to load here but check we can load the specified manifest
     await HPApi.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
   } else {
-    console.log("Unknown device!");
+    console.log("WARNING: No compatible device capabilities detected. The device may not support the listen command, and while the application will continue to run, it is likely to encounter a crash. If your device has an automatic document feeder, you may want to try using the adf-autoscan command.");
   }
   const scanCaps = await getScanCaps(discoveryTree);
 
@@ -51,5 +53,7 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
     adfMaxHeight: scanCaps?.adfMaxHeight || null,
     adfDuplexMaxWidth: scanCaps?.adfDuplexMaxWidth || null,
     adfDuplexMaxHeight: scanCaps?.adfDuplexMaxHeight || null,
+    hasAdfDuplex: scanCaps?.hasAdfDuplex || false,
+    hasAdfDetectPaperLoaded: scanCaps?.hasAdfDetectPaperLoaded || false,
   };
 }

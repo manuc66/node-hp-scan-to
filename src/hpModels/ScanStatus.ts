@@ -2,7 +2,7 @@
 import { Parser } from "xml2js";
 const parser = new Parser();
 import { promisify } from "util";
-import { InputSource } from "./InputSource";
+import { InputSource } from "../type/InputSource";
 const parseString = promisify<string, ScanStatusData>(parser.parseString);
 
 export interface ScanStatusData {

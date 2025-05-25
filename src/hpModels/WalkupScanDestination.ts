@@ -1,7 +1,7 @@
 "use strict";
 import { Parser } from "xml2js";
 import { promisify } from "util";
-import { KnownShortcut } from "./KnownShortcut";
+import { KnownShortcut } from "../type/KnownShortcut";
 
 const parser = new Parser();
 const parseString = promisify<string, WalkupScanDestinationsData>(
@@ -61,7 +61,7 @@ export default class WalkupScanDestination {
     return null;
   }
 
-  get scanPlexMode(): string | null {
+  get scanPlexMode(): "Simplex" | string | null {
     if (
       Object.prototype.hasOwnProperty.call(this.data, "wus:WalkupScanSettings")
     ) {

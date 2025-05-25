@@ -1,5 +1,5 @@
 import xml2js from "xml2js";
-import { InputSource } from "./InputSource";
+import { InputSource } from "../type/InputSource";
 
 const parser = new xml2js.Parser();
 export default class ScanJobSettings {
