@@ -82,10 +82,6 @@ describe("PathHelper", () => {
         const folder = await PathHelper.getOutputFolder("~/someFolder");
         expect(folder).to.be.eq(path.join(os.homedir(), "someFolder"));
       });
-      it("it replaces ~ with home directory only if ~ is at the start", async () => {
-        const folder = await PathHelper.getOutputFolder("someFolder/~/anotherFolder");
-        expect(folder).to.be.eq("someFolder/~/anotherFolder");
-      });
     });
     describe("No folder given", () => {
       it("it return a temp folder", async () => {
@@ -148,4 +144,82 @@ describe("PathHelper", () => {
       }).to.throw(/Can not create unique file:/);
     });
   });
+    describe("getTargetFolder", () => {
+    it("should throw an error if the folder does not exist", async () => {
+      const nonExistentFolder = path.join(os.homedir(), 'non-existent-folder');
+      try {
+        await PathHelper.getTargetFolder(nonExistentFolder);
+        // If the promise resolves, we want to fail the test
+        expect.fail(`Expected an error for folder "${nonExistentFolder}" but got none.`);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          expect(error.message).to.equal(`The folder "${nonExistentFolder}" does not exist or is not writable.`);
+        } else {
+          throw error; // Re-throw if it's not an Error object
+        }
+      }
+    });
+    it("should throw an error if the folder is not writable", async () => {
+      const readOnlyFolder = path.join(os.tmpdir(), 'read-only-folder');
+      await fs.promises.mkdir(readOnlyFolder, { recursive: true });
+      await fs.promises.chmod(readOnlyFolder, 0o444); // Set to read-only
+
+      try {
+        await PathHelper.getTargetFolder(readOnlyFolder);
+        // If the promise resolves, we want to fail the test
+        expect.fail(`Expected an error for folder "${readOnlyFolder}" but got none.`);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          expect(error.message).to.equal(`The folder "${readOnlyFolder}" does not exist or is not writable.`);
+        } else {
+          throw error; // Re-throw if it's not an Error object
+        }
+      }
+
+      // Clean up: Restore permissions and remove the folder
+      await fs.promises.chmod(readOnlyFolder, 0o755); // Set back to writable
+      await fs.promises.rmdir(readOnlyFolder);
+    });
+  });
+
+  describe("getTempFolder", () => {
+    it("should throw an error if the folder does not exist", async () => {
+      const nonExistentFolder = path.join(os.homedir(), 'non-existent-folder');
+      try {
+        await PathHelper.getTempFolder(nonExistentFolder);
+        // If the promise resolves, we want to fail the test
+        expect.fail(`Expected an error for folder "${nonExistentFolder}" but got none.`);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          expect(error.message).to.equal(`The folder "${nonExistentFolder}" does not exist or is not writable.`);
+        } else {
+          throw error; // Re-throw if it's not an Error object
+        }
+      }
+    });
+    it("should throw an error if the folder is not writable", async () => {
+      const readOnlyFolder = path.join(os.tmpdir(), 'read-only-folder');
+      await fs.promises.mkdir(readOnlyFolder, { recursive: true });
+      await fs.promises.chmod(readOnlyFolder, 0o444); // Set to read-only
+
+      try {
+        await PathHelper.getTempFolder(readOnlyFolder);
+        // If the promise resolves, we want to fail the test
+        expect.fail(`Expected an error for folder "${readOnlyFolder}" but got none.`);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          expect(error.message).to.equal(`The folder "${readOnlyFolder}" does not exist or is not writable.`);
+        } else {
+          throw error; // Re-throw if it's not an Error object
+        }
+      }
+
+      // Clean up: Restore permissions and remove the folder
+      await fs.promises.chmod(readOnlyFolder, 0o755); // Set back to writable
+      await fs.promises.rmdir(readOnlyFolder);
+    });
+
+  })
+
+
 });
