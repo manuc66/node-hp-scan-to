@@ -1,51 +1,29 @@
-import Event from "./Event";
-import WalkupScanDestination from "./WalkupScanDestination";
-import WalkupScanToCompDestination from "./WalkupScanToCompDestination";
+import Event from "./hpModels/Event";
+import WalkupScanDestination from "./hpModels/WalkupScanDestination";
+import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination";
 import HPApi from "./HPApi";
-import fs from "fs/promises";
-import JpegUtil from "./JpegUtil";
-import { DeviceCapabilities } from "./DeviceCapabilities";
-import { waitForScanEvent, waitScanRequest } from "./listening";
-import ScanJobSettings from "./ScanJobSettings";
-import { ScanContent, ScanPage } from "./ScanContent";
-import Job from "./Job";
+import { DeviceCapabilities } from "./type/DeviceCapabilities";
+import ScanJobSettings from "./hpModels/ScanJobSettings";
+import { ScanContent } from "./type/ScanContent";
 import { delay } from "./delay";
-import PathHelper from "./PathHelper";
-import ScanStatus from "./ScanStatus";
-import { InputSource } from "./InputSource";
-import { PaperlessConfig } from "./paperless/PaperlessConfig";
-import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
+import ScanStatus from "./hpModels/ScanStatus";
+import { InputSource } from "./type/InputSource";
 import { postProcessing } from "./postProcessing";
+import { SelectedScanTarget } from "./type/scanTargetDefinitions";
+import { executeScanJob, executeScanJobs } from "./scanJobHandlers";
+import { KnownShortcut } from "./type/KnownShortcut";
+import {
+  AdfAutoScanConfig,
+  ScanConfig,
+  SingleScanConfig,
+} from "./type/scanConfigs";
+import { PageCountingStrategy } from "./type/pageCountingStrategy";
 
-async function waitDeviceUntilItIsReadyToUploadOrCompleted(
-  jobUrl: string,
-): Promise<Job> {
-  let job = null;
-  let isReadyToUpload = false;
-  do {
-    job = await HPApi.getJob(jobUrl);
-    if (job.jobState === "Canceled") {
-      return job;
-    } else if (
-      job.pageState === "ReadyToUpload" ||
-      job.jobState === "Completed"
-    ) {
-      isReadyToUpload = true;
-    } else if (job.jobState == "Processing") {
-      isReadyToUpload = false;
-    } else {
-      console.log(`Unknown jobState: ${job.jobState}`);
-    }
-    await delay(300);
-  } while (!isReadyToUpload);
-  return job;
-}
-
-async function tryGetDestination(
+export async function tryGetDestination(
   event: Event,
 ): Promise<WalkupScanDestination | WalkupScanToCompDestination | null> {
-  //this code can in some cases be executed before the user actually chooses between Document or Photo
-  //so lets fetch the contentType (Document or Photo) until we get a value
+  // this code can in some cases be executed before the user actually chooses between Document or Photo
+  // so, let's fetch the contentType (Document or Photo) until we get a value
   let destination: WalkupScanDestination | WalkupScanToCompDestination | null =
     null;
 
@@ -71,231 +49,18 @@ async function tryGetDestination(
   return null;
 }
 
-async function scanProcessing(filePath: string): Promise<number | null> {
-  const buffer: Buffer = await fs.readFile(filePath);
-
-  const height = JpegUtil.fixSizeWithDNL(buffer);
-  if (height != null) {
-    // rewrite the fixed file
-    await fs.writeFile(filePath, buffer);
-    return height;
-  }
-  return null;
-}
-
-function createScanPage(
-  job: Job,
-  currentPageNumber: number,
-  filePath: string,
-  sizeFixed: number | null,
-): ScanPage {
-  const height = sizeFixed ?? job.imageHeight;
-  return {
-    path: filePath,
-    pageNumber: currentPageNumber,
-    width: job.imageWidth ?? 0,
-    height: height ?? 0,
-    xResolution: job.xResolution ?? 200,
-    yResolution: job.yResolution ?? 200,
-  };
-}
-
-async function handleScanProcessingState(
-  job: Job,
-  inputSource: InputSource,
-  folder: string,
-  scanCount: number,
-  currentPageNumber: number,
-  filePattern: string | undefined,
-  date: Date,
-): Promise<ScanPage | null> {
-  if (
-    job.pageState == "ReadyToUpload" &&
-    job.binaryURL != null &&
-    job.currentPageNumber != null
-  ) {
-    console.log(
-      `Ready to download page job page ${job.currentPageNumber} at:`,
-      job.binaryURL,
-    );
-
-    const destinationFilePath = PathHelper.getFileForPage(
-      folder,
-      scanCount,
-      currentPageNumber,
-      filePattern,
-      "jpg",
-      date,
-    );
-    const filePath = await HPApi.downloadPage(
-      job.binaryURL,
-      destinationFilePath,
-    );
-    console.log("Page downloaded to:", filePath);
-
-    let sizeFixed: null | number = null;
-    if (inputSource == InputSource.Adf) {
-      sizeFixed = await scanProcessing(filePath);
-      if (sizeFixed == null) {
-        console.log(
-          `File size has not been fixed, DNF may not have been found and approximate height is: ${job.imageHeight}`,
-        );
-      }
-    }
-    return createScanPage(job, currentPageNumber, filePath, sizeFixed);
-  } else {
-    console.log(`Unknown pageState: ${job.pageState}`);
-    await delay(200);
-    return null;
-  }
-}
-
-async function executeScanJob(
-  scanJobSettings: ScanJobSettings,
-  inputSource: InputSource,
-  folder: string,
-  scanCount: number,
-  scanJobContent: ScanContent,
-  filePattern: string | undefined,
-): Promise<"Completed" | "Canceled"> {
-  const jobUrl = await HPApi.postJob(scanJobSettings);
-
-  console.log("New job created:", jobUrl);
-
-  let job = await HPApi.getJob(jobUrl);
-  while (job.jobState !== "Completed") {
-    job = await waitDeviceUntilItIsReadyToUploadOrCompleted(jobUrl);
-
-    if (job.jobState == "Completed") {
-      continue;
-    }
-
-    if (job.jobState === "Processing") {
-      const page = await handleScanProcessingState(
-        job,
-        inputSource,
-        folder,
-        scanCount,
-        scanJobContent.elements.length + 1,
-        filePattern,
-        new Date(),
-      );
-      job = await HPApi.getJob(jobUrl);
-      if (page != null && job.jobState != "Canceled") {
-        scanJobContent.elements.push(page);
-      }
-    } else if (job.jobState === "Canceled") {
-      console.log("Job cancelled by device");
-      break;
-    } else {
-      console.log(`Unhandled jobState: ${job.jobState}`);
-      await delay(200);
-    }
-  }
-  console.log(
-    `Job state: ${job.jobState}, totalPages: ${scanJobContent.elements.length}:`,
-  );
-  return job.jobState;
-}
-
-async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
-  let startNewScanJob = false;
-  let wait = true;
-  while (wait) {
-    await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
-
-    const walkupScanToCompEvent =
-      await HPApi.getWalkupScanToCompEvent(compEventURI);
-    const message = walkupScanToCompEvent.eventType;
-
-    if (message === "ScanNewPageRequested") {
-      startNewScanJob = true;
-      wait = false;
-    } else if (message === "ScanPagesComplete") {
-      wait = false;
-    } else if (message === "ScanRequested") {
-      // continue waiting
-    } else {
-      wait = false;
-      console.log(`Unknown eventType: ${message}`);
-    }
-  }
-  return startNewScanJob;
-}
-
-async function executeScanJobs(
-  scanJobSettings: ScanJobSettings,
-  inputSource: InputSource,
-  folder: string,
-  scanCount: number,
-  scanJobContent: ScanContent,
-  firstEvent: Event,
-  deviceCapabilities: DeviceCapabilities,
-  filePattern: string | undefined,
-) {
-  let jobState = await executeScanJob(
-    scanJobSettings,
-    inputSource,
-    folder,
-    scanCount,
-    scanJobContent,
-    filePattern,
-  );
-  let lastEvent = firstEvent;
-  if (
-    jobState === "Completed" &&
-    lastEvent.compEventURI &&
-    inputSource !== InputSource.Adf &&
-    lastEvent.destinationURI &&
-    deviceCapabilities.supportsMultiItemScanFromPlaten
-  ) {
-    lastEvent = await waitForScanEvent(
-      lastEvent.destinationURI,
-      lastEvent.agingStamp,
-    );
-    if (!lastEvent.compEventURI) {
-      return;
-    }
-    let startNewScanJob = await waitScanNewPageRequest(lastEvent.compEventURI);
-    while (startNewScanJob) {
-      jobState = await executeScanJob(
-        scanJobSettings,
-        inputSource,
-        folder,
-        scanCount,
-        scanJobContent,
-        filePattern,
-      );
-      if (jobState !== "Completed") {
-        return;
-      }
-      if (!lastEvent.destinationURI) {
-        break;
-      }
-      lastEvent = await waitForScanEvent(
-        lastEvent.destinationURI,
-        lastEvent.agingStamp,
-      );
-      if (!lastEvent.compEventURI) {
-        return;
-      }
-      startNewScanJob = await waitScanNewPageRequest(lastEvent.compEventURI);
-    }
-  }
-}
-
-function isPdf(
+export function isPdf(
   destination: WalkupScanDestination | WalkupScanToCompDestination,
 ) {
   if (
-    destination.shortcut === "SavePDF" ||
-    destination.shortcut === "EmailPDF" ||
-    destination.shortcut == "SaveDocument1"
+    destination.shortcut === KnownShortcut.SavePDF ||
+    destination.shortcut === KnownShortcut.EmailPDF ||
+    destination.shortcut == KnownShortcut.SaveDocument1
   ) {
     return true;
   } else if (
-    destination.shortcut === "SaveJPEG" ||
-    destination.shortcut === "SavePhoto1"
+    destination.shortcut === KnownShortcut.SaveJPEG ||
+    destination.shortcut === KnownShortcut.SavePhoto1
   ) {
     return false;
   } else {
@@ -355,46 +120,28 @@ export function getScanHeight(
 }
 
 export async function saveScanFromEvent(
-  event: Event,
+  selectedScanTarget: SelectedScanTarget,
   folder: string,
   tempFolder: string,
   scanCount: number,
   deviceCapabilities: DeviceCapabilities,
   scanConfig: ScanConfig,
-): Promise<void> {
-  if (event.compEventURI) {
-    const proceedToScan = await waitScanRequest(event.compEventURI);
-    if (!proceedToScan) {
-      return;
-    }
-  }
-
-  const destination = await tryGetDestination(event);
-  if (!destination) {
-    console.log("No shortcut selected!");
-    return;
-  }
-  console.log("Selected shortcut: " + destination.shortcut);
-
-  let toPdf: boolean;
+  isDuplex: boolean,
+  isPdf: boolean,
+  pageCountingStrategy: PageCountingStrategy,
+): Promise<ScanContent> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
-  if (isPdf(destination)) {
-    toPdf = true;
+  if (isPdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
     console.log(
       `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`,
     );
   } else {
-    toPdf = false;
     contentType = "Photo";
     destinationFolder = folder;
   }
-
-  const isDuplex =
-    destination.scanPlexMode != null && destination.scanPlexMode != "Simplex";
-  console.log("ScanPlexMode is : " + destination.scanPlexMode);
 
   const scanStatus = await HPApi.getScanStatus();
 
@@ -429,58 +176,24 @@ export async function saveScanFromEvent(
 
   const scanJobContent: ScanContent = { elements: [] };
 
-  const scanDate = new Date();
-
   await executeScanJobs(
     scanJobSettings,
     inputSource,
     destinationFolder,
     scanCount,
     scanJobContent,
-    event,
+    selectedScanTarget,
     deviceCapabilities,
     scanConfig.directoryConfig.filePattern,
+    pageCountingStrategy,
   );
 
   console.log(
     `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`,
   );
-  await postProcessing(
-    scanConfig,
-    folder,
-    tempFolder,
-    scanCount,
-    scanJobContent,
-    scanDate,
-    toPdf,
-  );
+
+  return scanJobContent;
 }
-
-export type DirectoryConfig = {
-  directory: string | undefined;
-  tempDirectory: string | undefined;
-  filePattern: string | undefined;
-};
-
-export type ScanConfig = {
-  resolution: number;
-  width: number | null;
-  height: number | null;
-  directoryConfig: DirectoryConfig;
-  paperlessConfig: PaperlessConfig | undefined;
-  nextcloudConfig: NextcloudConfig | undefined;
-};
-export type AdfAutoScanConfig = ScanConfig & {
-  isDuplex: boolean;
-  generatePdf: boolean;
-  pollingInterval: number;
-  startScanDelay: number;
-};
-
-export type SingleScanConfig = ScanConfig & {
-  isDuplex: boolean;
-  generatePdf: boolean;
-};
 
 export async function scanFromAdf(
   scanCount: number,
@@ -534,6 +247,7 @@ export async function scanFromAdf(
     scanCount,
     scanJobContent,
     adfAutoScanConfig.directoryConfig.filePattern,
+    PageCountingStrategy.Normal,
   );
 
   console.log(
@@ -613,6 +327,7 @@ export async function singleScan(
     scanCount,
     scanJobContent,
     scanConfig.directoryConfig.filePattern,
+    PageCountingStrategy.Normal,
   );
 
   console.log(

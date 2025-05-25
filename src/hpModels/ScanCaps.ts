@@ -21,6 +21,9 @@ export interface ScanCapsData {
         AdfDuplexMaxWidth: string[];
         AdfDuplexMaxHeight: string[];
       }[];
+      AdfOptions: {
+        AdfOption: string[];
+      }[];
     }[];
   };
 }
@@ -119,5 +122,35 @@ export default class ScanCaps {
     } else {
       return this.adfMaxHeight;
     }
+  }
+
+  get hasAdfDetectPaperLoaded(): boolean {
+    if (
+      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf") &&
+      Object.prototype.hasOwnProperty.call(
+        this.data["ScanCaps"]["Adf"][0],
+        "AdfOptions",
+      )
+    ) {
+      const options =
+        this.data["ScanCaps"]["Adf"][0]["AdfOptions"][0]["AdfOption"];
+      return options.includes("DetectPaperLoaded");
+    }
+    return false;
+  }
+
+  get hasAdfDuplex(): boolean {
+    if (
+      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf") &&
+      Object.prototype.hasOwnProperty.call(
+        this.data["ScanCaps"]["Adf"][0],
+        "AdfOptions",
+      )
+    ) {
+      const options =
+        this.data["ScanCaps"]["Adf"][0]["AdfOptions"][0]["AdfOption"];
+      return options.includes("Duplex");
+    }
+    return false;
   }
 }

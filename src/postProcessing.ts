@@ -1,4 +1,4 @@
-import { ScanContent } from "./ScanContent";
+import { ScanContent } from "./type/ScanContent";
 import { mergeToPdf } from "./pdfProcessing";
 import {
   convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless,
@@ -10,10 +10,10 @@ import {
   uploadPdfToNextcloud,
   uploadImagesToNextcloud,
 } from "./nextcloud/nextcloud";
-import { ScanConfig } from "./scanProcessing";
 import fs from "fs/promises";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
 import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
+import { ScanConfig } from "./type/scanConfigs";
 
 export async function postProcessing(
   scanConfig: ScanConfig,
@@ -64,7 +64,7 @@ async function handlePdfPostProcessing(
     true,
   );
   if (pdfFilePath != null) {
-    displayPdfScan(pdfFilePath, scanJobContent);
+    displayPdfScan(pdfFilePath, scanJobContent, scanCount);
     if (paperlessConfig) {
       await uploadPdfToPaperless(pdfFilePath, paperlessConfig);
     }
@@ -85,7 +85,7 @@ async function handleImagePostProcessing(
   const paperlessConfig = scanConfig.paperlessConfig;
   const nextcloudConfig = scanConfig.nextcloudConfig;
 
-  displayJpegScan(scanJobContent);
+  displayJpegScan(scanJobContent, scanCount);
   if (paperlessConfig) {
     if (paperlessConfig.groupMultiPageScanIntoAPdf) {
       await mergeToPdfAndUploadAsSingleDocumentToPaperless(
@@ -120,13 +120,15 @@ async function handleImagePostProcessing(
 function displayPdfScan(
   pdfFilePath: string | null,
   scanJobContent: ScanContent,
+  scanCount: number,
 ) {
   if (pdfFilePath === null) {
     console.log(`Pdf generated has not been generated`);
     return;
   }
+
   console.log(
-    `The following page(s) have been rendered inside '${pdfFilePath}': `,
+    `The following page(s) have been rendered inside '${pdfFilePath}' as part of scan #${scanCount}: `,
   );
   scanJobContent.elements.forEach((e) =>
     console.log(
@@ -137,7 +139,8 @@ function displayPdfScan(
   );
 }
 
-function displayJpegScan(scanJobContent: ScanContent) {
+function displayJpegScan(scanJobContent: ScanContent, scanCount: number) {
+  console.log(`The following page(s) are part of scan #${scanCount}: `);
   scanJobContent.elements.forEach((e) =>
     console.log(
       `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${

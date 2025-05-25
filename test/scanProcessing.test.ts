@@ -3,10 +3,10 @@ import { expect } from "chai";
 import {
   getScanWidth,
   getScanHeight,
-  ScanConfig,
 } from "../src/scanProcessing";
-import { DeviceCapabilities } from "../src/DeviceCapabilities";
-import { InputSource } from "../src/InputSource";
+import { DeviceCapabilities } from "../src/type/DeviceCapabilities";
+import { InputSource } from "../src/type/InputSource";
+import { ScanConfig } from "../src/type/scanConfigs";
 
 describe("scanProcessing", () => {
   let scanConfig: ScanConfig;
@@ -34,6 +34,8 @@ describe("scanProcessing", () => {
       adfMaxHeight: null,
       adfDuplexMaxWidth: null,
       adfDuplexMaxHeight: null,
+      hasAdfDetectPaperLoaded: false,
+      hasAdfDuplex: false,
     };
   });
 

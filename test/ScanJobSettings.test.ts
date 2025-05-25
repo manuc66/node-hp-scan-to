@@ -1,9 +1,9 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import ScanJobSettings from "../src/ScanJobSettings";
+import ScanJobSettings from "../src/hpModels/ScanJobSettings";
 import path from "path";
 import * as fs from "fs/promises";
-import { InputSource } from "../src/InputSource";
+import { InputSource } from "../src/type/InputSource";
 
 describe("ScanJobSettings", () => {
   describe("toXML",  () => {
