@@ -102,20 +102,34 @@ export default class PathHelper {
       return Fs.mkdtemp(path.join(os.tmpdir(), "scan-to-pc"));
     }
 
-    if (folder.startsWith("~")) return folder.replace(/^~/, os.homedir());
-
+    if (folder.startsWith("~")) {
+      return folder.replace(/^~/, os.homedir());
+    }
     return folder;
+  }
+
+  private static async checkIfFolderIsWritable(folder: string) {
+    // Check if the folder exists
+    try {
+      await fs.promises.access(folder, fs.constants.W_OK);
+      return folder; // The folder exists and is writable
+    } catch {
+      // If the folder does not exist or is not writable, handle the error
+      throw new Error(`The folder "${folder}" does not exist or is not writable.`);
+    }
   }
 
   static async getTargetFolder(directory: string | undefined) {
     const folder = await PathHelper.getOutputFolder(directory);
     console.log(`Target folder: ${folder}`);
+    await this.checkIfFolderIsWritable(folder);
     return folder;
   }
 
   static async getTempFolder(directory: string | undefined) {
     const tempFolder = await PathHelper.getOutputFolder(directory);
     console.log(`Temp folder: ${tempFolder}`);
+    await this.checkIfFolderIsWritable(tempFolder);
     return tempFolder;
   }
 }
