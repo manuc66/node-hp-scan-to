@@ -185,7 +185,16 @@ docker run -e MAIN_COMMAND="clear-registrations" docker.io/manuc66/node-hp-scan-
 
 #### Public Pre-Built Docker image
 
-- <https://hub.docker.com/repository/docker/manuc66/node-hp-scan-to>
+<https://hub.docker.com/repository/docker/manuc66/node-hp-scan-to>
+
+The Docker images follow semantic versioning:
+- `latest`: Latest stable release (includes all patch updates)
+- `x.y.z`: Specific version (e.g., `1.2.3`)
+- `x.y`: Latest patch version of a specific minor version (e.g., `1.2`)
+- `x`: Latest minor.patch version of a specific major version (e.g., `1`)
+- `master`: Latest build from the master branch (development version)
+
+Note: For most users, the `latest` tag is recommended as it includes all patch updates and bug fixes.
 
 Be aware that with Docker you have to specify the IP address of the printer via the `IP` environment variable, because the Bonjour service discovery protocol uses multicast network traffic, which by default doesn't work in Docker.
 
