@@ -100,6 +100,19 @@ There is a good chance it also works on other unlisted HP All-in-One Printer.
 
 - For running with Docker Compose, see the [Example for Docker Compose](#example-for-docker-compose) section
 
+### Using Arch Linux (AUR)
+
+- The package is available in the Arch User Repository (AUR) as `node-hp-scan-to`
+
+- Install it using your preferred AUR helper, for example:
+  ```bash
+  yay -S node-hp-scan-to
+  ```
+  or
+  ```bash
+  paru -S node-hp-scan-to
+  ```
+
 ## Usage
 
 ### Command Line (CLI)
