@@ -4,7 +4,6 @@
 "use strict";
 
 import os from "os";
-import { Command, Option, OptionValues, program } from "commander";
 import { Bonjour } from "bonjour-service";
 import config from "config";
 import HPApi from "./HPApi";
@@ -13,17 +12,14 @@ import { PaperlessConfig } from "./paperless/PaperlessConfig";
 import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { startHealthCheckServer } from "./healthcheck";
 import fs from "fs";
+import { Command } from "@commander-js/extra-typings";
 import { RegistrationConfig } from "./type/scanTargetDefinitions";
 import { listenCmd } from "./commands/listenCmd";
 import { adfAutoscanCmd } from "./commands/adfAutoscanCmd";
 import { singleScanCmd } from "./commands/singleScanCmd";
 import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd";
 import { DirectoryConfig } from "./type/directoryConfig";
-import {
-  AdfAutoScanConfig,
-  ScanConfig,
-  SingleScanConfig,
-} from "./type/scanConfigs";
+import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
@@ -56,96 +52,103 @@ function getConfig<T>(name: string): T | undefined {
   return config.has(name) ? config.get<T>(name) : undefined;
 }
 
-function setupScanParameters(command: Command): Command {
-  command.option(
-    "-d, --directory <dir>",
-    "Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)",
-  );
-  command.option(
-    "-t, --temp-directory <dir>",
-    "Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)",
-  );
-  command.option(
-    "-p, --pattern <pattern>",
-    'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes',
-  );
-  command.option(
-    "-r, --resolution <dpi>",
-    "Resolution in DPI of the scans (default: 200)",
-  );
-  command.option(
-    "-w, --width <width>",
-    "With in pixel of the scans (default: 2481)",
-  );
-  command.option(
-    "-h, --height <height>",
-    "Height in pixel of the scans (default: 3507)",
-  );
-  command.option(
-    "-s, --paperless-post-document-url <paperless_post_document_url>",
-    "The paperless post document url (example: https://domain.tld/api/documents/post_document/)",
-  );
-
-  command.option(
-    "-o, --paperless-token <paperless_token>",
-    "The paperless token",
-  );
-  command.option(
-    "--paperless-group-multi-page-scan-into-a-pdf",
-    "Combine multiple scanned images into a single PDF document",
-  );
-  command.option(
-    "--paperless-always-send-as-pdf-file",
-    "Always convert scan job to pdf before sending to paperless",
-  );
-  command.option(
-    "-k, --keep-files",
-    "Keep the scan files on the file system (default: false)",
-  );
-
-  command.option(
-    "--nextcloud-url <nextcloud_url>",
-    "The nextcloud url (example: https://domain.tld)",
-  );
-  command.option(
-    "--nextcloud-username <nextcloud_username>",
-    "The nextcloud username",
-  );
-  command.option(
-    "--nextcloud-password <nextcloud_app_password>",
-    "The nextcloud app password for username. Either this or nextcloud-password-file is required",
-  );
-  command.option(
-    "--nextcloud-password-file <nextcloud_app_password_file>",
-    "File name that contains the nextcloud app password for username. Either this or nextcloud-password is required",
-  );
-  command.option(
-    "--nextcloud-upload-folder <nextcloud_upload_folder>",
-    "The upload folder where documents or images are uploaded (default: scan)",
-  );
+//:
+type ScanParametersOpts = {
+  resolution?: string | undefined;
+  height?: string | undefined;
+  width?: string | undefined;
+  pattern?: string | undefined;
+  tempDirectory?: string | undefined;
+  keepFiles?: boolean | undefined;
+  nextcloudUploadFolder?: string | undefined;
+  nextcloudPasswordFile?: string | undefined;
+  nextcloudPassword?: string | undefined;
+  nextcloudUsername?: string | undefined;
+  nextcloudUrl?: string | undefined;
+  directory?: string | undefined;
+};
+function setupScanParameters(commandName: string) {
+  const command = new Command(commandName)
+    .option(
+      "-a, --address <ip>",
+      "IP address of the device (this overrides -p)",
+    )
+    .option(
+      "--device-up-polling-interval <deviceUpPollingInterval>",
+      "Device up polling interval in milliseconds",
+      parseFloat,
+    )
+    .option(
+      "-n, --name <name>",
+      "Name of the device for service discovery", // i.e. 'Deskjet 3520 series'
+    )
+    .option("-D, --debug", "Enable debug")
+    .option(
+      "-d, --directory <dir>",
+      "Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)",
+    )
+    .option(
+      "-t, --temp-directory <dir>",
+      "Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)",
+    )
+    .option(
+      "-p, --pattern <pattern>",
+      'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes',
+    )
+    .option(
+      "-r, --resolution <dpi>",
+      "Resolution in DPI of the scans (default: 200)",
+    )
+    .option("-w, --width <width>", "With in pixel of the scans (default: 2481)")
+    .option(
+      "-h, --height <height>",
+      "Height in pixel of the scans (default: 3507)",
+    )
+    .option(
+      "-s, --paperless-post-document-url <paperless_post_document_url>",
+      "The paperless post document url (example: https://domain.tld/api/documents/post_document/)",
+    )
+    .option("-o, --paperless-token <paperless_token>", "The paperless token")
+    .option(
+      "--paperless-group-multi-page-scan-into-a-pdf",
+      "Combine multiple scanned images into a single PDF document",
+    )
+    .option(
+      "--paperless-always-send-as-pdf-file",
+      "Always convert scan job to pdf before sending to paperless",
+    )
+    .option(
+      "-k, --keep-files",
+      "Keep the scan files on the file system (default: false)",
+    )
+    .option(
+      "--nextcloud-url <nextcloud_url>",
+      "The nextcloud url (example: https://domain.tld)",
+    )
+    .option(
+      "--nextcloud-username <nextcloud_username>",
+      "The nextcloud username",
+    )
+    .option(
+      "--nextcloud-password <nextcloud_app_password>",
+      "The nextcloud app password for username. Either this or nextcloud-password-file is required",
+    )
+    .option(
+      "--nextcloud-password-file <nextcloud_app_password_file>",
+      "File name that contains the nextcloud app password for username. Either this or nextcloud-password is required",
+    )
+    .option(
+      "--nextcloud-upload-folder <nextcloud_upload_folder>",
+      "The upload folder where documents or images are uploaded (default: scan)",
+    );
+  command.optsWithGlobals();
   return command;
 }
 
-function setupParameterOpts(command: Command): Command {
-  command.option(
-    "-a, --address <ip>",
-    "IP address of the device (this overrides -p)",
-  );
-  command.option(
-    "--device-up-polling-interval <deviceUpPollingInterval>",
-    "Device up polling interval in milliseconds",
-    parseFloat,
-  );
-  command.option(
-    "-n, --name <name>",
-    "Name of the device for service discovery",
-  ); // i.e. 'Deskjet 3520 series'
-
-  command.option("-D, --debug", "Enable debug");
-  return command;
-}
-
-async function getDeviceIp(options: OptionValues) {
+async function getDeviceIp(options: {
+  address?: string | undefined;
+  name?: string | undefined;
+}) {
   let ip = options.address || getConfig("ip");
   if (!ip) {
     const name = options.name || getConfig("name");
@@ -155,7 +158,7 @@ async function getDeviceIp(options: OptionValues) {
   return ip;
 }
 
-function getIsDebug(options: OptionValues) {
+function getIsDebug(options: { debug?: boolean | undefined }) {
   const debug =
     options.debug != null ? true : getConfig<boolean>("debug") || false;
 
@@ -165,13 +168,17 @@ function getIsDebug(options: OptionValues) {
   return debug;
 }
 
-function getPaperlessConfig(
-  parentOption: OptionValues,
-): PaperlessConfig | undefined {
-  const paperlessPostDocumentUrl: string =
+function getPaperlessConfig(parentOption: {
+  paperlessPostDocumentUrl?: string | undefined;
+  paperlessToken?: string | undefined;
+  keepFiles?: boolean | undefined;
+  paperlessGroupMultiPageScanIntoAPdf?: boolean | undefined;
+  paperlessAlwaysSendAsPdfFile?: boolean | undefined;
+}): PaperlessConfig | undefined {
+  const paperlessPostDocumentUrl: string | undefined =
     parentOption.paperlessPostDocumentUrl ||
     getConfig("paperless_post_document_url");
-  const configPaperlessToken: string =
+  const configPaperlessToken: string | undefined =
     parentOption.paperlessToken || getConfig("paperless_token");
 
   if (paperlessPostDocumentUrl && configPaperlessToken) {
@@ -202,15 +209,15 @@ function getPaperlessConfig(
 }
 
 function getNextcloudConfig(
-  parentOption: OptionValues,
+  parentOption: ScanParametersOpts,
 ): NextcloudConfig | undefined {
-  const configNextcloudUrl: string =
+  const configNextcloudUrl: string | undefined =
     parentOption.nextcloudUrl || getConfig("nextcloud_url");
-  const configNextcloudUsername: string =
+  const configNextcloudUsername: string | undefined =
     parentOption.nextcloudUsername || getConfig("nextcloud_username");
-  let configNextcloudPassword: string =
+  const configNextcloudPassword: string | undefined =
     parentOption.nextcloudPassword || getConfig("nextcloud_password");
-  const configNextcloudPasswordFile: string =
+  const configNextcloudPasswordFile: string | undefined =
     parentOption.nextcloudPasswordFile || getConfig("nextcloud_password_file");
 
   if (
@@ -225,19 +232,22 @@ function getNextcloudConfig(
     const configNextcloudKeepFiles: boolean =
       parentOption.keepFiles || getConfig("keep_files") || false;
 
+    let nextcloudPassword: string;
     if (configNextcloudPasswordFile) {
-      configNextcloudPassword = fs
+      nextcloudPassword = fs
         .readFileSync(configNextcloudPasswordFile, "utf8")
         .trimEnd();
+    } else {
+      nextcloudPassword = configNextcloudPassword ?? "";
     }
 
     console.log(
-      `Nextcloud configuration provided, url: ${configNextcloudUrl}, username: ${configNextcloudUsername}, password length: ${configNextcloudPassword.length}, upload folder: ${configNextcloudUploadFolder}, keepFiles: ${configNextcloudKeepFiles}`,
+      `Nextcloud configuration provided, url: ${configNextcloudUrl}, username: ${configNextcloudUsername}, password length: ${configNextcloudPassword?.length}, upload folder: ${configNextcloudUploadFolder}, keepFiles: ${configNextcloudKeepFiles}`,
     );
     return {
       baseUrl: configNextcloudUrl,
       username: configNextcloudUsername,
-      password: configNextcloudPassword,
+      password: nextcloudPassword,
       uploadFolder: configNextcloudUploadFolder,
       keepFiles: configNextcloudKeepFiles,
     };
@@ -246,7 +256,11 @@ function getNextcloudConfig(
   }
 }
 
-function getHealthCheckSetting(option: OptionValues) {
+type HealthCheckOptions = {
+  healthCheckPort?: string;
+  healthCheck?: boolean;
+};
+function getHealthCheckSetting(option: HealthCheckOptions) {
   const healthCheckEnabled: boolean =
     option.healthCheck || getConfig("enableHealthCheck") === true;
   let healthCheckPort: number;
@@ -261,7 +275,7 @@ function getHealthCheckSetting(option: OptionValues) {
   };
 }
 
-function getScanConfiguration(option: OptionValues) {
+function getScanConfiguration(option: ScanParametersOpts) {
   const directoryConfig: DirectoryConfig = {
     directory: option.directory || getConfig("directory"),
     tempDirectory: option.tempDirectory || getConfig("tempDirectory"),
@@ -297,7 +311,9 @@ function getScanConfiguration(option: OptionValues) {
   return scanConfig;
 }
 
-function getDeviceUpPollingInterval(parentOption: OptionValues) {
+function getDeviceUpPollingInterval(parentOption: {
+  deviceUpPollingInterval?: number | undefined;
+}) {
   return (
     parentOption.deviceUpPollingInterval ||
     getConfig("deviceUpPollingInterval") ||
@@ -306,8 +322,7 @@ function getDeviceUpPollingInterval(parentOption: OptionValues) {
 }
 
 function createListenCliCmd() {
-  const cmdListen = program.createCommand("listen");
-  setupScanParameters(cmdListen)
+  return setupScanParameters("listen")
     .description("Listen the device for new scan job to save to this target")
     .option(
       "-l, --label <label>",
@@ -318,22 +333,16 @@ function createListenCliCmd() {
       "--emulated-duplex-label <label>",
       "The emulated duplex label to display on the device (the default is to suffix the main label with duplex)",
     )
-    .addOption(
-      new Option("--health-check", "Start an http health check endpoint"),
+    .option("--health-check", "Start an http health check endpoint")
+    .option(
+      "--health-check-port <health-check-port>",
+      "Start an http health check endpoint",
     )
-    .addOption(
-      new Option(
-        "--health-check-port <health-check-port>",
-        "Start an http health check endpoint",
-      ),
-    )
-    .action(async (options, cmd) => {
-      const parentOption = cmd.parent.opts();
-
-      const ip = await getDeviceIp(parentOption);
+    .action(async (options) => {
+      const ip = await getDeviceIp(options);
       HPApi.setDeviceIP(ip);
 
-      const isDebug = getIsDebug(parentOption);
+      const isDebug = getIsDebug(options);
       HPApi.setDebug(isDebug);
 
       const registrationConfigs: RegistrationConfig[] = [];
@@ -354,7 +363,7 @@ function createListenCliCmd() {
         });
       }
 
-      const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
+      const deviceUpPollingInterval = getDeviceUpPollingInterval(options);
 
       const healthCheckSetting = getHealthCheckSetting(options);
       if (healthCheckSetting.isHealthCheckEnabled) {
@@ -365,58 +374,36 @@ function createListenCliCmd() {
 
       await listenCmd(registrationConfigs, scanConfig, deviceUpPollingInterval);
     });
-  return cmdListen;
 }
 
 function createAdfAutoscanCliCmd() {
-  const cmdAdfAutoscan = program.createCommand("adf-autoscan");
-  setupScanParameters(cmdAdfAutoscan)
-    .addOption(
-      new Option("--duplex", "If specified, the scan will be in duplex"),
-    )
-    .addOption(
-      new Option(
-        "--pdf",
-        "If specified, the scan result will be a pdf document, the default is multiple jpeg files",
-      ),
-    )
-    .addOption(
-      new Option(
-        "--pollingInterval <pollingInterval>",
-        "Time interval in millisecond between each lookup for content in the automatic document feeder",
-      ),
-    )
+  return setupScanParameters("adf-autoscan")
     .description(
       "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
     )
-    .addOption(
-      new Option(
-        "--start-scan-delay <startScanDelay>",
-        "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan",
-      ),
+    .option("--duplex", "If specified, the scan will be in duplex")
+    .option(
+      "--pdf",
+      "If specified, the scan result will be a pdf document, the default is multiple jpeg files",
     )
-    .addOption(
-      new Option("--health-check", "Start an http health check endpoint"),
+    .option(
+      "--pollingInterval <pollingInterval>",
+      "Time interval in millisecond between each lookup for content in the automatic document feeder",
     )
-    .addOption(
-      new Option(
-        "--health-check-port <port>",
-        "Start an http health check endpoint",
-      ),
+    .option(
+      "--start-scan-delay <startScanDelay>",
+      "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan",
     )
-    .description(
-      "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
-    )
-    .action(async (options, cmd) => {
-      const parentOption = cmd.parent.opts();
-
-      const ip = await getDeviceIp(parentOption);
+    .option("--health-check", "Start an http health check endpoint")
+    .option("--health-check-port <port>", "Start an http health check endpoint")
+    .action(async (options) => {
+      const ip = await getDeviceIp(options);
       HPApi.setDeviceIP(ip);
 
-      const isDebug = getIsDebug(parentOption);
+      const isDebug = getIsDebug(options);
       HPApi.setDebug(isDebug);
 
-      const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
+      const deviceUpPollingInterval = getDeviceUpPollingInterval(options);
 
       const healthCheckSetting = getHealthCheckSetting(options);
       if (healthCheckSetting.isHealthCheckEnabled) {
@@ -430,43 +417,39 @@ function createAdfAutoscanCliCmd() {
         isDuplex: options.duplex || getConfig("autoscan_duplex") || false,
         generatePdf: options.pdf || getConfig("autoscan_pdf") || false,
         pollingInterval:
-          options.pollingInterval ||
+          (options.pollingInterval
+            ? parseInt(options.pollingInterval, 10)
+            : undefined) ||
           getConfig("autoscan_pollingInterval") ||
           1000,
         startScanDelay:
-          options.startScanDelay ||
+          (options.startScanDelay
+            ? parseInt(options.startScanDelay, 10)
+            : undefined) ||
           getConfig("autoscan_startScanDelay") ||
           5000,
       };
 
       await adfAutoscanCmd(adfScanConfig, deviceUpPollingInterval);
     });
-  return cmdAdfAutoscan;
 }
 
 function createSingleScanCliCmd() {
-  const cmdSingleScan = program.createCommand("single-scan");
-  setupScanParameters(cmdSingleScan)
-    .addOption(
-      new Option("--duplex", "If specified, the scan will be in duplex"),
-    )
-    .addOption(
-      new Option(
-        "--pdf",
-        "If specified, the scan result will be a pdf document, the default is multiple jpeg files",
-      ),
-    )
+  return setupScanParameters("single-scan")
     .description("Trigger a new scan job")
-    .action(async (options, cmd) => {
-      const parentOption = cmd.parent.opts();
-
-      const ip = await getDeviceIp(parentOption);
+    .option("--duplex", "If specified, the scan will be in duplex")
+    .option(
+      "--pdf",
+      "If specified, the scan result will be a pdf document, the default is multiple jpeg files",
+    )
+    .action(async (options) => {
+      const ip = await getDeviceIp(options);
       HPApi.setDeviceIP(ip);
 
-      const isDebug = getIsDebug(parentOption);
+      const isDebug = getIsDebug(options);
       HPApi.setDebug(isDebug);
 
-      const deviceUpPollingInterval = getDeviceUpPollingInterval(parentOption);
+      const deviceUpPollingInterval = getDeviceUpPollingInterval(options);
 
       const scanConfig = getScanConfiguration(options);
 
@@ -478,29 +461,35 @@ function createSingleScanCliCmd() {
 
       await singleScanCmd(singleScanConfig, deviceUpPollingInterval);
     });
-  return cmdSingleScan;
 }
 
 function createClearRegistrationsCliCmd() {
-  const cmdClearRegistrations = program.createCommand("clear-registrations");
-  cmdClearRegistrations
+  const cmdClearRegistrations = new Command("clear-registrations")
     .description("Clear the list or registered target on the device")
-    .action(async (_, cmd) => {
-      const parentOption = cmd.parent!.opts();
-
-      const ip = await getDeviceIp(parentOption);
+    .option(
+      "-a, --address <ip>",
+      "IP address of the device (this overrides -p)",
+    )
+    .option(
+      "-n, --name <name>",
+      "Name of the device for service discovery", // i.e. 'Deskjet 3520 series'
+    )
+    .option("-D, --debug", "Enable debug")
+    .action(async (options) => {
+      const ip = await getDeviceIp(options);
       HPApi.setDeviceIP(ip);
 
-      const isDebug = getIsDebug(parentOption);
+      const isDebug = getIsDebug(options);
       HPApi.setDebug(isDebug);
 
       await clearRegistrationsCmd();
     });
+  cmdClearRegistrations.optsWithGlobals();
   return cmdClearRegistrations;
 }
 
 async function main() {
-  setupParameterOpts(program);
+  const program = new Command();
 
   const cmdListen = createListenCliCmd();
   program.addCommand(cmdListen, { isDefault: true });
