@@ -19,11 +19,7 @@ import { adfAutoscanCmd } from "./commands/adfAutoscanCmd";
 import { singleScanCmd } from "./commands/singleScanCmd";
 import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd";
 import { DirectoryConfig } from "./type/directoryConfig";
-import {
-  AdfAutoScanConfig,
-  ScanConfig,
-  SingleScanConfig,
-} from "./type/scanConfigs";
+import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
@@ -94,7 +90,7 @@ type ScanParametersOpts = {
   directory?: string | undefined;
 };
 function setupScanParameters(commandName: string) {
-  const command = new Command(commandName)
+  return new Command(commandName)
     .option(
       "-a, --address <ip>",
       "IP address of the device (this overrides -p)",
@@ -167,8 +163,6 @@ function setupScanParameters(commandName: string) {
       "--nextcloud-upload-folder <nextcloud_upload_folder>",
       "The upload folder where documents or images are uploaded (default: scan)",
     );
-  command.optsWithGlobals();
-  return command;
 }
 
 async function getDeviceIp(options: {
@@ -505,7 +499,7 @@ function createSingleScanCliCmd() {
 }
 
 function createClearRegistrationsCliCmd() {
-  const cmdClearRegistrations = new Command("clear-registrations")
+  return new Command("clear-registrations")
     .description("Clear the list or registered target on the device")
     .option(
       "-a, --address <ip>",
@@ -525,8 +519,6 @@ function createClearRegistrationsCliCmd() {
 
       await clearRegistrationsCmd();
     });
-  cmdClearRegistrations.optsWithGlobals();
-  return cmdClearRegistrations;
 }
 
 async function main() {
