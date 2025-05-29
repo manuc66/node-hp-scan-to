@@ -68,7 +68,7 @@ function _getConfig<T>(name: string, expectedType: string): T | undefined {
     // Check if the value is of the expected type
     if (typeof value !== expectedType) {
       throw new Error(
-        `Value for ${name} is not of the expected type: ${expectedType}`,
+        `Value for ${name} is not of the expected type: ${expectedType}, got: ${typeof value}`,
       );
     }
 
