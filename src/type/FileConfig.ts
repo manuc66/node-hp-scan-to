@@ -25,8 +25,14 @@ export const configSchema = z.object({
   ///
   /// Scan Settings
   ///
-  width: z.number().int().positive().optional(), // Scan width in pixels
-  height: z.number().int().positive().optional(), // Scan height in pixels
+  width: z.union([
+    z.number().int().positive(), // Positive integer
+    z.literal("max")              // The string "max"
+  ]), // Scan width in pixels
+  height: z.union([
+    z.number().int().positive(), // Positive integer
+    z.literal("max")              // The string "max"
+  ]), // Scan height in pixels
   resolution: z.number().int().positive().optional(), // DPI resolution
 
   ///
