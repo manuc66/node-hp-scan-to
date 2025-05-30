@@ -5,7 +5,7 @@
 
 import os from "os";
 import { Bonjour } from "bonjour-service";
-import config from "config";
+import config, { IConfig } from "config";
 import HPApi from "./HPApi";
 import * as commitInfo from "./commitInfo.json";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
@@ -19,7 +19,13 @@ import { adfAutoscanCmd } from "./commands/adfAutoscanCmd";
 import { singleScanCmd } from "./commands/singleScanCmd";
 import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd";
 import { DirectoryConfig } from "./type/directoryConfig";
-import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs";
+import {
+  AdfAutoScanConfig,
+  ScanConfig,
+  SingleScanConfig,
+} from "./type/scanConfigs";
+import { ScanParametersOpts } from "./type/scanParametersOpts";
+import { configSchema, FileConfig } from "./type/FileConfig";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
@@ -47,48 +53,7 @@ function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
     browser.start();
   });
 }
-function getBoolFromConfig(name: string): boolean | undefined {
-  return _getConfig<boolean>(name, typeof true);
-}
-function getStringFromConfig(name: string): string | undefined {
-  return _getConfig<string>(name, typeof "");
-}
-function getNumberFromConfig(name: string): number | undefined {
-  return _getConfig<number>(name, typeof 1);
-}
 
-function _getConfig<T>(name: string, expectedType: string): T | undefined {
-  if (config.has(name)) {
-    const value = config.get<T>(name);
-
-    // Check if the value is of the expected type
-    if (typeof value !== expectedType) {
-      throw new Error(
-        `Value for ${name} is not of the expected type: ${expectedType}, got: ${typeof value}`,
-      );
-    }
-
-    return value;
-  }
-
-  return undefined;
-}
-
-//:
-type ScanParametersOpts = {
-  resolution?: string | undefined;
-  height?: string | undefined;
-  width?: string | undefined;
-  pattern?: string | undefined;
-  tempDirectory?: string | undefined;
-  keepFiles?: boolean | undefined;
-  nextcloudUploadFolder?: string | undefined;
-  nextcloudPasswordFile?: string | undefined;
-  nextcloudPassword?: string | undefined;
-  nextcloudUsername?: string | undefined;
-  nextcloudUrl?: string | undefined;
-  directory?: string | undefined;
-};
 function setupScanParameters(commandName: string) {
   return new Command(commandName)
     .option(
@@ -165,22 +130,27 @@ function setupScanParameters(commandName: string) {
     );
 }
 
-async function getDeviceIp(options: {
-  address?: string | undefined;
-  name?: string | undefined;
-}) {
-  let ip = options.address || getStringFromConfig("ip");
+async function getDeviceIp(
+  options: {
+    address?: string | undefined;
+    name?: string | undefined;
+  },
+  configFile: FileConfig,
+) {
+  let ip = options.address || configFile.ip;
   if (!ip) {
-    const name = options.name || getStringFromConfig("name");
+    const name = options.name || configFile.name;
     ip = await findOfficejetIp(name || "HP Smart Tank Plus 570 series");
   }
   console.log(`Using device ip: ${ip}`);
   return ip;
 }
 
-function getIsDebug(options: { debug?: boolean | undefined }) {
-  const debug =
-    options.debug != null ? true : getBoolFromConfig("debug") || false;
+function getIsDebug(
+  options: { debug?: boolean | undefined },
+  configFile: FileConfig,
+) {
+  const debug = options.debug != null ? true : configFile.debug || false;
 
   if (debug) {
     console.log(`IsDebug: ${debug}`);
@@ -188,29 +158,32 @@ function getIsDebug(options: { debug?: boolean | undefined }) {
   return debug;
 }
 
-function getPaperlessConfig(parentOption: {
-  paperlessPostDocumentUrl?: string | undefined;
-  paperlessToken?: string | undefined;
-  keepFiles?: boolean | undefined;
-  paperlessGroupMultiPageScanIntoAPdf?: boolean | undefined;
-  paperlessAlwaysSendAsPdfFile?: boolean | undefined;
-}): PaperlessConfig | undefined {
+function getPaperlessConfig(
+  parentOption: {
+    paperlessPostDocumentUrl?: string | undefined;
+    paperlessToken?: string | undefined;
+    keepFiles?: boolean | undefined;
+    paperlessGroupMultiPageScanIntoAPdf?: boolean | undefined;
+    paperlessAlwaysSendAsPdfFile?: boolean | undefined;
+  },
+  fileConfig: FileConfig,
+): PaperlessConfig | undefined {
   const paperlessPostDocumentUrl: string | undefined =
     parentOption.paperlessPostDocumentUrl ||
-    getStringFromConfig("paperless_post_document_url");
+    fileConfig.paperless_post_document_url;
   const configPaperlessToken: string | undefined =
-    parentOption.paperlessToken || getStringFromConfig("paperless_token");
+    parentOption.paperlessToken || fileConfig.paperless_token;
 
   if (paperlessPostDocumentUrl && configPaperlessToken) {
     const configPaperlessKeepFiles: boolean =
-      parentOption.keepFiles || getBoolFromConfig("keep_files") || false;
+      parentOption.keepFiles || fileConfig.keep_files || false;
     const groupMultiPageScanIntoAPdf: boolean =
       parentOption.paperlessGroupMultiPageScanIntoAPdf ||
-      getBoolFromConfig("paperless_group_multi_page_scan_into_a_pdf") ||
+      fileConfig.paperless_group_multi_page_scan_into_a_pdf ||
       false;
     const alwaysSendAsPdfFile: boolean =
       parentOption.paperlessAlwaysSendAsPdfFile ||
-      getBoolFromConfig("paperless_always_send_as_pdf_file") ||
+      fileConfig.paperless_always_send_as_pdf_file ||
       false;
 
     console.log(
@@ -230,16 +203,16 @@ function getPaperlessConfig(parentOption: {
 
 function getNextcloudConfig(
   parentOption: ScanParametersOpts,
+  fileConfig: FileConfig,
 ): NextcloudConfig | undefined {
   const configNextcloudUrl: string | undefined =
-    parentOption.nextcloudUrl || getStringFromConfig("nextcloud_url");
+    parentOption.nextcloudUrl || fileConfig.nextcloud_url;
   const configNextcloudUsername: string | undefined =
-    parentOption.nextcloudUsername || getStringFromConfig("nextcloud_username");
+    parentOption.nextcloudUsername || fileConfig.nextcloud_username;
   const configNextcloudPassword: string | undefined =
-    parentOption.nextcloudPassword || getStringFromConfig("nextcloud_password");
+    parentOption.nextcloudPassword || fileConfig.nextcloud_password;
   const configNextcloudPasswordFile: string | undefined =
-    parentOption.nextcloudPasswordFile ||
-    getStringFromConfig("nextcloud_password_file");
+    parentOption.nextcloudPasswordFile || fileConfig.nextcloud_password_file;
 
   if (
     configNextcloudUrl &&
@@ -248,10 +221,10 @@ function getNextcloudConfig(
   ) {
     const configNextcloudUploadFolder =
       parentOption.nextcloudUploadFolder ||
-      getStringFromConfig("nextcloud_upload_folder") ||
+      fileConfig.nextcloud_upload_folder ||
       "scan";
     const configNextcloudKeepFiles: boolean =
-      parentOption.keepFiles || getBoolFromConfig("keep_files") || false;
+      parentOption.keepFiles || fileConfig.keep_files || false;
 
     let nextcloudPassword: string;
     if (configNextcloudPasswordFile) {
@@ -281,14 +254,17 @@ type HealthCheckOptions = {
   healthCheckPort?: string;
   healthCheck?: boolean;
 };
-function getHealthCheckSetting(option: HealthCheckOptions) {
+function getHealthCheckSetting(
+  option: HealthCheckOptions,
+  configFile: FileConfig,
+) {
   const healthCheckEnabled: boolean =
-    option.healthCheck || getBoolFromConfig("enableHealthCheck") === true;
+    option.healthCheck || configFile.enableHealthCheck === true;
   let healthCheckPort: number;
   if (option.healthCheckPort) {
     healthCheckPort = parseInt(option.healthCheckPort, 10);
   } else {
-    healthCheckPort = getNumberFromConfig("healthCheckPort") || 3000;
+    healthCheckPort = configFile.healthCheckPort || 3000;
   }
   return {
     isHealthCheckEnabled: healthCheckEnabled,
@@ -296,40 +272,35 @@ function getHealthCheckSetting(option: HealthCheckOptions) {
   };
 }
 
-function getScanConfiguration(option: ScanParametersOpts) {
+function getScanConfiguration(
+  option: ScanParametersOpts,
+  fileConfig: FileConfig,
+) {
   const directoryConfig: DirectoryConfig = {
-    directory: option.directory || getStringFromConfig("directory"),
-    tempDirectory: option.tempDirectory || getStringFromConfig("tempDirectory"),
-    filePattern: option.pattern || getStringFromConfig("pattern"),
+    directory: option.directory || fileConfig.directory,
+    tempDirectory: option.tempDirectory || fileConfig.tempDirectory,
+    filePattern: option.pattern || fileConfig.pattern,
   };
 
-  const configWidth = (
-    option.width ||
-    getNumberFromConfig("width") ||
-    0
-  ).toString();
+  const configWidth = (option.width || fileConfig.width || 0).toString();
   const width =
     configWidth.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configWidth, 10);
 
-  const configHeight = (
-    option.height ||
-    getNumberFromConfig("height") ||
-    0
-  ).toString();
+  const configHeight = (option.height || fileConfig.height || 0).toString();
   const height =
     configHeight.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configHeight, 10);
 
-  const paperlessConfig = getPaperlessConfig(option);
-  const nextcloudConfig = getNextcloudConfig(option);
+  const paperlessConfig = getPaperlessConfig(option, fileConfig);
+  const nextcloudConfig = getNextcloudConfig(option, fileConfig);
 
   const scanConfig: ScanConfig = {
     resolution:
       (option.resolution ? parseInt(option.resolution, 10) : undefined) ||
-      getNumberFromConfig("resolution") ||
+      fileConfig.resolution ||
       200,
     width: width,
     height: height,
@@ -340,17 +311,20 @@ function getScanConfiguration(option: ScanParametersOpts) {
   return scanConfig;
 }
 
-function getDeviceUpPollingInterval(parentOption: {
-  deviceUpPollingInterval?: number | undefined;
-}) {
+function getDeviceUpPollingInterval(
+  parentOption: {
+    deviceUpPollingInterval?: number | undefined;
+  },
+  configFile: FileConfig,
+) {
   return (
     parentOption.deviceUpPollingInterval ||
-    getNumberFromConfig("deviceUpPollingInterval") ||
+    configFile.deviceUpPollingInterval ||
     1000
   );
 }
 
-function createListenCliCmd() {
+function createListenCliCmd(configFile: FileConfig) {
   return setupScanParameters("listen")
     .description("Listen the device for new scan job to save to this target")
     .option(
@@ -368,47 +342,47 @@ function createListenCliCmd() {
       "Start an http health check endpoint",
     )
     .action(async (options) => {
-      const ip = await getDeviceIp(options);
+      const ip = await getDeviceIp(options, configFile);
       HPApi.setDeviceIP(ip);
 
-      const isDebug = getIsDebug(options);
+      const isDebug = getIsDebug(options, configFile);
       HPApi.setDebug(isDebug);
 
       const registrationConfigs: RegistrationConfig[] = [];
 
       const registrationConfig: RegistrationConfig = {
-        label: options.label || getStringFromConfig("label") || os.hostname(),
+        label: options.label || configFile.label || os.hostname(),
         isDuplexSingleSide: false,
       };
       registrationConfigs.push(registrationConfig);
 
-      if (
-        options.addEmulatedDuplex ||
-        getBoolFromConfig("add_emulated_duplex")
-      ) {
+      if (options.addEmulatedDuplex || configFile.add_emulated_duplex) {
         registrationConfigs.push({
           label:
             options.emulatedDuplexLabel ||
-            getStringFromConfig("emulated_duplex_label") ||
+            configFile.emulated_duplex_label ||
             `${registrationConfig.label} duplex`,
           isDuplexSingleSide: true,
         });
       }
 
-      const deviceUpPollingInterval = getDeviceUpPollingInterval(options);
+      const deviceUpPollingInterval = getDeviceUpPollingInterval(
+        options,
+        configFile,
+      );
 
-      const healthCheckSetting = getHealthCheckSetting(options);
+      const healthCheckSetting = getHealthCheckSetting(options, configFile);
       if (healthCheckSetting.isHealthCheckEnabled) {
         startHealthCheckServer(healthCheckSetting.healthCheckPort);
       }
 
-      const scanConfig = getScanConfiguration(options);
+      const scanConfig = getScanConfiguration(options, configFile);
 
       await listenCmd(registrationConfigs, scanConfig, deviceUpPollingInterval);
     });
 }
 
-function createAdfAutoscanCliCmd() {
+function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
   return setupScanParameters("adf-autoscan")
     .description(
       "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
@@ -429,37 +403,39 @@ function createAdfAutoscanCliCmd() {
     .option("--health-check", "Start an http health check endpoint")
     .option("--health-check-port <port>", "Start an http health check endpoint")
     .action(async (options) => {
-      const ip = await getDeviceIp(options);
+      const ip = await getDeviceIp(options, fileConfig);
       HPApi.setDeviceIP(ip);
 
-      const isDebug = getIsDebug(options);
+      const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);
 
-      const deviceUpPollingInterval = getDeviceUpPollingInterval(options);
+      const deviceUpPollingInterval = getDeviceUpPollingInterval(
+        options,
+        fileConfig,
+      );
 
-      const healthCheckSetting = getHealthCheckSetting(options);
+      const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
       if (healthCheckSetting.isHealthCheckEnabled) {
         startHealthCheckServer(healthCheckSetting.healthCheckPort);
       }
 
-      const scanConfig = getScanConfiguration(options);
+      const scanConfig = getScanConfiguration(options, fileConfig);
 
       const adfScanConfig: AdfAutoScanConfig = {
         ...scanConfig,
-        isDuplex:
-          options.duplex || getBoolFromConfig("autoscan_duplex") || false,
-        generatePdf: options.pdf || getBoolFromConfig("autoscan_pdf") || false,
+        isDuplex: options.duplex || fileConfig.autoscan_duplex || false,
+        generatePdf: options.pdf || fileConfig.autoscan_pdf || false,
         pollingInterval:
           (options.pollingInterval
             ? parseInt(options.pollingInterval, 10)
             : undefined) ||
-          getNumberFromConfig("autoscan_pollingInterval") ||
+          fileConfig.autoscan_pollingInterval ||
           1000,
         startScanDelay:
           (options.startScanDelay
             ? parseInt(options.startScanDelay, 10)
             : undefined) ||
-          getNumberFromConfig("autoscan_startScanDelay") ||
+          fileConfig.autoscan_startScanDelay ||
           5000,
       };
 
@@ -467,7 +443,7 @@ function createAdfAutoscanCliCmd() {
     });
 }
 
-function createSingleScanCliCmd() {
+function createSingleScanCliCmd(fileConfig: FileConfig) {
   return setupScanParameters("single-scan")
     .description("Trigger a new scan job")
     .option("--duplex", "If specified, the scan will be in duplex")
@@ -476,29 +452,30 @@ function createSingleScanCliCmd() {
       "If specified, the scan result will be a pdf document, the default is multiple jpeg files",
     )
     .action(async (options) => {
-      const ip = await getDeviceIp(options);
+      const ip = await getDeviceIp(options, fileConfig);
       HPApi.setDeviceIP(ip);
 
-      const isDebug = getIsDebug(options);
+      const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);
 
-      const deviceUpPollingInterval = getDeviceUpPollingInterval(options);
+      const deviceUpPollingInterval = getDeviceUpPollingInterval(
+        options,
+        fileConfig,
+      );
 
-      const scanConfig = getScanConfiguration(options);
+      const scanConfig = getScanConfiguration(options, fileConfig);
 
       const singleScanConfig: SingleScanConfig = {
         ...scanConfig,
-        isDuplex:
-          options.duplex || getBoolFromConfig("single_scan_duplex") || false,
-        generatePdf:
-          options.pdf || getBoolFromConfig("single_scan_pdf") || false,
+        isDuplex: options.duplex || fileConfig.single_scan_duplex || false,
+        generatePdf: options.pdf || fileConfig.single_scan_pdf || false,
       };
 
       await singleScanCmd(singleScanConfig, deviceUpPollingInterval);
     });
 }
 
-function createClearRegistrationsCliCmd() {
+function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
   return new Command("clear-registrations")
     .description("Clear the list or registered target on the device")
     .option(
@@ -511,29 +488,42 @@ function createClearRegistrationsCliCmd() {
     )
     .option("-D, --debug", "Enable debug")
     .action(async (options) => {
-      const ip = await getDeviceIp(options);
+      const ip = await getDeviceIp(options, fileConfig);
       HPApi.setDeviceIP(ip);
 
-      const isDebug = getIsDebug(options);
+      const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);
 
       await clearRegistrationsCmd();
     });
 }
 
+const validateConfig = (config: IConfig) => {
+  const result = configSchema.safeParse(config);
+  if (!result.success) {
+    const errors = result.error.format();
+    throw new Error(
+      `Configuration validation error: ${JSON.stringify(errors)}`,
+    );
+  }
+  return result.data;
+};
+
 async function main() {
+  const fileConfig: FileConfig = validateConfig(config);
+
   const program = new Command();
 
-  const cmdListen = createListenCliCmd();
+  const cmdListen = createListenCliCmd(fileConfig);
   program.addCommand(cmdListen, { isDefault: true });
 
-  const cmdAdfAutoscan = createAdfAutoscanCliCmd();
+  const cmdAdfAutoscan = createAdfAutoscanCliCmd(fileConfig);
   program.addCommand(cmdAdfAutoscan);
 
-  const cmdSingleScan = createSingleScanCliCmd();
+  const cmdSingleScan = createSingleScanCliCmd(fileConfig);
   program.addCommand(cmdSingleScan);
 
-  const cmdClearRegistrations = createClearRegistrationsCliCmd();
+  const cmdClearRegistrations = createClearRegistrationsCliCmd(fileConfig);
   program.addCommand(cmdClearRegistrations);
 
   await program.parseAsync(process.argv);
