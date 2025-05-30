@@ -34,6 +34,7 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
     - [Example for Docker](#example-for-docker)
     - [Example for Docker Compose](#example-for-docker-compose)
   - [Run with Kubernetes](#run-with-kubernetes)
+  - [Configure](#Configure)
 - [Build Source Code](#build-source-code)
   - [Debugging](#debugging)
 - [💖 Support this project](#-support-this-project)
@@ -343,6 +344,12 @@ spec:
           persistentVolumeClaim:
             claimName: incoming-scans
 ```
+
+### Configure
+
+Configuration can be done in a config file instead of using command line switches or environment variables in docker. The schema of the configuration file can be found in [FileConfig](src/type/FileConfig.ts)
+
+The configuration file is handled by https://www.npmjs.com/package/config
 
 ## Build Source Code
 
