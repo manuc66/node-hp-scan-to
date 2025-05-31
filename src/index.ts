@@ -19,7 +19,11 @@ import { adfAutoscanCmd } from "./commands/adfAutoscanCmd";
 import { singleScanCmd } from "./commands/singleScanCmd";
 import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd";
 import { DirectoryConfig } from "./type/directoryConfig";
-import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs";
+import {
+  AdfAutoScanConfig,
+  ScanConfig,
+  SingleScanConfig,
+} from "./type/scanConfigs";
 import { configSchema, FileConfig } from "./type/FileConfig";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
@@ -120,10 +124,7 @@ function setupScanParameters(commandName: string) {
     );
 }
 
-async function getDeviceIp(
-  options: ProgramOption,
-  configFile: FileConfig,
-) {
+async function getDeviceIp(options: ProgramOption, configFile: FileConfig) {
   let ip = options.address || configFile.ip;
   if (!ip) {
     const name = options.name || configFile.name;
@@ -133,10 +134,7 @@ async function getDeviceIp(
   return ip;
 }
 
-function getIsDebug(
-  options: ProgramOption,
-  configFile: FileConfig,
-) {
+function getIsDebug(options: ProgramOption, configFile: FileConfig) {
   const debug = options.debug != null ? true : configFile.debug || false;
 
   if (debug) {
@@ -491,7 +489,6 @@ const validateConfig = (config: IConfig) => {
   return result.data;
 };
 
-
 export function createProgram() {
   return new Command()
     .option(
@@ -505,7 +502,7 @@ export function createProgram() {
     .option("-D, --debug", "Enable debug");
 }
 
-type ProgramOption = ReturnType<ReturnType<typeof createProgram>['opts']>;
+type ProgramOption = ReturnType<ReturnType<typeof createProgram>["opts"]>;
 
 async function main() {
   const fileConfig: FileConfig = validateConfig(config);

@@ -30,7 +30,9 @@ export async function listenCmd(
   await HPApi.waitDeviceUp(deviceUpPollingInterval);
   let deviceUp = true;
 
-  const folder = await PathHelper.getTargetFolder(scanConfig.directoryConfig.directory);
+  const folder = await PathHelper.getTargetFolder(
+    scanConfig.directoryConfig.directory,
+  );
 
   const tempFolder = await PathHelper.getTempFolder(
     scanConfig.directoryConfig.tempDirectory,
@@ -63,13 +65,15 @@ export async function listenCmd(
         );
       }
 
-      let destination: WalkupScanDestination | WalkupScanToCompDestination | null = null;
+      let destination:
+        | WalkupScanDestination
+        | WalkupScanToCompDestination
+        | null = null;
       if (!proceedToScan) {
         console.log(
           "Device state doesn't match expectations - Unable to proceed with scan, skipping.",
         );
-      }
-      else {
+      } else {
         destination = await tryGetDestination(selectedScanTarget.event);
         if (!destination) {
           console.log(
@@ -128,7 +132,17 @@ export async function listenCmd(
           pageCountingStrategy,
         );
 
-        frontOfDoubleSidedScanContext = await handleScanResult(duplexMode, frontOfDoubleSidedScanContext, scanConfig, folder, tempFolder, scanCount, scanJobContent, scanDate, scanToPdf);
+        frontOfDoubleSidedScanContext = await handleScanResult(
+          duplexMode,
+          frontOfDoubleSidedScanContext,
+          scanConfig,
+          folder,
+          tempFolder,
+          scanCount,
+          scanJobContent,
+          scanDate,
+          scanToPdf,
+        );
 
         lastScanTarget = selectedScanTarget;
         lastDuplexMode = duplexMode;
@@ -157,8 +171,21 @@ export async function listenCmd(
   }
 }
 
-
-async function handleScanResult(duplexMode: DuplexMode.Simplex | DuplexMode.Duplex | DuplexMode.BackOfDoubleSided | DuplexMode.FrontOfDoubleSided, frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null, scanConfig: ScanConfig, folder: string, tempFolder: string, scanCount: number, scanJobContent: ScanContent, scanDate: Date, scanToPdf: boolean) {
+async function handleScanResult(
+  duplexMode:
+    | DuplexMode.Simplex
+    | DuplexMode.Duplex
+    | DuplexMode.BackOfDoubleSided
+    | DuplexMode.FrontOfDoubleSided,
+  frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null,
+  scanConfig: ScanConfig,
+  folder: string,
+  tempFolder: string,
+  scanCount: number,
+  scanJobContent: ScanContent,
+  scanDate: Date,
+  scanToPdf: boolean,
+) {
   if (duplexMode == DuplexMode.FrontOfDoubleSided) {
     frontOfDoubleSidedScanContext = {
       scanConfig,
@@ -167,14 +194,14 @@ async function handleScanResult(duplexMode: DuplexMode.Simplex | DuplexMode.Dupl
       scanCount,
       scanJobContent,
       scanDate,
-      scanToPdf
+      scanToPdf,
     };
   } else {
     let finalScanJobContent: ScanContent;
     if (duplexMode == DuplexMode.BackOfDoubleSided) {
       finalScanJobContent = assembleDuplexScan(
         frontOfDoubleSidedScanContext,
-        scanJobContent
+        scanJobContent,
       );
     } else {
       finalScanJobContent = scanJobContent;
@@ -187,7 +214,7 @@ async function handleScanResult(duplexMode: DuplexMode.Simplex | DuplexMode.Dupl
       scanCount,
       finalScanJobContent,
       scanDate,
-      scanToPdf
+      scanToPdf,
     );
   }
   return frontOfDoubleSidedScanContext;
@@ -244,7 +271,6 @@ function assembleEmulatedDoubleSideScan(
   }
   return duplexScanJobContent;
 }
-
 
 async function setupScanParameters(
   duplexMode: DuplexMode,
