@@ -19,12 +19,7 @@ import { adfAutoscanCmd } from "./commands/adfAutoscanCmd";
 import { singleScanCmd } from "./commands/singleScanCmd";
 import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd";
 import { DirectoryConfig } from "./type/directoryConfig";
-import {
-  AdfAutoScanConfig,
-  ScanConfig,
-  SingleScanConfig,
-} from "./type/scanConfigs";
-import { ScanParametersOpts } from "./type/scanParametersOpts";
+import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs";
 import { configSchema, FileConfig } from "./type/FileConfig";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
@@ -55,11 +50,7 @@ function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
 }
 
 function setupScanParameters(commandName: string) {
-  return new Command(commandName)
-    .option(
-      "-a, --address <ip>",
-      "IP address of the device (this overrides -p)",
-    )
+  return new Command<[], ProgramOption>(commandName)
     .option(
       "--device-up-polling-interval <deviceUpPollingInterval>",
       "Device up polling interval in milliseconds",
@@ -69,7 +60,6 @@ function setupScanParameters(commandName: string) {
       "-n, --name <name>",
       "Name of the device for service discovery", // i.e. 'Deskjet 3520 series'
     )
-    .option("-D, --debug", "Enable debug")
     .option(
       "-d, --directory <dir>",
       "Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)",
@@ -131,10 +121,7 @@ function setupScanParameters(commandName: string) {
 }
 
 async function getDeviceIp(
-  options: {
-    address?: string | undefined;
-    name?: string | undefined;
-  },
+  options: ProgramOption,
   configFile: FileConfig,
 ) {
   let ip = options.address || configFile.ip;
@@ -147,7 +134,7 @@ async function getDeviceIp(
 }
 
 function getIsDebug(
-  options: { debug?: boolean | undefined },
+  options: ProgramOption,
   configFile: FileConfig,
 ) {
   const debug = options.debug != null ? true : configFile.debug || false;
@@ -159,30 +146,23 @@ function getIsDebug(
 }
 
 function getPaperlessConfig(
-  parentOption: {
-    paperlessPostDocumentUrl?: string | undefined;
-    paperlessToken?: string | undefined;
-    keepFiles?: boolean | undefined;
-    paperlessGroupMultiPageScanIntoAPdf?: boolean | undefined;
-    paperlessAlwaysSendAsPdfFile?: boolean | undefined;
-  },
+  options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   fileConfig: FileConfig,
 ): PaperlessConfig | undefined {
   const paperlessPostDocumentUrl: string | undefined =
-    parentOption.paperlessPostDocumentUrl ||
-    fileConfig.paperless_post_document_url;
+    options.paperlessPostDocumentUrl || fileConfig.paperless_post_document_url;
   const configPaperlessToken: string | undefined =
-    parentOption.paperlessToken || fileConfig.paperless_token;
+    options.paperlessToken || fileConfig.paperless_token;
 
   if (paperlessPostDocumentUrl && configPaperlessToken) {
     const configPaperlessKeepFiles: boolean =
-      parentOption.keepFiles || fileConfig.keep_files || false;
+      options.keepFiles || fileConfig.keep_files || false;
     const groupMultiPageScanIntoAPdf: boolean =
-      parentOption.paperlessGroupMultiPageScanIntoAPdf ||
+      options.paperlessGroupMultiPageScanIntoAPdf ||
       fileConfig.paperless_group_multi_page_scan_into_a_pdf ||
       false;
     const alwaysSendAsPdfFile: boolean =
-      parentOption.paperlessAlwaysSendAsPdfFile ||
+      options.paperlessAlwaysSendAsPdfFile ||
       fileConfig.paperless_always_send_as_pdf_file ||
       false;
 
@@ -202,17 +182,17 @@ function getPaperlessConfig(
 }
 
 function getNextcloudConfig(
-  parentOption: ScanParametersOpts,
+  options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   fileConfig: FileConfig,
 ): NextcloudConfig | undefined {
   const configNextcloudUrl: string | undefined =
-    parentOption.nextcloudUrl || fileConfig.nextcloud_url;
+    options.nextcloudUrl || fileConfig.nextcloud_url;
   const configNextcloudUsername: string | undefined =
-    parentOption.nextcloudUsername || fileConfig.nextcloud_username;
+    options.nextcloudUsername || fileConfig.nextcloud_username;
   const configNextcloudPassword: string | undefined =
-    parentOption.nextcloudPassword || fileConfig.nextcloud_password;
+    options.nextcloudPassword || fileConfig.nextcloud_password;
   const configNextcloudPasswordFile: string | undefined =
-    parentOption.nextcloudPasswordFile || fileConfig.nextcloud_password_file;
+    options.nextcloudPasswordFile || fileConfig.nextcloud_password_file;
 
   if (
     configNextcloudUrl &&
@@ -220,11 +200,11 @@ function getNextcloudConfig(
     (configNextcloudPassword || configNextcloudPasswordFile)
   ) {
     const configNextcloudUploadFolder =
-      parentOption.nextcloudUploadFolder ||
+      options.nextcloudUploadFolder ||
       fileConfig.nextcloud_upload_folder ||
       "scan";
     const configNextcloudKeepFiles: boolean =
-      parentOption.keepFiles || fileConfig.keep_files || false;
+      options.keepFiles || fileConfig.keep_files || false;
 
     let nextcloudPassword: string;
     if (configNextcloudPasswordFile) {
@@ -251,19 +231,15 @@ function getNextcloudConfig(
   }
 }
 
-type HealthCheckOptions = {
-  healthCheckPort?: string;
-  healthCheck?: boolean;
-};
 function getHealthCheckSetting(
-  option: HealthCheckOptions,
+  options: AdfAutoscanOptions,
   configFile: FileConfig,
 ) {
   const healthCheckEnabled: boolean =
-    option.healthCheck || configFile.enableHealthCheck === true;
+    options.healthCheck || configFile.enableHealthCheck === true;
   let healthCheckPort: number;
-  if (option.healthCheckPort) {
-    healthCheckPort = parseInt(option.healthCheckPort, 10);
+  if (options.healthCheckPort) {
+    healthCheckPort = parseInt(options.healthCheckPort, 10);
   } else {
     healthCheckPort = configFile.healthCheckPort || 3000;
   }
@@ -274,33 +250,33 @@ function getHealthCheckSetting(
 }
 
 function getScanConfiguration(
-  option: ScanParametersOpts,
+  options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   fileConfig: FileConfig,
 ) {
   const directoryConfig: DirectoryConfig = {
-    directory: option.directory || fileConfig.directory,
-    tempDirectory: option.tempDirectory || fileConfig.tempDirectory,
-    filePattern: option.pattern || fileConfig.pattern,
+    directory: options.directory || fileConfig.directory,
+    tempDirectory: options.tempDirectory || fileConfig.tempDirectory,
+    filePattern: options.pattern || fileConfig.pattern,
   };
 
-  const configWidth = (option.width || fileConfig.width || 0).toString();
+  const configWidth = (options.width || fileConfig.width || 0).toString();
   const width =
     configWidth.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configWidth, 10);
 
-  const configHeight = (option.height || fileConfig.height || 0).toString();
+  const configHeight = (options.height || fileConfig.height || 0).toString();
   const height =
     configHeight.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configHeight, 10);
 
-  const paperlessConfig = getPaperlessConfig(option, fileConfig);
-  const nextcloudConfig = getNextcloudConfig(option, fileConfig);
+  const paperlessConfig = getPaperlessConfig(options, fileConfig);
+  const nextcloudConfig = getNextcloudConfig(options, fileConfig);
 
   const scanConfig: ScanConfig = {
     resolution:
-      (option.resolution ? parseInt(option.resolution, 10) : undefined) ||
+      (options.resolution ? parseInt(options.resolution, 10) : undefined) ||
       fileConfig.resolution ||
       200,
     width: width,
@@ -313,18 +289,19 @@ function getScanConfiguration(
 }
 
 function getDeviceUpPollingInterval(
-  parentOption: {
-    deviceUpPollingInterval?: number | undefined;
-  },
+  options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   configFile: FileConfig,
 ) {
   return (
-    parentOption.deviceUpPollingInterval ||
+    options.deviceUpPollingInterval ||
     configFile.deviceUpPollingInterval ||
     1000
   );
 }
 
+export type ListenOptions = ReturnType<
+  ReturnType<typeof createListenCliCmd>["opts"]
+>;
 function createListenCliCmd(configFile: FileConfig) {
   return setupScanParameters("listen")
     .description("Listen the device for new scan job to save to this target")
@@ -342,7 +319,8 @@ function createListenCliCmd(configFile: FileConfig) {
       "--health-check-port <health-check-port>",
       "Start an http health check endpoint",
     )
-    .action(async (options) => {
+    .action(async (_, cmd) => {
+      const options = cmd.optsWithGlobals();
       const ip = await getDeviceIp(options, configFile);
       HPApi.setDeviceIP(ip);
 
@@ -383,6 +361,9 @@ function createListenCliCmd(configFile: FileConfig) {
     });
 }
 
+export type AdfAutoscanOptions = ReturnType<
+  ReturnType<typeof createAdfAutoscanCliCmd>["opts"]
+>;
 function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
   return setupScanParameters("adf-autoscan")
     .description(
@@ -403,7 +384,9 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
     )
     .option("--health-check", "Start an http health check endpoint")
     .option("--health-check-port <port>", "Start an http health check endpoint")
-    .action(async (options) => {
+    .action(async (_, cmd) => {
+      const options = cmd.optsWithGlobals();
+
       const ip = await getDeviceIp(options, fileConfig);
       HPApi.setDeviceIP(ip);
 
@@ -444,6 +427,9 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
     });
 }
 
+export type SingleScanOptions = ReturnType<
+  ReturnType<typeof createSingleScanCliCmd>["opts"]
+>;
 function createSingleScanCliCmd(fileConfig: FileConfig) {
   return setupScanParameters("single-scan")
     .description("Trigger a new scan job")
@@ -452,7 +438,9 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
       "--pdf",
       "If specified, the scan result will be a pdf document, the default is multiple jpeg files",
     )
-    .action(async (options) => {
+    .action(async (_, cmd) => {
+      const options = cmd.optsWithGlobals();
+
       const ip = await getDeviceIp(options, fileConfig);
       HPApi.setDeviceIP(ip);
 
@@ -479,16 +467,9 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
 function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
   return new Command("clear-registrations")
     .description("Clear the list or registered target on the device")
-    .option(
-      "-a, --address <ip>",
-      "IP address of the device (this overrides -p)",
-    )
-    .option(
-      "-n, --name <name>",
-      "Name of the device for service discovery", // i.e. 'Deskjet 3520 series'
-    )
-    .option("-D, --debug", "Enable debug")
-    .action(async (options) => {
+    .action(async (_, cmd) => {
+      const options = cmd.optsWithGlobals();
+
       const ip = await getDeviceIp(options, fileConfig);
       HPApi.setDeviceIP(ip);
 
@@ -510,21 +491,41 @@ const validateConfig = (config: IConfig) => {
   return result.data;
 };
 
+
+export function createProgram() {
+  return new Command()
+    .option(
+      "-a, --address <ip>",
+      "IP address of the device (this overrides -p)",
+    )
+    .option(
+      "-n, --name <name>",
+      "Name of the device for service discovery", // i.e. 'Deskjet 3520 series'
+    )
+    .option("-D, --debug", "Enable debug");
+}
+
+type ProgramOption = ReturnType<ReturnType<typeof createProgram>['opts']>;
+
 async function main() {
   const fileConfig: FileConfig = validateConfig(config);
 
-  const program = new Command();
+  const program = createProgram();
 
   const cmdListen = createListenCliCmd(fileConfig);
+  cmdListen.optsWithGlobals();
   program.addCommand(cmdListen, { isDefault: true });
 
   const cmdAdfAutoscan = createAdfAutoscanCliCmd(fileConfig);
+  cmdAdfAutoscan.optsWithGlobals();
   program.addCommand(cmdAdfAutoscan);
 
   const cmdSingleScan = createSingleScanCliCmd(fileConfig);
+  cmdSingleScan.optsWithGlobals();
   program.addCommand(cmdSingleScan);
 
   const cmdClearRegistrations = createClearRegistrationsCliCmd(fileConfig);
+  cmdClearRegistrations.optsWithGlobals();
   program.addCommand(cmdClearRegistrations);
 
   await program.parseAsync(process.argv);
