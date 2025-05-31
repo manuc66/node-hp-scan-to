@@ -125,17 +125,21 @@ function setupScanParameters(commandName: string) {
 }
 
 async function getDeviceIp(options: ProgramOption, configFile: FileConfig) {
-  let ip = options.address || configFile.ip;
+  let ip = getOptConfiguredValue(options.address, configFile.ip);
   if (!ip) {
-    const name = options.name || configFile.name;
-    ip = await findOfficejetIp(name || "HP Smart Tank Plus 570 series");
+    const name = getConfiguredValue(
+      options.name,
+      configFile.name,
+      "HP Smart Tank Plus 570 series",
+    );
+    ip = await findOfficejetIp(name);
   }
   console.log(`Using device ip: ${ip}`);
   return ip;
 }
 
 function getIsDebug(options: ProgramOption, configFile: FileConfig) {
-  const debug = options.debug != null ? true : configFile.debug || false;
+  const debug = getConfiguredValue(options.debug, configFile.debug, false);
 
   if (debug) {
     console.log(`IsDebug: ${debug}`);
@@ -147,22 +151,31 @@ function getPaperlessConfig(
   options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   fileConfig: FileConfig,
 ): PaperlessConfig | undefined {
-  const paperlessPostDocumentUrl: string | undefined =
-    options.paperlessPostDocumentUrl || fileConfig.paperless_post_document_url;
-  const configPaperlessToken: string | undefined =
-    options.paperlessToken || fileConfig.paperless_token;
+  const paperlessPostDocumentUrl = getOptConfiguredValue(
+    options.paperlessPostDocumentUrl,
+    fileConfig.paperless_post_document_url,
+  );
+  const configPaperlessToken = getOptConfiguredValue(
+    options.paperlessToken,
+    fileConfig.paperless_token,
+  );
 
   if (paperlessPostDocumentUrl && configPaperlessToken) {
-    const configPaperlessKeepFiles: boolean =
-      options.keepFiles || fileConfig.keep_files || false;
-    const groupMultiPageScanIntoAPdf: boolean =
-      options.paperlessGroupMultiPageScanIntoAPdf ||
-      fileConfig.paperless_group_multi_page_scan_into_a_pdf ||
-      false;
-    const alwaysSendAsPdfFile: boolean =
-      options.paperlessAlwaysSendAsPdfFile ||
-      fileConfig.paperless_always_send_as_pdf_file ||
-      false;
+    const configPaperlessKeepFiles = getConfiguredValue(
+      options.keepFiles,
+      fileConfig.keep_files,
+      false,
+    );
+    const groupMultiPageScanIntoAPdf = getConfiguredValue(
+      options.paperlessGroupMultiPageScanIntoAPdf,
+      fileConfig.paperless_group_multi_page_scan_into_a_pdf,
+      false,
+    );
+    const alwaysSendAsPdfFile = getConfiguredValue(
+      options.paperlessAlwaysSendAsPdfFile,
+      fileConfig.paperless_always_send_as_pdf_file,
+      false,
+    );
 
     console.log(
       `Paperless configuration provided, post document url: ${paperlessPostDocumentUrl}, the token length: ${configPaperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
@@ -183,26 +196,38 @@ function getNextcloudConfig(
   options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   fileConfig: FileConfig,
 ): NextcloudConfig | undefined {
-  const configNextcloudUrl: string | undefined =
-    options.nextcloudUrl || fileConfig.nextcloud_url;
-  const configNextcloudUsername: string | undefined =
-    options.nextcloudUsername || fileConfig.nextcloud_username;
-  const configNextcloudPassword: string | undefined =
-    options.nextcloudPassword || fileConfig.nextcloud_password;
-  const configNextcloudPasswordFile: string | undefined =
-    options.nextcloudPasswordFile || fileConfig.nextcloud_password_file;
+  const configNextcloudUrl = getOptConfiguredValue(
+    options.nextcloudUrl,
+    fileConfig.nextcloud_url,
+  );
+  const configNextcloudUsername = getOptConfiguredValue(
+    options.nextcloudUsername,
+    fileConfig.nextcloud_username,
+  );
+  const configNextcloudPassword = getOptConfiguredValue(
+    options.nextcloudPassword,
+    fileConfig.nextcloud_password,
+  );
+  const configNextcloudPasswordFile = getOptConfiguredValue(
+    options.nextcloudPasswordFile,
+    fileConfig.nextcloud_password_file,
+  );
 
   if (
     configNextcloudUrl &&
     configNextcloudUsername &&
     (configNextcloudPassword || configNextcloudPasswordFile)
   ) {
-    const configNextcloudUploadFolder =
-      options.nextcloudUploadFolder ||
-      fileConfig.nextcloud_upload_folder ||
-      "scan";
-    const configNextcloudKeepFiles: boolean =
-      options.keepFiles || fileConfig.keep_files || false;
+    const configNextcloudUploadFolder = getConfiguredValue(
+      options.nextcloudUploadFolder,
+      fileConfig.nextcloud_upload_folder,
+      "scan",
+    );
+    const configNextcloudKeepFiles: boolean = getConfiguredValue(
+      options.keepFiles,
+      fileConfig.keep_files,
+      false,
+    );
 
     let nextcloudPassword: string;
     if (configNextcloudPasswordFile) {
@@ -229,18 +254,46 @@ function getNextcloudConfig(
   }
 }
 
+function getConfiguredValue<T>(
+  cliOption: undefined | T,
+  fileConfig: undefined | T,
+  defaultValue: T,
+): T {
+  if (cliOption !== undefined) {
+    return cliOption;
+  }
+  if (fileConfig !== undefined) {
+    return fileConfig;
+  }
+  return defaultValue;
+}
+
+function getOptConfiguredValue<T>(
+  option: undefined | T,
+  config: undefined | T,
+): T | undefined {
+  return getConfiguredValue(option, config, undefined as T | undefined);
+}
+
 function getHealthCheckSetting(
   options: AdfAutoscanOptions,
   configFile: FileConfig,
 ) {
-  const healthCheckEnabled: boolean =
-    options.healthCheck || configFile.enableHealthCheck === true;
-  let healthCheckPort: number;
-  if (options.healthCheckPort) {
-    healthCheckPort = parseInt(options.healthCheckPort, 10);
-  } else {
-    healthCheckPort = configFile.healthCheckPort || 3000;
-  }
+  const healthCheckEnabled: boolean = getConfiguredValue(
+    options.healthCheck,
+    configFile.enableHealthCheck,
+    false,
+  );
+
+  const healthCheckPort = parseInt(
+    getConfiguredValue(
+      options.healthCheckPort,
+      configFile.healthCheckPort?.toString(),
+      "3000",
+    ),
+    10,
+  );
+
   return {
     isHealthCheckEnabled: healthCheckEnabled,
     healthCheckPort: healthCheckPort,
@@ -252,18 +305,29 @@ function getScanConfiguration(
   fileConfig: FileConfig,
 ) {
   const directoryConfig: DirectoryConfig = {
-    directory: options.directory || fileConfig.directory,
-    tempDirectory: options.tempDirectory || fileConfig.tempDirectory,
-    filePattern: options.pattern || fileConfig.pattern,
+    directory: getOptConfiguredValue(options.directory, fileConfig.directory),
+    tempDirectory: getOptConfiguredValue(
+      options.tempDirectory,
+      fileConfig.tempDirectory,
+    ),
+    filePattern: getOptConfiguredValue(options.pattern, fileConfig.pattern),
   };
 
-  const configWidth = (options.width || fileConfig.width || 0).toString();
+  const configWidth = getConfiguredValue(
+    options.width,
+    fileConfig.width?.toString(),
+    "0",
+  );
   const width =
     configWidth.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
       : parseInt(configWidth, 10);
 
-  const configHeight = (options.height || fileConfig.height || 0).toString();
+  const configHeight = getConfiguredValue(
+    options.height,
+    fileConfig.height?.toString(),
+    "0",
+  );
   const height =
     configHeight.toLowerCase() === "max"
       ? Number.MAX_SAFE_INTEGER
@@ -272,11 +336,17 @@ function getScanConfiguration(
   const paperlessConfig = getPaperlessConfig(options, fileConfig);
   const nextcloudConfig = getNextcloudConfig(options, fileConfig);
 
+  const resolution = parseInt(
+    getConfiguredValue(
+      options.resolution,
+      fileConfig.resolution?.toString(),
+      "200",
+    ),
+    10,
+  );
+
   const scanConfig: ScanConfig = {
-    resolution:
-      (options.resolution ? parseInt(options.resolution, 10) : undefined) ||
-      fileConfig.resolution ||
-      200,
+    resolution,
     width: width,
     height: height,
     directoryConfig,
@@ -290,10 +360,10 @@ function getDeviceUpPollingInterval(
   options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   configFile: FileConfig,
 ) {
-  return (
-    options.deviceUpPollingInterval ||
-    configFile.deviceUpPollingInterval ||
-    1000
+  return getConfiguredValue(
+    options.deviceUpPollingInterval,
+    configFile.deviceUpPollingInterval,
+    1000,
   );
 }
 
@@ -328,17 +398,28 @@ function createListenCliCmd(configFile: FileConfig) {
       const registrationConfigs: RegistrationConfig[] = [];
 
       const registrationConfig: RegistrationConfig = {
-        label: options.label || configFile.label || os.hostname(),
+        label: getConfiguredValue(
+          options.label,
+          configFile.label,
+          os.hostname(),
+        ),
         isDuplexSingleSide: false,
       };
       registrationConfigs.push(registrationConfig);
 
-      if (options.addEmulatedDuplex || configFile.add_emulated_duplex) {
+      if (
+        getConfiguredValue(
+          options.addEmulatedDuplex,
+          configFile.add_emulated_duplex,
+          false,
+        )
+      ) {
         registrationConfigs.push({
-          label:
-            options.emulatedDuplexLabel ||
-            configFile.emulated_duplex_label ||
+          label: getConfiguredValue(
+            options.emulatedDuplexLabel,
+            configFile.emulated_duplex_label,
             `${registrationConfig.label} duplex`,
+          ),
           isDuplexSingleSide: true,
         });
       }
@@ -405,8 +486,16 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
 
       const adfScanConfig: AdfAutoScanConfig = {
         ...scanConfig,
-        isDuplex: options.duplex || fileConfig.autoscan_duplex || false,
-        generatePdf: options.pdf || fileConfig.autoscan_pdf || false,
+        isDuplex: getConfiguredValue(
+          options.duplex,
+          fileConfig.autoscan_duplex,
+          false,
+        ),
+        generatePdf: getConfiguredValue(
+          options.pdf,
+          fileConfig.autoscan_pdf,
+          false,
+        ),
         pollingInterval:
           (options.pollingInterval
             ? parseInt(options.pollingInterval, 10)
@@ -454,8 +543,16 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
 
       const singleScanConfig: SingleScanConfig = {
         ...scanConfig,
-        isDuplex: options.duplex || fileConfig.single_scan_duplex || false,
-        generatePdf: options.pdf || fileConfig.single_scan_pdf || false,
+        isDuplex: getConfiguredValue(
+          options.duplex,
+          fileConfig.single_scan_duplex,
+          false,
+        ),
+        generatePdf: getConfiguredValue(
+          options.pdf,
+          fileConfig.single_scan_pdf,
+          false,
+        ),
       };
 
       await singleScanCmd(singleScanConfig, deviceUpPollingInterval);
