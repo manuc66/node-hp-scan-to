@@ -28,11 +28,11 @@ export const configSchema = z.object({
   width: z.union([
     z.number().int().positive(), // Positive integer
     z.literal("max")              // The string "max"
-  ]), // Scan width in pixels
+  ]).optional(), // Scan width in pixels
   height: z.union([
     z.number().int().positive(), // Positive integer
     z.literal("max")              // The string "max"
-  ]), // Scan height in pixels
+  ]).optional(), // Scan height in pixels
   resolution: z.number().int().positive().optional(), // DPI resolution
 
   ///
