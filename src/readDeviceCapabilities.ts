@@ -40,7 +40,9 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
     // No caps to load here but check we can load the specified manifest
     await HPApi.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
   } else {
-    console.log("WARNING: No compatible device capabilities detected. The device may not support the listen command, and while the application will continue to run, it is likely to encounter a crash. If your device has an automatic document feeder, you may want to try using the adf-autoscan command.");
+    console.log(
+      "WARNING: No compatible device capabilities detected. The device may not support the listen command, and while the application will continue to run, it is likely to encounter a crash. If your device has an automatic document feeder, you may want to try using the adf-autoscan command.",
+    );
   }
   const scanCaps = await getScanCaps(discoveryTree);
 

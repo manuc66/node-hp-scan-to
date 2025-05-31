@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // Configuration schema for the scanning service
 export const configSchema = z.object({
@@ -25,14 +25,18 @@ export const configSchema = z.object({
   ///
   /// Scan Settings
   ///
-  width: z.union([
-    z.number().int().positive(), // Positive integer
-    z.literal("max")              // The string "max"
-  ]).optional(), // Scan width in pixels
-  height: z.union([
-    z.number().int().positive(), // Positive integer
-    z.literal("max")              // The string "max"
-  ]).optional(), // Scan height in pixels
+  width: z
+    .union([
+      z.number().int().positive(), // Positive integer
+      z.literal("max"), // The string "max"
+    ])
+    .optional(), // Scan width in pixels
+  height: z
+    .union([
+      z.number().int().positive(), // Positive integer
+      z.literal("max"), // The string "max"
+    ])
+    .optional(), // Scan height in pixels
   resolution: z.number().int().positive().optional(), // DPI resolution
 
   ///
@@ -84,7 +88,5 @@ export const configSchema = z.object({
   healthCheckPort: z.number().int().positive().max(65535).optional(), // Port for health check endpoint
 });
 
-
 // Infer the TypeScript type from the schema
 export type FileConfig = z.infer<typeof configSchema>;
-
