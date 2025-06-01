@@ -13,7 +13,8 @@
 
 Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be run on a bare-metal desktop or server, or in a container on Docker or Kubernetes. It can also be integrated with third-party document management solutions such as [Paperless-ngx](https://docs.paperless-ngx.com/) and [Nextcloud](https://Nextcloud.com/).
 
-**Disclaimer:** `node-hp-scan-to` is not endorsed by nor affiliated with HP. The reverse engineering of the original HP Windows application's interaction with the device has been done independently.
+**Disclaimer:** _This project is neither endorsed by nor affiliated with Hewlett-Packard (HP). Any mention or reference to HP is purely descriptive and non-commercial. All reverse engineering of HP's official Windows application and its interaction with devices has been performed independently without cooperation from HP. __This software is provided as-is for educational and personal use only__._
+
 
 <!-- TOC -->
 
