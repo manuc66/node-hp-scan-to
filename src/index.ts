@@ -239,8 +239,9 @@ function getNextcloudConfig(
     }
 
     const passLength = configNextcloudPassword?.length;
+    const usernameLength = configNextcloudUsername.length;
     console.log(
-      `Nextcloud configuration provided, url: ${configNextcloudUrl}, username: ${configNextcloudUsername}, password length: ${passLength}, upload folder: ${configNextcloudUploadFolder}, keepFiles: ${configNextcloudKeepFiles}`,
+      `Nextcloud configuration provided, url: ${configNextcloudUrl}, username length: ${usernameLength}, password length: ${passLength}, upload folder: ${configNextcloudUploadFolder}, keepFiles: ${configNextcloudKeepFiles}`,
     );
     return {
       baseUrl: configNextcloudUrl,
