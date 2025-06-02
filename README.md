@@ -172,17 +172,119 @@ By default, this app runs the `listen` command as the default mode. It will list
 
 Run `npx node-hp-scan-to listen --help` to get the full list of command options.
 
+<!-- BEGIN HELP command: listen -->
+```text
+Usage:  listen [options]
+
+Listen the device for new scan job to save to this target
+
+Output Options:
+  -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
+  -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+
+Scan Options:
+  -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
+  -w, --width <width>                                              Width in pixels of the scans (default: max)
+  -h, --height <height>                                            Height in pixels of the scans (default: max)
+  -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
+
+Options:
+  --device-up-polling-interval <deviceUpPollingInterval>           Device up polling interval in milliseconds
+  --help                                                           display help for command
+
+Paperless Options:
+  -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
+  -o, --paperless-token <paperless_token>                          The paperless token
+  --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
+  --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
+
+Nextcloud Options:
+  --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
+  --nextcloud-username <nextcloud_username>                        The nextcloud username
+  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required
+  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required
+  --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
+
+Device Control Screen Options:
+  -l, --label <label>                                              The label to display on the device (the default is the hostname)
+  --add-emulated-duplex                                            Enable emulated duplex scanning
+  --emulated-duplex-label <label>                                  The emulated duplex label to display on the device (the default is to suffix the main label with duplex)
+
+Health check Options:
+  --health-check                                                   Start an http health check endpoint
+  --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
+
+Global Options:
+  -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
+  -n, --name <name>                                                Name of the device to lookup for on the network
+  -D, --debug                                                      Enable debug
+```
+<!-- END HELP command: listen -->
+
 ##### `adf-autoscan`
 
 Running `npx node-hp-scan-to adf-autoscan` will automatically trigger a scan job as soon as the ADF (automatic document feeder) on the printer's scanner is loaded with paper.
-
-Run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help.
 
 You can also set the environment variable `MAIN_COMMAND="adf-autoscan"` with Docker. Example:
 
 ```sh
 docker run -e MAIN_COMMAND="adf-autoscan" CMDLINE=--debug docker.io/manuc66/node-hp-scan-to:latest
 ```
+
+Run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help.
+
+<!-- BEGIN HELP command: adf-autoscan -->
+```text
+Usage:  adf-autoscan [options]
+
+Automatically trigger a new scan job to this target once paper is detected in
+the automatic document feeder (adf)
+
+Output Options:
+  -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
+  -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+  --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
+
+Scan Options:
+  -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
+  -w, --width <width>                                              Width in pixels of the scans (default: max)
+  -h, --height <height>                                            Height in pixels of the scans (default: max)
+  -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
+  --duplex                                                         If specified, all the scans will be in duplex if the device support it
+
+Options:
+  --device-up-polling-interval <deviceUpPollingInterval>           Device up polling interval in milliseconds
+  --help                                                           display help for command
+
+Paperless Options:
+  -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
+  -o, --paperless-token <paperless_token>                          The paperless token
+  --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
+  --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
+
+Nextcloud Options:
+  --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
+  --nextcloud-username <nextcloud_username>                        The nextcloud username
+  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required
+  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required
+  --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
+
+Auto-scan Options:
+  --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
+  --start-scan-delay <startScanDelay>                              Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan
+
+Health check Options:
+  --health-check                                                   Start an http health check endpoint
+  --health-check-port <port>                                       Define the port for the HTTP health check endpoint
+
+Global Options:
+  -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
+  -n, --name <name>                                                Name of the device to lookup for on the network
+  -D, --debug                                                      Enable debug
+```
+<!-- END HELP command: adf-autoscan -->
 
 ##### `clear-registrations`
 
@@ -195,6 +297,78 @@ You can also set the environment variable `MAIN_COMMAND="clear-registrations"` w
 ```sh
 docker run -e MAIN_COMMAND="clear-registrations" docker.io/manuc66/node-hp-scan-to:latest
 ```
+
+<!-- BEGIN HELP command: clear-registrations -->
+```text
+Usage:  clear-registrations [options]
+
+Clear the list or registered target on the device
+
+Options:
+  -h, --help          display help for command
+
+Global Options:
+  -a, --address <ip>  IP address of the device, when specified, the ip will be
+                      used instead of the name
+  -n, --name <name>   Name of the device to lookup for on the network
+  -D, --debug         Enable debug
+```
+<!-- END HELP command: clear-registrations -->
+
+##### `single-scan`
+
+Running `npx node-hp-scan-to single-scan` will directly issue a single scan job
+
+Run `npx node-hp-scan-to single-scan --help` to get command line usage help.
+
+You can also set the environment variable `MAIN_COMMAND="single-scan"` with Docker. Example:
+
+```sh
+docker run -e MAIN_COMMAND="single-scan" docker.io/manuc66/node-hp-scan-to:latest
+```
+
+<!-- BEGIN HELP command: single-scan -->
+```text
+Usage:  single-scan [options]
+
+Trigger a new scan job
+
+Output Options:
+  -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
+  -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+  --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
+
+Scan Options:
+  -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
+  -w, --width <width>                                              Width in pixels of the scans (default: max)
+  -h, --height <height>                                            Height in pixels of the scans (default: max)
+  -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
+  --duplex                                                         If specified, all the scans will be in duplex if the device support it
+
+Options:
+  --device-up-polling-interval <deviceUpPollingInterval>           Device up polling interval in milliseconds
+  --help                                                           display help for command
+
+Paperless Options:
+  -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
+  -o, --paperless-token <paperless_token>                          The paperless token
+  --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
+  --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
+
+Nextcloud Options:
+  --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
+  --nextcloud-username <nextcloud_username>                        The nextcloud username
+  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required
+  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required
+  --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
+
+Global Options:
+  -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
+  -n, --name <name>                                                Name of the device to lookup for on the network
+  -D, --debug                                                      Enable debug
+```
+<!-- END HELP command: single-scan -->
 
 ### Run with Docker
 
