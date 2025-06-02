@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Configuration schema for the scanning service
+// Configuration schema for the config file
 export const configSchema = z.object({
   ///
   /// Network and Identification
