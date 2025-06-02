@@ -82,6 +82,16 @@ There is a good chance it also works on other unlisted HP All-in-One Printer.
   - Local folders
   - [Paperless-ngx API](https://docs.paperless-ngx.com/api/) upload
   - [Nextcloud WebDAV](https://docs.Nextcloud.com/server/latest/user_manual/en/files/access_webdav.html) upload
+ 
+### Emulated Duplex Scanning Feature
+
+The emulated duplex scanning feature allows users to efficiently scan both sides of a document, even on devices that do not natively support duplex scanning.
+
+When enabled (as an opt-in feature), it adds an extra entry in the list of scan destinations, labeled with the "duplex" suffix. When you select this option for the first time, the device scans the front side of the document.
+
+After the front side is scanned, if you choose the duplex option again, the device will trigger a second scan and produce an assembled output.
+
+If you decide not to scan the back side immediately, the front side scan will be saved in the system and will remain there until you either scan the back side or perform a single side scan instead.
 
 ## Installation
 
