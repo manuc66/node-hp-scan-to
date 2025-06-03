@@ -115,7 +115,9 @@ export default class PathHelper {
       return folder; // The folder exists and is writable
     } catch {
       // If the folder does not exist or is not writable, handle the error
-      throw new Error(`The folder "${folder}" does not exist or is not writable.`);
+      throw new Error(
+        `The folder "${folder}" does not exist or is not writable.`,
+      );
     }
   }
 
