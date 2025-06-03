@@ -288,6 +288,13 @@ function getNextcloudConfig(
   }
 }
 
+/**
+ * Retrieves the configured value based on the provided options.
+ * This function prioritizes the configuration from the command line if it is provided.
+ * If the command line option is not defined, it checks the value from the config file.
+ * Finally, if neither the command line nor the config file provides a value,
+ * it returns the default value defined in the code.
+ */
 function getConfiguredValue<T>(
   cliOption: undefined | T,
   fileConfig: undefined | T,
