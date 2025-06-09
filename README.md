@@ -470,8 +470,8 @@ services:
       # If you need to pass additional configuration flag use the CMDLINE env, thy will be appened to the
       # - CMDLINE=--debug --pdf
       # If using Paperless-ngx, you can use its API to upload files:
-      # - PAPERLESS_POST_DOCUMENT_URL="http://<paperless-host>:<port>/api/documents/post_document/"
-      # - PAPERLESS_TOKEN= "xxxxxxxxxxxx..."
+      # - PAPERLESS_POST_DOCUMENT_URL=http://<paperless-host>:<port>/api/documents/post_document/
+      # - PAPERLESS_TOKEN= xxxxxxxxxxxx...
     volumes:
       - ./scan:/scan
 ```
