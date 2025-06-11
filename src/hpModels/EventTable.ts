@@ -1,10 +1,7 @@
 "use strict";
 
 import Event, { EventData } from "./Event";
-import { Parser } from "xml2js";
-const parser = new Parser();
-import { promisify } from "util";
-const parseString = promisify<string, EventTableData>(parser.parseString);
+import { parseXmlString } from "./ParseXmlString";
 
 export interface EtagEventTable {
   etag: string;
@@ -27,7 +24,7 @@ export default class EventTable {
     content: string,
     etagReceived: string,
   ): Promise<EtagEventTable> {
-    const parsed = await parseString(content);
+    const parsed = await parseXmlString<EventTableData>(content);
     return {
       etag: etagReceived,
       eventTable: new EventTable(parsed),

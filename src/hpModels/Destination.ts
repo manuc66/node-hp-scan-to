@@ -1,9 +1,7 @@
 "use strict";
 
-import { Parser, Builder } from "xml2js";
-import * as util from "util";
-
-const parser = new Parser();
+import { Builder } from "xml2js";
+import { parseXmlString } from "./ParseXmlString";
 
 type WalkupScanDestinationData = {
   WalkupScanDestination: {
@@ -44,9 +42,8 @@ export default class Destination {
       "\t<LinkType>Network</LinkType>\n" +
       "</WalkupScanDestination>";
 
-    const parsed = await util.promisify<string, WalkupScanDestinationData>(
-      parser.parseString,
-    )(rawDestination);
+    const parsed =
+      await parseXmlString<WalkupScanDestinationData>(rawDestination);
 
     parsed.WalkupScanDestination.Hostname[0]._ = this.hostname;
     parsed.WalkupScanDestination.Name[0]._ = this.name;

@@ -6,5 +6,5 @@ export enum HelpGroupsHeadings {
   ouput = "Output Options:",
   adfAutoScan = "Auto-scan Options:",
   network = "Network Options:",
-  deviceControlScreen = "Device Control Screen Options:"
+  deviceControlScreen = "Device Control Screen Options:",
 }

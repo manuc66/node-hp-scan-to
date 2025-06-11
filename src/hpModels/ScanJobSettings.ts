@@ -1,7 +1,7 @@
 import xml2js from "xml2js";
 import { InputSource } from "../type/InputSource";
+import { parseXmlString } from "./ParseXmlString";
 
-const parser = new xml2js.Parser();
 export default class ScanJobSettings {
   private readonly inputSource: InputSource;
   private readonly contentType: "Document" | "Photo";
@@ -55,7 +55,17 @@ export default class ScanJobSettings {
       "\t<ContentType>Document</ContentType>\n" +
       "</ScanSettings>";
 
-    const parsed = await parser.parseStringPromise(rawJob);
+    const parsed = await parseXmlString<{
+      ScanSettings: {
+        InputSource: string[];
+        Height: number;
+        Width: number;
+        XResolution: number[];
+        YResolution: number[];
+        AdfOptions?: [{ AdfOption: ["Duplex"] }];
+        ContentType: string[];
+      };
+    }>(rawJob);
 
     parsed.ScanSettings.XResolution[0] = this.resolution;
     parsed.ScanSettings.YResolution[0] = this.resolution;

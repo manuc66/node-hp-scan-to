@@ -1,12 +1,6 @@
 "use strict";
-import { Parser } from "xml2js";
-import { promisify } from "util";
 import { KnownShortcut } from "../type/KnownShortcut";
-
-const parser = new Parser();
-const parseString = promisify<string, WalkupScanDestinationsData>(
-  parser.parseString,
-);
+import { parseXmlString } from "./ParseXmlString";
 
 interface WalkupScanDestinationsData {
   "wus:WalkupScanDestinations": {
@@ -34,7 +28,7 @@ export default class WalkupScanDestination {
   static async createWalkupScanDestination(
     content: string,
   ): Promise<WalkupScanDestination> {
-    const parsed = await parseString(content);
+    const parsed = await parseXmlString<WalkupScanDestinationsData>(content);
     return new WalkupScanDestination(
       parsed["wus:WalkupScanDestinations"]["wus:WalkupScanDestination"][0],
     );
@@ -61,6 +55,7 @@ export default class WalkupScanDestination {
     return null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   get scanPlexMode(): "Simplex" | string | null {
     if (
       Object.prototype.hasOwnProperty.call(this.data, "wus:WalkupScanSettings")

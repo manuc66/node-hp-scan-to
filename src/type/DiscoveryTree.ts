@@ -1,8 +1,6 @@
 "use strict";
-import { Parser } from "xml2js";
-const parser = new Parser();
-import { promisify } from "util";
-const parseString = promisify<string, DiscoveryTreeData>(parser.parseString);
+
+import { parseXmlString } from "../hpModels/ParseXmlString";
 
 export interface DiscoveryTreeData {
   "ledm:DiscoveryTree": {
@@ -19,8 +17,9 @@ export default class DiscoveryTree {
   constructor(data: DiscoveryTreeData) {
     this.data = data;
   }
+
   static async createDiscoveryTree(content: string): Promise<DiscoveryTree> {
-    const parsed = await parseString(content);
+    const parsed = await parseXmlString<DiscoveryTreeData>(content);
     return new DiscoveryTree(parsed);
   }
 
