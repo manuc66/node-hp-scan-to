@@ -19,7 +19,6 @@ const validateConfig = (config: IConfig) => {
   return result.data;
 };
 
-
 async function main() {
   const fileConfig: FileConfig = validateConfig(config);
 

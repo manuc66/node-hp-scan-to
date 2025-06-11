@@ -51,7 +51,7 @@ export default class PathHelper {
       }
     }
     return Promise.reject(
-      `Unable to find the valid scan number in folder ${folder}`,
+      new Error(`Unable to find the valid scan number in folder ${folder}`),
     );
   }
 
@@ -97,7 +97,7 @@ export default class PathHelper {
     return path.join(folder, `scan${scanCount}.${extension}`);
   }
 
-  static async getOutputFolder(folder?: string | undefined): Promise<string> {
+  static async getOutputFolder(folder?: string): Promise<string> {
     if (typeof folder !== "string") {
       return Fs.mkdtemp(path.join(os.tmpdir(), "scan-to-pc"));
     }
