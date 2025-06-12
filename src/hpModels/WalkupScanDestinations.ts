@@ -1,14 +1,9 @@
 "use strict";
-import { Parser } from "xml2js";
-const parser = new Parser();
-import { promisify } from "util";
-const parseString = promisify<string, WalkupScanDestinationsData>(
-  parser.parseString,
-);
 
 import WalkupScanDestination, {
   WalkupScanDestinationData,
 } from "./WalkupScanDestination";
+import { parseXmlString } from "./ParseXmlString";
 
 export interface WalkupScanDestinationsData {
   "wus:WalkupScanDestinations": {
@@ -24,7 +19,7 @@ export default class WalkupScanDestinations {
   static async createWalkupScanDestinations(
     content: string,
   ): Promise<WalkupScanDestinations> {
-    const parsed = await parseString(content);
+    const parsed = await parseXmlString<WalkupScanDestinationsData>(content);
     return new WalkupScanDestinations(parsed);
   }
 

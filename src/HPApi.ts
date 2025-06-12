@@ -70,7 +70,7 @@ export default class HPApi {
       const response = await axios(request);
       HPApi.logDebug(callCount, false, {
         status: response.status,
-        data: response.data,
+        data: response.data as unknown,
         headers: response.headers,
         statusText: response.statusText,
       });
@@ -267,7 +267,9 @@ export default class HPApi {
     });
 
     if (response.status !== 200) {
-      throw response;
+      throw new Error(
+        `Unexpected status code when getting ${compEventURI}: ${response.status}`,
+      );
     } else {
       return WalkupScanToCompEvent.createWalkupScanToCompEvent(response.data);
     }
@@ -299,7 +301,9 @@ export default class HPApi {
     if (response.status === 204 || response.status == 200) {
       return true;
     } else {
-      throw response;
+      throw new Error(
+        `Unexpected status code when removing ${path}: ${response.status}`,
+      );
     }
   }
 
@@ -317,10 +321,15 @@ export default class HPApi {
       responseType: "text",
     });
 
-    if (response.status === 201 && response.headers.location != null) {
+    if (
+      response.status === 201 &&
+      typeof response.headers.location === "string"
+    ) {
       return new URL(response.headers.location).pathname;
     } else {
-      throw response;
+      throw new Error(
+        `Unexpected status code when getting ${url}: ${response.status}`,
+      );
     }
   }
   static async registerWalkupScanToCompDestination(
@@ -337,10 +346,15 @@ export default class HPApi {
       responseType: "text",
     });
 
-    if (response.status === 201 && response.headers.location != null) {
+    if (
+      response.status === 201 &&
+      typeof response.headers.location === "string"
+    ) {
       return new URL(response.headers.location).pathname;
     } else {
-      throw response;
+      throw new Error(
+        `Unexpected status code or location when registering to ${url}: ${response.status} - ${response.headers.location}`,
+      );
     }
   }
 
@@ -376,9 +390,9 @@ export default class HPApi {
       throw error;
     }
 
-    const etagReceived = response.headers["etag"];
-    if (etagReceived == null) {
-      throw response;
+    const etagReceived = response.headers["etag"] as unknown;
+    if (typeof etagReceived !== "string") {
+      throw new Error("Missing etag when getting Job");
     }
 
     const content = response.data;
@@ -416,7 +430,9 @@ export default class HPApi {
     });
 
     if (response.status !== 200) {
-      throw response;
+      throw new Error(
+        `Unexpected status code when getting ${destinationURL}: ${response.status}`,
+      );
     } else {
       const content = response.data;
       if (destinationURL.includes("WalkupScanToComp")) {
@@ -438,7 +454,9 @@ export default class HPApi {
     });
 
     if (response.status !== 200) {
-      throw response;
+      throw new Error(
+        `Unexpected status code when getting /Scan/Status: ${response.status}`,
+      );
     } else {
       const content = response.data;
       return ScanStatus.createScanStatus(content);
@@ -463,10 +481,15 @@ export default class HPApi {
       responseType: "text",
     });
 
-    if (response.status === 201 && response.headers.location != null) {
+    if (
+      response.status === 201 &&
+      typeof response.headers.location === "string"
+    ) {
       return response.headers.location;
     } else {
-      throw response;
+      throw new Error(
+        `Unexpected status code or location when posting job: ${response.status} - ${response.headers.location}`,
+      );
     }
   }
 
@@ -482,7 +505,9 @@ export default class HPApi {
     });
 
     if (response.status !== 200) {
-      throw response;
+      throw new Error(
+        `Unexpected status code when getting ${jobURL}: ${response.status}`,
+      );
     } else {
       const content = response.data;
       return Job.createJob(content);

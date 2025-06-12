@@ -1,8 +1,6 @@
 "use strict";
-import { Parser } from "xml2js";
-const parser = new Parser();
-import { promisify } from "util";
-const parseString = promisify<string, JobData>(parser.parseString);
+
+import { parseXmlString } from "./ParseXmlString";
 
 export interface JobData {
   "j:Job": {
@@ -37,7 +35,7 @@ export default class Job {
   }
 
   static async createJob(content: string): Promise<Job> {
-    const parsed = await parseString(content);
+    const parsed = await parseXmlString<JobData>(content);
     return new Job(parsed);
   }
 
@@ -60,12 +58,8 @@ export default class Job {
     return null;
   }
 
-  get jobState():
-    | "Completed"
-    | "Processing"
-    | "ReadyToUpload"
-    | "Canceled"
-    | string {
+  get jobState(): // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  "Completed" | "Processing" | "ReadyToUpload" | "Canceled" | string {
     return this.data["j:Job"]["j:JobState"][0];
   }
 

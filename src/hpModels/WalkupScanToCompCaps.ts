@@ -1,10 +1,7 @@
 "use strict";
-import { Parser } from "xml2js";
-const parser = new Parser();
-import { promisify } from "util";
-const parseString = promisify<string, WalkupScanToCompCapsData>(
-  parser.parseString,
-);
+
+import { parseXmlString } from "./ParseXmlString";
+
 export interface WalkupScanToCompCapsData {
   "wus:WalkupScanToCompCaps": {
     "wus:MaxNetworkDestinations": string[];
@@ -22,7 +19,7 @@ export default class WalkupScanToCompCaps {
   static async createWalkupScanToCompCaps(
     content: string,
   ): Promise<WalkupScanToCompCaps> {
-    const parsed = await parseString(content);
+    const parsed = await parseXmlString<WalkupScanToCompCapsData>(content);
     return new WalkupScanToCompCaps(parsed);
   }
 

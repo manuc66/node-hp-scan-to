@@ -1,10 +1,6 @@
 "use strict";
-import { Parser } from "xml2js";
-const parser = new Parser();
-import { promisify } from "util";
-const parseString = promisify<string, WalkupScanToCompManifestData>(
-  parser.parseString,
-);
+
+import { parseXmlString } from "./ParseXmlString";
 
 export interface WalkupScanToCompManifestData {
   "man:Manifest": {
@@ -33,7 +29,7 @@ export default class WalkupScanToCompManifest {
   static async createWalkupScanToCompManifest(
     content: string,
   ): Promise<WalkupScanToCompManifest> {
-    const parsed = await parseString(content);
+    const parsed = await parseXmlString<WalkupScanToCompManifestData>(content);
     return new WalkupScanToCompManifest(parsed);
   }
 
