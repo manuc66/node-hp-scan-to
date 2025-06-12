@@ -1,8 +1,6 @@
 "use strict";
-import { Parser } from "xml2js";
-const parser = new Parser();
-import { promisify } from "util";
-const parseString = promisify<string, ScanJobManifestData>(parser.parseString);
+
+import { parseXmlString } from "./ParseXmlString";
 
 export interface ScanJobManifestData {
   "man:Manifest": {
@@ -31,7 +29,7 @@ export default class ScanJobManifest {
   static async createScanJobManifest(
     content: string,
   ): Promise<ScanJobManifest> {
-    const parsed = await parseString(content);
+    const parsed = await parseXmlString<ScanJobManifestData>(content);
     return new ScanJobManifest(parsed);
   }
 

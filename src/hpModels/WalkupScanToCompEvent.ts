@@ -1,10 +1,6 @@
 "use strict";
-import { Parser } from "xml2js";
-const parser = new Parser();
-import { promisify } from "util";
-const parseString = promisify<string, WalkupScanToCompEventData>(
-  parser.parseString,
-);
+
+import { parseXmlString } from "./ParseXmlString";
 
 export interface WalkupScanToCompEventData {
   "wus:WalkupScanToCompEvent": {
@@ -18,7 +14,7 @@ export default class WalkupScanToCompEvent {
     this.data = data;
   }
   static async createWalkupScanToCompEvent(content: string) {
-    const parsed = await parseString(content);
+    const parsed = await parseXmlString<WalkupScanToCompEventData>(content);
     return new WalkupScanToCompEvent(parsed);
   }
 

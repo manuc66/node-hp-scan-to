@@ -1,9 +1,6 @@
 "use strict";
-import { Parser } from "xml2js";
-const parser = new Parser();
-import { promisify } from "util";
 import { InputSource } from "../type/InputSource";
-const parseString = promisify<string, ScanStatusData>(parser.parseString);
+import { parseXmlString } from "./ParseXmlString";
 
 export interface ScanStatusData {
   ScanStatus: {
@@ -19,10 +16,11 @@ export default class ScanStatus {
   }
 
   static async createScanStatus(content: string): Promise<ScanStatus> {
-    const parsed = await parseString(content);
+    const parsed = await parseXmlString<ScanStatusData>(content);
     return new ScanStatus(parsed);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   get scannerState(): string | "Idle" {
     return this.data["ScanStatus"].ScannerState["0"];
   }
