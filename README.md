@@ -57,7 +57,7 @@ This app has been developed and tested with the following HP All-in-One Printers
 
 Users have reported it also working on:
 
-- HP DeskJet 3050 (J610a), 3775, 4670, 5525
+- HP DeskJet 3050 (J610a),3522, 3775, 4670, 5525
 - HP Envy 4504, 4520, 7640
 - HP OfficeJet 250 Mobile, 3830, 5230, 5740, 6700 Premium, 6950, 8010 series, 8025e, 9012e
 - HP PageWide 377dw MFP
