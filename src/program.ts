@@ -24,6 +24,7 @@ import {
 } from "./type/scanConfigs";
 import { FileConfig } from "./type/FileConfig";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings";
+import { Server as NetServer } from "net";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
@@ -431,18 +432,6 @@ function createListenCliCmd(configFile: FileConfig) {
         "The emulated duplex label to display on the device (the default is to suffix the main label with duplex)",
       ).helpGroup(HelpGroupsHeadings.deviceControlScreen),
     )
-    .addOption(
-      new Option(
-        "--health-check",
-        "Start an http health check endpoint",
-      ).helpGroup(HelpGroupsHeadings.healthCheck),
-    )
-    .addOption(
-      new Option(
-        "--health-check-port <health-check-port>",
-        "Define the port for the HTTP health check endpoint",
-      ).helpGroup(HelpGroupsHeadings.healthCheck),
-    )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
       const ip = await getDeviceIp(options, configFile);
@@ -485,14 +474,17 @@ function createListenCliCmd(configFile: FileConfig) {
         configFile,
       );
 
+      let healthCheckSrv : NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, configFile);
       if (healthCheckSetting.isHealthCheckEnabled) {
-        startHealthCheckServer(healthCheckSetting.healthCheckPort);
+        healthCheckSrv = startHealthCheckServer(healthCheckSetting.healthCheckPort);
       }
 
       const scanConfig = getScanConfiguration(options, configFile);
 
       await listenCmd(registrationConfigs, scanConfig, deviceUpPollingInterval);
+
+      healthCheckSrv?.close();
     });
 }
 
@@ -529,18 +521,6 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
         "Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan",
       ).helpGroup(HelpGroupsHeadings.adfAutoScan),
     )
-    .addOption(
-      new Option(
-        "--health-check",
-        "Start an http health check endpoint",
-      ).helpGroup(HelpGroupsHeadings.healthCheck),
-    )
-    .addOption(
-      new Option(
-        "--health-check-port <port>",
-        "Define the port for the HTTP health check endpoint",
-      ).helpGroup(HelpGroupsHeadings.healthCheck),
-    )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
 
@@ -555,9 +535,10 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
         fileConfig,
       );
 
+      let healthCheckSrv : NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
       if (healthCheckSetting.isHealthCheckEnabled) {
-        startHealthCheckServer(healthCheckSetting.healthCheckPort);
+        healthCheckSrv = startHealthCheckServer(healthCheckSetting.healthCheckPort);
       }
 
       const scanConfig = getScanConfiguration(options, fileConfig);
@@ -589,6 +570,8 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
       };
 
       await adfAutoscanCmd(adfScanConfig, deviceUpPollingInterval);
+
+      healthCheckSrv?.close()
     });
 }
 
@@ -620,6 +603,12 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
       const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);
 
+      let healthCheckSrv : NetServer | null = null;
+      const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
+      if (healthCheckSetting.isHealthCheckEnabled) {
+        healthCheckSrv = startHealthCheckServer(healthCheckSetting.healthCheckPort);
+      }
+
       const deviceUpPollingInterval = getDeviceUpPollingInterval(
         options,
         fileConfig,
@@ -642,11 +631,13 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
       };
 
       await singleScanCmd(singleScanConfig, deviceUpPollingInterval);
+
+      healthCheckSrv?.close();
     });
 }
 
 function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
-  return new Command("clear-registrations")
+  return new Command<[], ProgramOption>("clear-registrations")
     .description("Clear the list or registered target on the device")
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
@@ -657,7 +648,15 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
       const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);
 
+      let healthCheckSrv : NetServer | null = null;
+      const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
+      if (healthCheckSetting.isHealthCheckEnabled) {
+        healthCheckSrv = startHealthCheckServer(healthCheckSetting.healthCheckPort);
+      }
+
       await clearRegistrationsCmd();
+
+      healthCheckSrv?.close();
     });
 }
 
@@ -671,7 +670,19 @@ function createProgram() {
       "-n, --name <name>",
       "Name of the device to lookup for on the network", // i.e. 'Deskjet 3520 series'
     )
-    .option("-D, --debug", "Enable debug");
+    .option("-D, --debug", "Enable debug")
+    .addOption(
+      new Option(
+        "--health-check",
+        "Start an http health check endpoint",
+      ).helpGroup(HelpGroupsHeadings.healthCheck),
+    )
+    .addOption(
+      new Option(
+        "--health-check-port <health-check-port>",
+        "Define the port for the HTTP health check endpoint",
+      ).helpGroup(HelpGroupsHeadings.healthCheck),
+    );
 }
 
 type ProgramOption = ReturnType<ReturnType<typeof createProgram>["opts"]>;

@@ -221,14 +221,12 @@ Device Control Screen Options:
   --add-emulated-duplex                                            Enable emulated duplex scanning
   --emulated-duplex-label <label>                                  The emulated duplex label to display on the device (the default is to suffix the main label with duplex)
 
-Health check Options:
-  --health-check                                                   Start an http health check endpoint
-  --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
-
 Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                                                Name of the device to lookup for on the network
   -D, --debug                                                      Enable debug
+  --health-check                                                   Start an http health check endpoint
+  --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
 <!-- END HELP command: listen -->
 
@@ -285,14 +283,12 @@ Auto-scan Options:
   --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
   --start-scan-delay <startScanDelay>                              Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan
 
-Health check Options:
-  --health-check                                                   Start an http health check endpoint
-  --health-check-port <port>                                       Define the port for the HTTP health check endpoint
-
 Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                                                Name of the device to lookup for on the network
   -D, --debug                                                      Enable debug
+  --health-check                                                   Start an http health check endpoint
+  --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
 <!-- END HELP command: adf-autoscan -->
 
@@ -315,13 +311,14 @@ Usage:  clear-registrations [options]
 Clear the list or registered target on the device
 
 Options:
-  -h, --help          display help for command
+  -h, --help                               display help for command
 
 Global Options:
-  -a, --address <ip>  IP address of the device, when specified, the ip will be
-                      used instead of the name
-  -n, --name <name>   Name of the device to lookup for on the network
-  -D, --debug         Enable debug
+  -a, --address <ip>                       IP address of the device, when specified, the ip will be used instead of the name
+  -n, --name <name>                        Name of the device to lookup for on the network
+  -D, --debug                              Enable debug
+  --health-check                           Start an http health check endpoint
+  --health-check-port <health-check-port>  Define the port for the HTTP health check endpoint
 ```
 <!-- END HELP command: clear-registrations -->
 
@@ -377,6 +374,8 @@ Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                                                Name of the device to lookup for on the network
   -D, --debug                                                      Enable debug
+  --health-check                                                   Start an http health check endpoint
+  --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
 <!-- END HELP command: single-scan -->
 

@@ -41,7 +41,7 @@ function expectComandUsageIsUpdated(commandName: string) {
       const help = new Help();
       help.showGlobalOptions = true;
       const val = "```text\n" + help.formatHelp(command, help) + "```";
-      expect(val).to.be.eq(usageInReadme);
+      expect(usageInReadme).to.be.eq(val);
     }
   }
 }
