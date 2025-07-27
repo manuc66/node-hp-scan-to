@@ -239,7 +239,7 @@ Running `npx node-hp-scan-to adf-autoscan` will automatically trigger a scan job
 You can also set the environment variable `MAIN_COMMAND="adf-autoscan"` with Docker. Example:
 
 ```sh
-docker run -e MAIN_COMMAND="adf-autoscan" CMDLINE=--debug docker.io/manuc66/node-hp-scan-to:latest
+docker run -e MAIN_COMMAND="adf-autoscan" -e CMDLINE=--debug docker.io/manuc66/node-hp-scan-to:latest
 ```
 
 Run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help.
