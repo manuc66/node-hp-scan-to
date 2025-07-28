@@ -29,6 +29,9 @@ import ScanJobManifest from "./hpModels/ScanJobManifest";
 import ScanCaps from "./hpModels/ScanCaps";
 import { delay } from "./delay";
 import * as net from "net";
+import EsclScanJobManifest from "./hpModels/EsclManifest";
+import EsclScanCaps from "./hpModels/EsclScanCaps";
+import EsclScanStatus from "./hpModels/EsclScanStatus";
 
 let printerIP = "192.168.1.11";
 let debug = false;
@@ -224,6 +227,21 @@ export default class HPApi {
     }
   }
 
+  static async getEsclScanJobManifest(uri: string): Promise<EsclScanJobManifest> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: uri,
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw new Error(response.statusText);
+    } else {
+      return EsclScanJobManifest.createScanJobManifest(response.data);
+    }
+  }
+
   static async getScanCaps(uri: string): Promise<ScanCaps> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -236,6 +254,21 @@ export default class HPApi {
       throw new Error(response.statusText);
     } else {
       return ScanCaps.createScanCaps(response.data);
+    }
+  }
+
+  static async getEsclScanCaps(uri: string): Promise<EsclScanCaps> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: uri,
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw new Error(response.statusText);
+    } else {
+      return EsclScanCaps.createScanCaps(response.data);
     }
   }
 
@@ -460,6 +493,24 @@ export default class HPApi {
     } else {
       const content = response.data;
       return ScanStatus.createScanStatus(content);
+    }
+  }
+
+  static async getEsclScanStatus(): Promise<EsclScanStatus> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: "/eSCL/ScannerStatus ",
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw new Error(
+        `Unexpected status code when getting /eSCL/ScannerStatus : ${response.status}`,
+      );
+    } else {
+      const content = response.data;
+      return EsclScanStatus.createScanStatus(content);
     }
   }
 

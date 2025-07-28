@@ -46,7 +46,16 @@ export default class DiscoveryTree {
   get ScanJobManifestURI(): string | null {
     const hpLedmWalkupScanToCompManifest = this.data["ledm:DiscoveryTree"][
       "ledm:SupportedIfc"
-    ].find((x) => x["dd:ResourceType"][0] === "ledm:hpLedmScanJobManifest");
+      ].find((x) => x["dd:ResourceType"][0] === "ledm:hpLedmScanJobManifest");
+    if (hpLedmWalkupScanToCompManifest === undefined) {
+      return null;
+    }
+    return hpLedmWalkupScanToCompManifest["ledm:ManifestURI"][0];
+  }
+  get EsclManifest(): string | null {
+    const hpLedmWalkupScanToCompManifest = this.data["ledm:DiscoveryTree"][
+      "ledm:SupportedIfc"
+      ].find((x) => x["dd:ResourceType"][0] === "eSCL:eSclManifest");
     if (hpLedmWalkupScanToCompManifest === undefined) {
       return null;
     }

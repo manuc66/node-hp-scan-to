@@ -9,4 +9,5 @@ export interface DeviceCapabilities {
   adfDuplexMaxHeight: number | null;
   hasAdfDuplex: boolean;
   hasAdfDetectPaperLoaded: boolean;
+  isEscl: boolean;
 }

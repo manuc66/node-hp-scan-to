@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="UTF-8"?> <!-- HP CONFIDENTIAL --> <scan:ScannerCapabilities
+        xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03"
+        xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm"
+        xmlns:dest="http://schemas.hp.com/imaging/destination/2011/06/06"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://schemas.hp.com/imaging/escl/2011/05/03 ../../schemas/eSCL.xsd">
+    <pwg:Version>2.62</pwg:Version>
+    <pwg:MakeAndModel>HP ScanJet Pro 4500 fn1</pwg:MakeAndModel>
+    <pwg:SerialNumber>CN5BPA6017</pwg:SerialNumber>
+    <scan:UUID>FC944F9F-3A57-4d62-82CF-2E557AF58D55</scan:UUID>
+    <scan:AdminURI>http://HPCB4F69.local./index.htm</scan:AdminURI>
+    <scan:IconURI>http://HPCB4F69.local./icon.png</scan:IconURI>
+    <scan:Platen> <scan:PlatenInputCaps> <scan:MinWidth>32</scan:MinWidth>
+        <scan:MaxWidth>2550</scan:MaxWidth>
+        <scan:MinHeight>32</scan:MinHeight>
+        <scan:MaxHeight>4200</scan:MaxHeight>
+        <scan:MaxScanRegions>1</scan:MaxScanRegions>
+        <scan:SettingProfiles> <scan:SettingProfile> <scan:ColorModes> <scan:ColorMode>Grayscale8</scan:ColorMode>
+            <scan:ColorMode>RGB24</scan:ColorMode>
+            <scan:ColorMode>BlackAndWhite1</scan:ColorMode>
+            <scan:ColorMode>scan:AutoColorDetection</scan:ColorMode>
+        </scan:ColorModes>
+            <scan:ContentTypes> <pwg:ContentType>Photo</pwg:ContentType>
+                <pwg:ContentType>Text</pwg:ContentType>
+                <pwg:ContentType>TextAndPhoto</pwg:ContentType>
+            </scan:ContentTypes>
+            <scan:DocumentFormats> <pwg:DocumentFormat>image/jpeg</pwg:DocumentFormat>
+                <pwg:DocumentFormat>application/octet-stream</pwg:DocumentFormat>
+                <pwg:DocumentFormat>application/pdf</pwg:DocumentFormat>
+                <scan:DocumentFormatExt>image/jpeg</scan:DocumentFormatExt>
+                <scan:DocumentFormatExt>application/octet-stream</scan:DocumentFormatExt>
+                <scan:DocumentFormatExt>application/pdf</scan:DocumentFormatExt>
+            </scan:DocumentFormats>
+            <scan:SupportedResolutions> <scan:DiscreteResolutions> <scan:DiscreteResolution>
+                <scan:XResolution>75</scan:XResolution>
+                <scan:YResolution>75</scan:YResolution>
+            </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>150</scan:XResolution>
+                    <scan:YResolution>150</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>200</scan:XResolution>
+                    <scan:YResolution>200</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>240</scan:XResolution>
+                    <scan:YResolution>240</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>300</scan:XResolution>
+                    <scan:YResolution>300</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>400</scan:XResolution>
+                    <scan:YResolution>400</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>500</scan:XResolution>
+                    <scan:YResolution>500</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>600</scan:XResolution>
+                    <scan:YResolution>600</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>1200</scan:XResolution>
+                    <scan:YResolution>1200</scan:YResolution>
+                </scan:DiscreteResolution>
+            </scan:DiscreteResolutions>
+            </scan:SupportedResolutions>
+            <scan:ColorSpaces> <scan:ColorSpace>YCC</scan:ColorSpace>
+                <scan:ColorSpace>RGB</scan:ColorSpace>
+                <scan:ColorSpace>sRGB</scan:ColorSpace>
+            </scan:ColorSpaces>
+            <scan:CcdChannels> <scan:CcdChannel>GrayCcdEmulated</scan:CcdChannel>
+                <scan:CcdChannel>Red</scan:CcdChannel>
+                <scan:CcdChannel>Green</scan:CcdChannel>
+                <scan:CcdChannel>Blue</scan:CcdChannel>
+            </scan:CcdChannels>
+            <scan:BinaryRenderings> <scan:BinaryRendering>Threshold</scan:BinaryRendering>
+            </scan:BinaryRenderings>
+        </scan:SettingProfile>
+        </scan:SettingProfiles>
+        <scan:SupportedIntents> <scan:Intent>Document</scan:Intent>
+            <scan:Intent>Photo</scan:Intent>
+            <scan:Intent>Preview</scan:Intent>
+            <scan:Intent>TextAndGraphic</scan:Intent>
+        </scan:SupportedIntents>
+        <scan:MaxOpticalXResolution>1200</scan:MaxOpticalXResolution>
+        <scan:MaxOpticalYResolution>1200</scan:MaxOpticalYResolution>
+    </scan:PlatenInputCaps>
+    </scan:Platen>
+    <scan:Adf> <scan:AdfSimplexInputCaps> <scan:MinWidth>32</scan:MinWidth>
+        <scan:MaxWidth>2550</scan:MaxWidth>
+        <scan:MinHeight>32</scan:MinHeight>
+        <scan:MaxHeight>36600</scan:MaxHeight>
+        <scan:MinPageWidth>1230</scan:MinPageWidth>
+        <scan:MinPageHeight>1740</scan:MinPageHeight>
+        <scan:MaxScanRegions>1</scan:MaxScanRegions>
+        <scan:SettingProfiles> <scan:SettingProfile> <scan:ColorModes> <scan:ColorMode>Grayscale8</scan:ColorMode>
+            <scan:ColorMode>RGB24</scan:ColorMode>
+            <scan:ColorMode>BlackAndWhite1</scan:ColorMode>
+            <scan:ColorMode>scan:AutoColorDetection</scan:ColorMode>
+        </scan:ColorModes>
+            <scan:ContentTypes> <pwg:ContentType>Photo</pwg:ContentType>
+                <pwg:ContentType>Text</pwg:ContentType>
+                <pwg:ContentType>TextAndPhoto</pwg:ContentType>
+            </scan:ContentTypes>
+            <scan:DocumentFormats> <pwg:DocumentFormat>image/jpeg</pwg:DocumentFormat>
+                <pwg:DocumentFormat>application/octet-stream</pwg:DocumentFormat>
+                <pwg:DocumentFormat>application/pdf</pwg:DocumentFormat>
+                <scan:DocumentFormatExt>image/jpeg</scan:DocumentFormatExt>
+                <scan:DocumentFormatExt>application/octet-stream</scan:DocumentFormatExt>
+                <scan:DocumentFormatExt>application/pdf</scan:DocumentFormatExt>
+            </scan:DocumentFormats>
+            <scan:SupportedResolutions> <scan:DiscreteResolutions> <scan:DiscreteResolution>
+                <scan:XResolution>75</scan:XResolution>
+                <scan:YResolution>75</scan:YResolution>
+            </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>150</scan:XResolution>
+                    <scan:YResolution>150</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>200</scan:XResolution>
+                    <scan:YResolution>200</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>240</scan:XResolution>
+                    <scan:YResolution>240</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>300</scan:XResolution>
+                    <scan:YResolution>300</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>400</scan:XResolution>
+                    <scan:YResolution>400</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>500</scan:XResolution>
+                    <scan:YResolution>500</scan:YResolution>
+                </scan:DiscreteResolution>
+                <scan:DiscreteResolution> <scan:XResolution>600</scan:XResolution>
+                    <scan:YResolution>600</scan:YResolution>
+                </scan:DiscreteResolution>
+            </scan:DiscreteResolutions>
+            </scan:SupportedResolutions>
+            <scan:ColorSpaces> <scan:ColorSpace>YCC</scan:ColorSpace>
+                <scan:ColorSpace>RGB</scan:ColorSpace>
+                <scan:ColorSpace scan:default="true">sRGB</scan:ColorSpace>
+            </scan:ColorSpaces>
+            <scan:CcdChannels> <scan:CcdChannel>GrayCcdEmulated</scan:CcdChannel>
+                <scan:CcdChannel>Red</scan:CcdChannel>
+                <scan:CcdChannel>Green</scan:CcdChannel>
+                <scan:CcdChannel>Blue</scan:CcdChannel>
+            </scan:CcdChannels>
+            <scan:BinaryRenderings> <scan:BinaryRendering>Threshold</scan:BinaryRendering>
+            </scan:BinaryRenderings>
+        </scan:SettingProfile>
+        </scan:SettingProfiles>
+        <scan:SupportedIntents> <scan:Intent>Document</scan:Intent>
+            <scan:Intent>Photo</scan:Intent>
+            <scan:Intent>Preview</scan:Intent>
+            <scan:Intent>TextAndGraphic</scan:Intent>
+        </scan:SupportedIntents>
+        <scan:BlackBackgroundSelectable>true</scan:BlackBackgroundSelectable>
+        <scan:SupportedBackgroundLabColor> <scan:L> <scan:Min>0.0</scan:Min>
+            <scan:Max>100.0</scan:Max>
+            <scan:Normal>25.0</scan:Normal>
+            <scan:Step>1.0</scan:Step>
+        </scan:L>
+            <scan:a> <scan:Min>0.0</scan:Min>
+                <scan:Max>255.0</scan:Max>
+                <scan:Normal>63.0</scan:Normal>
+                <scan:Step>1.0</scan:Step>
+            </scan:a>
+            <scan:b> <scan:Min>0.0</scan:Min>
+                <scan:Max>255.0</scan:Max>
+                <scan:Normal>63.0</scan:Normal>
+                <scan:Step>1.0</scan:Step>
+            </scan:b>
+        </scan:SupportedBackgroundLabColor>
+        <scan:MaxOpticalXResolution>600</scan:MaxOpticalXResolution>
+        <scan:MaxOpticalYResolution>600</scan:MaxOpticalYResolution>
+    </scan:AdfSimplexInputCaps>
+        <scan:AdfDuplexInputCaps> <scan:MinWidth>32</scan:MinWidth>
+            <scan:MaxWidth>2550</scan:MaxWidth>
+            <scan:MinHeight>32</scan:MinHeight>
+            <scan:MaxHeight>4200</scan:MaxHeight>
+            <scan:MinPageWidth>1230</scan:MinPageWidth>
+            <scan:MinPageHeight>1740</scan:MinPageHeight>
+            <scan:MaxScanRegions>1</scan:MaxScanRegions>
+            <scan:SettingProfiles> <scan:SettingProfile> <scan:ColorModes> <scan:ColorMode>Grayscale8</scan:ColorMode>
+                <scan:ColorMode>RGB24</scan:ColorMode>
+                <scan:ColorMode>BlackAndWhite1</scan:ColorMode>
+                <scan:ColorMode>scan:AutoColorDetection</scan:ColorMode>
+            </scan:ColorModes>
+                <scan:ContentTypes> <pwg:ContentType>Photo</pwg:ContentType>
+                    <pwg:ContentType>Text</pwg:ContentType>
+                    <pwg:ContentType>TextAndPhoto</pwg:ContentType>
+                </scan:ContentTypes>
+                <scan:DocumentFormats> <pwg:DocumentFormat>image/jpeg</pwg:DocumentFormat>
+                    <pwg:DocumentFormat>application/octet-stream</pwg:DocumentFormat>
+                    <pwg:DocumentFormat>application/pdf</pwg:DocumentFormat>
+                    <scan:DocumentFormatExt>image/jpeg</scan:DocumentFormatExt>
+                    <scan:DocumentFormatExt>application/octet-stream</scan:DocumentFormatExt>
+                    <scan:DocumentFormatExt>application/pdf</scan:DocumentFormatExt>
+                </scan:DocumentFormats>
+                <scan:SupportedResolutions> <scan:DiscreteResolutions> <scan:DiscreteResolution>
+                    <scan:XResolution>75</scan:XResolution>
+                    <scan:YResolution>75</scan:YResolution>
+                </scan:DiscreteResolution>
+                    <scan:DiscreteResolution> <scan:XResolution>150</scan:XResolution>
+                        <scan:YResolution>150</scan:YResolution>
+                    </scan:DiscreteResolution>
+                    <scan:DiscreteResolution> <scan:XResolution>200</scan:XResolution>
+                        <scan:YResolution>200</scan:YResolution>
+                    </scan:DiscreteResolution>
+                    <scan:DiscreteResolution> <scan:XResolution>240</scan:XResolution>
+                        <scan:YResolution>240</scan:YResolution>
+                    </scan:DiscreteResolution>
+                    <scan:DiscreteResolution> <scan:XResolution>300</scan:XResolution>
+                        <scan:YResolution>300</scan:YResolution>
+                    </scan:DiscreteResolution>
+                    <scan:DiscreteResolution> <scan:XResolution>400</scan:XResolution>
+                        <scan:YResolution>400</scan:YResolution>
+                    </scan:DiscreteResolution>
+                    <scan:DiscreteResolution> <scan:XResolution>500</scan:XResolution>
+                        <scan:YResolution>500</scan:YResolution>
+                    </scan:DiscreteResolution>
+                    <scan:DiscreteResolution> <scan:XResolution>600</scan:XResolution>
+                        <scan:YResolution>600</scan:YResolution>
+                    </scan:DiscreteResolution>
+                </scan:DiscreteResolutions>
+                </scan:SupportedResolutions>
+                <scan:ColorSpaces> <scan:ColorSpace>YCC</scan:ColorSpace>
+                    <scan:ColorSpace>RGB</scan:ColorSpace>
+                    <scan:ColorSpace scan:default="true">sRGB</scan:ColorSpace>
+                </scan:ColorSpaces>
+                <scan:CcdChannels> <scan:CcdChannel>GrayCcdEmulated</scan:CcdChannel>
+                    <scan:CcdChannel>Red</scan:CcdChannel>
+                    <scan:CcdChannel>Green</scan:CcdChannel>
+                    <scan:CcdChannel>Blue</scan:CcdChannel>
+                </scan:CcdChannels>
+                <scan:BinaryRenderings> <scan:BinaryRendering>Threshold</scan:BinaryRendering>
+                </scan:BinaryRenderings>
+            </scan:SettingProfile>
+            </scan:SettingProfiles>
+            <scan:SupportedIntents> <scan:Intent>Document</scan:Intent>
+                <scan:Intent>Photo</scan:Intent>
+                <scan:Intent>Preview</scan:Intent>
+                <scan:Intent>TextAndGraphic</scan:Intent>
+            </scan:SupportedIntents>
+            <scan:BlackBackgroundSelectable>true</scan:BlackBackgroundSelectable>
+            <scan:SupportedBackgroundLabColor> <scan:L> <scan:Min>0.0</scan:Min>
+                <scan:Max>100.0</scan:Max>
+                <scan:Normal>25.0</scan:Normal>
+                <scan:Step>1.0</scan:Step>
+            </scan:L>
+                <scan:a> <scan:Min>0.0</scan:Min>
+                    <scan:Max>255.0</scan:Max>
+                    <scan:Normal>63.0</scan:Normal>
+                    <scan:Step>1.0</scan:Step>
+                </scan:a>
+                <scan:b> <scan:Min>0.0</scan:Min>
+                    <scan:Max>255.0</scan:Max>
+                    <scan:Normal>63.0</scan:Normal>
+                    <scan:Step>1.0</scan:Step>
+                </scan:b>
+            </scan:SupportedBackgroundLabColor>
+            <scan:MaxOpticalXResolution>600</scan:MaxOpticalXResolution>
+            <scan:MaxOpticalYResolution>600</scan:MaxOpticalYResolution>
+        </scan:AdfDuplexInputCaps>
+        <scan:FeederCapacity>50</scan:FeederCapacity>
+        <scan:Justification> <pwg:XImagePosition>Center</pwg:XImagePosition>
+            <pwg:YImagePosition>None</pwg:YImagePosition>
+        </scan:Justification>
+        <scan:AdfOptions> <scan:AdfOption>DetectPaperLoaded</scan:AdfOption>
+            <scan:AdfOption>Duplex</scan:AdfOption>
+            <scan:AdfOption>MultipickDetection</scan:AdfOption>
+        </scan:AdfOptions>
+    </scan:Adf>
+    <scan:AutoCrop>true</scan:AutoCrop>
+    <scan:AutoExposure>true</scan:AutoExposure>
+    <scan:StoredJobRequestSupport> <scan:MaxStoredJobRequests>5</scan:MaxStoredJobRequests>
+        <scan:TimeoutInSeconds>120</scan:TimeoutInSeconds>
+    </scan:StoredJobRequestSupport>
+    <scan:BlankPageDetection>true</scan:BlankPageDetection>
+    <scan:BrightnessSupport> <scan:Min>0</scan:Min>
+        <scan:Max>2000</scan:Max>
+        <scan:Normal>1000</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:BrightnessSupport>
+    <scan:CompressionFactorSupport> <scan:Min>0</scan:Min>
+        <scan:Max>11</scan:Max>
+        <scan:Normal>0</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:CompressionFactorSupport>
+    <scan:ContrastSupport> <scan:Min>0</scan:Min>
+        <scan:Max>2000</scan:Max>
+        <scan:Normal>1000</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:ContrastSupport>
+    <scan:GammaSupport> <scan:Min>0</scan:Min>
+        <scan:Max>400</scan:Max>
+        <scan:Normal>180</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:GammaSupport>
+    <scan:HighlightSupport> <scan:Min>0</scan:Min>
+        <scan:Max>2000</scan:Max>
+        <scan:Normal>1400</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:HighlightSupport>
+    <scan:NoiseRemovalSupport> <scan:Min>0</scan:Min>
+        <scan:Max>2000</scan:Max>
+        <scan:Normal>1000</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:NoiseRemovalSupport>
+    <scan:ShadowSupport> <scan:Min>0</scan:Min>
+        <scan:Max>2000</scan:Max>
+        <scan:Normal>78</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:ShadowSupport>
+    <scan:SharpenSupport> <scan:Min>0</scan:Min>
+        <scan:Max>2000</scan:Max>
+        <scan:Normal>1000</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:SharpenSupport>
+    <scan:ThresholdSupport> <scan:Min>0</scan:Min>
+        <scan:Max>255</scan:Max>
+        <scan:Normal>128</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:ThresholdSupport>
+    <scan:BlankPageSensitivitySupport> <scan:Min>0</scan:Min>
+        <scan:Max>255</scan:Max>
+        <scan:Normal>128</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:BlankPageSensitivitySupport>
+    <scan:ColorSensitivitySupport> <scan:Min>0</scan:Min>
+        <scan:Max>255</scan:Max>
+        <scan:Normal>128</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:ColorSensitivitySupport>
+    <scan:ColorRangeSupport> <scan:Min>0</scan:Min>
+        <scan:Max>255</scan:Max>
+        <scan:Normal>128</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:ColorRangeSupport>
+    <scan:OverscanLengthSupport> <scan:Min>0</scan:Min>
+        <scan:Max>60</scan:Max>
+        <scan:Normal>60</scan:Normal>
+        <scan:Step>1</scan:Step>
+    </scan:OverscanLengthSupport>
+</scan:ScannerCapabilities>

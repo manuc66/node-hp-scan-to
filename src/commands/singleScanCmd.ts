@@ -19,7 +19,7 @@ export async function singleScanCmd(
     singleScanConfig.directoryConfig.tempDirectory,
   );
 
-  const deviceCapabilities = await readDeviceCapabilities();
+  const deviceCapabilities = await readDeviceCapabilities(singleScanConfig.preferEscl);
 
   try {
     await singleScan(

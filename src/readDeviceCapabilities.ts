@@ -2,10 +2,12 @@ import { DeviceCapabilities } from "./type/DeviceCapabilities";
 import HPApi from "./HPApi";
 import ScanCaps from "./hpModels/ScanCaps";
 import DiscoveryTree from "./type/DiscoveryTree";
+import EsclScanCaps from "./hpModels/EsclScanCaps";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,
-): Promise<ScanCaps | null> {
+  preferEscl: boolean
+): Promise<ScanCaps | EsclScanCaps | null> {
   let scanCaps: ScanCaps | null = null;
   if (discoveryTree.ScanJobManifestURI != null) {
     const scanJobManifest = await HPApi.getScanJobManifest(
@@ -15,10 +17,29 @@ async function getScanCaps(
       scanCaps = await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);
     }
   }
-  return scanCaps;
+
+
+  let eSclScanCaps: EsclScanCaps | null = null;
+  if (discoveryTree.EsclManifest != null) {
+    const scanJobManifest = await HPApi.getEsclScanJobManifest(
+      discoveryTree.EsclManifest,
+    );
+    if (scanJobManifest.ScanCapsURI != null) {
+      eSclScanCaps = await HPApi.getEsclScanCaps(scanJobManifest.ScanCapsURI);
+    }
+  }
+
+  if (preferEscl && eSclScanCaps != null) {
+    return eSclScanCaps;
+  }
+  if (scanCaps != null) {
+    return scanCaps;
+  }
+
+  return eSclScanCaps;
 }
 
-export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
+export async function readDeviceCapabilities(preferEscl: boolean): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
   let useWalkupScanToComp = false;
 
@@ -44,7 +65,15 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
       "WARNING: No compatible device capabilities detected. The device may not support the listen command, and while the application will continue to run, it is likely to encounter a crash. If your device has an automatic document feeder, you may want to try using the adf-autoscan command.",
     );
   }
-  const scanCaps = await getScanCaps(discoveryTree);
+  const scanCaps = await getScanCaps(discoveryTree, preferEscl);
+
+  if (scanCaps == null) {
+    console.log(
+      "WARNING: No scan capabilities found on the device, the device is likely not well supported",
+    );
+  }
+
+
 
   return {
     supportsMultiItemScanFromPlaten,
@@ -57,5 +86,6 @@ export async function readDeviceCapabilities(): Promise<DeviceCapabilities> {
     adfDuplexMaxHeight: scanCaps?.adfDuplexMaxHeight || null,
     hasAdfDuplex: scanCaps?.hasAdfDuplex || false,
     hasAdfDetectPaperLoaded: scanCaps?.hasAdfDetectPaperLoaded || false,
+    isEscl: scanCaps?.isEscl || false,
   };
 }

@@ -38,7 +38,7 @@ export async function listenCmd(
     scanConfig.directoryConfig.tempDirectory,
   );
 
-  const deviceCapabilities = await readDeviceCapabilities();
+  const deviceCapabilities = await readDeviceCapabilities(scanConfig.preferEscl);
 
   let scanCount = 0;
   let keepActive = true;
