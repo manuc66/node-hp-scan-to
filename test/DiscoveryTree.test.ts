@@ -28,6 +28,9 @@ describe("DiscoveryTree", () => {
     it("Parse ScanJobManifest uri", async () => {
       expect(discoveryTree.ScanJobManifestURI).to.be.eq("/Scan/ScanJobManifest.xml");
     });
+    it("Parse eSclManifest uri", async () => {
+      expect(discoveryTree.EsclManifest).to.be.eq("/eSCL/eSclManifest.xml");
+    });
   });
   describe("Parsing discoveryTree2.xml", async () => {
     let discoveryTree: DiscoveryTree;
@@ -51,6 +54,36 @@ describe("DiscoveryTree", () => {
     });
     it("Parse ScanJobManifest uri", async () => {
       expect(discoveryTree.ScanJobManifestURI).to.be.eq("/Scan/ScanJobManifest.xml");
+    });
+    it("Parse eSclManifest uri", async () => {
+      expect(discoveryTree.EsclManifest).to.be.eq(null);
+    });
+  });
+  describe("Parsing discoveryTree3.xml", async () => {
+    let discoveryTree: DiscoveryTree;
+
+    before(async () => {
+      const content: string = await fs.readFile(
+        path.resolve(
+          __dirname,
+          "./asset/discoveryTree3.xml"
+        ),
+        { encoding: "utf8" }
+      );
+      discoveryTree = await DiscoveryTree.createDiscoveryTree(content);
+    });
+
+    it("Parse WalkupScanToCompManifest uri", async () => {
+      expect(discoveryTree.WalkupScanToCompManifestURI).to.be.eq("/WalkupScanToComp/WalkupScanToCompManifest.xml");
+    });
+    it("Parse WalkupScanManifest uri", async () => {
+      expect(discoveryTree.WalkupScanManifestURI).to.be.eq(null);
+    });
+    it("Parse ScanJobManifest uri", async () => {
+      expect(discoveryTree.ScanJobManifestURI).to.be.eq(null);
+    });
+    it("Parse eSclManifest uri", async () => {
+      expect(discoveryTree.EsclManifest).to.be.eq("/eSCL/eSclManifest.xml");
     });
   });
 });
