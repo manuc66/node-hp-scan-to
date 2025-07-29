@@ -1,6 +1,7 @@
 "use strict";
 import { InputSource } from "../type/InputSource";
 import { parseXmlString } from "./ParseXmlString";
+import { IScanStatus } from "./IScanStatus";
 
 export interface EsclScanStatusData {
   "scan:ScannerStatus": {
@@ -9,7 +10,7 @@ export interface EsclScanStatusData {
   };
 }
 
-export default class EsclScanStatus {
+export default class EsclScanStatus implements IScanStatus {
   private readonly data: EsclScanStatusData;
   constructor(data: EsclScanStatusData) {
     this.data = data;
@@ -35,8 +36,7 @@ export default class EsclScanStatus {
       // map value to the one of ScanStatus for commodity
       if (adfState === "ScannerAdfEmpty") {
         return "Empty";
-      }
-      else if (adfState === "ScannerAdfLoaded") {
+      } else if (adfState === "ScannerAdfLoaded") {
         return "Loaded";
       }
       return adfState;

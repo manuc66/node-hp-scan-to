@@ -1,3 +1,5 @@
+import { IScanStatus } from "../hpModels/IScanStatus";
+
 export interface DeviceCapabilities {
   supportsMultiItemScanFromPlaten: boolean;
   useWalkupScanToComp: boolean;
@@ -10,4 +12,5 @@ export interface DeviceCapabilities {
   hasAdfDuplex: boolean;
   hasAdfDetectPaperLoaded: boolean;
   isEscl: boolean;
+  getScanStatus: () => Promise<IScanStatus>
 }

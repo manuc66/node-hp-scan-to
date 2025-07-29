@@ -6,7 +6,6 @@ import { DeviceCapabilities } from "./type/DeviceCapabilities";
 import ScanJobSettings from "./hpModels/ScanJobSettings";
 import { ScanContent } from "./type/ScanContent";
 import { delay } from "./delay";
-import ScanStatus from "./hpModels/ScanStatus";
 import { InputSource } from "./type/InputSource";
 import { postProcessing } from "./postProcessing";
 import { SelectedScanTarget } from "./type/scanTargetDefinitions";
@@ -18,6 +17,7 @@ import {
   SingleScanConfig,
 } from "./type/scanConfigs";
 import { PageCountingStrategy } from "./type/pageCountingStrategy";
+import { IScanStatus } from "./hpModels/IScanStatus";
 
 export async function tryGetDestination(
   event: Event,
@@ -143,7 +143,7 @@ export async function saveScanFromEvent(
     destinationFolder = folder;
   }
 
-  const scanStatus = await HPApi.getScanStatus();
+  const scanStatus = await deviceCapabilities.getScanStatus();
 
   if (scanStatus.scannerState !== "Idle") {
     console.log("Scanner state is not Idle, aborting scan attempt...!");
@@ -286,7 +286,7 @@ export async function singleScan(
     destinationFolder = folder;
   }
 
-  const scanStatus = await HPApi.getScanStatus();
+  const scanStatus = await deviceCapabilities.getScanStatus();
 
   if (scanStatus.scannerState !== "Idle") {
     console.log("Scanner state is not Idle, aborting scan attempt...!");
@@ -348,13 +348,14 @@ export async function singleScan(
 export async function waitAdfLoaded(
   pollingInterval: number,
   startScanDelay: number,
+  getScanStatus :() => Promise<IScanStatus>
 ) {
   let ready = false;
   while (!ready) {
-    let scanStatus: ScanStatus = await HPApi.getScanStatus();
+    let scanStatus: IScanStatus = await getScanStatus();
     while (!scanStatus.isLoaded()) {
       await delay(pollingInterval);
-      scanStatus = await HPApi.getScanStatus();
+      scanStatus = await getScanStatus();
     }
     console.log(`ADF load detected`);
 
@@ -363,7 +364,7 @@ export async function waitAdfLoaded(
     const shortPollingInterval = 500;
     while (loaded && counter < startScanDelay) {
       await delay(shortPollingInterval);
-      scanStatus = await HPApi.getScanStatus();
+      scanStatus = await getScanStatus();
       loaded = scanStatus.isLoaded();
       counter += shortPollingInterval;
     }

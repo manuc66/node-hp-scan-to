@@ -392,6 +392,12 @@ function getScanConfiguration(
     10,
   );
 
+  const preferEscl = getConfiguredValue(
+    options.preferESCL,
+    fileConfig.prefer_escl,
+    false,
+  );
+
   const scanConfig: ScanConfig = {
     resolution,
     width: width,
@@ -399,7 +405,7 @@ function getScanConfiguration(
     directoryConfig,
     paperlessConfig,
     nextcloudConfig,
-    preferEscl: options.preferESCL || true
+    preferEscl
   };
   return scanConfig;
 }

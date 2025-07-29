@@ -1,8 +1,9 @@
-import { DeviceCapabilities } from "./type/DeviceCapabilities";
 import HPApi from "./HPApi";
 import ScanCaps from "./hpModels/ScanCaps";
 import DiscoveryTree from "./type/DiscoveryTree";
 import EsclScanCaps from "./hpModels/EsclScanCaps";
+import { IScanStatus } from "./hpModels/IScanStatus";
+import { DeviceCapabilities } from "./type/DeviceCapabilities";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,
@@ -73,8 +74,6 @@ export async function readDeviceCapabilities(preferEscl: boolean): Promise<Devic
     );
   }
 
-
-
   return {
     supportsMultiItemScanFromPlaten,
     useWalkupScanToComp,
@@ -87,5 +86,15 @@ export async function readDeviceCapabilities(preferEscl: boolean): Promise<Devic
     hasAdfDuplex: scanCaps?.hasAdfDuplex || false,
     hasAdfDetectPaperLoaded: scanCaps?.hasAdfDetectPaperLoaded || false,
     isEscl: scanCaps?.isEscl || false,
+    getScanStatus: async () : Promise<IScanStatus> => {
+      let scanStatus : IScanStatus;
+      if (scanCaps?.isEscl) {
+        scanStatus = await HPApi.getEsclScanStatus();
+      }
+      else {
+        scanStatus = await HPApi.getScanStatus();
+      }
+      return scanStatus;
+    }
   };
 }
