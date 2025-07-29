@@ -45,6 +45,7 @@ export async function adfAutoscanCmd(
       await waitAdfLoaded(
         adfAutoScanConfig.pollingInterval,
         adfAutoScanConfig.startScanDelay,
+        deviceCapabilities.getScanStatus
       );
 
       scanCount++;

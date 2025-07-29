@@ -1,6 +1,7 @@
 "use strict";
 import { InputSource } from "../type/InputSource";
 import { parseXmlString } from "./ParseXmlString";
+import { IScanStatus } from "./IScanStatus";
 
 export interface ScanStatusData {
   ScanStatus: {
@@ -9,7 +10,7 @@ export interface ScanStatusData {
   };
 }
 
-export default class ScanStatus {
+export default class ScanStatus implements IScanStatus  {
   private readonly data: ScanStatusData;
   constructor(data: ScanStatusData) {
     this.data = data;
