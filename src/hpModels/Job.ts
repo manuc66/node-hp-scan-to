@@ -36,7 +36,7 @@ export enum JobState {
 }
 
 export enum PageState {
-  ReadyToUpload = "ReadyToUpload"
+  ReadyToUpload = "ReadyToUpload",
 }
 
 export default class Job {
@@ -78,7 +78,11 @@ export default class Job {
     const preScanPage = this.data["j:Job"].ScanJob[0].PreScanPage;
 
     if (preScanPage) {
-      return EnumUtils.getState("PageState", PageState, preScanPage[0].PageState[0]);
+      return EnumUtils.getState(
+        "PageState",
+        PageState,
+        preScanPage[0].PageState[0],
+      );
     } else {
       return null;
     }
