@@ -17,7 +17,7 @@ describe("ScanJobSettings", () => {
         true);
 
       const content: string = await fs.readFile(
-        path.resolve(__dirname, "./asset/eSCLl_adf_duplex_job.xml"), {encoding:'utf8' }
+        path.resolve(__dirname, "./asset/eSCL_ScanJob_adf_duplex_job.xml"), {encoding:'utf8' }
       );
       expect((await scanJobSettings.toXML()).trimEnd()).to.be.eq(content.trimEnd().replace(/\r\n/g, "\n"));
     });
@@ -31,7 +31,7 @@ describe("ScanJobSettings", () => {
         false);
 
       const content: string = await fs.readFile(
-        path.resolve(__dirname, "./asset/eSCL_platen.xml"), {encoding:'utf8' }
+        path.resolve(__dirname, "./asset/eSCL_ScanJob_platen.xml"), {encoding:'utf8' }
       );
       expect((await scanJobSettings.toXML()).trimEnd()).to.be.eq(content.trimEnd().replace(/\r\n/g, "\n"));
     });
