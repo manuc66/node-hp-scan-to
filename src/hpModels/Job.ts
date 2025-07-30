@@ -1,6 +1,7 @@
 "use strict";
 
 import { parseXmlString } from "./ParseXmlString";
+import { EnumUtils } from "./EnumUtils";
 
 export interface JobData {
   "j:Job": {
@@ -26,6 +27,16 @@ export interface JobData {
     }[];
     "j:JobState": string[];
   };
+}
+
+export enum JobState {
+  Completed = "Completed",
+  Processing = "Processing",
+  Canceled = "Canceled",
+}
+
+export enum PageState {
+  ReadyToUpload = "ReadyToUpload"
 }
 
 export default class Job {
@@ -58,15 +69,16 @@ export default class Job {
     return null;
   }
 
-  get jobState(): // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-  "Completed" | "Processing" | "ReadyToUpload" | "Canceled" | string {
-    return this.data["j:Job"]["j:JobState"][0];
+  get jobState(): JobState {
+    const jobStateStr = this.data["j:Job"]["j:JobState"][0];
+    return EnumUtils.getState("JobState", JobState, jobStateStr);
   }
 
-  get pageState(): string | null {
+  get pageState(): PageState | null {
     const preScanPage = this.data["j:Job"].ScanJob[0].PreScanPage;
+
     if (preScanPage) {
-      return preScanPage[0].PageState[0];
+      return EnumUtils.getState("PageState", PageState, preScanPage[0].PageState[0]);
     } else {
       return null;
     }

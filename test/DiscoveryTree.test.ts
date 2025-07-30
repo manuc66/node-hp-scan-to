@@ -29,7 +29,7 @@ describe("DiscoveryTree", () => {
       expect(discoveryTree.ScanJobManifestURI).to.be.eq("/Scan/ScanJobManifest.xml");
     });
     it("Parse eSclManifest uri", async () => {
-      expect(discoveryTree.EsclManifest).to.be.eq("/eSCL/eSclManifest.xml");
+      expect(discoveryTree.EsclManifestURI).to.be.eq("/eSCL/eSclManifest.xml");
     });
   });
   describe("Parsing discoveryTree2.xml", async () => {
@@ -56,7 +56,7 @@ describe("DiscoveryTree", () => {
       expect(discoveryTree.ScanJobManifestURI).to.be.eq("/Scan/ScanJobManifest.xml");
     });
     it("Parse eSclManifest uri", async () => {
-      expect(discoveryTree.EsclManifest).to.be.eq(null);
+      expect(discoveryTree.EsclManifestURI).to.be.eq(null);
     });
   });
   describe("Parsing discoveryTree3.xml", async () => {
@@ -83,7 +83,7 @@ describe("DiscoveryTree", () => {
       expect(discoveryTree.ScanJobManifestURI).to.be.eq(null);
     });
     it("Parse eSclManifest uri", async () => {
-      expect(discoveryTree.EsclManifest).to.be.eq("/eSCL/eSclManifest.xml");
+      expect(discoveryTree.EsclManifestURI).to.be.eq("/eSCL/eSclManifest.xml");
     });
   });
 });

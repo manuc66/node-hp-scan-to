@@ -18,7 +18,6 @@ import WalkupScanDestination from "./hpModels/WalkupScanDestination";
 import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination";
 import WalkupScanDestinations from "./hpModels/WalkupScanDestinations";
 import WalkupScanToCompDestinations from "./hpModels/WalkupScanToCompDestinations";
-import ScanJobSettings from "./hpModels/ScanJobSettings";
 import Destination from "./hpModels/Destination";
 import WalkupScanToCompEvent from "./hpModels/WalkupScanToCompEvent";
 import DiscoveryTree from "./type/DiscoveryTree";
@@ -32,6 +31,7 @@ import * as net from "net";
 import EsclScanJobManifest from "./hpModels/EsclManifest";
 import EsclScanCaps from "./hpModels/EsclScanCaps";
 import EsclScanStatus from "./hpModels/EsclScanStatus";
+import { IScanJobSettings } from "./hpModels/IScanJobSettings";
 
 let printerIP = "192.168.1.11";
 let debug = false;
@@ -227,7 +227,9 @@ export default class HPApi {
     }
   }
 
-  static async getEsclScanJobManifest(uri: string): Promise<EsclScanJobManifest> {
+  static async getEsclScanJobManifest(
+    uri: string,
+  ): Promise<EsclScanJobManifest> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
       url: uri,
@@ -520,7 +522,7 @@ export default class HPApi {
     });
   }
 
-  static async postJob(job: ScanJobSettings): Promise<string> {
+  static async postJob(job: IScanJobSettings): Promise<string> {
     await HPApi.delay(500);
     const xml = await job.toXML();
     const response = await HPApi.callAxios({
@@ -544,6 +546,29 @@ export default class HPApi {
     }
   }
 
+  static async postEsclJob(job: IScanJobSettings): Promise<string> {
+    await HPApi.delay(500);
+    const xml = await job.toXML();
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: "/eSCL/ScanJobs",
+      method: "POST",
+      headers: { "Content-Type": "text/xml" },
+      data: xml,
+      responseType: "text",
+    });
+
+    if (
+      response.status === 201 &&
+      typeof response.headers.location === "string"
+    ) {
+      return response.headers.location;
+    } else {
+      throw new Error(
+        `Unexpected status code or location when posting job: ${response.status} - ${response.headers.location}`,
+      );
+    }
+  }
   /**
    * @param jobURL
    * @return {Promise<Job|*>}

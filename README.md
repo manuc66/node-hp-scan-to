@@ -198,6 +198,7 @@ Scan Options:
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
+  --prefer-eSCL                                                    Prefer eSCL protocol if available
 
 Options:
   --device-up-polling-interval <deviceUpPollingInterval>           Device up polling interval in milliseconds
@@ -262,6 +263,7 @@ Scan Options:
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
+  --prefer-eSCL                                                    Prefer eSCL protocol if available
   --duplex                                                         If specified, all the scans will be in duplex if the device support it
 
 Options:
@@ -354,6 +356,7 @@ Scan Options:
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
+  --prefer-eSCL                                                    Prefer eSCL protocol if available
   --duplex                                                         If specified, all the scans will be in duplex if the device support it
 
 Options:

@@ -33,22 +33,30 @@ export default class EsclScanJobManifest {
     return new EsclScanJobManifest(parsed);
   }
 
-  get ScanCapsURI(): string | null {
-    const scanCaps = this.data["man:Manifest"]["map:ResourceMap"]["0"][
+  private getResourceURI(resourceType: string): string | null {
+    const resourceNode = this.data["man:Manifest"]["map:ResourceMap"]["0"][
       "map:ResourceNode"
     ].find(
       (x) =>
-        x["map:ResourceType"][0]["scan:ScanResourceType"][0] === "ScannerCapabilities",
+        x["map:ResourceType"][0]["scan:ScanResourceType"][0] === resourceType,
     );
 
-    if (scanCaps === undefined) {
+    if (resourceNode === undefined) {
       return null;
     }
 
     return (
       this.data["man:Manifest"]["map:ResourceMap"]["0"]["map:ResourceLink"][0][
         "dd:ResourceURI"
-      ][0] + scanCaps["map:ResourceLink"][0]["dd:ResourceURI"][0]
+      ][0] + resourceNode["map:ResourceLink"][0]["dd:ResourceURI"][0]
     );
+  }
+
+  get scanCapsURI(): string | null {
+    return this.getResourceURI("ScannerCapabilities");
+  }
+
+  get scanJobsURI(): string | null {
+    return this.getResourceURI("ScanJobs");
   }
 }

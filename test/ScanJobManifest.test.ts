@@ -48,6 +48,10 @@ describe("ScanJobManifest", () => {
     it("Parse Status uri", async () => {
       expect(scanJobManifest.StatusURI).to.be.eq("/Scan/Status");
     });
+
+    it("Parse Status uri", async () => {
+      expect(scanJobManifest.StatusURI).to.be.eq("/Scan/Status");
+    });
   });
 
 });

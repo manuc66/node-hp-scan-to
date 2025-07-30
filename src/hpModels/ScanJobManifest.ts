@@ -36,7 +36,7 @@ export default class ScanJobManifest {
   get ScanCapsURI(): string | null {
     const scanCaps = this.data["man:Manifest"]["map:ResourceMap"]["0"][
       "map:ResourceNode"
-      ].find(
+    ].find(
       (x) =>
         x["map:ResourceType"][0]["scan:ScanResourceType"][0] === "ScanCaps",
     );
@@ -48,16 +48,15 @@ export default class ScanJobManifest {
     return (
       this.data["man:Manifest"]["map:ResourceMap"]["0"]["map:ResourceLink"][0][
         "dd:ResourceURI"
-        ][0] + scanCaps["map:ResourceLink"][0]["dd:ResourceURI"][0]
+      ][0] + scanCaps["map:ResourceLink"][0]["dd:ResourceURI"][0]
     );
   }
 
   get StatusURI(): string | null {
     const scanCaps = this.data["man:Manifest"]["map:ResourceMap"]["0"][
       "map:ResourceNode"
-      ].find(
-      (x) =>
-        x["map:ResourceType"][0]["scan:ScanResourceType"][0] === "Status",
+    ].find(
+      (x) => x["map:ResourceType"][0]["scan:ScanResourceType"][0] === "Status",
     );
 
     if (scanCaps === undefined) {
@@ -67,7 +66,7 @@ export default class ScanJobManifest {
     return (
       this.data["man:Manifest"]["map:ResourceMap"]["0"]["map:ResourceLink"][0][
         "dd:ResourceURI"
-        ][0] + scanCaps["map:ResourceLink"][0]["dd:ResourceURI"][0]
+      ][0] + scanCaps["map:ResourceLink"][0]["dd:ResourceURI"][0]
     );
   }
 }

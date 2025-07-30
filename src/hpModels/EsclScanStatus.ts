@@ -2,6 +2,9 @@
 import { InputSource } from "../type/InputSource";
 import { parseXmlString } from "./ParseXmlString";
 import { IScanStatus } from "./IScanStatus";
+import { ScannerState } from "./ScannerState";
+import { AdfState } from "./AdfState";
+import { EnumUtils } from "./EnumUtils";
 
 export interface EsclScanStatusData {
   "scan:ScannerStatus": {
@@ -21,32 +24,40 @@ export default class EsclScanStatus implements IScanStatus {
     return new EsclScanStatus(parsed);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-  get scannerState(): string | "Idle" {
-    return this.data["scan:ScannerStatus"]["pwg:State"]["0"];
+  get scannerState(): ScannerState  {
+    const scannerStateStr = this.data["scan:ScannerStatus"]["pwg:State"]["0"];
+    return EnumUtils.getState("ScannerState", ScannerState, scannerStateStr);
   }
 
-  get adfState(): string {
+  get adfState(): AdfState {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["scan:ScannerStatus"], "scan:AdfState")
+      Object.prototype.hasOwnProperty.call(
+        this.data["scan:ScannerStatus"],
+        "scan:AdfState",
+      )
     ) {
       //not all printers have an automatic document feeder
       const adfState = this.data["scan:ScannerStatus"]["scan:AdfState"]["0"];
 
       // map value to the one of ScanStatus for commodity
       if (adfState === "ScannerAdfEmpty") {
-        return "Empty";
+        return AdfState.Empty;
       } else if (adfState === "ScannerAdfLoaded") {
-        return "Loaded";
+        return AdfState.Loaded;
       }
-      return adfState;
+      else {
+        console.error(
+          `"${adfState}" is not a know AdfState value, you would be kind as a reader of this message to fill an issue to help at better state handling.`,
+        );
+      }
+      return adfState as AdfState;
     } else {
-      return "";
+      return AdfState.Empty;
     }
   }
 
   isLoaded(): boolean {
-    return this.adfState === "Loaded";
+    return this.adfState === AdfState.Loaded;
   }
 
   getInputSource(): InputSource {

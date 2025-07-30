@@ -1,8 +1,9 @@
 import xml2js from "xml2js";
 import { InputSource } from "../type/InputSource";
 import { parseXmlString } from "./ParseXmlString";
+import { IScanJobSettings } from "./IScanJobSettings";
 
-export default class EsclScanJobSettings {
+export default class EsclScanJobSettings implements IScanJobSettings {
   private readonly inputSource: InputSource;
   private readonly contentType: "Document" | "Photo";
   private readonly resolution: number;
@@ -28,11 +29,11 @@ export default class EsclScanJobSettings {
 
   async toXML(): Promise<string> {
     const rawJob =
-      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-      "<ScanSettings xmlns=\"http://schemas.hp.com/imaging/escl/2011/05/03\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://schemas.hp.com/imaging/escl/2011/05/03 Scan Schema - 0.26.xsd\">\n" +
-      "\t<Version xmlns=\"http://www.pwg.org/schemas/2010/12/sm\">2.62</Version>\n" +
+      '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<ScanSettings xmlns="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.hp.com/imaging/escl/2011/05/03 Scan Schema - 0.26.xsd">\n' +
+      '\t<Version xmlns="http://www.pwg.org/schemas/2010/12/sm">2.62</Version>\n' +
       "\t<Intent>Document</Intent>\n" +
-      "\t<ScanRegions xmlns=\"http://www.pwg.org/schemas/2010/12/sm\" xmlns:n0=\"http://www.pwg.org/schemas/2010/12/sm\" n0:MustHonor=\"false\">\n" +
+      '\t<ScanRegions xmlns="http://www.pwg.org/schemas/2010/12/sm" xmlns:n0="http://www.pwg.org/schemas/2010/12/sm" n0:MustHonor="false">\n' +
       "\t\t<ScanRegion>\n" +
       "\t\t\t<Height>4200</Height>\n" +
       "\t\t\t<Width>2550</Width>\n" +
@@ -42,7 +43,7 @@ export default class EsclScanJobSettings {
       "\t\t</ScanRegion>\n" +
       "\t</ScanRegions>\n" +
       "\t<DocumentFormatExt>image/jpeg</DocumentFormatExt>\n" +
-      "\t<InputSource xmlns=\"http://www.pwg.org/schemas/2010/12/sm\">Feeder</InputSource>\n" +
+      '\t<InputSource xmlns="http://www.pwg.org/schemas/2010/12/sm">Feeder</InputSource>\n' +
       "\t<XResolution>200</XResolution>\n" +
       "\t<YResolution>200</YResolution>\n" +
       "\t<ColorMode>RGB24</ColorMode>\n" +
@@ -111,17 +112,16 @@ export default class EsclScanJobSettings {
     if (this.inputSource === InputSource.Adf) {
       parsed.ScanSettings.InputSource = {
         _: "Feeder", // The text content
-        $: { xmlns: "http://www.pwg.org/schemas/2010/12/sm" } // The namespace
+        $: { xmlns: "http://www.pwg.org/schemas/2010/12/sm" }, // The namespace
       };
     } else {
       parsed.ScanSettings.InputSource = {
         _: "Platen", // The text content
-        $: { xmlns: "http://www.pwg.org/schemas/2010/12/sm" } // The namespace
+        $: { xmlns: "http://www.pwg.org/schemas/2010/12/sm" }, // The namespace
       };
     }
 
     parsed.ScanSettings.Duplex = this.isDuplex;
-
 
     const builder = new xml2js.Builder({
       xmldec: { version: "1.0", encoding: "UTF-8" },

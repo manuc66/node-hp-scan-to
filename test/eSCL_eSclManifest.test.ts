@@ -20,7 +20,10 @@ describe("ScanJobManifest", () => {
     });
 
     it("Parse ScanCaps uri", async () => {
-      expect(scanJobManifest.ScanCapsURI).to.be.eq("/eSCL/ScannerCapabilities");
+      expect(scanJobManifest.scanCapsURI).to.be.eq("/eSCL/ScannerCapabilities");
+    });
+    it("Parse ScanJobURI uri", async () => {
+      expect(scanJobManifest.scanJobsURI).to.be.eq("/eSCL/ScanJobs");
     });
   });
   describe("Parsing EsclManifest2.xml", async () => {
@@ -38,7 +41,10 @@ describe("ScanJobManifest", () => {
     });
 
     it("Parse ScanCaps uri", async () => {
-      expect(scanJobManifest.ScanCapsURI).to.be.eq("/eSCL/ScannerCapabilities");
+      expect(scanJobManifest.scanCapsURI).to.be.eq("/eSCL/ScannerCapabilities");
+    });
+    it("Parse ScanJobURI uri", async () => {
+      expect(scanJobManifest.scanJobsURI).to.be.eq("/eSCL/ScanJobs");
     });
   });
 

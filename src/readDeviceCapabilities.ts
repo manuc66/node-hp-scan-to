@@ -4,10 +4,14 @@ import DiscoveryTree from "./type/DiscoveryTree";
 import EsclScanCaps from "./hpModels/EsclScanCaps";
 import { IScanStatus } from "./hpModels/IScanStatus";
 import { DeviceCapabilities } from "./type/DeviceCapabilities";
+import { InputSource } from "./type/InputSource";
+import { IScanJobSettings } from "./hpModels/IScanJobSettings";
+import EsclScanJobSettings from "./hpModels/EsclScanJobSettings";
+import ScanJobSettings from "./hpModels/ScanJobSettings";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,
-  preferEscl: boolean
+  preferEscl: boolean,
 ): Promise<ScanCaps | EsclScanCaps | null> {
   let scanCaps: ScanCaps | null = null;
   if (discoveryTree.ScanJobManifestURI != null) {
@@ -19,14 +23,13 @@ async function getScanCaps(
     }
   }
 
-
   let eSclScanCaps: EsclScanCaps | null = null;
-  if (discoveryTree.EsclManifest != null) {
+  if (discoveryTree.EsclManifestURI != null) {
     const scanJobManifest = await HPApi.getEsclScanJobManifest(
-      discoveryTree.EsclManifest,
+      discoveryTree.EsclManifestURI,
     );
-    if (scanJobManifest.ScanCapsURI != null) {
-      eSclScanCaps = await HPApi.getEsclScanCaps(scanJobManifest.ScanCapsURI);
+    if (scanJobManifest.scanCapsURI != null) {
+      eSclScanCaps = await HPApi.getEsclScanCaps(scanJobManifest.scanCapsURI);
     }
   }
 
@@ -40,7 +43,9 @@ async function getScanCaps(
   return eSclScanCaps;
 }
 
-export async function readDeviceCapabilities(preferEscl: boolean): Promise<DeviceCapabilities> {
+export async function readDeviceCapabilities(
+  preferEscl: boolean,
+): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
   let useWalkupScanToComp = false;
 
@@ -74,6 +79,59 @@ export async function readDeviceCapabilities(preferEscl: boolean): Promise<Devic
     );
   }
 
+  const getScanStatus = async (): Promise<IScanStatus> => {
+    let scanStatus: IScanStatus;
+    if (scanCaps?.isEscl) {
+      scanStatus = await HPApi.getEsclScanStatus();
+    } else {
+      scanStatus = await HPApi.getScanStatus();
+    }
+    return scanStatus;
+  };
+
+  const createScanJobSettings = (
+    inputSource: InputSource,
+    contentType: "Document" | "Photo",
+    resolution: number,
+    width: number | null,
+    height: number | null,
+    isDuplex: boolean,
+  ): IScanJobSettings => {
+    let scanJobSettings: IScanJobSettings;
+    if (scanCaps?.isEscl) {
+      scanJobSettings = new EsclScanJobSettings(
+        inputSource,
+        contentType,
+        resolution,
+        width,
+        height,
+        isDuplex,
+      );
+    } else {
+      scanJobSettings = new ScanJobSettings(
+        inputSource,
+        contentType,
+        resolution,
+        width,
+        height,
+        isDuplex,
+      );
+    }
+    return scanJobSettings;
+  };
+
+  const submitScanJob = async (
+    scanJobSettings: IScanJobSettings,
+  ): Promise<string> => {
+    let jobUrl: string;
+    if (scanCaps?.isEscl) {
+      jobUrl = await HPApi.postEsclJob(scanJobSettings);
+    } else {
+      jobUrl = await HPApi.postJob(scanJobSettings);
+    }
+    return jobUrl;
+  };
+
   return {
     supportsMultiItemScanFromPlaten,
     useWalkupScanToComp,
@@ -86,15 +144,8 @@ export async function readDeviceCapabilities(preferEscl: boolean): Promise<Devic
     hasAdfDuplex: scanCaps?.hasAdfDuplex || false,
     hasAdfDetectPaperLoaded: scanCaps?.hasAdfDetectPaperLoaded || false,
     isEscl: scanCaps?.isEscl || false,
-    getScanStatus: async () : Promise<IScanStatus> => {
-      let scanStatus : IScanStatus;
-      if (scanCaps?.isEscl) {
-        scanStatus = await HPApi.getEsclScanStatus();
-      }
-      else {
-        scanStatus = await HPApi.getScanStatus();
-      }
-      return scanStatus;
-    }
+    getScanStatus,
+    createScanJobSettings,
+    submitScanJob,
   };
 }

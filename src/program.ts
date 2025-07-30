@@ -405,7 +405,7 @@ function getScanConfiguration(
     directoryConfig,
     paperlessConfig,
     nextcloudConfig,
-    preferEscl
+    preferEscl,
   };
   return scanConfig;
 }

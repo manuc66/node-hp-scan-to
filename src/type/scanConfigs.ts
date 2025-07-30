@@ -9,7 +9,7 @@ export type ScanConfig = {
   directoryConfig: DirectoryConfig;
   paperlessConfig: PaperlessConfig | undefined;
   nextcloudConfig: NextcloudConfig | undefined;
-  preferEscl: boolean
+  preferEscl: boolean;
 };
 export type AdfAutoScanConfig = ScanConfig & {
   isDuplex: boolean;
