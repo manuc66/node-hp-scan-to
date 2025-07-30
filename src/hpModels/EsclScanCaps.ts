@@ -39,9 +39,16 @@ export default class EsclScanCaps {
   }
 
   get platenMaxWidth(): number | null {
-    if (Object.prototype.hasOwnProperty.call(this.data["scan:ScannerCapabilities"], "scan:Platen")) {
+    if (
+      Object.prototype.hasOwnProperty.call(
+        this.data["scan:ScannerCapabilities"],
+        "scan:Platen",
+      )
+    ) {
       return Number.parseInt(
-        this.data["scan:ScannerCapabilities"]["scan:Platen"][0]["scan:PlatenInputCaps"][0]["scan:MaxWidth"][0],
+        this.data["scan:ScannerCapabilities"]["scan:Platen"][0][
+          "scan:PlatenInputCaps"
+        ][0]["scan:MaxWidth"][0],
         10,
       );
     } else {
@@ -50,11 +57,16 @@ export default class EsclScanCaps {
   }
 
   get platenMaxHeight(): number | null {
-    if (Object.prototype.hasOwnProperty.call(this.data["scan:ScannerCapabilities"], "scan:Platen")) {
+    if (
+      Object.prototype.hasOwnProperty.call(
+        this.data["scan:ScannerCapabilities"],
+        "scan:Platen",
+      )
+    ) {
       return Number.parseInt(
-        this.data["scan:ScannerCapabilities"]["scan:Platen"][0]["scan:PlatenInputCaps"][0][
-          "scan:MaxHeight"
-        ][0],
+        this.data["scan:ScannerCapabilities"]["scan:Platen"][0][
+          "scan:PlatenInputCaps"
+        ][0]["scan:MaxHeight"][0],
         10,
       );
     } else {
@@ -63,10 +75,16 @@ export default class EsclScanCaps {
   }
 
   get adfMaxWidth(): number | null {
-
-    if (Object.prototype.hasOwnProperty.call(this.data["scan:ScannerCapabilities"], "scan:Adf")) {
+    if (
+      Object.prototype.hasOwnProperty.call(
+        this.data["scan:ScannerCapabilities"],
+        "scan:Adf",
+      )
+    ) {
       return Number.parseInt(
-        this.data["scan:ScannerCapabilities"]["scan:Adf"][0]["scan:AdfSimplexInputCaps"][0]["scan:MaxWidth"][0],
+        this.data["scan:ScannerCapabilities"]["scan:Adf"][0][
+          "scan:AdfSimplexInputCaps"
+        ][0]["scan:MaxWidth"][0],
         10,
       );
     } else {
@@ -75,9 +93,16 @@ export default class EsclScanCaps {
   }
 
   get adfMaxHeight(): number | null {
-    if (Object.prototype.hasOwnProperty.call(this.data["scan:ScannerCapabilities"], "scan:Adf")) {
+    if (
+      Object.prototype.hasOwnProperty.call(
+        this.data["scan:ScannerCapabilities"],
+        "scan:Adf",
+      )
+    ) {
       return Number.parseInt(
-        this.data["scan:ScannerCapabilities"]["scan:Adf"][0]["scan:AdfSimplexInputCaps"][0]["scan:MaxHeight"][0],
+        this.data["scan:ScannerCapabilities"]["scan:Adf"][0][
+          "scan:AdfSimplexInputCaps"
+        ][0]["scan:MaxHeight"][0],
         10,
       );
     } else {
@@ -87,16 +112,19 @@ export default class EsclScanCaps {
 
   get adfDuplexMaxWidth(): number | null {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["scan:ScannerCapabilities"], "scan:Adf") &&
+      Object.prototype.hasOwnProperty.call(
+        this.data["scan:ScannerCapabilities"],
+        "scan:Adf",
+      ) &&
       Object.prototype.hasOwnProperty.call(
         this.data["scan:ScannerCapabilities"]["scan:Adf"][0],
         "scan:AdfDuplexInputCaps",
       )
     ) {
       return Number.parseInt(
-        this.data["scan:ScannerCapabilities"]["scan:Adf"][0]["scan:AdfDuplexInputCaps"][0][
-          "scan:MaxWidth"
-        ][0],
+        this.data["scan:ScannerCapabilities"]["scan:Adf"][0][
+          "scan:AdfDuplexInputCaps"
+        ][0]["scan:MaxWidth"][0],
         10,
       );
     } else {
@@ -106,16 +134,19 @@ export default class EsclScanCaps {
 
   get adfDuplexMaxHeight(): number | null {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["scan:ScannerCapabilities"], "scan:Adf") &&
+      Object.prototype.hasOwnProperty.call(
+        this.data["scan:ScannerCapabilities"],
+        "scan:Adf",
+      ) &&
       Object.prototype.hasOwnProperty.call(
         this.data["scan:ScannerCapabilities"]["scan:Adf"][0],
         "scan:AdfDuplexInputCaps",
       )
     ) {
       return Number.parseInt(
-        this.data["scan:ScannerCapabilities"]["scan:Adf"][0]["scan:AdfDuplexInputCaps"][0][
-          "scan:MaxHeight"
-        ][0],
+        this.data["scan:ScannerCapabilities"]["scan:Adf"][0][
+          "scan:AdfDuplexInputCaps"
+        ][0]["scan:MaxHeight"][0],
         10,
       );
     } else {
@@ -125,14 +156,19 @@ export default class EsclScanCaps {
 
   get hasAdfDetectPaperLoaded(): boolean {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["scan:ScannerCapabilities"], "scan:Adf") &&
+      Object.prototype.hasOwnProperty.call(
+        this.data["scan:ScannerCapabilities"],
+        "scan:Adf",
+      ) &&
       Object.prototype.hasOwnProperty.call(
         this.data["scan:ScannerCapabilities"]["scan:Adf"][0],
         "scan:AdfOptions",
       )
     ) {
       const options =
-        this.data["scan:ScannerCapabilities"]["scan:Adf"][0]["scan:AdfOptions"][0]["scan:AdfOption"];
+        this.data["scan:ScannerCapabilities"]["scan:Adf"][0][
+          "scan:AdfOptions"
+        ][0]["scan:AdfOption"];
       return options.includes("DetectPaperLoaded");
     }
     return false;
@@ -140,21 +176,25 @@ export default class EsclScanCaps {
 
   get hasAdfDuplex(): boolean {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["scan:ScannerCapabilities"], "scan:Adf") &&
+      Object.prototype.hasOwnProperty.call(
+        this.data["scan:ScannerCapabilities"],
+        "scan:Adf",
+      ) &&
       Object.prototype.hasOwnProperty.call(
         this.data["scan:ScannerCapabilities"]["scan:Adf"][0],
         "scan:AdfOptions",
       )
     ) {
       const options =
-        this.data["scan:ScannerCapabilities"]["scan:Adf"][0]["scan:AdfOptions"][0]["scan:AdfOption"];
+        this.data["scan:ScannerCapabilities"]["scan:Adf"][0][
+          "scan:AdfOptions"
+        ][0]["scan:AdfOption"];
       return options.includes("Duplex");
     }
     return false;
   }
 
-
   get isEscl(): boolean {
     return true;
-  };
+  }
 }

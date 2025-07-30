@@ -1,4 +1,6 @@
 import { IScanStatus } from "../hpModels/IScanStatus";
+import { IScanJobSettings } from "../hpModels/IScanJobSettings";
+import { InputSource } from "./InputSource";
 
 export interface DeviceCapabilities {
   supportsMultiItemScanFromPlaten: boolean;
@@ -12,5 +14,14 @@ export interface DeviceCapabilities {
   hasAdfDuplex: boolean;
   hasAdfDetectPaperLoaded: boolean;
   isEscl: boolean;
-  getScanStatus: () => Promise<IScanStatus>
+  getScanStatus: () => Promise<IScanStatus>;
+  createScanJobSettings: (
+    inputSource: InputSource,
+    contentType: "Document" | "Photo",
+    resolution: number,
+    width: number | null,
+    height: number | null,
+    isDuplex: boolean,
+  ) => IScanJobSettings;
+  submitScanJob: (scanJobSettings: IScanJobSettings) => Promise<string>;
 }

@@ -3,7 +3,6 @@ import WalkupScanDestination from "./hpModels/WalkupScanDestination";
 import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination";
 import HPApi from "./HPApi";
 import { DeviceCapabilities } from "./type/DeviceCapabilities";
-import ScanJobSettings from "./hpModels/ScanJobSettings";
 import { ScanContent } from "./type/ScanContent";
 import { delay } from "./delay";
 import { InputSource } from "./type/InputSource";
@@ -165,7 +164,7 @@ export async function saveScanFromEvent(
     isDuplex,
   );
 
-  const scanJobSettings = new ScanJobSettings(
+  const scanJobSettings = deviceCapabilities.createScanJobSettings(
     inputSource,
     contentType,
     scanConfig.resolution,
@@ -229,7 +228,7 @@ export async function scanFromAdf(
     adfAutoScanConfig.isDuplex,
   );
 
-  const scanJobSettings = new ScanJobSettings(
+  const scanJobSettings = deviceCapabilities.createScanJobSettings(
     InputSource.Adf,
     contentType,
     adfAutoScanConfig.resolution,
@@ -248,6 +247,7 @@ export async function scanFromAdf(
     scanJobContent,
     adfAutoScanConfig.directoryConfig.filePattern,
     PageCountingStrategy.Normal,
+    deviceCapabilities,
   );
 
   console.log(
@@ -309,7 +309,7 @@ export async function singleScan(
     scanConfig.isDuplex,
   );
 
-  const scanJobSettings = new ScanJobSettings(
+  const scanJobSettings = deviceCapabilities.createScanJobSettings(
     inputSource,
     contentType,
     scanConfig.resolution,
@@ -328,6 +328,7 @@ export async function singleScan(
     scanJobContent,
     scanConfig.directoryConfig.filePattern,
     PageCountingStrategy.Normal,
+    deviceCapabilities,
   );
 
   console.log(
@@ -348,7 +349,7 @@ export async function singleScan(
 export async function waitAdfLoaded(
   pollingInterval: number,
   startScanDelay: number,
-  getScanStatus :() => Promise<IScanStatus>
+  getScanStatus: () => Promise<IScanStatus>,
 ) {
   let ready = false;
   while (!ready) {

@@ -2,6 +2,9 @@
 import { InputSource } from "../type/InputSource";
 import { parseXmlString } from "./ParseXmlString";
 import { IScanStatus } from "./IScanStatus";
+import { AdfState } from "./AdfState";
+import { ScannerState } from "./ScannerState";
+import { EnumUtils } from "./EnumUtils";
 
 export interface ScanStatusData {
   ScanStatus: {
@@ -10,7 +13,7 @@ export interface ScanStatusData {
   };
 }
 
-export default class ScanStatus implements IScanStatus  {
+export default class ScanStatus implements IScanStatus {
   private readonly data: ScanStatusData;
   constructor(data: ScanStatusData) {
     this.data = data;
@@ -21,24 +24,22 @@ export default class ScanStatus implements IScanStatus  {
     return new ScanStatus(parsed);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-  get scannerState(): string | "Idle" {
-    return this.data["ScanStatus"].ScannerState["0"];
+  get scannerState(): ScannerState {
+    return EnumUtils.getState("ScannerState", ScannerState, this.data["ScanStatus"].ScannerState["0"]);
   }
 
-  get adfState(): string {
+  get adfState(): AdfState {
     if (
       Object.prototype.hasOwnProperty.call(this.data["ScanStatus"], "AdfState")
     ) {
-      //not all printers have an automatic document feeder
-      return this.data["ScanStatus"].AdfState["0"];
+      return EnumUtils.getState("AdfState", AdfState, this.data["ScanStatus"].AdfState["0"]);
     } else {
-      return "";
+      return AdfState.Empty;
     }
   }
 
   isLoaded(): boolean {
-    return this.adfState === "Loaded";
+    return this.adfState === AdfState.Loaded;
   }
 
   getInputSource(): InputSource {

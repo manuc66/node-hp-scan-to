@@ -1,9 +1,8 @@
 import HPApi from "./HPApi";
 import { DeviceCapabilities } from "./type/DeviceCapabilities";
 import { waitForScanEventFromTarget } from "./listening";
-import ScanJobSettings from "./hpModels/ScanJobSettings";
 import { ScanContent, ScanPage } from "./type/ScanContent";
-import Job from "./hpModels/Job";
+import Job, { JobState, PageState } from "./hpModels/Job";
 import { delay } from "./delay";
 import PathHelper from "./PathHelper";
 import { InputSource } from "./type/InputSource";
@@ -11,6 +10,7 @@ import { SelectedScanTarget } from "./type/scanTargetDefinitions";
 import fs from "fs/promises";
 import JpegUtil from "./JpegUtil";
 import { PageCountingStrategy } from "./type/pageCountingStrategy";
+import { IScanJobSettings } from "./hpModels/IScanJobSettings";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -19,17 +19,18 @@ async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   let isReadyToUpload = false;
   do {
     job = await HPApi.getJob(jobUrl);
-    if (job.jobState === "Canceled") {
+    const jobStateStr = job.jobState.toString();
+    if (job.jobState === JobState.Canceled) {
       return job;
     } else if (
-      job.pageState === "ReadyToUpload" ||
-      job.jobState === "Completed"
+      job.pageState === PageState.ReadyToUpload ||
+      job.jobState === JobState.Completed
     ) {
       isReadyToUpload = true;
-    } else if (job.jobState == "Processing") {
+    } else if (job.jobState == JobState.Processing) {
       isReadyToUpload = false;
     } else {
-      console.log(`Unknown jobState: ${job.jobState}`);
+      console.log(`Unknown jobState: ${jobStateStr}`);
     }
     await delay(300);
   } while (!isReadyToUpload);
@@ -74,7 +75,7 @@ async function handleScanProcessingState(
   date: Date,
 ): Promise<ScanPage | null> {
   if (
-    job.pageState == "ReadyToUpload" &&
+    job.pageState == PageState.ReadyToUpload &&
     job.binaryURL != null &&
     job.currentPageNumber != null
   ) {
@@ -114,30 +115,28 @@ async function handleScanProcessingState(
   }
 }
 
-export async function executeScanJob(
-  scanJobSettings: ScanJobSettings,
+async function hpScanJobHandling(
+  jobUrl: string,
+  pageCountingStrategy:
+    | PageCountingStrategy
+    | PageCountingStrategy.OddOnly
+    | PageCountingStrategy.EvenOnly,
+  scanJobContent: ScanContent,
   inputSource: InputSource,
   folder: string,
   scanCount: number,
-  scanJobContent: ScanContent,
   filePattern: string | undefined,
-  pageCountingStrategy: PageCountingStrategy,
-): Promise<"Completed" | "Canceled"> {
-  const jobUrl = await HPApi.postJob(scanJobSettings);
-
-  console.log(`Creating job with settings: ${JSON.stringify(scanJobSettings)}`);
-
-  console.log("New job created:", jobUrl);
-
+) {
   let job = await HPApi.getJob(jobUrl);
-  while (job.jobState !== "Completed") {
+  while (job.jobState !== JobState.Completed) {
     job = await waitDeviceUntilItIsReadyToUploadOrCompleted(jobUrl);
 
-    if (job.jobState == "Completed") {
+    if (job.jobState == JobState.Completed) {
       continue;
     }
 
-    if (job.jobState === "Processing") {
+    const jobStateStr = job.jobState.toString();
+    if (job.jobState === JobState.Processing) {
       let pageNumber;
       if (pageCountingStrategy === PageCountingStrategy.Normal) {
         pageNumber = scanJobContent.elements.length + 1;
@@ -162,14 +161,14 @@ export async function executeScanJob(
         new Date(),
       );
       job = await HPApi.getJob(jobUrl);
-      if (page != null && job.jobState != "Canceled") {
+      if (page != null && job.jobState != JobState.Canceled) {
         scanJobContent.elements.push(page);
       }
-    } else if (job.jobState === "Canceled") {
+    } else if (job.jobState === JobState.Canceled) {
       console.log("Job cancelled by device");
       break;
     } else {
-      console.log(`Unhandled jobState: ${job.jobState}`);
+      console.log(`Unhandled jobState: ${jobStateStr}`);
       await delay(200);
     }
   }
@@ -177,6 +176,39 @@ export async function executeScanJob(
     `Job state: ${job.jobState}, totalPages: ${scanJobContent.elements.length}:`,
   );
   return job.jobState;
+}
+
+export async function executeScanJob(
+  scanJobSettings: IScanJobSettings,
+  inputSource: InputSource,
+  folder: string,
+  scanCount: number,
+  scanJobContent: ScanContent,
+  filePattern: string | undefined,
+  pageCountingStrategy: PageCountingStrategy,
+  deviceCapabilities: DeviceCapabilities,
+): Promise<"Completed" | "Canceled"> {
+  const jobUrl = await deviceCapabilities.submitScanJob(scanJobSettings);
+
+  console.log(`Creating job with settings: ${JSON.stringify(scanJobSettings)}`);
+
+  console.log("New job created:", jobUrl);
+
+  let jobState: JobState;
+  if (deviceCapabilities.isEscl) {
+    jobState = JobState.Canceled;
+  } else {
+    jobState = await hpScanJobHandling(
+      jobUrl,
+      pageCountingStrategy,
+      scanJobContent,
+      inputSource,
+      folder,
+      scanCount,
+      filePattern,
+    );
+  }
+  return jobState;
 }
 
 async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
@@ -205,7 +237,7 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
 }
 
 export async function executeScanJobs(
-  scanJobSettings: ScanJobSettings,
+  scanJobSettings: IScanJobSettings,
   inputSource: InputSource,
   folder: string,
   scanCount: number,
@@ -223,6 +255,7 @@ export async function executeScanJobs(
     scanJobContent,
     filePattern,
     pageCountingStrategy,
+    deviceCapabilities,
   );
   const scanTarget = {
     resourceURI: selectedScanTarget.resourceURI,
@@ -254,6 +287,7 @@ export async function executeScanJobs(
         scanJobContent,
         filePattern,
         pageCountingStrategy,
+        deviceCapabilities,
       );
       if (jobState !== "Completed") {
         return;

@@ -154,5 +154,5 @@ export default class ScanCaps {
 
   get isEscl(): boolean {
     return false;
-  };
+  }
 }

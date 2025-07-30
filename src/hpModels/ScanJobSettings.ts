@@ -1,8 +1,9 @@
 import xml2js from "xml2js";
 import { InputSource } from "../type/InputSource";
 import { parseXmlString } from "./ParseXmlString";
+import { IScanJobSettings } from "./IScanJobSettings";
 
-export default class ScanJobSettings {
+export default class ScanJobSettings implements IScanJobSettings {
   private readonly inputSource: InputSource;
   private readonly contentType: "Document" | "Photo";
   private readonly resolution: number;
