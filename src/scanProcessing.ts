@@ -17,6 +17,7 @@ import {
 } from "./type/scanConfigs";
 import { PageCountingStrategy } from "./type/pageCountingStrategy";
 import { IScanStatus } from "./hpModels/IScanStatus";
+import { ScannerState } from "./hpModels/ScannerState";
 
 export async function tryGetDestination(
   event: Event,
@@ -144,7 +145,7 @@ export async function saveScanFromEvent(
 
   const scanStatus = await deviceCapabilities.getScanStatus();
 
-  if (scanStatus.scannerState !== "Idle") {
+  if (scanStatus.scannerState !== ScannerState.Idle) {
     console.log("Scanner state is not Idle, aborting scan attempt...!");
   }
 
@@ -288,7 +289,7 @@ export async function singleScan(
 
   const scanStatus = await deviceCapabilities.getScanStatus();
 
-  if (scanStatus.scannerState !== "Idle") {
+  if (scanStatus.scannerState !== ScannerState.Idle) {
     console.log("Scanner state is not Idle, aborting scan attempt...!");
   }
 
