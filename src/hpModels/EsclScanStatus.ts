@@ -24,7 +24,7 @@ export default class EsclScanStatus implements IScanStatus {
     return new EsclScanStatus(parsed);
   }
 
-  get scannerState(): ScannerState  {
+  get scannerState(): ScannerState {
     const scannerStateStr = this.data["scan:ScannerStatus"]["pwg:State"]["0"];
     return EnumUtils.getState("ScannerState", ScannerState, scannerStateStr);
   }
@@ -44,8 +44,7 @@ export default class EsclScanStatus implements IScanStatus {
         return AdfState.Empty;
       } else if (adfState === "ScannerAdfLoaded") {
         return AdfState.Loaded;
-      }
-      else {
+      } else {
         console.error(
           `"${adfState}" is not a know AdfState value, you would be kind as a reader of this message to fill an issue to help at better state handling.`,
         );

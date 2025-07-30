@@ -25,14 +25,22 @@ export default class ScanStatus implements IScanStatus {
   }
 
   get scannerState(): ScannerState {
-    return EnumUtils.getState("ScannerState", ScannerState, this.data["ScanStatus"].ScannerState["0"]);
+    return EnumUtils.getState(
+      "ScannerState",
+      ScannerState,
+      this.data["ScanStatus"].ScannerState["0"],
+    );
   }
 
   get adfState(): AdfState {
     if (
       Object.prototype.hasOwnProperty.call(this.data["ScanStatus"], "AdfState")
     ) {
-      return EnumUtils.getState("AdfState", AdfState, this.data["ScanStatus"].AdfState["0"]);
+      return EnumUtils.getState(
+        "AdfState",
+        AdfState,
+        this.data["ScanStatus"].AdfState["0"],
+      );
     } else {
       return AdfState.Empty;
     }
