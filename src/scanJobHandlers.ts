@@ -11,6 +11,7 @@ import fs from "fs/promises";
 import JpegUtil from "./JpegUtil";
 import { PageCountingStrategy } from "./type/pageCountingStrategy";
 import { IScanJobSettings } from "./hpModels/IScanJobSettings";
+import { EventType } from "./hpModels/WalkupScanToCompEvent";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -187,7 +188,7 @@ export async function executeScanJob(
   filePattern: string | undefined,
   pageCountingStrategy: PageCountingStrategy,
   deviceCapabilities: DeviceCapabilities,
-): Promise<"Completed" | "Canceled"> {
+): Promise<JobState> {
   const jobUrl = await deviceCapabilities.submitScanJob(scanJobSettings);
 
   console.log(`Creating job with settings: ${JSON.stringify(scanJobSettings)}`);
@@ -219,18 +220,18 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
 
     const walkupScanToCompEvent =
       await HPApi.getWalkupScanToCompEvent(compEventURI);
-    const message = walkupScanToCompEvent.eventType;
-
-    if (message === "ScanNewPageRequested") {
+    const eventType = walkupScanToCompEvent.eventType;
+    const eventTypeStr = eventType.toString();
+    if (eventType === EventType.ScanNewPageRequested) {
       startNewScanJob = true;
       wait = false;
-    } else if (message === "ScanPagesComplete") {
+    } else if (eventType === EventType.ScanPagesComplete) {
       wait = false;
-    } else if (message === "ScanRequested") {
+    } else if (eventType === EventType.ScanRequested) {
       // continue waiting
     } else {
       wait = false;
-      console.log(`Unknown eventType: ${message}`);
+      console.log(`Unknown eventType: ${eventTypeStr}`);
     }
   }
   return startNewScanJob;
@@ -264,7 +265,7 @@ export async function executeScanJobs(
   };
   let lastEvent = selectedScanTarget.event;
   if (
-    jobState === "Completed" &&
+    jobState === JobState.Completed &&
     lastEvent.compEventURI &&
     inputSource !== InputSource.Adf &&
     lastEvent.destinationURI &&
@@ -289,7 +290,7 @@ export async function executeScanJobs(
         pageCountingStrategy,
         deviceCapabilities,
       );
-      if (jobState !== "Completed") {
+      if (jobState !== JobState.Completed) {
         return;
       }
       if (!lastEvent.destinationURI) {
