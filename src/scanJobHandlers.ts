@@ -239,7 +239,7 @@ async function eSCLScanJobHandling(
 
     jobStateReason = scannerStatus.getJobStateReason(jobUrl);
   } while (
-    jobStateReason === null ||
+    jobStateReason !== null &&
     jobStateReason !== JobStateReason.JobCompletedSuccessfully
   );
   return JobState.Completed;
