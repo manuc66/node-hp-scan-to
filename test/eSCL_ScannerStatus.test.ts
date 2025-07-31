@@ -2,7 +2,7 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
-import EsclScanStatus, { JobStateReason } from "../src/hpModels/EsclScanStatus";
+import EsclScanStatus, { eSCLJobState, JobStateReason } from "../src/hpModels/EsclScanStatus";
 import { AdfState } from "../src/hpModels/AdfState";
 import { ScannerState } from "../src/hpModels/ScannerState";
 import { InputSource } from "../src/type/InputSource";
@@ -35,10 +35,12 @@ describe("EsclScanStatus", () => {
       expect(scanStatus.isLoaded()).to.be.eq(false);
     });
     it("getJobStateReason", async () => {
-      it("getJobStateReason", async () => {
-        expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/1")).to.be.eq(null);
-        expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/2")).to.be.eq(null);
-      });
+      expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/1")).to.be.eq(null);
+      expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/2")).to.be.eq(null);
+    });
+    it("getJobState", async () => {
+      expect(scanStatus.getJobState("/eSCL/ScanJobs/1")).to.be.eq(null);
+      expect(scanStatus.getJobState("/eSCL/ScanJobs/2")).to.be.eq(null);
     });
   });
   describe("Parsing eSCL_ScannerStatus_loaded.xml", async () => {
@@ -71,6 +73,10 @@ describe("EsclScanStatus", () => {
       expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/1")).to.be.eq(JobStateReason.JobCompletedSuccessfully);
       expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/2")).to.be.eq(null);
     });
+    it("getJobState", async () => {
+      expect(scanStatus.getJobState("/eSCL/ScanJobs/1")).to.be.eq(eSCLJobState.Completed);
+      expect(scanStatus.getJobState("/eSCL/ScanJobs/2")).to.be.eq(null);
+    });
   });
   describe("Parsing eSCL_ScannerStatus_processing.xml", async () => {
     let scanStatus: EsclScanStatus;
@@ -102,6 +108,10 @@ describe("EsclScanStatus", () => {
       expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/1")).to.be.eq(JobStateReason.JobCompletedSuccessfully);
       expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/2")).to.be.eq(JobStateReason.JobScanning);
     });
+    it("getJobState", async () => {
+      expect(scanStatus.getJobState("/eSCL/ScanJobs/1")).to.be.eq(eSCLJobState.Completed);
+      expect(scanStatus.getJobState("/eSCL/ScanJobs/2")).to.be.eq(eSCLJobState.Processing);
+    });
   });
   describe("Parsing eSCL_ScannerStatus_completed.xml", async () => {
     let scanStatus: EsclScanStatus;
@@ -132,6 +142,10 @@ describe("EsclScanStatus", () => {
     it("getJobStateReason", async () => {
       expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/1")).to.be.eq(JobStateReason.JobCompletedSuccessfully);
       expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/2")).to.be.eq(JobStateReason.JobCompletedSuccessfully);
+    });
+    it("getJobState", async () => {
+      expect(scanStatus.getJobState("/eSCL/ScanJobs/1")).to.be.eq(eSCLJobState.Completed);
+      expect(scanStatus.getJobState("/eSCL/ScanJobs/2")).to.be.eq(eSCLJobState.Completed);
     });
   });
 });

@@ -117,6 +117,26 @@ async function handleScanProcessingState(
   }
 }
 
+function getPageNumber(
+  pageCountingStrategy:
+    | PageCountingStrategy
+    | PageCountingStrategy.OddOnly
+    | PageCountingStrategy.EvenOnly,
+  scanJobContent: ScanContent,
+) {
+  if (pageCountingStrategy === PageCountingStrategy.Normal) {
+    return scanJobContent.elements.length + 1;
+  } else if (pageCountingStrategy === PageCountingStrategy.OddOnly) {
+    return scanJobContent.elements.length * 2 + 1;
+  } else if (pageCountingStrategy === PageCountingStrategy.EvenOnly) {
+    return (scanJobContent.elements.length + 1) * 2;
+  } else {
+    throw new Error(
+      `Unknown page counting strategy: ` + JSON.stringify(pageCountingStrategy),
+    );
+  }
+}
+
 async function hpScanJobHandling(
   jobUrl: string,
   pageCountingStrategy:
@@ -139,19 +159,7 @@ async function hpScanJobHandling(
 
     const jobStateStr = job.jobState.toString();
     if (job.jobState === JobState.Processing) {
-      let pageNumber;
-      if (pageCountingStrategy === PageCountingStrategy.Normal) {
-        pageNumber = scanJobContent.elements.length + 1;
-      } else if (pageCountingStrategy === PageCountingStrategy.OddOnly) {
-        pageNumber = scanJobContent.elements.length * 2 + 1;
-      } else if (pageCountingStrategy === PageCountingStrategy.EvenOnly) {
-        pageNumber = (scanJobContent.elements.length + 1) * 2;
-      } else {
-        throw new Error(
-          `Unknown page counting strategy: ` +
-            JSON.stringify(pageCountingStrategy),
-        );
-      }
+      const pageNumber = getPageNumber(pageCountingStrategy, scanJobContent);
 
       const page = await handleScanProcessingState(
         job,
@@ -195,32 +203,23 @@ async function eSCLScanJobHandling(
 ) {
   let jobStateReason: JobStateReason | null;
   do {
-    let pageNumber;
-    if (pageCountingStrategy === PageCountingStrategy.Normal) {
-      pageNumber = scanJobContent.elements.length + 1;
-    } else if (pageCountingStrategy === PageCountingStrategy.OddOnly) {
-      pageNumber = scanJobContent.elements.length * 2 + 1;
-    } else if (pageCountingStrategy === PageCountingStrategy.EvenOnly) {
-      pageNumber = (scanJobContent.elements.length + 1) * 2;
-    } else {
-      throw new Error(
-        `Unknown page counting strategy: ` +
-          JSON.stringify(pageCountingStrategy),
-      );
-    }
+    await delay(1000);
+    const pageNumber = getPageNumber(pageCountingStrategy, scanJobContent);
 
-    const currentPageNumber = pageNumber;
     const destinationFilePath = PathHelper.getFileForPage(
       folder,
       scanCount,
-      currentPageNumber,
+      pageNumber,
       filePattern,
       "jpg",
       new Date(),
     );
 
+    const jobURI = new URL(jobUrl).pathname;
+
+
     const filePath = await HPApi.downloadEsclPage(jobUrl, destinationFilePath);
-    const scanImageInfo = await HPApi.getEsclScanImageInfo(jobUrl);
+    const scanImageInfo = await HPApi.getEsclScanImageInfo(jobURI);
 
     const scannerStatus = await HPApi.getEsclScanStatus();
 
@@ -228,7 +227,7 @@ async function eSCLScanJobHandling(
 
     const page: ScanPage = {
       path: filePath,
-      pageNumber: currentPageNumber,
+      pageNumber,
       width: scanImageInfo.actualWidth,
       height: scanImageInfo.actualHeight,
       xResolution: scanJobSettings.xResolution,
@@ -237,7 +236,7 @@ async function eSCLScanJobHandling(
 
     scanJobContent.elements.push(page);
 
-    jobStateReason = scannerStatus.getJobStateReason(jobUrl);
+    jobStateReason = scannerStatus.getJobStateReason(jobURI);
   } while (
     jobStateReason !== null &&
     jobStateReason !== JobStateReason.JobCompletedSuccessfully
