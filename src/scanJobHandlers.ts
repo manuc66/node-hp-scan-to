@@ -12,6 +12,7 @@ import JpegUtil from "./JpegUtil";
 import { PageCountingStrategy } from "./type/pageCountingStrategy";
 import { IScanJobSettings } from "./hpModels/IScanJobSettings";
 import { EventType } from "./hpModels/WalkupScanToCompEvent";
+import { JobStateReason } from "./hpModels/EsclScanStatus";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -179,6 +180,71 @@ async function hpScanJobHandling(
   return job.jobState;
 }
 
+async function eSCLScanJobHandling(
+  jobUrl: string,
+  scanJobSettings: IScanJobSettings,
+  pageCountingStrategy:
+    | PageCountingStrategy
+    | PageCountingStrategy.OddOnly
+    | PageCountingStrategy.EvenOnly,
+  scanJobContent: ScanContent,
+  _inputSource: InputSource,
+  folder: string,
+  scanCount: number,
+  filePattern: string | undefined,
+) {
+  let jobStateReason: JobStateReason | null;
+  do {
+    let pageNumber;
+    if (pageCountingStrategy === PageCountingStrategy.Normal) {
+      pageNumber = scanJobContent.elements.length + 1;
+    } else if (pageCountingStrategy === PageCountingStrategy.OddOnly) {
+      pageNumber = scanJobContent.elements.length * 2 + 1;
+    } else if (pageCountingStrategy === PageCountingStrategy.EvenOnly) {
+      pageNumber = (scanJobContent.elements.length + 1) * 2;
+    } else {
+      throw new Error(
+        `Unknown page counting strategy: ` +
+          JSON.stringify(pageCountingStrategy),
+      );
+    }
+
+    const currentPageNumber = pageNumber;
+    const destinationFilePath = PathHelper.getFileForPage(
+      folder,
+      scanCount,
+      currentPageNumber,
+      filePattern,
+      "jpg",
+      new Date(),
+    );
+
+    const filePath = await HPApi.downloadEsclPage(jobUrl, destinationFilePath);
+    const scanImageInfo = await HPApi.getEsclScanImageInfo(jobUrl);
+
+    const scannerStatus = await HPApi.getEsclScanStatus();
+
+    console.log("Page downloaded to:", filePath);
+
+    const page: ScanPage = {
+      path: filePath,
+      pageNumber: currentPageNumber,
+      width: scanImageInfo.actualWidth,
+      height: scanImageInfo.actualHeight,
+      xResolution: scanJobSettings.xResolution,
+      yResolution: scanJobSettings.yResolution,
+    };
+
+    scanJobContent.elements.push(page);
+
+    jobStateReason = scannerStatus.getJobStateReason(jobUrl);
+  } while (
+    jobStateReason === null ||
+    jobStateReason !== JobStateReason.JobCompletedSuccessfully
+  );
+  return JobState.Completed;
+}
+
 export async function executeScanJob(
   scanJobSettings: IScanJobSettings,
   inputSource: InputSource,
@@ -197,7 +263,16 @@ export async function executeScanJob(
 
   let jobState: JobState;
   if (deviceCapabilities.isEscl) {
-    jobState = JobState.Canceled;
+    jobState = await eSCLScanJobHandling(
+      jobUrl,
+      scanJobSettings,
+      pageCountingStrategy,
+      scanJobContent,
+      inputSource,
+      folder,
+      scanCount,
+      filePattern,
+    );
   } else {
     jobState = await hpScanJobHandling(
       jobUrl,
