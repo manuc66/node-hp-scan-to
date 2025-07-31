@@ -37,6 +37,7 @@ export enum JobState {
 
 export enum PageState {
   ReadyToUpload = "ReadyToUpload",
+  PreparingScan = "PreparingScan",
 }
 
 export default class Job {
