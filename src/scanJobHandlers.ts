@@ -217,7 +217,6 @@ async function eSCLScanJobHandling(
 
     const jobURI = new URL(jobUrl).pathname;
 
-
     const filePath = await HPApi.downloadEsclPage(jobUrl, destinationFilePath);
     const scanImageInfo = await HPApi.getEsclScanImageInfo(jobURI);
 

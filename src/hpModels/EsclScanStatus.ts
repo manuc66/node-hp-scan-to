@@ -8,7 +8,7 @@ import { EnumUtils } from "./EnumUtils";
 
 export enum JobStateReason {
   JobCompletedSuccessfully = "JobCompletedSuccessfully",
-  JobScanning="JobScanning",
+  JobScanning = "JobScanning",
 }
 
 export enum eSCLJobState {
@@ -21,19 +21,19 @@ export interface EsclScanStatusData {
     "pwg:State": { "0": string };
     "scan:AdfState": { "0": string };
     "scan:Jobs"?: {
-        "scan:JobInfo": {
-          "pwg:JobUri": { "0": string };
-          "pwg:JobUuid": { "0": string };
-          "pwg:ImagesCompleted": { "0": string };
-          "pwg:ImagesToTransfer": { "0": string };
-          "pwg:JobState": { "0": string };
-          "pwg:JobStateReasons": {
-            "0": {
-                "pwg:JobStateReason": { "0": string };
-              };
+      "scan:JobInfo": {
+        "pwg:JobUri": { "0": string };
+        "pwg:JobUuid": { "0": string };
+        "pwg:ImagesCompleted": { "0": string };
+        "pwg:ImagesToTransfer": { "0": string };
+        "pwg:JobState": { "0": string };
+        "pwg:JobStateReasons": {
+          "0": {
+            "pwg:JobStateReason": { "0": string };
           };
-        }[];
+        };
       }[];
+    }[];
   };
 }
 
@@ -88,18 +88,21 @@ export default class EsclScanStatus implements IScanStatus {
     return this.isLoaded() ? InputSource.Adf : InputSource.Platen;
   }
 
-  getJobState (jobUri: string) : eSCLJobState | null {
+  getJobState(jobUri: string): eSCLJobState | null {
     const jobInfo = this.getJobInfo(jobUri);
 
     if (jobInfo === undefined) {
       return null;
     }
 
-
-    return EnumUtils.getState("JobState", eSCLJobState, jobInfo["pwg:JobState"]["0"]);
+    return EnumUtils.getState(
+      "JobState",
+      eSCLJobState,
+      jobInfo["pwg:JobState"]["0"],
+    );
   }
 
-  getJobStateReason(jobUri: string) : JobStateReason | null {
+  getJobStateReason(jobUri: string): JobStateReason | null {
     const jobInfo = this.getJobInfo(jobUri);
 
     if (jobInfo === undefined) {
@@ -108,7 +111,11 @@ export default class EsclScanStatus implements IScanStatus {
 
     const jobStateReasons = jobInfo["pwg:JobStateReasons"]["0"];
 
-    return EnumUtils.getState("JobStateReason", JobStateReason, jobStateReasons["pwg:JobStateReason"]["0"]);
+    return EnumUtils.getState(
+      "JobStateReason",
+      JobStateReason,
+      jobStateReasons["pwg:JobStateReason"]["0"],
+    );
   }
 
   private getJobInfo(jobUri: string) {
