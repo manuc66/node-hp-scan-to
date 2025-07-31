@@ -130,4 +130,12 @@ export default class EsclScanJobSettings implements IScanJobSettings {
 
     return builder.buildObject(parsed);
   }
+
+  get xResolution(): number {
+    return this.resolution;
+  }
+
+  get yResolution(): number {
+    return this.resolution;
+  }
 }

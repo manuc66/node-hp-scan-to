@@ -32,6 +32,7 @@ import EsclScanJobManifest from "./hpModels/EsclManifest";
 import EsclScanCaps from "./hpModels/EsclScanCaps";
 import EsclScanStatus from "./hpModels/EsclScanStatus";
 import { IScanJobSettings } from "./hpModels/IScanJobSettings";
+import EsclScanImageInfo from "./hpModels/EsclScanImageInfo";
 
 let printerIP = "192.168.1.11";
 let debug = false;
@@ -608,4 +609,34 @@ export default class HPApi {
 
     return destination;
   }
+
+  static async downloadEsclPage(
+    jobUri: string,
+    destination: string,
+  ): Promise<string> {
+    return await HPApi.downloadPage(
+      jobUri + "/NextDocument",
+      destination,
+    );
+  }
+
+
+  static async getEsclScanImageInfo(jobUri: string): Promise<EsclScanImageInfo> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: jobUri + "/ScanImageInfo",
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw new Error(
+        `Unexpected status code when getting /eSCL/ScannerStatus : ${response.status}`,
+      );
+    } else {
+      const content = response.data;
+      return EsclScanImageInfo.createScanImageInfo(content);
+    }
+  }
+
 }

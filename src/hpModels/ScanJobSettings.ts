@@ -27,6 +27,13 @@ export default class ScanJobSettings implements IScanJobSettings {
     this.isDuplex = isDuplex;
   }
 
+  get xResolution(): number {
+        return this.resolution;
+    }
+    get yResolution(): number {
+      return this.resolution;
+    }
+
   async toXML(): Promise<string> {
     const rawJob =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
