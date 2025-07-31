@@ -21,12 +21,14 @@ export default class EsclScanImageInfo {
     return new EsclScanImageInfo(parsed);
   }
 
-
   get actualWidth(): number {
     return parseInt(this.data["scan:ScanImageInfo"]["scan:ActualWidth"][0], 10);
   }
 
   get actualHeight(): number {
-    return parseInt(this.data["scan:ScanImageInfo"]["scan:ActualHeight"][0], 10);
+    return parseInt(
+      this.data["scan:ScanImageInfo"]["scan:ActualHeight"][0],
+      10,
+    );
   }
 }

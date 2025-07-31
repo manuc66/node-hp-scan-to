@@ -28,11 +28,11 @@ export default class ScanJobSettings implements IScanJobSettings {
   }
 
   get xResolution(): number {
-        return this.resolution;
-    }
-    get yResolution(): number {
-      return this.resolution;
-    }
+    return this.resolution;
+  }
+  get yResolution(): number {
+    return this.resolution;
+  }
 
   async toXML(): Promise<string> {
     const rawJob =
