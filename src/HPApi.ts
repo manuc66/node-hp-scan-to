@@ -619,7 +619,7 @@ export default class HPApi {
     return await HPApi.downloadPage(
       jobUri + "//NextDocument",
       destination,
-      10_000,
+      60_000,
     );
   }
 

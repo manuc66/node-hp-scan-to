@@ -71,15 +71,12 @@ export async function listenCmd(
         | WalkupScanDestination
         | WalkupScanToCompDestination
         | null = null;
-      if (!proceedToScan) {
-        console.log(
-          "Device state doesn't match expectations - Unable to proceed with scan, skipping.",
-        );
-      } else {
+
+      if (proceedToScan) {
         destination = await tryGetDestination(selectedScanTarget.event);
         if (!destination) {
           console.log(
-            "No shortcut selected - Impossible to proceed with scan, skipping.",
+            "No shortcut selected - Impossible to proceed with scan, skipping."
           );
         }
       }
