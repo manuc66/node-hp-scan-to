@@ -11,12 +11,16 @@ export enum JobStateReason {
   JobScanning="JobScanning",
 }
 
+export enum eSCLJobState {
+  Processing = "Processing",
+  Completed = "Completed",
+}
+
 export interface EsclScanStatusData {
   "scan:ScannerStatus": {
     "pwg:State": { "0": string };
     "scan:AdfState": { "0": string };
-    "scan:Jobs": {
-      "0": {
+    "scan:Jobs"?: {
         "scan:JobInfo": {
           "pwg:JobUri": { "0": string };
           "pwg:JobUuid": { "0": string };
@@ -29,8 +33,7 @@ export interface EsclScanStatusData {
               };
           };
         }[];
-      };
-    };
+      }[];
   };
 }
 
@@ -85,10 +88,19 @@ export default class EsclScanStatus implements IScanStatus {
     return this.isLoaded() ? InputSource.Adf : InputSource.Platen;
   }
 
-  getJobStateReason(jobUri: string) : JobStateReason | null {
-    const jobInfos = this.data["scan:ScannerStatus"]["scan:Jobs"][0]["scan:JobInfo"];
+  getJobState (jobUri: string) : eSCLJobState | null {
+    const jobInfo = this.getJobInfo(jobUri);
 
-    const jobInfo = jobInfos.find((x) => x["pwg:JobUri"]["0"] === jobUri);
+    if (jobInfo === undefined) {
+      return null;
+    }
+
+
+    return EnumUtils.getState("JobState", eSCLJobState, jobInfo["pwg:JobState"]["0"]);
+  }
+
+  getJobStateReason(jobUri: string) : JobStateReason | null {
+    const jobInfo = this.getJobInfo(jobUri);
 
     if (jobInfo === undefined) {
       return null;
@@ -97,5 +109,17 @@ export default class EsclScanStatus implements IScanStatus {
     const jobStateReasons = jobInfo["pwg:JobStateReasons"]["0"];
 
     return EnumUtils.getState("JobStateReason", JobStateReason, jobStateReasons["pwg:JobStateReason"]["0"]);
+  }
+
+  private getJobInfo(jobUri: string) {
+    const jobs = this.data["scan:ScannerStatus"]["scan:Jobs"];
+
+    if (jobs === undefined) {
+      return undefined;
+    }
+
+    const jobInfos = jobs[0]["scan:JobInfo"];
+
+    return jobInfos.find((x) => x["pwg:JobUri"]["0"] === jobUri);
   }
 }

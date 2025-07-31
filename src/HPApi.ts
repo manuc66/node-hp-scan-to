@@ -594,12 +594,14 @@ export default class HPApi {
   static async downloadPage(
     binaryURL: string,
     destination: string,
+    timeout?: number
   ): Promise<string> {
     const { data }: AxiosResponse<Stream> = await axios.request<Stream>({
       baseURL: `http://${printerIP}:8080`,
       url: binaryURL,
       method: "GET",
       responseType: "stream",
+      timeout
     });
 
     const destinationFileStream = fs.createWriteStream(destination);
@@ -617,6 +619,7 @@ export default class HPApi {
     return await HPApi.downloadPage(
       jobUri + "//NextDocument",
       destination,
+      10_000
     );
   }
 
