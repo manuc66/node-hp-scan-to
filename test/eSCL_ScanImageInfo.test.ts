@@ -25,5 +25,12 @@ describe("EsclScanImageInfo", () => {
     it("Parse ActualHeight", async () => {
       expect(scanImageInfo.actualHeight).to.be.eq(2420);
     });
+
+    it("Parse JobUri", async () => {
+      expect(scanImageInfo.jobURI).to.be.eq("/eSCL/ScanJobs/2");
+    });
+    it("Parse JobUuid", async () => {
+      expect(scanImageInfo.jobUuid).to.be.eq("1876-0002");
+    });
   });
 });

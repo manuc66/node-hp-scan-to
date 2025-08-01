@@ -70,12 +70,12 @@ describe("EsclScanStatus", () => {
       expect(scanStatus.isLoaded()).to.be.eq(true);
     });
     it("getJobStateReason", async () => {
-      expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/1")).to.be.eq(JobStateReason.JobCompletedSuccessfully);
-      expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/2")).to.be.eq(null);
+      expect(scanStatus.getJobStateReason("1876-0001")).to.be.eq(JobStateReason.JobCompletedSuccessfully);
+      expect(scanStatus.getJobStateReason("qsdsqdqsdqsd")).to.be.eq(null);
     });
     it("getJobState", async () => {
-      expect(scanStatus.getJobState("/eSCL/ScanJobs/1")).to.be.eq(eSCLJobState.Completed);
-      expect(scanStatus.getJobState("/eSCL/ScanJobs/2")).to.be.eq(null);
+      expect(scanStatus.getJobState("1876-0001")).to.be.eq(eSCLJobState.Completed);
+      expect(scanStatus.getJobState("qsdqsdqsd")).to.be.eq(null);
     });
   });
   describe("Parsing eSCL_ScannerStatus_processing.xml", async () => {
@@ -105,12 +105,12 @@ describe("EsclScanStatus", () => {
       expect(scanStatus.isLoaded()).to.be.eq(false);
     });
     it("getJobStateReason", async () => {
-      expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/1")).to.be.eq(JobStateReason.JobCompletedSuccessfully);
-      expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/2")).to.be.eq(JobStateReason.JobScanning);
+      expect(scanStatus.getJobStateReason("1876-0001")).to.be.eq(JobStateReason.JobCompletedSuccessfully);
+      expect(scanStatus.getJobStateReason("1876-0002")).to.be.eq(JobStateReason.JobScanning);
     });
     it("getJobState", async () => {
-      expect(scanStatus.getJobState("/eSCL/ScanJobs/1")).to.be.eq(eSCLJobState.Completed);
-      expect(scanStatus.getJobState("/eSCL/ScanJobs/2")).to.be.eq(eSCLJobState.Processing);
+      expect(scanStatus.getJobState("1876-0001")).to.be.eq(eSCLJobState.Completed);
+      expect(scanStatus.getJobState("1876-0002")).to.be.eq(eSCLJobState.Processing);
     });
   });
   describe("Parsing eSCL_ScannerStatus_completed.xml", async () => {
@@ -140,12 +140,12 @@ describe("EsclScanStatus", () => {
       expect(scanStatus.isLoaded()).to.be.eq(false);
     });
     it("getJobStateReason", async () => {
-      expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/1")).to.be.eq(JobStateReason.JobCompletedSuccessfully);
-      expect(scanStatus.getJobStateReason("/eSCL/ScanJobs/2")).to.be.eq(JobStateReason.JobCompletedSuccessfully);
+      expect(scanStatus.getJobStateReason("1876-0001")).to.be.eq(JobStateReason.JobCompletedSuccessfully);
+      expect(scanStatus.getJobStateReason("1876-0002")).to.be.eq(JobStateReason.JobCompletedSuccessfully);
     });
     it("getJobState", async () => {
-      expect(scanStatus.getJobState("/eSCL/ScanJobs/1")).to.be.eq(eSCLJobState.Completed);
-      expect(scanStatus.getJobState("/eSCL/ScanJobs/2")).to.be.eq(eSCLJobState.Completed);
+      expect(scanStatus.getJobState("1876-0001")).to.be.eq(eSCLJobState.Completed);
+      expect(scanStatus.getJobState("1876-0002")).to.be.eq(eSCLJobState.Completed);
     });
   });
 });

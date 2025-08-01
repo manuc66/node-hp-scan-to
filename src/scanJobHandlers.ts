@@ -202,7 +202,7 @@ async function eSCLScanJobHandling(
   scanCount: number,
   filePattern: string | undefined,
 ) {
-  let jobStateReason: JobStateReason | null;
+  let jobStateReason: JobStateReason | null = null;
   do {
     await delay(1000);
 
@@ -222,6 +222,10 @@ async function eSCLScanJobHandling(
     const filePath = await HPApi.downloadEsclPage(jobUrl, destinationFilePath);
 
     const scanImageInfo = await HPApi.getEsclScanImageInfo(jobURI);
+
+    if (jobUrl.indexOf(scanImageInfo.jobURI) == -1) {
+      console.log(`Incoherent state !!!! Job URI has changed: ${jobUrl} -> ${scanImageInfo.jobURI} -- crazy!`);
+    }
 
     let sizeFixed: null | number = null;
     if (inputSource == InputSource.Adf) {
@@ -248,12 +252,17 @@ async function eSCLScanJobHandling(
 
     scanJobContent.elements.push(page);
 
-    jobStateReason = scannerStatus.getJobStateReason(jobURI);
+    jobStateReason = scannerStatus.getJobStateReason(scanImageInfo.jobUuid);
+    console.log(scanImageInfo.jobURI)
+    console.log(scanImageInfo.jobUuid)
+    console.log(`Job state reason: ${jobStateReason}`);
+    console.log(`Job state: ${scannerStatus.getJobState(scanImageInfo.jobUuid)}`);
   } while (
     jobStateReason !== null &&
-    jobStateReason !== JobStateReason.JobCompletedSuccessfully
+    jobStateReason !== JobStateReason.JobCompletedSuccessfully && jobStateReason != JobStateReason.JobCanceledByUser
   );
-  return JobState.Completed;
+
+  return jobStateReason === JobStateReason.JobCompletedSuccessfully ? JobState.Completed : JobState.Canceled;
 }
 
 export async function executeScanJob(
