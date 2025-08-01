@@ -17,6 +17,7 @@
     "prestart": "node getCommitId.js",
     "start": "ts-node src/index.ts",
     "start:single-scan": "ts-node src/index.ts single-scan",
+    "start:adf-autoscan": "ts-node src/index.ts adf-autoscan",
     "start-debug": "ts-node src/index.ts -D",
     "prebuild": "node getCommitId.js",
     "lint": "eslint . --ext .ts,.tsx",

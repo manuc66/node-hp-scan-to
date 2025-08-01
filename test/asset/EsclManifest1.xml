@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/01/27" xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+	http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24 C:/ipg-ledm/trunk/documentation/schemas/Manifest.xsd
+	http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/01/27 C:/ipg-ledm/trunk/documentation/schemas/ResourceMap.xsd
+	http://schemas.hp.com/imaging/escl/2011/05/03 ../../schemas/eSCL.xsd
+	http://www.hp.com/schemas/imaging/con/dictionaries/1.0/ C:/ipg-ledm/trunk/documentation/schemas/dd/DataDictionaryMasterLEDM.xsd
+	http://www.hp.com/schemas/imaging/con/dictionaries/2008/10/10  C:/ipg-ledm/trunk/documentation/schemas/dd2/DataDictionaryMasterLEDM.xsd
+	http://www.pwg.org/schemas/2010/12/sm ../../schemas/pwg-eSCL/PwgCommon.xsd">
+    <!--  this is the manifest schema version, not the eSCL version number -->
+    <dd:Version>
+        <dd:Revision>SVN-IPG-LEDM.29</dd:Revision>
+    </dd:Version>
+    <!--		declare the interface namespace. The client knows what interface it is dealing with -->
+    <man:InterfaceNamespaces>
+        <man:InterfaceNamespace>
+            http://schemas.hp.com/imaging/escl/2011/05/03
+        </man:InterfaceNamespace>
+    </man:InterfaceNamespaces>
+    <map:ResourceMap>
+        <!-- declare the root URL for this interface -->
+        <map:ResourceLink>
+            <dd:ResourceURI>/eSCL</dd:ResourceURI>
+            <map:Base>Root</map:Base>
+        </map:ResourceLink>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/ScannerCapabilities</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType>
+                <scan:ScanResourceType>ScannerCapabilities</scan:ScanResourceType>
+            </map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Get</map:Verb>
+                </map:Method>
+            </map:Methods>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/ScannerStatus</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType>
+                <scan:ScanResourceType>ScannerStatus</scan:ScanResourceType>
+            </map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Get</map:Verb>
+                </map:Method>
+            </map:Methods>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/ScanBufferInfo</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType>
+                <scan:ScanResourceType>ScanBufferInfo</scan:ScanResourceType>
+            </map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Put</map:Verb>
+                </map:Method>
+            </map:Methods>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/ScanJobs</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType>
+                <scan:ScanResourceType>ScanJobs</scan:ScanResourceType>
+            </map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Post</map:Verb>
+                </map:Method>
+            </map:Methods>
+            <map:ResourceMap>
+                <map:ResourceNode>
+                    <map:ResourceLink>
+                        <dd:ResourceURI>/{scan-job-id}</dd:ResourceURI>
+                        <scan:scan-job-id>xs:positiveInteger</scan:scan-job-id>
+                    </map:ResourceLink>
+                    <map:ResourceType>
+                        <scan:ScanResourceType>ScanJob</scan:ScanResourceType>
+                    </map:ResourceType>
+                    <map:Methods>
+                        <map:Method>
+                            <map:Verb>Delete</map:Verb>
+                        </map:Method>
+                    </map:Methods>
+                    <map:ResourceMap>
+                        <map:ResourceNode>
+                            <map:ResourceLink>
+                                <dd:ResourceURI>/ScanImageInfo</dd:ResourceURI>
+                            </map:ResourceLink>
+                            <map:ResourceType>
+                                <scan:ScanResourceType>ScanImageInfo</scan:ScanResourceType>
+                            </map:ResourceType>
+                            <map:Methods>
+                                <map:Method>
+                                    <map:Verb>Get</map:Verb>
+                                </map:Method>
+                            </map:Methods>
+                        </map:ResourceNode>
+                        <!--  this section should be included for pull scan only  -->
+                        <map:ResourceNode>
+                            <map:ResourceLink>
+                                <dd:ResourceURI>/NextDocument</dd:ResourceURI>
+                            </map:ResourceLink>
+                            <map:ResourceType>
+                                <scan:ScanResourceType>ScanData</scan:ScanResourceType>
+                            </map:ResourceType>
+                            <map:Methods>
+                                <map:Method>
+                                    <map:Verb>Get</map:Verb>
+                                </map:Method>
+                            </map:Methods>
+                            <map:IanaTypes>
+                                <map:IanaType>image/jpeg</map:IanaType>
+                                <map:IanaType>application/pdf</map:IanaType>
+                            </map:IanaTypes>
+                        </map:ResourceNode>
+                    </map:ResourceMap>
+                </map:ResourceNode>
+            </map:ResourceMap>
+        </map:ResourceNode>
+    </map:ResourceMap>
+</man:Manifest>

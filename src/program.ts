@@ -90,6 +90,12 @@ function setupScanParameters(commandName: string) {
         "Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)",
       ).helpGroup(HelpGroupsHeadings.scan),
     )
+    .addOption(
+      new Option(
+        "--prefer-eSCL",
+        "Prefer eSCL protocol if available",
+      ).helpGroup(HelpGroupsHeadings.scan),
+    )
     .option(
       "--device-up-polling-interval <deviceUpPollingInterval>",
       "Device up polling interval in milliseconds",
@@ -386,6 +392,12 @@ function getScanConfiguration(
     10,
   );
 
+  const preferEscl = getConfiguredValue(
+    options.preferESCL,
+    fileConfig.prefer_escl,
+    false,
+  );
+
   const scanConfig: ScanConfig = {
     resolution,
     width: width,
@@ -393,6 +405,7 @@ function getScanConfiguration(
     directoryConfig,
     paperlessConfig,
     nextcloudConfig,
+    preferEscl,
   };
   return scanConfig;
 }

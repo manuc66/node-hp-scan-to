@@ -38,7 +38,9 @@ export async function listenCmd(
     scanConfig.directoryConfig.tempDirectory,
   );
 
-  const deviceCapabilities = await readDeviceCapabilities();
+  const deviceCapabilities = await readDeviceCapabilities(
+    scanConfig.preferEscl,
+  );
 
   let scanCount = 0;
   let keepActive = true;
@@ -69,11 +71,8 @@ export async function listenCmd(
         | WalkupScanDestination
         | WalkupScanToCompDestination
         | null = null;
-      if (!proceedToScan) {
-        console.log(
-          "Device state doesn't match expectations - Unable to proceed with scan, skipping.",
-        );
-      } else {
+
+      if (proceedToScan) {
         destination = await tryGetDestination(selectedScanTarget.event);
         if (!destination) {
           console.log(

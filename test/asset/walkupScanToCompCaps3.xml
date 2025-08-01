@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- HP CONFIDENTIAL -->
+<wus:WalkupScanToCompCaps xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28 ../../schemas/WalkupScanToComp.xsd" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <dd:Version>
+        <dd:Revision>SVN-IPG-LEDM.345</dd:Revision>
+    </dd:Version>
+    <wus:MaxNetworkDestinations>10</wus:MaxNetworkDestinations>
+    <wus:SupportsMultiItemScanFromPlaten>true</wus:SupportsMultiItemScanFromPlaten>
+    <wus:UserActionTimeout>
+        <dd:ValueFloat>130</dd:ValueFloat>
+        <dd:Unit>seconds</dd:Unit>
+    </wus:UserActionTimeout>
+    <wus:ShortcutSupport access="readOnly">
+        <wus:Shortcut>EmailPDF</wus:Shortcut>
+        <wus:Shortcut>EmailJPEG</wus:Shortcut>
+        <wus:Shortcut>SaveJPEG</wus:Shortcut>
+        <wus:Shortcut>SavePDF</wus:Shortcut>
+        <wus:Shortcut>SaveEditableText</wus:Shortcut>
+        <wus:Shortcut>GeneralScan</wus:Shortcut>
+        <wus:Shortcut>SendToCloud</wus:Shortcut>
+    </wus:ShortcutSupport>
+    <wus:MaxCustomShortcuts>2</wus:MaxCustomShortcuts>
+    <wus:CustomShortcuts>
+        <wus:CustomShortcut typeof="wus:CustomShortcut" length="32" elementXPath="wus:WalkupScanToCompDestination/wus:CustomShortcuts/wus:CustomShortcut" access="readWrite"/>
+    </wus:CustomShortcuts>
+    <wus:PIN typeof="xs:string" minLength="4" length="8" elementXPath="/wus:WalkupScanToCompDestination/wus:PIN" access="writeOnly"/>
+</wus:WalkupScanToCompCaps>

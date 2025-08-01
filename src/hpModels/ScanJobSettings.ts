@@ -1,8 +1,9 @@
 import xml2js from "xml2js";
 import { InputSource } from "../type/InputSource";
 import { parseXmlString } from "./ParseXmlString";
+import { IScanJobSettings } from "./IScanJobSettings";
 
-export default class ScanJobSettings {
+export default class ScanJobSettings implements IScanJobSettings {
   private readonly inputSource: InputSource;
   private readonly contentType: "Document" | "Photo";
   private readonly resolution: number;
@@ -24,6 +25,13 @@ export default class ScanJobSettings {
     this.width = width;
     this.height = height;
     this.isDuplex = isDuplex;
+  }
+
+  get xResolution(): number {
+    return this.resolution;
+  }
+  get yResolution(): number {
+    return this.resolution;
   }
 
   async toXML(): Promise<string> {
