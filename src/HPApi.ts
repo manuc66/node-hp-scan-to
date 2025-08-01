@@ -314,8 +314,9 @@ export default class HPApi {
   static async removeDestination(
     walkupScanDestination: WalkupScanDestination | WalkupScanToCompDestination,
   ): Promise<boolean> {
-
-    const path = PathHelper.getPathFromHttpLocation(walkupScanDestination.resourceURI);
+    const path = PathHelper.getPathFromHttpLocation(
+      walkupScanDestination.resourceURI,
+    );
 
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
