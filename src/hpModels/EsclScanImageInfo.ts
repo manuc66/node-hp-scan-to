@@ -6,6 +6,8 @@ export interface EsclScanImageInfoData {
   "scan:ScanImageInfo": {
     "scan:ActualWidth": string[];
     "scan:ActualHeight": string[];
+    "pwg:JobUri": string[];
+    "pwg:JobUuid": string[];
   };
 }
 
@@ -30,5 +32,11 @@ export default class EsclScanImageInfo {
       this.data["scan:ScanImageInfo"]["scan:ActualHeight"][0],
       10,
     );
+  }
+  get jobURI(): string {
+    return this.data["scan:ScanImageInfo"]["pwg:JobUri"][0];
+  }
+  get jobUuid(): string {
+    return this.data["scan:ScanImageInfo"]["pwg:JobUuid"][0];
   }
 }

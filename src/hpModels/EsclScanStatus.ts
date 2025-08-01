@@ -8,12 +8,14 @@ import { EnumUtils } from "./EnumUtils";
 
 export enum JobStateReason {
   JobCompletedSuccessfully = "JobCompletedSuccessfully",
+  JobCanceledByUser= "JobCanceledByUser",
   JobScanning = "JobScanning",
 }
 
 export enum eSCLJobState {
   Processing = "Processing",
   Completed = "Completed",
+  Canceled = "Canceled",
 }
 
 export interface EsclScanStatusData {
@@ -88,8 +90,8 @@ export default class EsclScanStatus implements IScanStatus {
     return this.isLoaded() ? InputSource.Adf : InputSource.Platen;
   }
 
-  getJobState(jobUri: string): eSCLJobState | null {
-    const jobInfo = this.getJobInfo(jobUri);
+  getJobState(jobUuid: string): eSCLJobState | null {
+    const jobInfo = this.getJobInfo(jobUuid);
 
     if (jobInfo === undefined) {
       return null;
@@ -102,10 +104,11 @@ export default class EsclScanStatus implements IScanStatus {
     );
   }
 
-  getJobStateReason(jobUri: string): JobStateReason | null {
-    const jobInfo = this.getJobInfo(jobUri);
+  getJobStateReason(jobUuid: string): JobStateReason | null {
+    const jobInfo = this.getJobInfo(jobUuid);
 
     if (jobInfo === undefined) {
+      console.log(`Job ${jobUuid} not found`);
       return null;
     }
 
@@ -118,7 +121,7 @@ export default class EsclScanStatus implements IScanStatus {
     );
   }
 
-  private getJobInfo(jobUri: string) {
+  private getJobInfo(jobUuid: string) {
     const jobs = this.data["scan:ScannerStatus"]["scan:Jobs"];
 
     if (jobs === undefined) {
@@ -127,6 +130,6 @@ export default class EsclScanStatus implements IScanStatus {
 
     const jobInfos = jobs[0]["scan:JobInfo"];
 
-    return jobInfos.find((x) => x["pwg:JobUri"]["0"] === jobUri);
+    return jobInfos.find((x) => x["pwg:JobUuid"]["0"] === jobUuid);
   }
 }
