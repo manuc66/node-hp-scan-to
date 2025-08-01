@@ -134,7 +134,6 @@ export default class PathHelper {
     return tempFolder;
   }
 
-
   static getPathFromHttpLocation(input: string) {
     if (input.startsWith("http://") || input.startsWith("https://")) {
       const url = new URL(input);
