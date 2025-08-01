@@ -8,7 +8,6 @@ import axios, {
   AxiosResponse,
   RawAxiosRequestHeaders,
 } from "axios";
-import { URL } from "url";
 import * as stream from "stream";
 import { Stream } from "stream";
 import EventTable, { EtagEventTable } from "./hpModels/EventTable";
@@ -33,6 +32,7 @@ import EsclScanCaps from "./hpModels/EsclScanCaps";
 import EsclScanStatus from "./hpModels/EsclScanStatus";
 import { IScanJobSettings } from "./hpModels/IScanJobSettings";
 import EsclScanImageInfo from "./hpModels/EsclScanImageInfo";
+import PathHelper from "./PathHelper";
 
 let printerIP = "192.168.1.11";
 let debug = false;
@@ -314,19 +314,8 @@ export default class HPApi {
   static async removeDestination(
     walkupScanDestination: WalkupScanDestination | WalkupScanToCompDestination,
   ): Promise<boolean> {
-    let path: string;
 
-    if (walkupScanDestination.resourceURI.startsWith("http")) {
-      const urlInfo = new URL(walkupScanDestination.resourceURI);
-      if (urlInfo.pathname === null) {
-        throw new Error(
-          `invalid walkupScanDestination.resourceURI: ${walkupScanDestination.resourceURI}`,
-        );
-      }
-      path = urlInfo.pathname;
-    } else {
-      path = walkupScanDestination.resourceURI;
-    }
+    const path = PathHelper.getPathFromHttpLocation(walkupScanDestination.resourceURI);
 
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -361,7 +350,7 @@ export default class HPApi {
       response.status === 201 &&
       typeof response.headers.location === "string"
     ) {
-      return new URL(response.headers.location).pathname;
+      return PathHelper.getPathFromHttpLocation(response.headers.location);
     } else {
       throw new Error(
         `Unexpected status code when getting ${url}: ${response.status}`,
@@ -386,7 +375,7 @@ export default class HPApi {
       response.status === 201 &&
       typeof response.headers.location === "string"
     ) {
-      return new URL(response.headers.location).pathname;
+      return PathHelper.getPathFromHttpLocation(response.headers.location);
     } else {
       throw new Error(
         `Unexpected status code or location when registering to ${url}: ${response.status} - ${response.headers.location}`,

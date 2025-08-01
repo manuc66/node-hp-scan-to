@@ -204,6 +204,7 @@ async function eSCLScanJobHandling(
   let jobStateReason: JobStateReason | null;
   do {
     await delay(1000);
+
     const pageNumber = getPageNumber(pageCountingStrategy, scanJobContent);
 
     const destinationFilePath = PathHelper.getFileForPage(
@@ -215,9 +216,10 @@ async function eSCLScanJobHandling(
       new Date(),
     );
 
-    const jobURI = new URL(jobUrl).pathname;
+    const jobURI = PathHelper.getPathFromHttpLocation(jobUrl);
 
     const filePath = await HPApi.downloadEsclPage(jobUrl, destinationFilePath);
+
     const scanImageInfo = await HPApi.getEsclScanImageInfo(jobURI);
 
     const scannerStatus = await HPApi.getEsclScanStatus();

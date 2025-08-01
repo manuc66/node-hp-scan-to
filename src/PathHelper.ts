@@ -1,8 +1,7 @@
 import path from "path";
 import dateformat from "dateformat";
 import os from "os";
-import { promises as Fs } from "fs";
-import fs from "fs";
+import fs, { promises as Fs } from "fs";
 
 export default class PathHelper {
   static getFileForPage(
@@ -133,5 +132,15 @@ export default class PathHelper {
     console.log(`Temp folder: ${tempFolder}`);
     await this.checkIfFolderIsWritable(tempFolder);
     return tempFolder;
+  }
+
+
+  static getPathFromHttpLocation(input: string) {
+    if (input.startsWith("http://") || input.startsWith("https://")) {
+      const url = new URL(input);
+      return url.pathname; // Extract path from URL
+    } else {
+      return input; // Return the rooted path directly
+    }
   }
 }
