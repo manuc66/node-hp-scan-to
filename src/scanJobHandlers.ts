@@ -38,7 +38,8 @@ async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   } while (!isReadyToUpload);
   return job;
 }
-async function scanProcessing(filePath: string): Promise<number | null> {
+
+async function fixJpegHeight(filePath: string): Promise<number | null> {
   const buffer: Buffer = await fs.readFile(filePath);
 
   const height = JpegUtil.fixSizeWithDNL(buffer);
@@ -102,7 +103,7 @@ async function handleScanProcessingState(
 
     let sizeFixed: null | number = null;
     if (inputSource == InputSource.Adf) {
-      sizeFixed = await scanProcessing(filePath);
+      sizeFixed = await fixJpegHeight(filePath);
       if (sizeFixed == null) {
         console.log(
           `File size has not been fixed, DNF may not have been found and approximate height is: ${job.imageHeight}`,
@@ -196,7 +197,7 @@ async function eSCLScanJobHandling(
     | PageCountingStrategy.OddOnly
     | PageCountingStrategy.EvenOnly,
   scanJobContent: ScanContent,
-  _inputSource: InputSource,
+  inputSource: InputSource,
   folder: string,
   scanCount: number,
   filePattern: string | undefined,
@@ -221,6 +222,16 @@ async function eSCLScanJobHandling(
     const filePath = await HPApi.downloadEsclPage(jobUrl, destinationFilePath);
 
     const scanImageInfo = await HPApi.getEsclScanImageInfo(jobURI);
+
+    let sizeFixed: null | number = null;
+    if (inputSource == InputSource.Adf) {
+      sizeFixed = await fixJpegHeight(filePath);
+      if (sizeFixed == null) {
+        console.log(
+          `File size has not been fixed, DNF may not have been found and approximate height is: ${scanImageInfo.actualHeight}`,
+        );
+      }
+    }
 
     const scannerStatus = await HPApi.getEsclScanStatus();
 
