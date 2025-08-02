@@ -13,6 +13,7 @@ import { PageCountingStrategy } from "./type/pageCountingStrategy";
 import { IScanJobSettings } from "./hpModels/IScanJobSettings";
 import { EventType } from "./hpModels/WalkupScanToCompEvent";
 import { EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus";
+import EsclScanImageInfo from "./hpModels/EsclScanImageInfo";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -101,16 +102,12 @@ async function handleScanProcessingState(
     );
     console.log("Page downloaded to:", filePath);
 
-    let sizeFixed: null | number = null;
-    if (inputSource == InputSource.Adf) {
-      sizeFixed = await fixJpegHeight(filePath);
-      if (sizeFixed == null) {
-        console.log(
-          `File size has not been fixed, DNF may not have been found and approximate height is: ${job.imageHeight}`,
-        );
-      }
-    }
-    return createScanPage(job, currentPageNumber, filePath, sizeFixed);
+    const adfHeight = await getAndFixHeightWHenAdf(
+      inputSource,
+      filePath,
+      job.imageHeight,
+    );
+    return createScanPage(job, currentPageNumber, filePath, adfHeight);
   } else {
     console.log(`Unknown pageState: ${job.pageState}`);
     await delay(200);
@@ -189,6 +186,62 @@ async function hpScanJobHandling(
   return job.jobState;
 }
 
+function logJobInfo(
+  jobUrl: string,
+  scanImageInfo: EsclScanImageInfo,
+  jobInfo: EsclJobInfo | undefined,
+) {
+  if (jobUrl.indexOf(scanImageInfo.jobURI) == -1) {
+    // for an unknown reason this happens on an HP Smart Tank Plus 570!
+    console.log(
+      `Incoherent state !!!! Job URI has changed: ${jobUrl} -> ${scanImageInfo.jobURI} -- crazy!`,
+    );
+  }
+
+  console.log("From scanImageInfo:");
+  console.log(`\tJob Uri: ${scanImageInfo?.jobURI ?? null}`);
+  console.log(`\tJob Uuid: ${scanImageInfo?.jobUuid ?? null}`);
+
+  console.log("From jobInfo:");
+  console.log(`\tJob Uri: ${jobInfo?.getJobUri() ?? null}`);
+  console.log(`\tJob Uuid: ${jobInfo?.getJobUuid() ?? null}`);
+  console.log(`\tJob state reason: ${jobInfo?.getJobStateReason() ?? null}`);
+  console.log(`\tJob state: ${jobInfo?.getJobState() ?? null}`);
+}
+
+function mapToJobState(jobStateReason: JobStateReason) {
+  if (jobStateReason === JobStateReason.JobCanceledByUser) {
+    return JobState.Canceled;
+  }
+
+  if (jobStateReason === JobStateReason.JobCompletedSuccessfully) {
+    return JobState.Completed;
+  }
+
+  console.log(
+    `Unknown job state reason: ${jobStateReason}, job will be cancelled`,
+  );
+
+  return JobState.Canceled;
+}
+
+async function getAndFixHeightWHenAdf(
+  inputSource: InputSource,
+  filePath: string,
+  actualHeight: number | null,
+) {
+  let sizeFixed: null | number = null;
+  if (inputSource == InputSource.Adf) {
+    sizeFixed = await fixJpegHeight(filePath);
+    if (sizeFixed == null) {
+      console.log(
+        `File size has not been fixed, DNF may not have been found and approximate height is: ${actualHeight}`,
+      );
+    }
+  }
+  return sizeFixed;
+}
+
 async function eSCLScanJobHandling(
   jobUrl: string,
   scanJobSettings: IScanJobSettings,
@@ -223,16 +276,13 @@ async function eSCLScanJobHandling(
     const filePath = await HPApi.downloadEsclPage(jobUrl, destinationFilePath);
 
     const scanImageInfo = await HPApi.getEsclScanImageInfo(jobLocation);
+    const actualHeight = scanImageInfo.actualHeight;
 
-    let sizeFixed: null | number = null;
-    if (inputSource == InputSource.Adf) {
-      sizeFixed = await fixJpegHeight(filePath);
-      if (sizeFixed == null) {
-        console.log(
-          `File size has not been fixed, DNF may not have been found and approximate height is: ${scanImageInfo.actualHeight}`,
-        );
-      }
-    }
+    const adfHeight = await getAndFixHeightWHenAdf(
+      inputSource,
+      filePath,
+      actualHeight,
+    );
 
     const scannerStatus = await HPApi.getEsclScanStatus();
 
@@ -242,7 +292,7 @@ async function eSCLScanJobHandling(
       path: filePath,
       pageNumber,
       width: scanImageInfo.actualWidth,
-      height: sizeFixed ?? scanImageInfo.actualHeight,
+      height: adfHeight ?? scanImageInfo.actualHeight,
       xResolution: scanJobSettings.xResolution,
       yResolution: scanJobSettings.yResolution,
     };
@@ -257,24 +307,7 @@ async function eSCLScanJobHandling(
       );
 
     if (HPApi.isDebug()) {
-      if (jobUrl.indexOf(scanImageInfo.jobURI) == -1) {
-        // for an unknown reason this happens on an HP Smart Tank Plus 570!
-        console.log(
-          `Incoherent state !!!! Job URI has changed: ${jobUrl} -> ${scanImageInfo.jobURI} -- crazy!`,
-        );
-      }
-
-      console.log("From scanImageInfo:");
-      console.log(`\tJob Uri: ${scanImageInfo?.jobURI ?? null}`);
-      console.log(`\tJob Uuid: ${scanImageInfo?.jobUuid ?? null}`);
-
-      console.log("From jobInfo:");
-      console.log(`\tJob Uri: ${jobInfo?.getJobUri() ?? null}`);
-      console.log(`\tJob Uuid: ${jobInfo?.getJobUuid() ?? null}`);
-      console.log(
-        `\tJob state reason: ${jobInfo?.getJobStateReason() ?? null}`,
-      );
-      console.log(`\tJob state: ${jobInfo?.getJobState() ?? null}`);
+      logJobInfo(jobUrl, scanImageInfo, jobInfo);
     }
 
     jobStateReason = jobInfo?.getJobStateReason() ?? null;
@@ -293,19 +326,7 @@ async function eSCLScanJobHandling(
     return JobState.Canceled;
   }
 
-  if (jobStateReason === JobStateReason.JobCanceledByUser) {
-    return JobState.Canceled;
-  }
-
-  if (jobStateReason === JobStateReason.JobCompletedSuccessfully) {
-    return JobState.Completed;
-  }
-
-  console.log(
-    `Unknown job state reason: ${jobInfo?.getJobStateReason()}, job will be cancelled`,
-  );
-
-  return JobState.Canceled;
+  return mapToJobState(jobStateReason);
 }
 
 export async function executeScanJob(
