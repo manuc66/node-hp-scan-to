@@ -4,10 +4,10 @@ import { parseXmlString } from "./ParseXmlString";
 
 export interface EsclScanImageInfoData {
   "scan:ScanImageInfo": {
-    "scan:ActualWidth": string[];
-    "scan:ActualHeight": string[];
     "pwg:JobUri": string[];
     "pwg:JobUuid": string[];
+    "scan:ActualWidth": string[];
+    "scan:ActualHeight": string[];
   };
 }
 

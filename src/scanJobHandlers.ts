@@ -217,15 +217,11 @@ async function eSCLScanJobHandling(
       new Date(),
     );
 
-    const jobURI = PathHelper.getPathFromHttpLocation(jobUrl);
+    const jobLocation = PathHelper.getPathFromHttpLocation(jobUrl);
 
     const filePath = await HPApi.downloadEsclPage(jobUrl, destinationFilePath);
 
-    const scanImageInfo = await HPApi.getEsclScanImageInfo(jobURI);
-
-    if (jobUrl.indexOf(scanImageInfo.jobURI) == -1) {
-      console.log(`Incoherent state !!!! Job URI has changed: ${jobUrl} -> ${scanImageInfo.jobURI} -- crazy!`);
-    }
+    const scanImageInfo = await HPApi.getEsclScanImageInfo(jobLocation);
 
     let sizeFixed: null | number = null;
     if (inputSource == InputSource.Adf) {
@@ -245,24 +241,49 @@ async function eSCLScanJobHandling(
       path: filePath,
       pageNumber,
       width: scanImageInfo.actualWidth,
-      height: scanImageInfo.actualHeight,
+      height: sizeFixed ?? scanImageInfo.actualHeight,
       xResolution: scanJobSettings.xResolution,
       yResolution: scanJobSettings.yResolution,
     };
 
     scanJobContent.elements.push(page);
 
-    jobStateReason = scannerStatus.getJobStateReason(scanImageInfo.jobUuid);
-    console.log(scanImageInfo.jobURI)
-    console.log(scanImageInfo.jobUuid)
-    console.log(`Job state reason: ${jobStateReason}`);
-    console.log(`Job state: ${scannerStatus.getJobState(scanImageInfo.jobUuid)}`);
+    const jobInfo = scannerStatus
+      .getJobInfos()
+      .find(
+        (x) =>
+          PathHelper.getPathFromHttpLocation(x.getJobUri()) === jobLocation,
+      );
+
+    if (HPApi.isDebug()) {
+      console.log("From scanImageInfo:");
+      console.log(`\tJob Uri: ${scanImageInfo?.jobURI ?? null}`);
+      console.log(`\tJob Uuid: ${scanImageInfo?.jobUuid ?? null}`);
+
+      if (jobUrl.indexOf(scanImageInfo.jobURI) == -1) {
+        // for an unknown reason this happens on an HP Smart Tank Plus 570!
+        console.log(
+          `Incoherent state !!!! Job URI has changed: ${jobUrl} -> ${scanImageInfo.jobURI} -- crazy!`,
+        );
+      }
+
+      console.log("From jobInfo:");
+      console.log(`\tJob Uri: ${jobInfo?.getJobUri() ?? null}`);
+      console.log(`\tJob Uuid: ${jobInfo?.getJobUuid() ?? null}`);
+      console.log(`\tJob state reason: ${jobInfo?.getJobStateReason() ?? null}`);
+      console.log(`\tJob state: ${jobInfo?.getJobState() ?? null}`);
+    }
+
+    jobStateReason = jobInfo?.getJobStateReason() ?? null;
   } while (
     jobStateReason !== null &&
-    jobStateReason !== JobStateReason.JobCompletedSuccessfully && jobStateReason != JobStateReason.JobCanceledByUser
+    jobStateReason !== JobStateReason.JobCompletedSuccessfully &&
+    jobStateReason != JobStateReason.JobCanceledByUser
   );
 
-  return jobStateReason === JobStateReason.JobCompletedSuccessfully ? JobState.Completed : JobState.Canceled;
+  return jobStateReason === JobStateReason.JobCompletedSuccessfully
+    ? JobState.Completed
+    : JobState.Canceled;
 }
 
 export async function executeScanJob(
