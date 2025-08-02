@@ -12,7 +12,7 @@ import JpegUtil from "./JpegUtil";
 import { PageCountingStrategy } from "./type/pageCountingStrategy";
 import { IScanJobSettings } from "./hpModels/IScanJobSettings";
 import { EventType } from "./hpModels/WalkupScanToCompEvent";
-import { JobStateReason } from "./hpModels/EsclScanStatus";
+import { EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -203,6 +203,7 @@ async function eSCLScanJobHandling(
   filePattern: string | undefined,
 ) {
   let jobStateReason: JobStateReason | null = null;
+  let jobInfo: EsclJobInfo | undefined = undefined;
   do {
     await delay(1000);
 
@@ -248,7 +249,7 @@ async function eSCLScanJobHandling(
 
     scanJobContent.elements.push(page);
 
-    const jobInfo = scannerStatus
+    jobInfo = scannerStatus
       .getJobInfos()
       .find(
         (x) =>
@@ -256,10 +257,6 @@ async function eSCLScanJobHandling(
       );
 
     if (HPApi.isDebug()) {
-      console.log("From scanImageInfo:");
-      console.log(`\tJob Uri: ${scanImageInfo?.jobURI ?? null}`);
-      console.log(`\tJob Uuid: ${scanImageInfo?.jobUuid ?? null}`);
-
       if (jobUrl.indexOf(scanImageInfo.jobURI) == -1) {
         // for an unknown reason this happens on an HP Smart Tank Plus 570!
         console.log(
@@ -267,10 +264,16 @@ async function eSCLScanJobHandling(
         );
       }
 
+      console.log("From scanImageInfo:");
+      console.log(`\tJob Uri: ${scanImageInfo?.jobURI ?? null}`);
+      console.log(`\tJob Uuid: ${scanImageInfo?.jobUuid ?? null}`);
+
       console.log("From jobInfo:");
       console.log(`\tJob Uri: ${jobInfo?.getJobUri() ?? null}`);
       console.log(`\tJob Uuid: ${jobInfo?.getJobUuid() ?? null}`);
-      console.log(`\tJob state reason: ${jobInfo?.getJobStateReason() ?? null}`);
+      console.log(
+        `\tJob state reason: ${jobInfo?.getJobStateReason() ?? null}`,
+      );
       console.log(`\tJob state: ${jobInfo?.getJobState() ?? null}`);
     }
 
@@ -281,9 +284,28 @@ async function eSCLScanJobHandling(
     jobStateReason != JobStateReason.JobCanceledByUser
   );
 
-  return jobStateReason === JobStateReason.JobCompletedSuccessfully
-    ? JobState.Completed
-    : JobState.Canceled;
+  if (jobStateReason == null) {
+    console.log(
+      "Job state reason is null, it means that the current " +
+        "job was not found in the device's status, this is probably a bug " +
+        "in the device, the current scan will be marked as cancelled",
+    );
+    return JobState.Canceled;
+  }
+
+  if (jobStateReason === JobStateReason.JobCanceledByUser) {
+    return JobState.Canceled;
+  }
+
+  if (jobStateReason === JobStateReason.JobCompletedSuccessfully) {
+    return JobState.Completed;
+  }
+
+  console.log(
+    `Unknown job state reason: ${jobInfo?.getJobStateReason()}, job will be cancelled`,
+  );
+
+  return JobState.Canceled;
 }
 
 export async function executeScanJob(
