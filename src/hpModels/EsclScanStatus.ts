@@ -8,7 +8,7 @@ import { EnumUtils } from "./EnumUtils";
 
 export enum JobStateReason {
   JobCompletedSuccessfully = "JobCompletedSuccessfully",
-  JobCanceledByUser= "JobCanceledByUser",
+  JobCanceledByUser = "JobCanceledByUser",
   JobScanning = "JobScanning",
 }
 
@@ -18,23 +18,63 @@ export enum eSCLJobState {
   Canceled = "Canceled",
 }
 
+interface EsclJobInfoData {
+  "pwg:JobUri": { "0": string };
+  "pwg:JobUuid": { "0": string };
+  "scan:Age": { "0": string };
+  "pwg:ImagesCompleted": { "0": string };
+  "pwg:ImagesToTransfer": { "0": string };
+  "pwg:JobState": { "0": string };
+  "pwg:JobStateReasons": {
+    "0": {
+      "pwg:JobStateReason": { "0": string };
+    };
+  };
+}
+
+export class EsclJobInfo {
+  private readonly data: EsclJobInfoData;
+  constructor(data: EsclJobInfoData) {
+    this.data = data;
+  }
+
+  getJobUri(): string {
+    return this.data["pwg:JobUri"]["0"];
+  }
+
+  getJobUuid(): string {
+    return this.data["pwg:JobUuid"]["0"];
+  }
+
+  getAge(): string {
+    return this.data["scan:Age"]["0"];
+  }
+
+  getJobState() {
+    return EnumUtils.getState(
+      "JobState",
+      eSCLJobState,
+      this.data["pwg:JobState"]["0"],
+    );
+  }
+
+  getJobStateReason() {
+    const jobStateReasons = this.data["pwg:JobStateReasons"]["0"];
+
+    return EnumUtils.getState(
+      "JobStateReason",
+      JobStateReason,
+      jobStateReasons["pwg:JobStateReason"]["0"],
+    );
+  }
+}
+
 export interface EsclScanStatusData {
   "scan:ScannerStatus": {
     "pwg:State": { "0": string };
     "scan:AdfState": { "0": string };
     "scan:Jobs"?: {
-      "scan:JobInfo": {
-        "pwg:JobUri": { "0": string };
-        "pwg:JobUuid": { "0": string };
-        "pwg:ImagesCompleted": { "0": string };
-        "pwg:ImagesToTransfer": { "0": string };
-        "pwg:JobState": { "0": string };
-        "pwg:JobStateReasons": {
-          "0": {
-            "pwg:JobStateReason": { "0": string };
-          };
-        };
-      }[];
+      "scan:JobInfo": EsclJobInfoData[];
     }[];
   };
 }
@@ -91,45 +131,37 @@ export default class EsclScanStatus implements IScanStatus {
   }
 
   getJobState(jobUuid: string): eSCLJobState | null {
-    const jobInfo = this.getJobInfo(jobUuid);
+    const jobInfo = this.getJobInfoByUuid(jobUuid);
 
-    if (jobInfo === undefined) {
-      return null;
-    }
-
-    return EnumUtils.getState(
-      "JobState",
-      eSCLJobState,
-      jobInfo["pwg:JobState"]["0"],
-    );
+    return jobInfo?.getJobState() ?? null;
   }
 
   getJobStateReason(jobUuid: string): JobStateReason | null {
-    const jobInfo = this.getJobInfo(jobUuid);
+    const jobInfo = this.getJobInfoByUuid(jobUuid);
+
+    return jobInfo?.getJobStateReason() ?? null;
+  }
+
+  private getJobInfoByUuid(jobUuid: string): EsclJobInfo | undefined {
+    const jobInfos = this.getJobInfos();
+
+    const jobInfo = jobInfos.find((x) => x.getJobUuid() === jobUuid);
 
     if (jobInfo === undefined) {
       console.log(`Job ${jobUuid} not found`);
-      return null;
-    }
-
-    const jobStateReasons = jobInfo["pwg:JobStateReasons"]["0"];
-
-    return EnumUtils.getState(
-      "JobStateReason",
-      JobStateReason,
-      jobStateReasons["pwg:JobStateReason"]["0"],
-    );
-  }
-
-  private getJobInfo(jobUuid: string) {
-    const jobs = this.data["scan:ScannerStatus"]["scan:Jobs"];
-
-    if (jobs === undefined) {
       return undefined;
     }
 
-    const jobInfos = jobs[0]["scan:JobInfo"];
+    return jobInfo;
+  }
 
-    return jobInfos.find((x) => x["pwg:JobUuid"]["0"] === jobUuid);
+  public getJobInfos(): EsclJobInfo[] {
+    const jobs = this.data["scan:ScannerStatus"]["scan:Jobs"];
+
+    if (jobs === undefined || jobs.length === 0) {
+      return [];
+    }
+
+    return jobs[0]["scan:JobInfo"].map((x) => new EsclJobInfo(x));
   }
 }
