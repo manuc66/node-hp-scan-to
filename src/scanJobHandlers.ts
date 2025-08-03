@@ -237,10 +237,11 @@ async function getAndFixHeightWHenAdf(
       console.log(
         `Image height has not been fixed, DNF may not have been found and approximate height is: ${actualHeight}`,
       );
-    }
-    else {
+    } else {
       if (HPApi.isDebug()) {
-        console.log(`Image height has been fixed to: ${sizeFixed} (contained in jpeg's DNL), scan job indicates: ${actualHeight}`);
+        console.log(
+          `Image height has been fixed to: ${sizeFixed} (contained in jpeg's DNL), scan job indicates: ${actualHeight}`,
+        );
       }
     }
   }
@@ -281,6 +282,8 @@ async function eSCLScanJobHandling(
     const filePath = await HPApi.downloadEsclPage(jobUrl, destinationFilePath);
 
     const scanImageInfo = await HPApi.getEsclScanImageInfo(jobLocation);
+    console.log("scanImageInfo:", scanImageInfo.jobURI);
+
     const actualHeight = scanImageInfo.actualHeight;
 
     const adfHeight = await getAndFixHeightWHenAdf(

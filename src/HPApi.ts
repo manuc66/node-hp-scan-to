@@ -607,7 +607,7 @@ export default class HPApi {
     destination: string,
   ): Promise<string> {
     return await HPApi.downloadPage(
-      jobUri + "//NextDocument",
+      jobUri + "/NextDocument",
       destination,
       60_000,
     );
@@ -618,7 +618,7 @@ export default class HPApi {
   ): Promise<EsclScanImageInfo> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
-      url: jobUri + "//ScanImageInfo",
+      url: jobUri + "/ScanImageInfo",
       method: "GET",
       responseType: "text",
     });
