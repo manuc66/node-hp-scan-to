@@ -299,12 +299,7 @@ async function eSCLScanJobHandling(
 
     scanJobContent.elements.push(page);
 
-    jobInfo = scannerStatus
-      .getJobInfos()
-      .find(
-        (x) =>
-          PathHelper.getPathFromHttpLocation(x.getJobUri()) === jobLocation,
-      );
+    jobInfo = scannerStatus.findJobByUri(jobLocation);
 
     if (HPApi.isDebug()) {
       logJobInfo(jobUrl, scanImageInfo, jobInfo);

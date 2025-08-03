@@ -5,6 +5,7 @@ import { IScanStatus } from "./IScanStatus";
 import { ScannerState } from "./ScannerState";
 import { AdfState } from "./AdfState";
 import { EnumUtils } from "./EnumUtils";
+import PathHelper from "../PathHelper";
 
 export enum JobStateReason {
   JobCompletedSuccessfully = "JobCompletedSuccessfully",
@@ -130,29 +131,12 @@ export default class EsclScanStatus implements IScanStatus {
     return this.isLoaded() ? InputSource.Adf : InputSource.Platen;
   }
 
-  getJobState(jobUuid: string): eSCLJobState | null {
-    const jobInfo = this.getJobInfoByUuid(jobUuid);
-
-    return jobInfo?.getJobState() ?? null;
-  }
-
-  getJobStateReason(jobUuid: string): JobStateReason | null {
-    const jobInfo = this.getJobInfoByUuid(jobUuid);
-
-    return jobInfo?.getJobStateReason() ?? null;
-  }
-
-  private getJobInfoByUuid(jobUuid: string): EsclJobInfo | undefined {
-    const jobInfos = this.getJobInfos();
-
-    const jobInfo = jobInfos.find((x) => x.getJobUuid() === jobUuid);
-
-    if (jobInfo === undefined) {
-      console.log(`Job ${jobUuid} not found`);
-      return undefined;
-    }
-
-    return jobInfo;
+  findJobByUri(jobLocation: string) {
+    return this.getJobInfos().find(
+      (x) =>
+        jobLocation === PathHelper.getPathFromHttpLocation(x.getJobUri()) ||
+        jobLocation === PathHelper.getPathFromHttpLocation(x.getJobUri()) + "/",
+    );
   }
 
   public getJobInfos(): EsclJobInfo[] {
