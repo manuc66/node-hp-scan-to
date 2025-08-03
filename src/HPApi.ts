@@ -8,7 +8,6 @@ import axios, {
   AxiosResponse,
   RawAxiosRequestHeaders,
 } from "axios";
-import { URL } from "url";
 import * as stream from "stream";
 import { Stream } from "stream";
 import EventTable, { EtagEventTable } from "./hpModels/EventTable";
@@ -18,7 +17,6 @@ import WalkupScanDestination from "./hpModels/WalkupScanDestination";
 import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination";
 import WalkupScanDestinations from "./hpModels/WalkupScanDestinations";
 import WalkupScanToCompDestinations from "./hpModels/WalkupScanToCompDestinations";
-import ScanJobSettings from "./hpModels/ScanJobSettings";
 import Destination from "./hpModels/Destination";
 import WalkupScanToCompEvent from "./hpModels/WalkupScanToCompEvent";
 import DiscoveryTree from "./type/DiscoveryTree";
@@ -29,6 +27,12 @@ import ScanJobManifest from "./hpModels/ScanJobManifest";
 import ScanCaps from "./hpModels/ScanCaps";
 import { delay } from "./delay";
 import * as net from "net";
+import EsclScanJobManifest from "./hpModels/EsclManifest";
+import EsclScanCaps from "./hpModels/EsclScanCaps";
+import EsclScanStatus from "./hpModels/EsclScanStatus";
+import { IScanJobSettings } from "./hpModels/IScanJobSettings";
+import EsclScanImageInfo from "./hpModels/EsclScanImageInfo";
+import PathHelper from "./PathHelper";
 
 let printerIP = "192.168.1.11";
 let debug = false;
@@ -224,6 +228,23 @@ export default class HPApi {
     }
   }
 
+  static async getEsclScanJobManifest(
+    uri: string,
+  ): Promise<EsclScanJobManifest> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: uri,
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw new Error(response.statusText);
+    } else {
+      return EsclScanJobManifest.createScanJobManifest(response.data);
+    }
+  }
+
   static async getScanCaps(uri: string): Promise<ScanCaps> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -236,6 +257,21 @@ export default class HPApi {
       throw new Error(response.statusText);
     } else {
       return ScanCaps.createScanCaps(response.data);
+    }
+  }
+
+  static async getEsclScanCaps(uri: string): Promise<EsclScanCaps> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: uri,
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw new Error(response.statusText);
+    } else {
+      return EsclScanCaps.createScanCaps(response.data);
     }
   }
 
@@ -278,19 +314,9 @@ export default class HPApi {
   static async removeDestination(
     walkupScanDestination: WalkupScanDestination | WalkupScanToCompDestination,
   ): Promise<boolean> {
-    let path: string;
-
-    if (walkupScanDestination.resourceURI.startsWith("http")) {
-      const urlInfo = new URL(walkupScanDestination.resourceURI);
-      if (urlInfo.pathname === null) {
-        throw new Error(
-          `invalid walkupScanDestination.resourceURI: ${walkupScanDestination.resourceURI}`,
-        );
-      }
-      path = urlInfo.pathname;
-    } else {
-      path = walkupScanDestination.resourceURI;
-    }
+    const path = PathHelper.getPathFromHttpLocation(
+      walkupScanDestination.resourceURI,
+    );
 
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -325,7 +351,7 @@ export default class HPApi {
       response.status === 201 &&
       typeof response.headers.location === "string"
     ) {
-      return new URL(response.headers.location).pathname;
+      return PathHelper.getPathFromHttpLocation(response.headers.location);
     } else {
       throw new Error(
         `Unexpected status code when getting ${url}: ${response.status}`,
@@ -350,7 +376,7 @@ export default class HPApi {
       response.status === 201 &&
       typeof response.headers.location === "string"
     ) {
-      return new URL(response.headers.location).pathname;
+      return PathHelper.getPathFromHttpLocation(response.headers.location);
     } else {
       throw new Error(
         `Unexpected status code or location when registering to ${url}: ${response.status} - ${response.headers.location}`,
@@ -463,13 +489,31 @@ export default class HPApi {
     }
   }
 
+  static async getEsclScanStatus(): Promise<EsclScanStatus> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: "/eSCL/ScannerStatus ",
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw new Error(
+        `Unexpected status code when getting /eSCL/ScannerStatus : ${response.status}`,
+      );
+    } else {
+      const content = response.data;
+      return EsclScanStatus.createScanStatus(content);
+    }
+  }
+
   static delay(t: number): Promise<void> {
     return new Promise(function (resolve) {
       setTimeout(resolve, t);
     });
   }
 
-  static async postJob(job: ScanJobSettings): Promise<string> {
+  static async postJob(job: IScanJobSettings): Promise<string> {
     await HPApi.delay(500);
     const xml = await job.toXML();
     const response = await HPApi.callAxios({
@@ -493,6 +537,29 @@ export default class HPApi {
     }
   }
 
+  static async postEsclJob(job: IScanJobSettings): Promise<string> {
+    await HPApi.delay(500);
+    const xml = await job.toXML();
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: "/eSCL/ScanJobs",
+      method: "POST",
+      headers: { "Content-Type": "text/xml" },
+      data: xml,
+      responseType: "text",
+    });
+
+    if (
+      response.status === 201 &&
+      typeof response.headers.location === "string"
+    ) {
+      return response.headers.location;
+    } else {
+      throw new Error(
+        `Unexpected status code or location when posting job: ${response.status} - ${response.headers.location}`,
+      );
+    }
+  }
   /**
    * @param jobURL
    * @return {Promise<Job|*>}
@@ -517,12 +584,14 @@ export default class HPApi {
   static async downloadPage(
     binaryURL: string,
     destination: string,
+    timeout?: number,
   ): Promise<string> {
     const { data }: AxiosResponse<Stream> = await axios.request<Stream>({
       baseURL: `http://${printerIP}:8080`,
       url: binaryURL,
       method: "GET",
       responseType: "stream",
+      timeout,
     });
 
     const destinationFileStream = fs.createWriteStream(destination);
@@ -531,5 +600,36 @@ export default class HPApi {
     await promisify(stream.finished)(destinationFileStream);
 
     return destination;
+  }
+
+  static async downloadEsclPage(
+    jobUri: string,
+    destination: string,
+  ): Promise<string> {
+    return await HPApi.downloadPage(
+      jobUri + "/NextDocument",
+      destination,
+      60_000,
+    );
+  }
+
+  static async getEsclScanImageInfo(
+    jobUri: string,
+  ): Promise<EsclScanImageInfo> {
+    const response = await HPApi.callAxios({
+      baseURL: `http://${printerIP}`,
+      url: jobUri + "/ScanImageInfo",
+      method: "GET",
+      responseType: "text",
+    });
+
+    if (response.status !== 200) {
+      throw new Error(
+        `Unexpected status code when getting /eSCL/ScannerStatus : ${response.status}`,
+      );
+    } else {
+      const content = response.data;
+      return EsclScanImageInfo.createScanImageInfo(content);
+    }
   }
 }

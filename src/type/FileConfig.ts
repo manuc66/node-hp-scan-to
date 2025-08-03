@@ -39,6 +39,8 @@ export const configSchema = z.object({
     .optional(), // Scan height in pixels
   resolution: z.number().int().positive().optional(), // DPI resolution
 
+  prefer_escl: z.boolean().optional(), // Always upload scans as PDF
+
   ///
   /// Duplex Scanning Options
   ///

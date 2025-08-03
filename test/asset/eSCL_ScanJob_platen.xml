@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ScanSettings xmlns="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.hp.com/imaging/escl/2011/05/03 Scan Schema - 0.26.xsd">
+	<Version xmlns="http://www.pwg.org/schemas/2010/12/sm">2.62</Version>
+	<Intent>Document</Intent>
+	<ScanRegions xmlns="http://www.pwg.org/schemas/2010/12/sm" xmlns:n0="http://www.pwg.org/schemas/2010/12/sm" n0:MustHonor="false">
+		<ScanRegion>
+			<Height>3507</Height>
+			<Width>2481</Width>
+			<XOffset>0</XOffset>
+			<YOffset>0</YOffset>
+			<ContentRegionUnits>escl:ThreeHundredthsOfInches</ContentRegionUnits>
+		</ScanRegion>
+	</ScanRegions>
+	<DocumentFormatExt>image/jpeg</DocumentFormatExt>
+	<InputSource xmlns="http://www.pwg.org/schemas/2010/12/sm">Platen</InputSource>
+	<XResolution>600</XResolution>
+	<YResolution>600</YResolution>
+	<ColorMode>RGB24</ColorMode>
+	<Duplex>false</Duplex>
+	<MultipickDetection>true</MultipickDetection>
+	<ShowMultipickResolveDialog>true</ShowMultipickResolveDialog>
+	<MultipickExclusionLength>0</MultipickExclusionLength>
+	<AutoCrop>false</AutoCrop>
+	<Brightness>996</Brightness>
+	<CompressionFactor>0</CompressionFactor>
+	<Contrast>996</Contrast>
+	<Gamma>180</Gamma>
+	<Highlight>1396</Highlight>
+	<Shadow>70</Shadow>
+	<Overscan>true</Overscan>
+</ScanSettings>

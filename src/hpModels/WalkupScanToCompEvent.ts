@@ -1,11 +1,19 @@
 "use strict";
 
 import { parseXmlString } from "./ParseXmlString";
+import { EnumUtils } from "./EnumUtils";
 
 export interface WalkupScanToCompEventData {
   "wus:WalkupScanToCompEvent": {
     "wus:WalkupScanToCompEventType": string[];
   };
+}
+
+export enum EventType {
+  HostSelected = "HostSelected",
+  ScanRequested = "ScanRequested",
+  ScanNewPageRequested = "ScanNewPageRequested",
+  ScanPagesComplete = "ScanPagesComplete",
 }
 
 export default class WalkupScanToCompEvent {
@@ -18,9 +26,11 @@ export default class WalkupScanToCompEvent {
     return new WalkupScanToCompEvent(parsed);
   }
 
-  get eventType(): string {
-    return this.data["wus:WalkupScanToCompEvent"][
-      "wus:WalkupScanToCompEventType"
-    ][0];
+  get eventType(): EventType {
+    const eventTypeStr =
+      this.data["wus:WalkupScanToCompEvent"][
+        "wus:WalkupScanToCompEventType"
+      ][0];
+    return EnumUtils.getState("EventType", EventType, eventTypeStr);
   }
 }

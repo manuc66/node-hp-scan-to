@@ -10,7 +10,8 @@ import {
   uploadPdfToNextcloud,
   uploadImagesToNextcloud,
 } from "./nextcloud/nextcloud";
-import fs from "fs/promises";
+import fs from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
 import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { ScanConfig } from "./type/scanConfigs";
@@ -160,8 +161,14 @@ async function cleanUpFilesIfNeeded(
   if (!keepFiles) {
     await Promise.all(
       filePaths.map(async (filePath) => {
-        await fs.unlink(filePath);
-        console.log(`File ${filePath} has been removed from the filesystem`);
+        if (existsSync(filePath)) {
+          await fs.unlink(filePath);
+          console.log(`File ${filePath} has been removed from the filesystem`);
+        } else {
+          console.log(
+            `File ${filePath} was already removed from the filesystem`,
+          );
+        }
       }),
     );
   }

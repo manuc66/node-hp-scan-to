@@ -51,4 +51,22 @@ export default class ScanJobManifest {
       ][0] + scanCaps["map:ResourceLink"][0]["dd:ResourceURI"][0]
     );
   }
+
+  get StatusURI(): string | null {
+    const scanCaps = this.data["man:Manifest"]["map:ResourceMap"]["0"][
+      "map:ResourceNode"
+    ].find(
+      (x) => x["map:ResourceType"][0]["scan:ScanResourceType"][0] === "Status",
+    );
+
+    if (scanCaps === undefined) {
+      return null;
+    }
+
+    return (
+      this.data["man:Manifest"]["map:ResourceMap"]["0"]["map:ResourceLink"][0][
+        "dd:ResourceURI"
+      ][0] + scanCaps["map:ResourceLink"][0]["dd:ResourceURI"][0]
+    );
+  }
 }
