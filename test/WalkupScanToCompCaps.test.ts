@@ -41,5 +41,22 @@ describe("WalkupScanToCompCaps", () => {
       expect(walkupScanToCompCaps.supportsMultiItemScanFromPlaten).to.be.eq(false);
     });
   });
+  describe("Parsing walkupScanToCompCaps3.xml", async () => {
+    let walkupScanToCompCaps: WalkupScanToCompCaps;
 
+    before(async () => {
+      const content: string = await fs.readFile(
+        path.resolve(
+          __dirname,
+          "./asset/walkupScanToCompCaps3.xml"
+        ),
+        { encoding: "utf8" }
+      );
+      walkupScanToCompCaps = await WalkupScanToCompCaps.createWalkupScanToCompCaps(content);
+    });
+
+    it("Parse supportsMultiItemScanFromPlaten", async () => {
+      expect(walkupScanToCompCaps.supportsMultiItemScanFromPlaten).to.be.eq(true);
+    });
+  });
 });

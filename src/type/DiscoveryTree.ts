@@ -23,33 +23,26 @@ export default class DiscoveryTree {
     return new DiscoveryTree(parsed);
   }
 
-  get WalkupScanToCompManifestURI(): string | null {
-    const hpLedmWalkupScanToCompManifest = this.data["ledm:DiscoveryTree"][
-      "ledm:SupportedIfc"
-    ].find(
-      (x) => x["dd:ResourceType"][0] === "ledm:hpLedmWalkupScanToCompManifest",
+  private getManifestURI(resourceType: string): string | null {
+    const manifest = this.data["ledm:DiscoveryTree"]["ledm:SupportedIfc"].find(
+      (x) => x["dd:ResourceType"][0] === resourceType,
     );
-    if (hpLedmWalkupScanToCompManifest !== undefined) {
-      return hpLedmWalkupScanToCompManifest["ledm:ManifestURI"][0];
-    }
-    return null;
+    return manifest ? manifest["ledm:ManifestURI"][0] : null;
   }
+
+  get WalkupScanToCompManifestURI(): string | null {
+    return this.getManifestURI("ledm:hpLedmWalkupScanToCompManifest");
+  }
+
   get WalkupScanManifestURI(): string | null {
-    const hpLedmWalkupScanToCompManifest = this.data["ledm:DiscoveryTree"][
-      "ledm:SupportedIfc"
-    ].find((x) => x["dd:ResourceType"][0] === "hpCnxWalkupScanManifest");
-    if (hpLedmWalkupScanToCompManifest === undefined) {
-      return null;
-    }
-    return hpLedmWalkupScanToCompManifest["ledm:ManifestURI"][0];
+    return this.getManifestURI("hpCnxWalkupScanManifest");
   }
+
   get ScanJobManifestURI(): string | null {
-    const hpLedmWalkupScanToCompManifest = this.data["ledm:DiscoveryTree"][
-      "ledm:SupportedIfc"
-    ].find((x) => x["dd:ResourceType"][0] === "ledm:hpLedmScanJobManifest");
-    if (hpLedmWalkupScanToCompManifest === undefined) {
-      return null;
-    }
-    return hpLedmWalkupScanToCompManifest["ledm:ManifestURI"][0];
+    return this.getManifestURI("ledm:hpLedmScanJobManifest");
+  }
+
+  get EsclManifestURI(): string | null {
+    return this.getManifestURI("eSCL:eSclManifest");
   }
 }
