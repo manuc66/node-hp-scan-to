@@ -235,8 +235,13 @@ async function getAndFixHeightWHenAdf(
     sizeFixed = await fixJpegHeight(filePath);
     if (sizeFixed == null) {
       console.log(
-        `File size has not been fixed, DNF may not have been found and approximate height is: ${actualHeight}`,
+        `Image height has not been fixed, DNF may not have been found and approximate height is: ${actualHeight}`,
       );
+    }
+    else {
+      if (HPApi.isDebug()) {
+        console.log(`Image height has been fixed to: ${sizeFixed} (contained in jpeg's DNL), scan job indicates: ${actualHeight}`);
+      }
     }
   }
   return sizeFixed;
