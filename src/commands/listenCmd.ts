@@ -16,6 +16,7 @@ import { DuplexMode } from "../type/duplexMode";
 import { TargetDuplexMode } from "../type/targetDuplexMode";
 import { ScanConfig } from "../type/scanConfigs";
 import { PageCountingStrategy } from "../type/pageCountingStrategy";
+import { ScanPlexMode } from "../hpModels/ScanPlexMode";
 
 type WalkupDestination = WalkupScanDestination | WalkupScanToCompDestination;
 
@@ -171,11 +172,7 @@ export async function listenCmd(
 }
 
 async function handleScanResult(
-  duplexMode:
-    | DuplexMode.Simplex
-    | DuplexMode.Duplex
-    | DuplexMode.BackOfDoubleSided
-    | DuplexMode.FrontOfDoubleSided,
+  duplexMode: DuplexMode,
   frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null,
   scanConfig: ScanConfig,
   folder: string,
@@ -226,7 +223,7 @@ function determineDuplexModes(
   lastScanTarget: SelectedScanTarget | undefined,
 ) {
   const isDuplex =
-    destination.scanPlexMode != null && destination.scanPlexMode != "Simplex";
+    destination.scanPlexMode != null && destination.scanPlexMode != ScanPlexMode.Simplex;
 
   let duplexMode: DuplexMode;
 
