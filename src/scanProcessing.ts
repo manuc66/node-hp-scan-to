@@ -18,10 +18,16 @@ import {
 import { PageCountingStrategy } from "./type/pageCountingStrategy";
 import { IScanStatus } from "./hpModels/IScanStatus";
 import { ScannerState } from "./hpModels/ScannerState";
+import { ScanPlexMode } from "./hpModels/ScanPlexMode";
+
+export interface WalkupDestination {
+  get shortcut(): null | KnownShortcut;
+  get scanPlexMode(): ScanPlexMode | null;
+}
 
 export async function tryGetDestination(
   event: Event,
-): Promise<WalkupScanDestination | WalkupScanToCompDestination | null> {
+): Promise<WalkupDestination | null> {
   // this code can in some cases be executed before the user actually chooses between Document or Photo
   // so, let's fetch the contentType (Document or Photo) until we get a value
   let destination: WalkupScanDestination | WalkupScanToCompDestination | null =
@@ -50,7 +56,7 @@ export async function tryGetDestination(
 }
 
 export function isPdf(
-  destination: WalkupScanDestination | WalkupScanToCompDestination,
+  destination: WalkupDestination,
 ) {
   if (
     destination.shortcut === KnownShortcut.SavePDF ||
