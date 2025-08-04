@@ -1,7 +1,4 @@
-import {
-  RegistrationConfig,
-  SelectedScanTarget,
-} from "../type/scanTargetDefinitions";
+import { RegistrationConfig, SelectedScanTarget } from "../type/scanTargetDefinitions";
 import HPApi from "../HPApi";
 import { readDeviceCapabilities } from "../readDeviceCapabilities";
 import { ScanContent } from "../type/ScanContent";
@@ -52,6 +49,7 @@ export async function listenCmd(
 
   let frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null =
     null;
+  let emulatedDuplexParameters : ScanParameters | null = null;
   while (keepActive) {
     iteration++;
     console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
@@ -105,20 +103,30 @@ export async function listenCmd(
           );
         }
 
-        const {
-          pageCountingStrategy,
-          scanToPdf,
-          scanDate,
-          scanCount: newScanCount,
-        } = await setupScanParameters(
+        const scanParameters = await setupScanParameters(
           duplexMode,
           targetDuplexMode,
           destination,
           scanCount,
           folder,
           scanConfig,
+          emulatedDuplexParameters
         );
-        scanCount = newScanCount;
+
+        if (duplexMode == DuplexMode.FrontOfDoubleSided) {
+          emulatedDuplexParameters = scanParameters;
+        }
+        else {
+          emulatedDuplexParameters = null;
+        }
+
+        const {
+          pageCountingStrategy,
+          scanToPdf,
+          scanDate,
+          scanCount: newScanCount,
+        } = scanParameters;
+          scanCount = newScanCount;
 
         const scanJobContent = await saveScanFromEvent(
           selectedScanTarget,
@@ -268,6 +276,13 @@ function assembleEmulatedDoubleSideScan(
   return duplexScanJobContent;
 }
 
+type ScanParameters = {
+  pageCountingStrategy: PageCountingStrategy;
+  scanToPdf: boolean;
+  scanDate: Date;
+  scanCount: number;
+};
+
 async function setupScanParameters(
   duplexMode: DuplexMode,
   targetDuplexMode: TargetDuplexMode,
@@ -275,15 +290,11 @@ async function setupScanParameters(
   scanCount: number,
   folder: string,
   scanConfig: ScanConfig,
-): Promise<{
-  pageCountingStrategy: PageCountingStrategy;
-  scanToPdf: boolean;
-  scanDate: Date;
-  scanCount: number;
-}> {
+  emulatedDuplexParameters: ScanParameters | null = null,
+): Promise<ScanParameters> {
   let pageCountingStrategy: PageCountingStrategy;
-  let scanToPdf: boolean = false;
-  let scanDate = new Date();
+  let scanToPdf: boolean;
+  let scanDate: Date;
   if (duplexMode == DuplexMode.Duplex) {
     console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
     pageCountingStrategy = PageCountingStrategy.Normal;
@@ -313,6 +324,9 @@ async function setupScanParameters(
     } else {
       console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
       pageCountingStrategy = PageCountingStrategy.EvenOnly;
+      scanToPdf = emulatedDuplexParameters?.scanToPdf ?? isPdf(destination);
+      scanDate = emulatedDuplexParameters?.scanDate ?? new Date();
+      scanCount = emulatedDuplexParameters?.scanCount ?? scanCount;
       console.log(
         `Scan event captured, saving back sides of scan #${scanCount}`,
       );
