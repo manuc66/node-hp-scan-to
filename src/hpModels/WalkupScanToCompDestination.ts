@@ -2,6 +2,8 @@
 
 import { parseXmlString } from "./ParseXmlString";
 import { KnownShortcut } from "../type/KnownShortcut";
+import { ScanPlexMode } from "./ScanPlexMode";
+import { EnumUtils } from "./EnumUtils";
 
 interface WalkupScanToCompDestinationRoot {
   "wus:WalkupScanToCompDestination": WalkupScanToCompDestinationData;
@@ -58,18 +60,16 @@ export default class WalkupScanToCompDestination {
     return null;
   }
 
-  get scanPlexMode(): string | null {
+  get scanPlexMode(): ScanPlexMode | null {
     if (
       Object.prototype.hasOwnProperty.call(
         this.data,
         "wus:WalkupScanToCompSettings",
       )
     ) {
-      return (
-        this.data["wus:WalkupScanToCompSettings"]["0"]["scantype:ScanSettings"][
-          "0"
-        ]["dd:ScanPlexMode"][0] || null
-      );
+      return EnumUtils.getState("ScanPlexMode", ScanPlexMode, this.data["wus:WalkupScanToCompSettings"]["0"]["scantype:ScanSettings"][
+        "0"
+        ]["dd:ScanPlexMode"][0]);
     }
     return null;
   }
