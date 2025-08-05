@@ -13,11 +13,8 @@ describe("EsclScanStatus", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/eSCL_ScannerStatus_empty.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/eSCL_ScannerStatus_empty.xml"),
+        { encoding: "utf8" },
       );
       scanStatus = await EsclScanStatus.createScanStatus(content);
     });
@@ -35,8 +32,12 @@ describe("EsclScanStatus", () => {
       expect(scanStatus.isLoaded()).to.be.eq(false);
     });
     it("findJobByUri", async () => {
-      expect(scanStatus.findJobByUri("/eSCL/ScanJobs/1/")?.getJobUri()).to.be.eq(undefined);
-      expect(scanStatus.findJobByUri("/eSCL/ScanJobs/2/")?.getJobUri()).to.be.eq(undefined);
+      expect(
+        scanStatus.findJobByUri("/eSCL/ScanJobs/1/")?.getJobUri(),
+      ).to.be.eq(undefined);
+      expect(
+        scanStatus.findJobByUri("/eSCL/ScanJobs/2/")?.getJobUri(),
+      ).to.be.eq(undefined);
     });
   });
   describe("Parsing eSCL_ScannerStatus_empty_570.xml", async () => {
@@ -44,11 +45,8 @@ describe("EsclScanStatus", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/eSCL_ScannerStatus_empty_570.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/eSCL_ScannerStatus_empty_570.xml"),
+        { encoding: "utf8" },
       );
       scanStatus = await EsclScanStatus.createScanStatus(content);
     });
@@ -66,8 +64,16 @@ describe("EsclScanStatus", () => {
       expect(scanStatus.isLoaded()).to.be.eq(false);
     });
     it("findJobByUri", async () => {
-      expect(scanStatus.findJobByUri("/eSCL/ScanJobs/f6f17dc4-536e-4bcb-b622-5d25bb6880be")?.getJobUri()).to.be.eq("/eSCL/ScanJobs/f6f17dc4-536e-4bcb-b622-5d25bb6880be");
-      expect(scanStatus.findJobByUri("/eSCL/ScanJobs/4079bb49-d84d-4e6f-b093-c1aa5382541a")?.getJobUri()).to.be.eq("/eSCL/ScanJobs/4079bb49-d84d-4e6f-b093-c1aa5382541a");
+      expect(
+        scanStatus
+          .findJobByUri("/eSCL/ScanJobs/f6f17dc4-536e-4bcb-b622-5d25bb6880be")
+          ?.getJobUri(),
+      ).to.be.eq("/eSCL/ScanJobs/f6f17dc4-536e-4bcb-b622-5d25bb6880be");
+      expect(
+        scanStatus
+          .findJobByUri("/eSCL/ScanJobs/4079bb49-d84d-4e6f-b093-c1aa5382541a")
+          ?.getJobUri(),
+      ).to.be.eq("/eSCL/ScanJobs/4079bb49-d84d-4e6f-b093-c1aa5382541a");
     });
   });
   describe("Parsing eSCL_ScannerStatus_loaded.xml", async () => {
@@ -75,11 +81,8 @@ describe("EsclScanStatus", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/eSCL_ScannerStatus_loaded.xml"
-        ),
-        { encoding: "utf8" } //
+        path.resolve(__dirname, "./asset/eSCL_ScannerStatus_loaded.xml"),
+        { encoding: "utf8" }, //
       );
       scanStatus = await EsclScanStatus.createScanStatus(content);
     });
@@ -97,8 +100,12 @@ describe("EsclScanStatus", () => {
       expect(scanStatus.isLoaded()).to.be.eq(true);
     });
     it("findJobByUri", async () => {
-      expect(scanStatus.findJobByUri("/eSCL/ScanJobs/1/")?.getJobUri()).to.be.eq("/eSCL/ScanJobs/1");
-      expect(scanStatus.findJobByUri("/eSCL/ScanJobs/2/")?.getJobUri()).to.be.eq(undefined);
+      expect(
+        scanStatus.findJobByUri("/eSCL/ScanJobs/1/")?.getJobUri(),
+      ).to.be.eq("/eSCL/ScanJobs/1");
+      expect(
+        scanStatus.findJobByUri("/eSCL/ScanJobs/2/")?.getJobUri(),
+      ).to.be.eq(undefined);
     });
   });
   describe("Parsing eSCL_ScannerStatus_processing.xml", async () => {
@@ -106,11 +113,8 @@ describe("EsclScanStatus", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/eSCL_ScannerStatus_processing.xml"
-        ),
-        { encoding: "utf8" } //
+        path.resolve(__dirname, "./asset/eSCL_ScannerStatus_processing.xml"),
+        { encoding: "utf8" }, //
       );
       scanStatus = await EsclScanStatus.createScanStatus(content);
     });
@@ -128,8 +132,12 @@ describe("EsclScanStatus", () => {
       expect(scanStatus.isLoaded()).to.be.eq(false);
     });
     it("findJobByUri", async () => {
-      expect(scanStatus.findJobByUri("/eSCL/ScanJobs/1/")?.getJobUri()).to.be.eq("/eSCL/ScanJobs/1");
-      expect(scanStatus.findJobByUri("/eSCL/ScanJobs/2/")?.getJobUri()).to.be.eq("/eSCL/ScanJobs/2");
+      expect(
+        scanStatus.findJobByUri("/eSCL/ScanJobs/1/")?.getJobUri(),
+      ).to.be.eq("/eSCL/ScanJobs/1");
+      expect(
+        scanStatus.findJobByUri("/eSCL/ScanJobs/2/")?.getJobUri(),
+      ).to.be.eq("/eSCL/ScanJobs/2");
     });
   });
   describe("Parsing eSCL_ScannerStatus_completed.xml", async () => {
@@ -137,11 +145,8 @@ describe("EsclScanStatus", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/eSCL_ScannerStatus_completed.xml"
-        ),
-        { encoding: "utf8" } //
+        path.resolve(__dirname, "./asset/eSCL_ScannerStatus_completed.xml"),
+        { encoding: "utf8" }, //
       );
       scanStatus = await EsclScanStatus.createScanStatus(content);
     });
@@ -159,8 +164,12 @@ describe("EsclScanStatus", () => {
       expect(scanStatus.isLoaded()).to.be.eq(false);
     });
     it("findJobByUri", async () => {
-      expect(scanStatus.findJobByUri("/eSCL/ScanJobs/1/")?.getJobUri()).to.be.eq("/eSCL/ScanJobs/1");
-      expect(scanStatus.findJobByUri("/eSCL/ScanJobs/2/")?.getJobUri()).to.be.eq("/eSCL/ScanJobs/2");
+      expect(
+        scanStatus.findJobByUri("/eSCL/ScanJobs/1/")?.getJobUri(),
+      ).to.be.eq("/eSCL/ScanJobs/1");
+      expect(
+        scanStatus.findJobByUri("/eSCL/ScanJobs/2/")?.getJobUri(),
+      ).to.be.eq("/eSCL/ScanJobs/2");
     });
   });
 });

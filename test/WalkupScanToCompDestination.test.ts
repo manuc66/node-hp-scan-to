@@ -13,11 +13,14 @@ describe("WalkupScanToCompDestination", () => {
       const content: string = await fs.readFile(
         path.resolve(
           __dirname,
-          "./asset/walkupScanToCompDestination_with_ScanPlexMode.xml"
+          "./asset/walkupScanToCompDestination_with_ScanPlexMode.xml",
         ),
-        { encoding: "utf8" }
+        { encoding: "utf8" },
       );
-      destination = await WalkupScanToCompDestination.createWalkupScanToCompDestination(content);
+      destination =
+        await WalkupScanToCompDestination.createWalkupScanToCompDestination(
+          content,
+        );
     });
 
     it("Parse scanPlexMode", async () => {
@@ -30,7 +33,7 @@ describe("WalkupScanToCompDestination", () => {
 
     it("Parse resourceURI", async () => {
       expect(destination.resourceURI).to.be.eq(
-        "/WalkupScanToComp/WalkupScanToCompDestinations/1c881fde-c4a0-1f08-822f-a01d48c5c091"
+        "/WalkupScanToComp/WalkupScanToCompDestinations/1c881fde-c4a0-1f08-822f-a01d48c5c091",
       );
     });
 
@@ -49,11 +52,14 @@ describe("WalkupScanToCompDestination", () => {
       const content: string = await fs.readFile(
         path.resolve(
           __dirname,
-          "./asset/walkupScanDestination_with_ScanPlexMode_Duplex.xml"
+          "./asset/walkupScanDestination_with_ScanPlexMode_Duplex.xml",
         ),
-        { encoding: "utf8" }
+        { encoding: "utf8" },
       );
-      destination = await WalkupScanToCompDestination.createWalkupScanToCompDestination(content);
+      destination =
+        await WalkupScanToCompDestination.createWalkupScanToCompDestination(
+          content,
+        );
     });
 
     it("Parse scanPlexMode", async () => {
@@ -66,7 +72,7 @@ describe("WalkupScanToCompDestination", () => {
 
     it("Parse resourceURI", async () => {
       expect(destination.resourceURI).to.be.eq(
-        "/WalkupScanToComp/WalkupScanToCompDestinations/7845bc9f-46e5-4011-8a2c-482364ffd6c7"
+        "/WalkupScanToComp/WalkupScanToCompDestinations/7845bc9f-46e5-4011-8a2c-482364ffd6c7",
       );
     });
 

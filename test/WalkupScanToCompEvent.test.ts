@@ -10,13 +10,11 @@ describe("WalkupScanToCompEvent", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/walkupScanToCompEvent.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/walkupScanToCompEvent.xml"),
+        { encoding: "utf8" },
       );
-      compEvent = await WalkupScanToCompEvent.createWalkupScanToCompEvent(content);
+      compEvent =
+        await WalkupScanToCompEvent.createWalkupScanToCompEvent(content);
     });
 
     it("Parse eventType", async () => {

@@ -10,11 +10,8 @@ describe("EsclScanImageInfo", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/eSCL_ScanImageInfo.xml"
-        ),
-        { encoding: "utf8" } //
+        path.resolve(__dirname, "./asset/eSCL_ScanImageInfo.xml"),
+        { encoding: "utf8" }, //
       );
       scanImageInfo = await EsclScanImageInfo.createScanImageInfo(content);
     });

@@ -10,11 +10,8 @@ describe("EsclScanCaps", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/eSCL_ScannerCapabilities_Duplex.xml"
-        ),
-        { encoding: "utf8" } //
+        path.resolve(__dirname, "./asset/eSCL_ScannerCapabilities_Duplex.xml"),
+        { encoding: "utf8" }, //
       );
       scanCaps = await EsclScanCaps.createScanCaps(content);
     });
@@ -49,11 +46,8 @@ describe("EsclScanCaps", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/eSCL_ScannerCapabilities_Simplex.xml"
-        ),
-        { encoding: "utf8" } //
+        path.resolve(__dirname, "./asset/eSCL_ScannerCapabilities_Simplex.xml"),
+        { encoding: "utf8" }, //
       );
       scanCaps = await EsclScanCaps.createScanCaps(content);
     });

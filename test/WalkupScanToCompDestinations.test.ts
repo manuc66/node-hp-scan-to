@@ -10,13 +10,13 @@ describe("WalkupScanToCompDestinations", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/walkupScanToCompDestinations.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/walkupScanToCompDestinations.xml"),
+        { encoding: "utf8" },
       );
-      destinations = await WalkupScanToCompDestinations.createWalkupScanToCompDestinations(content);
+      destinations =
+        await WalkupScanToCompDestinations.createWalkupScanToCompDestinations(
+          content,
+        );
     });
 
     it("Parse scanPlexMode", async () => {
@@ -29,7 +29,7 @@ describe("WalkupScanToCompDestinations", () => {
 
     it("Parse resourceURI", async () => {
       expect(destinations.destinations[0].resourceURI).to.be.eq(
-        "/WalkupScanToComp/WalkupScanToCompDestinations/4ad05d8e-20e8-4b8c-bdaa-5e6eca0dd3d8"
+        "/WalkupScanToComp/WalkupScanToCompDestinations/4ad05d8e-20e8-4b8c-bdaa-5e6eca0dd3d8",
       );
     });
 
