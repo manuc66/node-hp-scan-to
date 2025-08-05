@@ -75,10 +75,7 @@ function setupScanParameters(commandName: string) {
       ).helpGroup(HelpGroupsHeadings.scan),
     )
     .addOption(
-      new Option(
-        "--mode <mode>",
-        "Selects the scan mode (default: Color)",
-      )
+      new Option("--mode <mode>", "Selects the scan mode (default: Color)")
         .choices(["Lineart", "Gray", "Color"])
         .helpGroup(HelpGroupsHeadings.scan),
     )
@@ -332,10 +329,7 @@ function getOptConfiguredValue<T>(
   return getConfiguredValue(option, config, undefined as T | undefined);
 }
 
-function getHealthCheckSetting(
-  options: ProgramOption,
-  configFile: FileConfig,
-) {
+function getHealthCheckSetting(options: ProgramOption, configFile: FileConfig) {
   const healthCheckEnabled: boolean = getConfiguredValue(
     options.healthCheck,
     configFile.enableHealthCheck,
@@ -402,12 +396,11 @@ function getScanConfiguration(
     10,
   );
 
-  const mode =
-    getConfiguredValue(
-      options.mode as (ScanMode | undefined),
-      fileConfig.mode as (ScanMode | undefined),
-      ScanMode.Color,
-    );
+  const mode = getConfiguredValue(
+    options.mode as ScanMode | undefined,
+    fileConfig.mode as ScanMode | undefined,
+    ScanMode.Color,
+  );
 
   const preferEscl = getConfiguredValue(
     options.preferESCL,
