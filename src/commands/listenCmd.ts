@@ -147,8 +147,8 @@ async function processScanWithDestination(
   if (
     lastScanTarget != null &&
     frontOfDoubleSidedScanContext != null &&
-    selectedScanTarget.isDuplexSingleSide &&
-    duplexMode !== DuplexMode.BackOfDoubleSided
+    lastScanTarget.isDuplexSingleSide && lastDuplexMode == DuplexMode.FrontOfDoubleSided &&
+    (duplexMode == DuplexMode.Simplex || duplexMode == DuplexMode.Duplex)
   ) {
     await processFinishedPartialDuplexScan(
       lastScanTarget,
