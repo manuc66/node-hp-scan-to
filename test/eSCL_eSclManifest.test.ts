@@ -10,13 +10,11 @@ describe("ScanJobManifest", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/EsclManifest1_ScanJet_Pro_4500.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/EsclManifest1_ScanJet_Pro_4500.xml"),
+        { encoding: "utf8" },
       );
-      scanJobManifest = await EsclScanJobManifest.createScanJobManifest(content);
+      scanJobManifest =
+        await EsclScanJobManifest.createScanJobManifest(content);
     });
 
     it("Parse ScanCaps uri", async () => {
@@ -26,7 +24,9 @@ describe("ScanJobManifest", () => {
       expect(scanJobManifest.scanJobsURI).to.be.eq("/eSCL/ScanJobs");
     });
     it("Parse ScanJob uri", async () => {
-      expect(scanJobManifest.scanJobURI).to.be.eq("/eSCL/ScanJobs/{scan-job-id}");
+      expect(scanJobManifest.scanJobURI).to.be.eq(
+        "/eSCL/ScanJobs/{scan-job-id}",
+      );
     });
   });
   describe("Parsing EsclManifest_widePro_477.xml", async () => {
@@ -34,13 +34,11 @@ describe("ScanJobManifest", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/EsclManifest_widePro_477.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/EsclManifest_widePro_477.xml"),
+        { encoding: "utf8" },
       );
-      scanJobManifest = await EsclScanJobManifest.createScanJobManifest(content);
+      scanJobManifest =
+        await EsclScanJobManifest.createScanJobManifest(content);
     });
 
     it("Parse ScanCaps uri", async () => {
@@ -50,7 +48,9 @@ describe("ScanJobManifest", () => {
       expect(scanJobManifest.scanJobsURI).to.be.eq("/eSCL/ScanJobs");
     });
     it("Parse ScanJob uri", async () => {
-      expect(scanJobManifest.scanJobURI).to.be.eq("/eSCL/ScanJobs/{scan-job-id}");
+      expect(scanJobManifest.scanJobURI).to.be.eq(
+        "/eSCL/ScanJobs/{scan-job-id}",
+      );
     });
   });
   describe("Parsing EsclManifest_tank_570.xml", async () => {
@@ -58,13 +58,11 @@ describe("ScanJobManifest", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/EsclManifest_tank_570.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/EsclManifest_tank_570.xml"),
+        { encoding: "utf8" },
       );
-      scanJobManifest = await EsclScanJobManifest.createScanJobManifest(content);
+      scanJobManifest =
+        await EsclScanJobManifest.createScanJobManifest(content);
     });
 
     it("Parse ScanCaps uri", async () => {
@@ -74,8 +72,9 @@ describe("ScanJobManifest", () => {
       expect(scanJobManifest.scanJobsURI).to.be.eq("/eSCL/ScanJobs");
     });
     it("Parse ScanJob uri", async () => {
-      expect(scanJobManifest.scanJobURI).to.be.eq("/eSCL/ScanJobs/{scan-job-id}");
+      expect(scanJobManifest.scanJobURI).to.be.eq(
+        "/eSCL/ScanJobs/{scan-job-id}",
+      );
     });
   });
-
 });

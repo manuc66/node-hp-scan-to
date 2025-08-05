@@ -6,7 +6,6 @@ import { setupProgram } from "../src/program";
 import { Help } from "@commander-js/extra-typings";
 import { expect } from "chai";
 
-
 describe("README", () => {
   describe("command usage documentation", async () => {
     before(async () => {});
@@ -26,13 +25,9 @@ describe("README", () => {
   });
 });
 
-
 function expectComandUsageIsUpdated(commandName: string) {
   const readmePath = path.join(__dirname, "..", "README.md");
-  const usageInReadme = extractContentBetweenMarkers(
-    readmePath,
-    commandName
-  );
+  const usageInReadme = extractContentBetweenMarkers(readmePath, commandName);
 
   const program = setupProgram({});
 

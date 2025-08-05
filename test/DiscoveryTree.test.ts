@@ -10,23 +10,24 @@ describe("DiscoveryTree", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/discoveryTree.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/discoveryTree.xml"),
+        { encoding: "utf8" },
       );
       discoveryTree = await DiscoveryTree.createDiscoveryTree(content);
     });
 
     it("Parse WalkupScanToCompManifest uri", async () => {
-      expect(discoveryTree.WalkupScanToCompManifestURI).to.be.eq("/WalkupScanToComp/WalkupScanToCompManifest.xml");
+      expect(discoveryTree.WalkupScanToCompManifestURI).to.be.eq(
+        "/WalkupScanToComp/WalkupScanToCompManifest.xml",
+      );
     });
     it("Parse WalkupScanManifest uri", async () => {
       expect(discoveryTree.WalkupScanManifestURI).to.be.eq(null);
     });
     it("Parse ScanJobManifest uri", async () => {
-      expect(discoveryTree.ScanJobManifestURI).to.be.eq("/Scan/ScanJobManifest.xml");
+      expect(discoveryTree.ScanJobManifestURI).to.be.eq(
+        "/Scan/ScanJobManifest.xml",
+      );
     });
     it("Parse eSclManifest uri", async () => {
       expect(discoveryTree.EsclManifestURI).to.be.eq("/eSCL/eSclManifest.xml");
@@ -37,11 +38,8 @@ describe("DiscoveryTree", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/discoveryTree2.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/discoveryTree2.xml"),
+        { encoding: "utf8" },
       );
       discoveryTree = await DiscoveryTree.createDiscoveryTree(content);
     });
@@ -50,10 +48,14 @@ describe("DiscoveryTree", () => {
       expect(discoveryTree.WalkupScanToCompManifestURI).to.be.eq(null);
     });
     it("Parse WalkupScanManifest uri", async () => {
-      expect(discoveryTree.WalkupScanManifestURI).to.be.eq("/WalkupScan/WalkupScanManifest.xml");
+      expect(discoveryTree.WalkupScanManifestURI).to.be.eq(
+        "/WalkupScan/WalkupScanManifest.xml",
+      );
     });
     it("Parse ScanJobManifest uri", async () => {
-      expect(discoveryTree.ScanJobManifestURI).to.be.eq("/Scan/ScanJobManifest.xml");
+      expect(discoveryTree.ScanJobManifestURI).to.be.eq(
+        "/Scan/ScanJobManifest.xml",
+      );
     });
     it("Parse eSclManifest uri", async () => {
       expect(discoveryTree.EsclManifestURI).to.be.eq(null);
@@ -64,17 +66,16 @@ describe("DiscoveryTree", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/discoveryTree3.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/discoveryTree3.xml"),
+        { encoding: "utf8" },
       );
       discoveryTree = await DiscoveryTree.createDiscoveryTree(content);
     });
 
     it("Parse WalkupScanToCompManifest uri", async () => {
-      expect(discoveryTree.WalkupScanToCompManifestURI).to.be.eq("/WalkupScanToComp/WalkupScanToCompManifest.xml");
+      expect(discoveryTree.WalkupScanToCompManifestURI).to.be.eq(
+        "/WalkupScanToComp/WalkupScanToCompManifest.xml",
+      );
     });
     it("Parse WalkupScanManifest uri", async () => {
       expect(discoveryTree.WalkupScanManifestURI).to.be.eq(null);

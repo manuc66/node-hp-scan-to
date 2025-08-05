@@ -7,12 +7,12 @@ import fs01 from "fs/promises";
 
 import path from "path";
 
-const fs = { ...(fs0), ...(fs01) };
+const fs = { ...fs0, ...fs01 };
 describe("JpegUtil", () => {
   describe("Work on sample.jpg", () => {
     it("Reading JPEG size is possible", async () => {
       const buffer: Buffer = await fs.readFile(
-        path.resolve(__dirname, "./asset/sample.jpg")
+        path.resolve(__dirname, "./asset/sample.jpg"),
       );
 
       const size = JpegUtil.GetJpgSize(buffer);
@@ -23,7 +23,7 @@ describe("JpegUtil", () => {
 
     it("Writing JPEG size is possible", async () => {
       const buffer: Buffer = await fs.readFile(
-        path.resolve(__dirname, "./asset/sample.jpg")
+        path.resolve(__dirname, "./asset/sample.jpg"),
       );
 
       const sizeWritten = JpegUtil.setJpgSize(buffer, {
@@ -41,7 +41,7 @@ describe("JpegUtil", () => {
   describe("Jpeg size", () => {
     it("allows to set height", async () => {
       const buffer: Buffer = await fs.readFile(
-        path.resolve(__dirname, "./asset/adf_bytes_scan.jpg")
+        path.resolve(__dirname, "./asset/adf_bytes_scan.jpg"),
       );
 
       const sizeWritten = JpegUtil.setJpgSize(buffer, {
@@ -52,14 +52,14 @@ describe("JpegUtil", () => {
 
       fs.writeFileSync(
         path.resolve(__dirname, "./asset/adf_bytes_scan_height_fixed.jpg"),
-        buffer
+        buffer,
       );
     });
   });
   describe("Fix a corrupted adf scan", () => {
     it("Fix image size based on DNL marker content", async () => {
       const buffer: Buffer = await fs.readFile(
-        path.resolve(__dirname, "./asset/adf_bytes_scan.jpg")
+        path.resolve(__dirname, "./asset/adf_bytes_scan.jpg"),
       );
 
       const sizeFixed = JpegUtil.fixSizeWithDNL(buffer);
@@ -67,7 +67,7 @@ describe("JpegUtil", () => {
 
       fs.writeFileSync(
         path.resolve(__dirname, "./asset/adf_bytes_scan_height_fixed.jpg"),
-        buffer
+        buffer,
       );
     });
   });

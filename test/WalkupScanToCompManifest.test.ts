@@ -10,18 +10,17 @@ describe("WalkupScanToCompManifest", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/walkupScanToCompManifest.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/walkupScanToCompManifest.xml"),
+        { encoding: "utf8" },
       );
-      walkupScanToCompManifest = await WalkupScanToCompManifest.createWalkupScanToCompManifest(content);
+      walkupScanToCompManifest =
+        await WalkupScanToCompManifest.createWalkupScanToCompManifest(content);
     });
 
     it("Parse WalkupScanToCompCaps uri", async () => {
-      expect(walkupScanToCompManifest.WalkupScanToCompCapsURI).to.be.eq("/WalkupScanToComp/WalkupScanToCompCaps");
+      expect(walkupScanToCompManifest.WalkupScanToCompCapsURI).to.be.eq(
+        "/WalkupScanToComp/WalkupScanToCompCaps",
+      );
     });
   });
-
 });

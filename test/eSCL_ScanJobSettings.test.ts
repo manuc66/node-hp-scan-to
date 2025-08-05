@@ -6,7 +6,7 @@ import { InputSource } from "../src/type/InputSource";
 import EsclScanJobSettings from "../src/hpModels/EsclScanJobSettings";
 
 describe("ScanJobSettings", () => {
-  describe("toXML",  () => {
+  describe("toXML", () => {
     it("Allows to describe an ADF two side", async () => {
       const scanJobSettings = new EsclScanJobSettings(
         InputSource.Adf,
@@ -14,12 +14,16 @@ describe("ScanJobSettings", () => {
         200,
         null,
         null,
-        true);
+        true,
+      );
 
       const content: string = await fs.readFile(
-        path.resolve(__dirname, "./asset/eSCL_ScanJob_adf_duplex_job.xml"), {encoding:'utf8' }
+        path.resolve(__dirname, "./asset/eSCL_ScanJob_adf_duplex_job.xml"),
+        { encoding: "utf8" },
       );
-      expect((await scanJobSettings.toXML()).trimEnd()).to.be.eq(content.trimEnd().replace(/\r\n/g, "\n"));
+      expect((await scanJobSettings.toXML()).trimEnd()).to.be.eq(
+        content.trimEnd().replace(/\r\n/g, "\n"),
+      );
     });
     it("Allows to describe an platen", async () => {
       const scanJobSettings = new EsclScanJobSettings(
@@ -28,12 +32,16 @@ describe("ScanJobSettings", () => {
         600,
         2481,
         3507,
-        false);
+        false,
+      );
 
       const content: string = await fs.readFile(
-        path.resolve(__dirname, "./asset/eSCL_ScanJob_platen.xml"), {encoding:'utf8' }
+        path.resolve(__dirname, "./asset/eSCL_ScanJob_platen.xml"),
+        { encoding: "utf8" },
       );
-      expect((await scanJobSettings.toXML()).trimEnd()).to.be.eq(content.trimEnd().replace(/\r\n/g, "\n"));
+      expect((await scanJobSettings.toXML()).trimEnd()).to.be.eq(
+        content.trimEnd().replace(/\r\n/g, "\n"),
+      );
     });
   });
 });

@@ -10,13 +10,11 @@ describe("WalkupScanDestinations", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/walkupScanDestinations.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/walkupScanDestinations.xml"),
+        { encoding: "utf8" },
       );
-      destinations = await WalkupScanDestinations.createWalkupScanDestinations(content);
+      destinations =
+        await WalkupScanDestinations.createWalkupScanDestinations(content);
     });
 
     it("Parse scanPlexMode", async () => {
@@ -29,12 +27,14 @@ describe("WalkupScanDestinations", () => {
 
     it("Parse resourceURI", async () => {
       expect(destinations.destinations[0].resourceURI).to.be.eq(
-        "http://192.168.1.30:80/WalkupScan/WalkupScanDestinations/1c856ba3-b916-1f08-be4e-2c768ab21113"
+        "http://192.168.1.30:80/WalkupScan/WalkupScanDestinations/1c856ba3-b916-1f08-be4e-2c768ab21113",
       );
     });
 
     it("Parse hostname", async () => {
-      expect(destinations.destinations[0].hostname).to.be.eq("manu-sve1511b1ew");
+      expect(destinations.destinations[0].hostname).to.be.eq(
+        "manu-sve1511b1ew",
+      );
     });
 
     it("Parse name", async () => {
@@ -46,13 +46,11 @@ describe("WalkupScanDestinations", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/walkupScanDestinations2.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/walkupScanDestinations2.xml"),
+        { encoding: "utf8" },
       );
-      destinations = await WalkupScanDestinations.createWalkupScanDestinations(content);
+      destinations =
+        await WalkupScanDestinations.createWalkupScanDestinations(content);
     });
 
     it("Parse destinations", async () => {
