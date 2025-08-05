@@ -42,6 +42,10 @@ if [ -n "$RESOLUTION" ]; then
     ARGS+=("-r" "$RESOLUTION")
 fi
 
+if [ -n "$MODE" ]; then
+    ARGS+=("--mode" "$MODE")
+fi
+
 if [ -n "$PAPERLESS_POST_DOCUMENT_URL" ]; then
     ARGS+=("-s" "$PAPERLESS_POST_DOCUMENT_URL")
 fi
@@ -78,7 +82,7 @@ if [ -n "$CMDLINE" ]; then
     ARGS+=("$@")
 fi
 
-cd /app
+cd /app || exit
 
 echo "Starting"
 s6-setuidgid node \
