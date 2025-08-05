@@ -35,7 +35,7 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.18.0"
   },
   "author": {
     "email": "manuc66@gmail.com",
