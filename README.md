@@ -146,27 +146,28 @@ Example usage:
 
 Run `npx node-hp-scan-to --help` to see the full list of options below:
 
-| Option                          | Description                                                                                                      | Example/Default                                      |
-|---------------------------------|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
-| `-a`, `--address`               | Printer IP address.                                                                                              | `-a 192.168.0.5` (no default)                        |
-| `-d`, `--directory`             | Directory to save scanned documents. Defaults to `/tmp/scan-to-pc<random value>` if not set.                     | `-d /tmp/scan-to-pc1234`                             |
-| `-D`, `--debug`                 | Enable debug logging.                                                                                            | `-D` (disabled by default)                          |
-| `-h`, `--height`                | Scan height in pixels. Defaults to 3507.                                                                         | `-h 3507`                                            |
-| `-k`, `--keep-files`            | Retain scanned files after uploading to Paperless-ngx or Nextcloud (disabled by default).                        | `-k` (disabled by default)                          |
-| `-l`, `--label`                 | The name of the computer running this app. Defaults to the hostname.                                             | `-l <hostname>` (default: system hostname)           |
-| `-n`, `--name`                  | Printer name (quote if it contains spaces).                                                                      | `-n "Officejet 6500 E710n-z"` (no default)           |
-| `-o`, `--paperless-token`       | Paperless-ngx API token.                                                                                         | `-o xxxxxxxxxxxx` (no default)                      |
-| `-p`, `--pattern`               | Filename pattern (no extension). Use quotes for static text, supports date/time masks (see [dateformat docs](https://www.npmjs.com/package/dateformat#mask-options)). Defaults to `scan<increasing number>_page<page number>`. | `-p scan1_page1`                                    |
-| `-r`, `--resolution`            | Scan resolution in DPI. Defaults to 200.                                                                         | `-r 200`                                             |
+| Option                                | Description                                                                                                      | Example/Default                                                   |
+|---------------------------------------|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| `-a`, `--address`                     | Printer IP address.                                                                                              | `-a 192.168.0.5` (no default)                                     |
+| `-d`, `--directory`                   | Directory to save scanned documents. Defaults to `/tmp/scan-to-pc<random value>` if not set.                     | `-d /tmp/scan-to-pc1234`                                          |
+| `-D`, `--debug`                       | Enable debug logging.                                                                                            | `-D` (disabled by default)                                        |
+| `-h`, `--height`                      | Scan height in pixels. Defaults to 3507.                                                                         | `-h 3507`                                                         |
+| `-k`, `--keep-files`                  | Retain scanned files after uploading to Paperless-ngx or Nextcloud (disabled by default).                        | `-k` (disabled by default)                                        |
+| `-l`, `--label`                       | The name of the computer running this app. Defaults to the hostname.                                             | `-l <hostname>` (default: system hostname)                        |
+| `-n`, `--name`                        | Printer name (quote if it contains spaces).                                                                      | `-n "Officejet 6500 E710n-z"` (no default)                        |
+| `-o`, `--paperless-token`             | Paperless-ngx API token.                                                                                         | `-o xxxxxxxxxxxx` (no default)                                    |
+| `-p`, `--pattern`                     | Filename pattern (no extension). Use quotes for static text, supports date/time masks (see [dateformat docs](https://www.npmjs.com/package/dateformat#mask-options)). Defaults to `scan<increasing number>_page<page number>`. | `-p scan1_page1`                                                  |
+| `-r`, `--resolution`                  | Scan resolution in DPI. Defaults to 200.                                                                         | `-r 200`                                                          |
+| `--mode <mode> `                      | Selects the scan mode (default: Color) (choices: "Gray", "Color").                                               | `--mode Gray`                                                     |
 | `-s`, `--paperless-post-document-url` | Paperless-ngx API URL for uploading documents.                                                             | `-s https://domain.tld/api/documents/post_document/` (no default) |
-| `-t`, `--temp-directory`        | Temporary directory for processing. Defaults to `/tmp/scan-to-pc<random value>` if not set.                      | `-t /tmp/scan-to-pc5678`                             |
-| `-w`, `--width`                 | Scan width in pixels. Defaults to 2481.                                                                          | `-w 2481`                                            |
-| `--device-up-polling-interval`  | Polling interval (in milliseconds) to check if the printer is online.                                            | `--device-up-polling-interval 5000` (no default)     |
-| `--nextcloud-password`          | Nextcloud app password. Required unless `--nextcloud-password-file` is used. Overrides if both are provided.     | `--nextcloud-password mypassword` (no default)      |
-| `--nextcloud-password-file`     | File containing the Nextcloud app password. Required unless `--nextcloud-password` is used. Takes precedence if both are provided. | `--nextcloud-password-file /path/to/file` (no default) |
-| `--nextcloud-upload-folder`     | Nextcloud folder for uploads. Defaults to `scan`.                                                                | `--nextcloud-upload-folder scan`                    |
-| `--nextcloud-url`               | Nextcloud instance URL.                                                                                          | `--nextcloud-url https://domain.tld` (no default)   |
-| `--nextcloud-username`          | Nextcloud username with write access to the upload folder.                                                       | `--nextcloud-username user` (no default)            |
+| `-t`, `--temp-directory`              | Temporary directory for processing. Defaults to `/tmp/scan-to-pc<random value>` if not set.                      | `-t /tmp/scan-to-pc5678`                                          |
+| `-w`, `--width`                       | Scan width in pixels. Defaults to 2481.                                                                          | `-w 2481`                                                         |
+| `--device-up-polling-interval`        | Polling interval (in milliseconds) to check if the printer is online.                                            | `--device-up-polling-interval 5000` (no default)                  |
+| `--nextcloud-password`                | Nextcloud app password. Required unless `--nextcloud-password-file` is used. Overrides if both are provided.     | `--nextcloud-password mypassword` (no default)                    |
+| `--nextcloud-password-file`           | File containing the Nextcloud app password. Required unless `--nextcloud-password` is used. Takes precedence if both are provided. | `--nextcloud-password-file /path/to/file` (no default)            |
+| `--nextcloud-upload-folder`           | Nextcloud folder for uploads. Defaults to `scan`.                                                                | `--nextcloud-upload-folder scan`                                  |
+| `--nextcloud-url`                     | Nextcloud instance URL.                                                                                          | `--nextcloud-url https://domain.tld` (no default)                 |
+| `--nextcloud-username`                | Nextcloud username with write access to the upload folder.                                                       | `--nextcloud-username user` (no default)                          |
 
 **Notes:**
 
@@ -195,6 +196,7 @@ Output Options:
 
 Scan Options:
   -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
+  --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
@@ -258,6 +260,7 @@ Output Options:
 
 Scan Options:
   -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
+  --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
@@ -350,6 +353,7 @@ Output Options:
 
 Scan Options:
   -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
+  --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
@@ -407,26 +411,27 @@ All scanned files are written to the volume `/scan`, the filename can be changed
 
 List of supported environment variables and their meaning, or correspondence with [command-line flags](#cli-options):
 
-| Environment Variable            | Description                                                                                              | Corresponding CLI Flag or Notes                                                                                   |
-|---------------------------------|----------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
-| `CMDLINE`                       | Additional command-line flags added at the end of the command                                            | Set to `-D` to enable debug logs                                                                                |
-| `DIR`                           | Directory to use                                                                                         | `-d` / `--directory`                                                                                            |
-| `IP`                            | IP address for the program                                                                               | `-a` / `--address`                                                                                              |
-| `KEEP_FILES`                    | If set, scanned files are not deleted after uploading to Paperless-ngx or Nextcloud                      |                                                                                                                  |
-| `LABEL`                         | Label to apply                                                                                           | `-l` / `--label`                                                                                                |
-| `NAME`                          | Name to set                                                                                              | `-n` / `--name`                                                                                                 |
-| `NEXTCLOUD_PASSWORD`            | Password of Nextcloud user (either this or `NEXTCLOUD_PASSWORD_FILE` is required; file takes precedence) |                                                                                                                  |
-| `NEXTCLOUD_PASSWORD_FILE`       | File containing Nextcloud user password (either this or `NEXTCLOUD_PASSWORD` is required; takes precedence) | Example: `./nextcloud_password.secret` (preferred for Docker Compose secrets)                                   |
-| `NEXTCLOUD_UPLOAD_FOLDER`       | Upload folder for documents or images (user must have write permission; defaults to `scan` if not set)   |                                                                                                                  |
-| `NEXTCLOUD_URL`                 | Nextcloud URL                                                                                            | Example: `https://nextcloud.example.tld`                                                                        |
-| `NEXTCLOUD_USERNAME`            | Nextcloud username                                                                                       |                                                                                                                  |
-| `PAPERLESS_POST_DOCUMENT_URL`   | Paperless-ngx post document URL (if provided with token, a PDF is uploaded)                              | Example: `http://<paperless-host>:<port>/api/documents/post_document/`                                          |
-| `PAPERLESS_TOKEN`               | Paperless-ngx API token                                                                                  | Example: `xxxxxxxxxxxx...`                                                                                      |
-| `PATTERN`                       | Pattern to use                                                                                           | `-p` / `--pattern`                                                                                              |
-| `PGID`                          | ID of the group that will run the program                                                                |                                                                                                                  |
-| `PUID`                          | ID of the user that will run the program                                                                 |                                                                                                                  |
-| `RESOLUTION`                    | Resolution setting                                                                                       | `-r` / `--resolution`                                                                                           |
-| `TEMP_DIR`                      | Temporary directory                                                                                      | `-t` / `--temp-directory`                                                                                       |
+| Environment Variable          | Description                                                                                                 | Corresponding CLI Flag or Notes                                               |
+|-------------------------------|-------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `CMDLINE`                     | Additional command-line flags added at the end of the command                                               | Set to `-D` to enable debug logs                                              |
+| `DIR`                         | Directory to use                                                                                            | `-d` / `--directory`                                                          |
+| `IP`                          | IP address for the program                                                                                  | `-a` / `--address`                                                            |
+| `KEEP_FILES`                  | If set, scanned files are not deleted after uploading to Paperless-ngx or Nextcloud                         |                                                                               |
+| `LABEL`                       | Label to apply                                                                                              | `-l` / `--label`                                                              |
+| `NAME`                        | Name to set                                                                                                 | `-n` / `--name`                                                               |
+| `NEXTCLOUD_PASSWORD`          | Password of Nextcloud user (either this or `NEXTCLOUD_PASSWORD_FILE` is required; file takes precedence)    |                                                                               |
+| `NEXTCLOUD_PASSWORD_FILE`     | File containing Nextcloud user password (either this or `NEXTCLOUD_PASSWORD` is required; takes precedence) | Example: `./nextcloud_password.secret` (preferred for Docker Compose secrets) |
+| `NEXTCLOUD_UPLOAD_FOLDER`     | Upload folder for documents or images (user must have write permission; defaults to `scan` if not set)      |                                                                               |
+| `NEXTCLOUD_URL`               | Nextcloud URL                                                                                               | Example: `https://nextcloud.example.tld`                                      |
+| `NEXTCLOUD_USERNAME`          | Nextcloud username                                                                                          |                                                                               |
+| `PAPERLESS_POST_DOCUMENT_URL` | Paperless-ngx post document URL (if provided with token, a PDF is uploaded)                                 | Example: `http://<paperless-host>:<port>/api/documents/post_document/`        |
+| `PAPERLESS_TOKEN`             | Paperless-ngx API token                                                                                     | Example: `xxxxxxxxxxxx...`                                                    |
+| `PATTERN`                     | Pattern to use                                                                                              | `-p` / `--pattern`                                                            |
+| `PGID`                        | ID of the group that will run the program                                                                   |                                                                               |
+| `PUID`                        | ID of the user that will run the program                                                                    |                                                                               |
+| `RESOLUTION`                  | Resolution setting                                                                                          | `-r` / `--resolution`                                                         |
+| `MODE`                        | Scan mode setting                                                                                           | `--mode`                                                                      |
+| `TEMP_DIR`                    | Temporary directory                                                                                         | `-t` / `--temp-directory`                                                     |
 
 **Additional Notes:**
 
