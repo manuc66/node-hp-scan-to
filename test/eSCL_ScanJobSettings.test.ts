@@ -4,6 +4,7 @@ import path from "path";
 import * as fs from "fs/promises";
 import { InputSource } from "../src/type/InputSource";
 import EsclScanJobSettings from "../src/hpModels/EsclScanJobSettings";
+import { ScanMode } from "../src/type/scanMode";
 
 describe("ScanJobSettings", () => {
   describe("toXML", () => {
@@ -12,6 +13,7 @@ describe("ScanJobSettings", () => {
         InputSource.Adf,
         "Document",
         200,
+        ScanMode.Color,
         null,
         null,
         true,
@@ -30,6 +32,7 @@ describe("ScanJobSettings", () => {
         InputSource.Platen,
         "Document",
         600,
+        ScanMode.Color,
         2481,
         3507,
         false,
