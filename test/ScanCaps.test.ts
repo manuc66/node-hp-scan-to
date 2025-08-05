@@ -10,11 +10,8 @@ describe("ScanCaps", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/ScanCaps_with_adf.xml"
-        ),
-        { encoding: "utf8" } //
+        path.resolve(__dirname, "./asset/ScanCaps_with_adf.xml"),
+        { encoding: "utf8" }, //
       );
       scanCaps = await ScanCaps.createScanCaps(content);
     });
@@ -49,11 +46,8 @@ describe("ScanCaps", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/ScanCaps_no_adf.xml"
-        ),
-        { encoding: "utf8" } //
+        path.resolve(__dirname, "./asset/ScanCaps_no_adf.xml"),
+        { encoding: "utf8" }, //
       );
       scanCaps = await ScanCaps.createScanCaps(content);
     });
@@ -88,11 +82,8 @@ describe("ScanCaps", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/ScanCaps_only_adf.xml"
-        ),
-        { encoding: "utf8" } //
+        path.resolve(__dirname, "./asset/ScanCaps_only_adf.xml"),
+        { encoding: "utf8" }, //
       );
       scanCaps = await ScanCaps.createScanCaps(content);
     });
@@ -127,11 +118,8 @@ describe("ScanCaps", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/ScanCaps_with_duplex_adf.xml"
-        ),
-        { encoding: "utf8" } //
+        path.resolve(__dirname, "./asset/ScanCaps_with_duplex_adf.xml"),
+        { encoding: "utf8" }, //
       );
       scanCaps = await ScanCaps.createScanCaps(content);
     });

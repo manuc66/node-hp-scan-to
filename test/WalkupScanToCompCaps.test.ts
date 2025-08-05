@@ -10,17 +10,17 @@ describe("WalkupScanToCompCaps", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/walkupScanToCompCaps.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/walkupScanToCompCaps.xml"),
+        { encoding: "utf8" },
       );
-      walkupScanToCompCaps = await WalkupScanToCompCaps.createWalkupScanToCompCaps(content);
+      walkupScanToCompCaps =
+        await WalkupScanToCompCaps.createWalkupScanToCompCaps(content);
     });
 
     it("Parse supportsMultiItemScanFromPlaten", async () => {
-      expect(walkupScanToCompCaps.supportsMultiItemScanFromPlaten).to.be.eq(true);
+      expect(walkupScanToCompCaps.supportsMultiItemScanFromPlaten).to.be.eq(
+        true,
+      );
     });
   });
   describe("Parsing walkupScanToCompCaps2.xml", async () => {
@@ -28,17 +28,17 @@ describe("WalkupScanToCompCaps", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/walkupScanToCompCaps2.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/walkupScanToCompCaps2.xml"),
+        { encoding: "utf8" },
       );
-      walkupScanToCompCaps = await WalkupScanToCompCaps.createWalkupScanToCompCaps(content);
+      walkupScanToCompCaps =
+        await WalkupScanToCompCaps.createWalkupScanToCompCaps(content);
     });
 
     it("Parse supportsMultiItemScanFromPlaten", async () => {
-      expect(walkupScanToCompCaps.supportsMultiItemScanFromPlaten).to.be.eq(false);
+      expect(walkupScanToCompCaps.supportsMultiItemScanFromPlaten).to.be.eq(
+        false,
+      );
     });
   });
   describe("Parsing walkupScanToCompCaps3.xml", async () => {
@@ -46,17 +46,17 @@ describe("WalkupScanToCompCaps", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/walkupScanToCompCaps3.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/walkupScanToCompCaps3.xml"),
+        { encoding: "utf8" },
       );
-      walkupScanToCompCaps = await WalkupScanToCompCaps.createWalkupScanToCompCaps(content);
+      walkupScanToCompCaps =
+        await WalkupScanToCompCaps.createWalkupScanToCompCaps(content);
     });
 
     it("Parse supportsMultiItemScanFromPlaten", async () => {
-      expect(walkupScanToCompCaps.supportsMultiItemScanFromPlaten).to.be.eq(true);
+      expect(walkupScanToCompCaps.supportsMultiItemScanFromPlaten).to.be.eq(
+        true,
+      );
     });
   });
 });

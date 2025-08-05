@@ -26,7 +26,7 @@
     "built-start": "tsc -p . && node --trace-warnings ./dist/index.js",
     "start-dev": "nodemon",
     "prepublishOnly": "npm run prebuild && tsc -p ./ --outDir dist/",
-    "prettier": "prettier --write \"src/**/*.ts\"",
+    "prettier": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "test": "npx mocha --require ts-node/register ./test/**/*.test.ts",
     "test-ci": "npx nyc --reporter=lcov mocha -r ts-node/register ./test/**/*.test.ts && codecov"
   },
@@ -35,7 +35,7 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.18.0"
   },
   "author": {
     "email": "manuc66@gmail.com",

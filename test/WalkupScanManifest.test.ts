@@ -10,18 +10,17 @@ describe("WalkupScanManifest", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/walkupScanManifest.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/walkupScanManifest.xml"),
+        { encoding: "utf8" },
       );
-      walkupScanManifest = await WalkupScanManifest.createWalkupScanManifest(content);
+      walkupScanManifest =
+        await WalkupScanManifest.createWalkupScanManifest(content);
     });
 
     it("Parse walkupScanDestinationsURI uri", async () => {
-      expect(walkupScanManifest.walkupScanDestinationsURI).to.be.eq("/WalkupScan/WalkupScanDestinations");
+      expect(walkupScanManifest.walkupScanDestinationsURI).to.be.eq(
+        "/WalkupScan/WalkupScanDestinations",
+      );
     });
   });
-
 });

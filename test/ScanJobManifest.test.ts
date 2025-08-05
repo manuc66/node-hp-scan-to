@@ -10,11 +10,8 @@ describe("ScanJobManifest", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/scanJobManifest.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/scanJobManifest.xml"),
+        { encoding: "utf8" },
       );
       scanJobManifest = await ScanJobManifest.createScanJobManifest(content);
     });
@@ -32,11 +29,8 @@ describe("ScanJobManifest", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/scanJobManifest2.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/scanJobManifest2.xml"),
+        { encoding: "utf8" },
       );
       scanJobManifest = await ScanJobManifest.createScanJobManifest(content);
     });
@@ -53,5 +47,4 @@ describe("ScanJobManifest", () => {
       expect(scanJobManifest.StatusURI).to.be.eq("/Scan/Status");
     });
   });
-
 });

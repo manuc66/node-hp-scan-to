@@ -11,11 +11,8 @@ describe("ScanStatus", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/scanStatus.xml"
-        ),
-        { encoding: "utf8" } //
+        path.resolve(__dirname, "./asset/scanStatus.xml"),
+        { encoding: "utf8" }, //
       );
       scanStatus = await ScanStatus.createScanStatus(content);
     });
@@ -38,11 +35,8 @@ describe("ScanStatus", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(
-          __dirname,
-          "./asset/scanStatus_no_adf.xml"
-        ),
-        { encoding: "utf8" }
+        path.resolve(__dirname, "./asset/scanStatus_no_adf.xml"),
+        { encoding: "utf8" },
       );
       scanStatus = await ScanStatus.createScanStatus(content);
     });
