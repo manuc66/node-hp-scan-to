@@ -11,7 +11,7 @@ describe("Job", () => {
     before(async () => {
       const content: string = await fs.readFile(
         path.resolve(__dirname, "./asset/job_processing.xml"),
-        { encoding: "utf8" }
+        { encoding: "utf8" },
       );
       job = await Job.createJob(content);
     });
@@ -58,7 +58,7 @@ describe("Job", () => {
     before(async () => {
       const content: string = await fs.readFile(
         path.resolve(__dirname, "./asset/job_completed.xml"),
-        { encoding: "utf8" }
+        { encoding: "utf8" },
       );
       job = await Job.createJob(content);
     });
