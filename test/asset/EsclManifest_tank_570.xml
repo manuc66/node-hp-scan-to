@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/01/27" xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24 ../../schemas/Manifest.xsd
+	http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/01/27 ../../schemas/ResourceMap.xsd
+	http://www.hp.com/schemas/imaging/con/dictionaries/1.0/ ../../schemas/dd/DataDictionaryMasterLEDM.xsd
+	http://www.hp.com/schemas/imaging/con/dictionaries/2008/10/10  ../../schemas/dd2/DataDictionaryMasterLEDM.xsd
+	http://schemas.hp.com/imaging/escl/2011/05/03 ../../schemas/eSCL.xsd">
+    <dd:Version>
+        <dd:Revision>SVN-IPG-LEDM.350</dd:Revision>
+        <dd:Date>2011-10-26</dd:Date>
+    </dd:Version>
+
+    <man:InterfaceNamespaces>
+        <man:InterfaceNamespace>
+            http://schemas.hp.com/imaging/escl/2011/05/03
+        </man:InterfaceNamespace>
+        <man:SpecificationVersion>2.5</man:SpecificationVersion>
+    </man:InterfaceNamespaces>
+    <map:ResourceMap>
+        <!-- declare the root URL for this interface -->
+        <map:ResourceLink>
+            <dd:ResourceURI>/eSCL</dd:ResourceURI>
+            <map:Base>Root</map:Base>
+        </map:ResourceLink>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/ScannerCapabilities</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType>
+                <scan:ScanResourceType>ScannerCapabilities</scan:ScanResourceType>
+            </map:ResourceType>
+            <map:Methods>
+                <map:Method>	<map:Verb>Get</map:Verb></map:Method>
+            </map:Methods>
+            <map:XmlElement>
+                <scan:ScannerCapabilities xsi:nil="true" />
+            </map:XmlElement>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/ScannerStatus</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType>
+                <scan:ScanResourceType>ScannerStatus</scan:ScanResourceType>
+            </map:ResourceType>
+            <map:Methods>
+                <map:Method>	<map:Verb>Get</map:Verb></map:Method>
+            </map:Methods>
+            <map:XmlElement>
+                <scan:ScannerStatus xsi:nil="true" />
+            </map:XmlElement>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/ScanBufferInfo</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType>
+                <scan:ScanResourceType>ScanBufferInfo</scan:ScanResourceType>
+            </map:ResourceType>
+            <map:Methods>
+                <map:Method>	<map:Verb>Put</map:Verb></map:Method>
+            </map:Methods>
+            <map:XmlElement>
+                <scan:ScanBufferInfo xsi:nil="true" />
+            </map:XmlElement>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/ScanJobs</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType>
+                <scan:ScanResourceType>ScanJobs</scan:ScanResourceType>
+            </map:ResourceType>
+            <map:Methods>
+                <map:Method>	<map:Verb>Post</map:Verb></map:Method>
+            </map:Methods>
+            <map:XmlElement>
+                <scan:ScanSettings xsi:nil="true" />
+            </map:XmlElement>
+            <map:ResourceMap>
+                <map:ResourceNode>
+                    <map:ResourceLink>
+                        <dd:ResourceURI>/{scan-job-id}</dd:ResourceURI>
+                        <scan:scan-job-id>xsd:string</scan:scan-job-id>
+                    </map:ResourceLink>
+                    <map:ResourceType>
+                        <scan:ScanResourceType>ScanJob</scan:ScanResourceType>
+                    </map:ResourceType>
+                    <map:Methods>
+                        <map:Method><map:Verb>Delete</map:Verb></map:Method>
+                    </map:Methods>
+                    <!--  this section should be included for pull scan only  -->
+                    <map:ResourceMap>
+                        <map:ResourceNode>
+                            <map:ResourceLink>
+                                <dd:ResourceURI>/NextDocument</dd:ResourceURI>
+                            </map:ResourceLink>
+                            <map:ResourceType>
+                                <scan:ScanResourceType>ScanData</scan:ScanResourceType>
+                            </map:ResourceType>
+                            <map:Methods>
+                                <map:Method><map:Verb>Get</map:Verb></map:Method>
+                            </map:Methods>
+                        </map:ResourceNode>
+                        <map:ResourceNode>
+                            <map:ResourceLink>
+                                <dd:ResourceURI>/ScanImageInfo</dd:ResourceURI>
+                            </map:ResourceLink>
+                            <map:ResourceType>
+                                <scan:ScanResourceType>ScanImageInfo</scan:ScanResourceType>
+                            </map:ResourceType>
+                            <map:Methods>
+                                <map:Method><map:Verb>Get</map:Verb></map:Method>
+                            </map:Methods>
+                            <map:XmlElement>
+                                <scan:ScanImageInfo xsi:nil="true" />
+                            </map:XmlElement>
+                        </map:ResourceNode>
+                    </map:ResourceMap>
+                </map:ResourceNode>
+            </map:ResourceMap>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/eSCLConfig</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType>
+                <scan:ScanResourceType>eSCLConfig</scan:ScanResourceType>
+            </map:ResourceType>
+            <map:Methods>
+                <map:Method>
+                    <map:Verb>Get</map:Verb>
+                </map:Method>
+                <map:Method>
+                    <map:Verb>Put</map:Verb>
+                    <map:Security>
+                        <map:SecureAccess>true</map:SecureAccess>
+                    </map:Security>
+                </map:Method>
+            </map:Methods>
+        </map:ResourceNode>
+    </map:ResourceMap>
+</man:Manifest>

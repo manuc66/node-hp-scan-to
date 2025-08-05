@@ -21,7 +21,9 @@ export async function adfAutoscanCmd(
     adfAutoScanConfig.directoryConfig.tempDirectory,
   );
 
-  const deviceCapabilities = await readDeviceCapabilities();
+  const deviceCapabilities = await readDeviceCapabilities(
+    adfAutoScanConfig.preferEscl,
+  );
 
   if (!deviceCapabilities.hasAdfDetectPaperLoaded) {
     console.log(
@@ -45,6 +47,7 @@ export async function adfAutoscanCmd(
       await waitAdfLoaded(
         adfAutoScanConfig.pollingInterval,
         adfAutoScanConfig.startScanDelay,
+        deviceCapabilities.getScanStatus,
       );
 
       scanCount++;

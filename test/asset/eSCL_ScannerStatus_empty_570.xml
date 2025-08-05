@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- THIS DATA SUBJECT TO DISCLAIMER(S) INCLUDED WITH THE PRODUCT OF ORIGIN. -->
+<scan:ScannerStatus xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.hp.com/imaging/escl/2011/05/03 ../../schemas/eSCL.xsd">
+    <pwg:Version>2.63</pwg:Version>
+    <pwg:State>Idle</pwg:State>
+    <scan:AdfState>ScannerAdfEmpty</scan:AdfState>
+    <scan:Jobs>
+        <scan:JobInfo>
+            <pwg:JobUri>/eSCL/ScanJobs/f6f17dc4-536e-4bcb-b622-5d25bb6880be</pwg:JobUri>
+            <pwg:JobUuid>f6f17dc4-536e-4bcb-b622-5d25bb6880be</pwg:JobUuid>
+            <scan:Age>3150</scan:Age>
+            <pwg:ImagesCompleted>1</pwg:ImagesCompleted>
+            <pwg:ImagesToTransfer>0</pwg:ImagesToTransfer>
+            <pwg:JobState>Completed</pwg:JobState>
+            <pwg:JobStateReasons>
+                <pwg:JobStateReason>JobCompletedSuccessfully</pwg:JobStateReason>
+            </pwg:JobStateReasons>
+        </scan:JobInfo>
+        <scan:JobInfo>
+            <pwg:JobUri>/eSCL/ScanJobs/4079bb49-d84d-4e6f-b093-c1aa5382541a</pwg:JobUri>
+            <pwg:JobUuid>4079bb49-d84d-4e6f-b093-c1aa5382541a</pwg:JobUuid>
+            <scan:Age>4725710</scan:Age>
+            <pwg:ImagesCompleted>2</pwg:ImagesCompleted>
+            <pwg:ImagesToTransfer>0</pwg:ImagesToTransfer>
+            <pwg:JobState>Completed</pwg:JobState>
+            <pwg:JobStateReasons>
+                <pwg:JobStateReason>JobCompletedSuccessfully</pwg:JobStateReason>
+            </pwg:JobStateReasons>
+        </scan:JobInfo>
+    </scan:Jobs>
+</scan:ScannerStatus>

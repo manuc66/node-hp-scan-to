@@ -3,10 +3,8 @@ import WalkupScanDestination from "./hpModels/WalkupScanDestination";
 import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination";
 import HPApi from "./HPApi";
 import { DeviceCapabilities } from "./type/DeviceCapabilities";
-import ScanJobSettings from "./hpModels/ScanJobSettings";
 import { ScanContent } from "./type/ScanContent";
 import { delay } from "./delay";
-import ScanStatus from "./hpModels/ScanStatus";
 import { InputSource } from "./type/InputSource";
 import { postProcessing } from "./postProcessing";
 import { SelectedScanTarget } from "./type/scanTargetDefinitions";
@@ -18,10 +16,18 @@ import {
   SingleScanConfig,
 } from "./type/scanConfigs";
 import { PageCountingStrategy } from "./type/pageCountingStrategy";
+import { IScanStatus } from "./hpModels/IScanStatus";
+import { ScannerState } from "./hpModels/ScannerState";
+import { ScanPlexMode } from "./hpModels/ScanPlexMode";
+
+export interface WalkupDestination {
+  get shortcut(): null | KnownShortcut;
+  get scanPlexMode(): ScanPlexMode | null;
+}
 
 export async function tryGetDestination(
   event: Event,
-): Promise<WalkupScanDestination | WalkupScanToCompDestination | null> {
+): Promise<WalkupDestination | null> {
   // this code can in some cases be executed before the user actually chooses between Document or Photo
   // so, let's fetch the contentType (Document or Photo) until we get a value
   let destination: WalkupScanDestination | WalkupScanToCompDestination | null =
@@ -50,7 +56,7 @@ export async function tryGetDestination(
 }
 
 export function isPdf(
-  destination: WalkupScanDestination | WalkupScanToCompDestination,
+  destination: WalkupDestination,
 ) {
   if (
     destination.shortcut === KnownShortcut.SavePDF ||
@@ -143,9 +149,9 @@ export async function saveScanFromEvent(
     destinationFolder = folder;
   }
 
-  const scanStatus = await HPApi.getScanStatus();
+  const scanStatus = await deviceCapabilities.getScanStatus();
 
-  if (scanStatus.scannerState !== "Idle") {
+  if (scanStatus.scannerState !== ScannerState.Idle) {
     console.log("Scanner state is not Idle, aborting scan attempt...!");
   }
 
@@ -165,7 +171,7 @@ export async function saveScanFromEvent(
     isDuplex,
   );
 
-  const scanJobSettings = new ScanJobSettings(
+  const scanJobSettings = deviceCapabilities.createScanJobSettings(
     inputSource,
     contentType,
     scanConfig.resolution,
@@ -229,7 +235,7 @@ export async function scanFromAdf(
     adfAutoScanConfig.isDuplex,
   );
 
-  const scanJobSettings = new ScanJobSettings(
+  const scanJobSettings = deviceCapabilities.createScanJobSettings(
     InputSource.Adf,
     contentType,
     adfAutoScanConfig.resolution,
@@ -248,6 +254,7 @@ export async function scanFromAdf(
     scanJobContent,
     adfAutoScanConfig.directoryConfig.filePattern,
     PageCountingStrategy.Normal,
+    deviceCapabilities,
   );
 
   console.log(
@@ -286,9 +293,9 @@ export async function singleScan(
     destinationFolder = folder;
   }
 
-  const scanStatus = await HPApi.getScanStatus();
+  const scanStatus = await deviceCapabilities.getScanStatus();
 
-  if (scanStatus.scannerState !== "Idle") {
+  if (scanStatus.scannerState !== ScannerState.Idle) {
     console.log("Scanner state is not Idle, aborting scan attempt...!");
   }
 
@@ -309,7 +316,7 @@ export async function singleScan(
     scanConfig.isDuplex,
   );
 
-  const scanJobSettings = new ScanJobSettings(
+  const scanJobSettings = deviceCapabilities.createScanJobSettings(
     inputSource,
     contentType,
     scanConfig.resolution,
@@ -328,6 +335,7 @@ export async function singleScan(
     scanJobContent,
     scanConfig.directoryConfig.filePattern,
     PageCountingStrategy.Normal,
+    deviceCapabilities,
   );
 
   console.log(
@@ -348,13 +356,14 @@ export async function singleScan(
 export async function waitAdfLoaded(
   pollingInterval: number,
   startScanDelay: number,
+  getScanStatus: () => Promise<IScanStatus>,
 ) {
   let ready = false;
   while (!ready) {
-    let scanStatus: ScanStatus = await HPApi.getScanStatus();
+    let scanStatus: IScanStatus = await getScanStatus();
     while (!scanStatus.isLoaded()) {
       await delay(pollingInterval);
-      scanStatus = await HPApi.getScanStatus();
+      scanStatus = await getScanStatus();
     }
     console.log(`ADF load detected`);
 
@@ -363,7 +372,7 @@ export async function waitAdfLoaded(
     const shortPollingInterval = 500;
     while (loaded && counter < startScanDelay) {
       await delay(shortPollingInterval);
-      scanStatus = await HPApi.getScanStatus();
+      scanStatus = await getScanStatus();
       loaded = scanStatus.isLoaded();
       counter += shortPollingInterval;
     }

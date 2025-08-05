@@ -22,6 +22,10 @@ describe("ScanJobManifest", () => {
     it("Parse ScanCaps uri", async () => {
       expect(scanJobManifest.ScanCapsURI).to.be.eq("/Scan/ScanCaps");
     });
+
+    it("Parse Status uri", async () => {
+      expect(scanJobManifest.StatusURI).to.be.eq("/Scan/Status");
+    });
   });
   describe("Parsing scanJobManifest2.xml", async () => {
     let scanJobManifest: ScanJobManifest;
@@ -39,6 +43,14 @@ describe("ScanJobManifest", () => {
 
     it("Parse ScanCaps uri", async () => {
       expect(scanJobManifest.ScanCapsURI).to.be.eq("/Scan/ScanCaps");
+    });
+
+    it("Parse Status uri", async () => {
+      expect(scanJobManifest.StatusURI).to.be.eq("/Scan/Status");
+    });
+
+    it("Parse Status uri", async () => {
+      expect(scanJobManifest.StatusURI).to.be.eq("/Scan/Status");
     });
   });
 
