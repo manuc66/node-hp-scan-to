@@ -7,6 +7,8 @@ import {
 import { DeviceCapabilities } from "../src/type/DeviceCapabilities";
 import { InputSource } from "../src/type/InputSource";
 import { ScanConfig } from "../src/type/scanConfigs";
+import { IScanJobSettings } from "../src/hpModels/IScanJobSettings";
+import { IScanStatus } from "../src/hpModels/IScanStatus";
 
 describe("scanProcessing", () => {
   let scanConfig: ScanConfig;
@@ -23,7 +25,8 @@ describe("scanProcessing", () => {
         filePattern: undefined,
       },
       paperlessConfig: undefined,
-      nextcloudConfig: undefined
+      nextcloudConfig: undefined,
+      preferEscl: false,
     };
     deviceCapabilities = {
       supportsMultiItemScanFromPlaten: false,
@@ -36,6 +39,10 @@ describe("scanProcessing", () => {
       adfDuplexMaxHeight: null,
       hasAdfDetectPaperLoaded: false,
       hasAdfDuplex: false,
+      isEscl: false,
+      getScanStatus: () => Promise.resolve({} as IScanStatus),
+      createScanJobSettings: (_) => ({}) as IScanJobSettings,
+      submitScanJob: () => Promise.resolve("fake-value"),
     };
   });
 

@@ -3,6 +3,7 @@ import { expect } from "chai";
 import path from "path";
 import * as fs from "fs/promises";
 import ScanStatus from "../src/hpModels/ScanStatus";
+import { AdfState } from "../src/hpModels/AdfState";
 
 describe("ScanStatus", () => {
   describe("Parsing scanStatus.xml", async () => {
@@ -47,7 +48,7 @@ describe("ScanStatus", () => {
     });
 
     it("Parse adfState", async () => {
-      expect(scanStatus.adfState).to.be.eq("");
+      expect(scanStatus.adfState).to.be.eq(AdfState.Empty);
     });
     it("Parse scannerState", async () => {
       expect(scanStatus.scannerState).to.be.eq("Idle");

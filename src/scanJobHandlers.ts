@@ -1,9 +1,8 @@
 import HPApi from "./HPApi";
 import { DeviceCapabilities } from "./type/DeviceCapabilities";
 import { waitForScanEventFromTarget } from "./listening";
-import ScanJobSettings from "./hpModels/ScanJobSettings";
 import { ScanContent, ScanPage } from "./type/ScanContent";
-import Job from "./hpModels/Job";
+import Job, { JobState, PageState } from "./hpModels/Job";
 import { delay } from "./delay";
 import PathHelper from "./PathHelper";
 import { InputSource } from "./type/InputSource";
@@ -11,6 +10,10 @@ import { SelectedScanTarget } from "./type/scanTargetDefinitions";
 import fs from "fs/promises";
 import JpegUtil from "./JpegUtil";
 import { PageCountingStrategy } from "./type/pageCountingStrategy";
+import { IScanJobSettings } from "./hpModels/IScanJobSettings";
+import { EventType } from "./hpModels/WalkupScanToCompEvent";
+import { EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus";
+import EsclScanImageInfo from "./hpModels/EsclScanImageInfo";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -19,23 +22,25 @@ async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   let isReadyToUpload = false;
   do {
     job = await HPApi.getJob(jobUrl);
-    if (job.jobState === "Canceled") {
+    const jobStateStr = job.jobState.toString();
+    if (job.jobState === JobState.Canceled) {
       return job;
     } else if (
-      job.pageState === "ReadyToUpload" ||
-      job.jobState === "Completed"
+      job.pageState === PageState.ReadyToUpload ||
+      job.jobState === JobState.Completed
     ) {
       isReadyToUpload = true;
-    } else if (job.jobState == "Processing") {
+    } else if (job.jobState == JobState.Processing) {
       isReadyToUpload = false;
     } else {
-      console.log(`Unknown jobState: ${job.jobState}`);
+      console.log(`Unknown jobState: ${jobStateStr}`);
     }
     await delay(300);
   } while (!isReadyToUpload);
   return job;
 }
-async function scanProcessing(filePath: string): Promise<number | null> {
+
+async function fixJpegHeight(filePath: string): Promise<number | null> {
   const buffer: Buffer = await fs.readFile(filePath);
 
   const height = JpegUtil.fixSizeWithDNL(buffer);
@@ -74,7 +79,7 @@ async function handleScanProcessingState(
   date: Date,
 ): Promise<ScanPage | null> {
   if (
-    job.pageState == "ReadyToUpload" &&
+    job.pageState == PageState.ReadyToUpload &&
     job.binaryURL != null &&
     job.currentPageNumber != null
   ) {
@@ -97,16 +102,12 @@ async function handleScanProcessingState(
     );
     console.log("Page downloaded to:", filePath);
 
-    let sizeFixed: null | number = null;
-    if (inputSource == InputSource.Adf) {
-      sizeFixed = await scanProcessing(filePath);
-      if (sizeFixed == null) {
-        console.log(
-          `File size has not been fixed, DNF may not have been found and approximate height is: ${job.imageHeight}`,
-        );
-      }
-    }
-    return createScanPage(job, currentPageNumber, filePath, sizeFixed);
+    const adfHeight = await getAndFixHeightWHenAdf(
+      inputSource,
+      filePath,
+      job.imageHeight,
+    );
+    return createScanPage(job, currentPageNumber, filePath, adfHeight);
   } else {
     console.log(`Unknown pageState: ${job.pageState}`);
     await delay(200);
@@ -114,43 +115,49 @@ async function handleScanProcessingState(
   }
 }
 
-export async function executeScanJob(
-  scanJobSettings: ScanJobSettings,
+function getPageNumber(
+  pageCountingStrategy:
+    | PageCountingStrategy
+    | PageCountingStrategy.OddOnly
+    | PageCountingStrategy.EvenOnly,
+  scanJobContent: ScanContent,
+) {
+  if (pageCountingStrategy === PageCountingStrategy.Normal) {
+    return scanJobContent.elements.length + 1;
+  } else if (pageCountingStrategy === PageCountingStrategy.OddOnly) {
+    return scanJobContent.elements.length * 2 + 1;
+  } else if (pageCountingStrategy === PageCountingStrategy.EvenOnly) {
+    return (scanJobContent.elements.length + 1) * 2;
+  } else {
+    throw new Error(
+      `Unknown page counting strategy: ` + JSON.stringify(pageCountingStrategy),
+    );
+  }
+}
+
+async function hpScanJobHandling(
+  jobUrl: string,
+  pageCountingStrategy:
+    | PageCountingStrategy
+    | PageCountingStrategy.OddOnly
+    | PageCountingStrategy.EvenOnly,
+  scanJobContent: ScanContent,
   inputSource: InputSource,
   folder: string,
   scanCount: number,
-  scanJobContent: ScanContent,
   filePattern: string | undefined,
-  pageCountingStrategy: PageCountingStrategy,
-): Promise<"Completed" | "Canceled"> {
-  const jobUrl = await HPApi.postJob(scanJobSettings);
-
-  console.log(`Creating job with settings: ${JSON.stringify(scanJobSettings)}`);
-
-  console.log("New job created:", jobUrl);
-
+) {
   let job = await HPApi.getJob(jobUrl);
-  while (job.jobState !== "Completed") {
+  while (job.jobState !== JobState.Completed) {
     job = await waitDeviceUntilItIsReadyToUploadOrCompleted(jobUrl);
 
-    if (job.jobState == "Completed") {
+    if (job.jobState == JobState.Completed) {
       continue;
     }
 
-    if (job.jobState === "Processing") {
-      let pageNumber;
-      if (pageCountingStrategy === PageCountingStrategy.Normal) {
-        pageNumber = scanJobContent.elements.length + 1;
-      } else if (pageCountingStrategy === PageCountingStrategy.OddOnly) {
-        pageNumber = scanJobContent.elements.length * 2 + 1;
-      } else if (pageCountingStrategy === PageCountingStrategy.EvenOnly) {
-        pageNumber = (scanJobContent.elements.length + 1) * 2;
-      } else {
-        throw new Error(
-          `Unknown page counting strategy: ` +
-            JSON.stringify(pageCountingStrategy),
-        );
-      }
+    const jobStateStr = job.jobState.toString();
+    if (job.jobState === JobState.Processing) {
+      const pageNumber = getPageNumber(pageCountingStrategy, scanJobContent);
 
       const page = await handleScanProcessingState(
         job,
@@ -162,14 +169,14 @@ export async function executeScanJob(
         new Date(),
       );
       job = await HPApi.getJob(jobUrl);
-      if (page != null && job.jobState != "Canceled") {
+      if (page != null && job.jobState != JobState.Canceled) {
         scanJobContent.elements.push(page);
       }
-    } else if (job.jobState === "Canceled") {
+    } else if (job.jobState === JobState.Canceled) {
       console.log("Job cancelled by device");
       break;
     } else {
-      console.log(`Unhandled jobState: ${job.jobState}`);
+      console.log(`Unhandled jobState: ${jobStateStr}`);
       await delay(200);
     }
   }
@@ -177,6 +184,194 @@ export async function executeScanJob(
     `Job state: ${job.jobState}, totalPages: ${scanJobContent.elements.length}:`,
   );
   return job.jobState;
+}
+
+function logJobInfo(
+  jobUrl: string,
+  scanImageInfo: EsclScanImageInfo,
+  jobInfo: EsclJobInfo | undefined,
+) {
+  if (jobUrl.indexOf(scanImageInfo.jobURI) == -1) {
+    // for an unknown reason this happens on an HP Smart Tank Plus 570!
+    console.log(
+      `Incoherent state !!!! Job URI has changed: ${jobUrl} -> ${scanImageInfo.jobURI} -- crazy!`,
+    );
+  }
+
+  console.log("From scanImageInfo:");
+  console.log(`\tJob Uri: ${scanImageInfo?.jobURI ?? null}`);
+  console.log(`\tJob Uuid: ${scanImageInfo?.jobUuid ?? null}`);
+
+  console.log("From jobInfo:");
+  console.log(`\tJob Uri: ${jobInfo?.getJobUri() ?? null}`);
+  console.log(`\tJob Uuid: ${jobInfo?.getJobUuid() ?? null}`);
+  console.log(`\tJob state reason: ${jobInfo?.getJobStateReason() ?? null}`);
+  console.log(`\tJob state: ${jobInfo?.getJobState() ?? null}`);
+}
+
+function mapToJobState(jobStateReason: JobStateReason) {
+  if (jobStateReason === JobStateReason.JobCanceledByUser) {
+    return JobState.Canceled;
+  }
+
+  if (jobStateReason === JobStateReason.JobCompletedSuccessfully) {
+    return JobState.Completed;
+  }
+
+  console.log(
+    `Unknown job state reason: ${jobStateReason}, job will be cancelled`,
+  );
+
+  return JobState.Canceled;
+}
+
+async function getAndFixHeightWHenAdf(
+  inputSource: InputSource,
+  filePath: string,
+  actualHeight: number | null,
+) {
+  let sizeFixed: null | number = null;
+  if (inputSource == InputSource.Adf) {
+    sizeFixed = await fixJpegHeight(filePath);
+    if (sizeFixed == null) {
+      console.log(
+        `Image height has not been fixed, DNF may not have been found and approximate height is: ${actualHeight}`,
+      );
+    } else {
+      if (HPApi.isDebug()) {
+        console.log(
+          `Image height has been fixed to: ${sizeFixed} (contained in jpeg's DNL), scan job indicates: ${actualHeight}`,
+        );
+      }
+    }
+  }
+  return sizeFixed;
+}
+
+async function eSCLScanJobHandling(
+  jobUrl: string,
+  scanJobSettings: IScanJobSettings,
+  pageCountingStrategy:
+    | PageCountingStrategy
+    | PageCountingStrategy.OddOnly
+    | PageCountingStrategy.EvenOnly,
+  scanJobContent: ScanContent,
+  inputSource: InputSource,
+  folder: string,
+  scanCount: number,
+  filePattern: string | undefined,
+) {
+  let jobStateReason: JobStateReason | null = null;
+  let jobInfo: EsclJobInfo | undefined = undefined;
+  do {
+    await delay(1000);
+
+    const pageNumber = getPageNumber(pageCountingStrategy, scanJobContent);
+
+    const destinationFilePath = PathHelper.getFileForPage(
+      folder,
+      scanCount,
+      pageNumber,
+      filePattern,
+      "jpg",
+      new Date(),
+    );
+
+    const jobLocation = PathHelper.getPathFromHttpLocation(jobUrl);
+
+    const filePath = await HPApi.downloadEsclPage(jobUrl, destinationFilePath);
+
+    const scanImageInfo = await HPApi.getEsclScanImageInfo(jobLocation);
+    console.log("scanImageInfo:", scanImageInfo.jobURI);
+
+    const actualHeight = scanImageInfo.actualHeight;
+
+    const adfHeight = await getAndFixHeightWHenAdf(
+      inputSource,
+      filePath,
+      actualHeight,
+    );
+
+    const scannerStatus = await HPApi.getEsclScanStatus();
+
+    console.log("Page downloaded to:", filePath);
+
+    const page: ScanPage = {
+      path: filePath,
+      pageNumber,
+      width: scanImageInfo.actualWidth,
+      height: adfHeight ?? scanImageInfo.actualHeight,
+      xResolution: scanJobSettings.xResolution,
+      yResolution: scanJobSettings.yResolution,
+    };
+
+    scanJobContent.elements.push(page);
+
+    jobInfo = scannerStatus.findJobByUri(jobLocation);
+
+    if (HPApi.isDebug()) {
+      logJobInfo(jobUrl, scanImageInfo, jobInfo);
+    }
+
+    jobStateReason = jobInfo?.getJobStateReason() ?? null;
+  } while (
+    jobStateReason !== null &&
+    jobStateReason !== JobStateReason.JobCompletedSuccessfully &&
+    jobStateReason != JobStateReason.JobCanceledByUser
+  );
+
+  if (jobStateReason == null) {
+    console.log(
+      "Job state reason is null, it means that the current " +
+        "job was not found in the device's status, this is probably a bug " +
+        "in the device, the current scan will be marked as cancelled",
+    );
+    return JobState.Canceled;
+  }
+
+  return mapToJobState(jobStateReason);
+}
+
+export async function executeScanJob(
+  scanJobSettings: IScanJobSettings,
+  inputSource: InputSource,
+  folder: string,
+  scanCount: number,
+  scanJobContent: ScanContent,
+  filePattern: string | undefined,
+  pageCountingStrategy: PageCountingStrategy,
+  deviceCapabilities: DeviceCapabilities,
+): Promise<JobState> {
+  const jobUrl = await deviceCapabilities.submitScanJob(scanJobSettings);
+
+  console.log(`Creating job with settings: ${JSON.stringify(scanJobSettings)}`);
+
+  console.log("New job created:", jobUrl);
+
+  let jobState: JobState;
+  if (deviceCapabilities.isEscl) {
+    jobState = await eSCLScanJobHandling(
+      jobUrl,
+      scanJobSettings,
+      pageCountingStrategy,
+      scanJobContent,
+      inputSource,
+      folder,
+      scanCount,
+      filePattern,
+    );
+  } else {
+    jobState = await hpScanJobHandling(
+      jobUrl,
+      pageCountingStrategy,
+      scanJobContent,
+      inputSource,
+      folder,
+      scanCount,
+      filePattern,
+    );
+  }
+  return jobState;
 }
 
 async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
@@ -187,25 +382,25 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
 
     const walkupScanToCompEvent =
       await HPApi.getWalkupScanToCompEvent(compEventURI);
-    const message = walkupScanToCompEvent.eventType;
-
-    if (message === "ScanNewPageRequested") {
+    const eventType = walkupScanToCompEvent.eventType;
+    const eventTypeStr = eventType.toString();
+    if (eventType === EventType.ScanNewPageRequested) {
       startNewScanJob = true;
       wait = false;
-    } else if (message === "ScanPagesComplete") {
+    } else if (eventType === EventType.ScanPagesComplete) {
       wait = false;
-    } else if (message === "ScanRequested") {
+    } else if (eventType === EventType.ScanRequested) {
       // continue waiting
     } else {
       wait = false;
-      console.log(`Unknown eventType: ${message}`);
+      console.log(`Unknown eventType: ${eventTypeStr}`);
     }
   }
   return startNewScanJob;
 }
 
 export async function executeScanJobs(
-  scanJobSettings: ScanJobSettings,
+  scanJobSettings: IScanJobSettings,
   inputSource: InputSource,
   folder: string,
   scanCount: number,
@@ -223,6 +418,7 @@ export async function executeScanJobs(
     scanJobContent,
     filePattern,
     pageCountingStrategy,
+    deviceCapabilities,
   );
   const scanTarget = {
     resourceURI: selectedScanTarget.resourceURI,
@@ -231,7 +427,7 @@ export async function executeScanJobs(
   };
   let lastEvent = selectedScanTarget.event;
   if (
-    jobState === "Completed" &&
+    jobState === JobState.Completed &&
     lastEvent.compEventURI &&
     inputSource !== InputSource.Adf &&
     lastEvent.destinationURI &&
@@ -254,8 +450,9 @@ export async function executeScanJobs(
         scanJobContent,
         filePattern,
         pageCountingStrategy,
+        deviceCapabilities,
       );
-      if (jobState !== "Completed") {
+      if (jobState !== JobState.Completed) {
         return;
       }
       if (!lastEvent.destinationURI) {

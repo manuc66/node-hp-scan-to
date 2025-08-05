@@ -7,24 +7,26 @@ import {
   ScanTarget,
   SelectedScanTarget,
 } from "./type/scanTargetDefinitions";
+import { EventType } from "./hpModels/WalkupScanToCompEvent";
 
 export async function waitScanRequest(compEventURI: string): Promise<boolean> {
   const waitMax = 50;
   for (let i = 0; i < waitMax; i++) {
     const walkupScanToCompEvent =
       await HPApi.getWalkupScanToCompEvent(compEventURI);
-    const message = walkupScanToCompEvent.eventType;
-    if (message === "HostSelected") {
+    const eventType = walkupScanToCompEvent.eventType;
+    const eventTypeStr = eventType.toString();
+    if (eventType === EventType.HostSelected) {
       // this ok to wait
-    } else if (message === "ScanRequested") {
+    } else if (eventType === EventType.ScanRequested) {
       break;
-    } else if (message === "ScanNewPageRequested") {
+    } else if (eventType === EventType.ScanNewPageRequested) {
       break;
-    } else if (message === "ScanPagesComplete") {
+    } else if (eventType === EventType.ScanPagesComplete) {
       console.log("no more page to scan, scan is finished");
       return false;
     } else {
-      console.log(`Unknown eventType: ${message}`);
+      console.log(`Unknown eventType: ${eventTypeStr}`);
       return false;
     }
 
