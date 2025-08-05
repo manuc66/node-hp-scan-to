@@ -1,6 +1,7 @@
 import { IScanStatus } from "../hpModels/IScanStatus";
 import { IScanJobSettings } from "../hpModels/IScanJobSettings";
 import { InputSource } from "./InputSource";
+import { ScanMode } from "./scanMode";
 
 export interface DeviceCapabilities {
   supportsMultiItemScanFromPlaten: boolean;
@@ -19,6 +20,7 @@ export interface DeviceCapabilities {
     inputSource: InputSource,
     contentType: "Document" | "Photo",
     resolution: number,
+    mode: ScanMode,
     width: number | null,
     height: number | null,
     isDuplex: boolean,

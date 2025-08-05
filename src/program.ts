@@ -25,6 +25,7 @@ import {
 import { FileConfig } from "./type/FileConfig";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings";
 import { Server as NetServer } from "net";
+import { ScanMode } from "./type/scanMode";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
@@ -72,6 +73,14 @@ function setupScanParameters(commandName: string) {
         "-r, --resolution <dpi>",
         "Resolution in DPI of the scans (default: 200)",
       ).helpGroup(HelpGroupsHeadings.scan),
+    )
+    .addOption(
+      new Option(
+        "--mode <mode>",
+        "Selects the scan mode (default: Color)",
+      )
+        .choices(["Lineart", "Gray", "Color"])
+        .helpGroup(HelpGroupsHeadings.scan),
     )
     .addOption(
       new Option(
@@ -324,7 +333,7 @@ function getOptConfiguredValue<T>(
 }
 
 function getHealthCheckSetting(
-  options: AdfAutoscanOptions,
+  options: ProgramOption,
   configFile: FileConfig,
 ) {
   const healthCheckEnabled: boolean = getConfiguredValue(
@@ -393,6 +402,13 @@ function getScanConfiguration(
     10,
   );
 
+  const mode =
+    getConfiguredValue(
+      options.mode as (ScanMode | undefined),
+      fileConfig.mode as (ScanMode | undefined),
+      ScanMode.Color,
+    );
+
   const preferEscl = getConfiguredValue(
     options.preferESCL,
     fileConfig.prefer_escl,
@@ -401,6 +417,7 @@ function getScanConfiguration(
 
   const scanConfig: ScanConfig = {
     resolution,
+    mode,
     width: width,
     height: height,
     directoryConfig,
@@ -659,7 +676,7 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
   return new Command<[], ProgramOption>("clear-registrations")
     .description("Clear the list or registered target on the device")
     .action(async (_, cmd) => {
-      const options = cmd.optsWithGlobals();
+      const options: ProgramOption = cmd.optsWithGlobals();
 
       const ip = await getDeviceIp(options, fileConfig);
       HPApi.setDeviceIP(ip);
