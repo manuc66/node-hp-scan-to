@@ -76,7 +76,7 @@ function setupScanParameters(commandName: string) {
     )
     .addOption(
       new Option("--mode <mode>", "Selects the scan mode (default: Color)")
-        .choices(["Lineart", "Gray", "Color"])
+        .choices(["Gray", "Color"])
         .helpGroup(HelpGroupsHeadings.scan),
     )
     .addOption(
