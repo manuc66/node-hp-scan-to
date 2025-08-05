@@ -1,7 +1,7 @@
 import http from "http";
 import { Server as NetServer } from "net";
 
-export function startHealthCheckServer(PORT: number) : NetServer  {
+export function startHealthCheckServer(PORT: number): NetServer {
   const server = http.createServer((req, res) => {
     if (req.method === "GET" && req.url === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
