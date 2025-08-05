@@ -487,10 +487,12 @@ function createListenCliCmd(configFile: FileConfig) {
         configFile,
       );
 
-      let healthCheckSrv : NetServer | null = null;
+      let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, configFile);
       if (healthCheckSetting.isHealthCheckEnabled) {
-        healthCheckSrv = startHealthCheckServer(healthCheckSetting.healthCheckPort);
+        healthCheckSrv = startHealthCheckServer(
+          healthCheckSetting.healthCheckPort,
+        );
       }
 
       const scanConfig = getScanConfiguration(options, configFile);
@@ -548,10 +550,12 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
         fileConfig,
       );
 
-      let healthCheckSrv : NetServer | null = null;
+      let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
       if (healthCheckSetting.isHealthCheckEnabled) {
-        healthCheckSrv = startHealthCheckServer(healthCheckSetting.healthCheckPort);
+        healthCheckSrv = startHealthCheckServer(
+          healthCheckSetting.healthCheckPort,
+        );
       }
 
       const scanConfig = getScanConfiguration(options, fileConfig);
@@ -584,7 +588,7 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
 
       await adfAutoscanCmd(adfScanConfig, deviceUpPollingInterval);
 
-      healthCheckSrv?.close()
+      healthCheckSrv?.close();
     });
 }
 
@@ -616,10 +620,12 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
       const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);
 
-      let healthCheckSrv : NetServer | null = null;
+      let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
       if (healthCheckSetting.isHealthCheckEnabled) {
-        healthCheckSrv = startHealthCheckServer(healthCheckSetting.healthCheckPort);
+        healthCheckSrv = startHealthCheckServer(
+          healthCheckSetting.healthCheckPort,
+        );
       }
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(
@@ -661,10 +667,12 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
       const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);
 
-      let healthCheckSrv : NetServer | null = null;
+      let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
       if (healthCheckSetting.isHealthCheckEnabled) {
-        healthCheckSrv = startHealthCheckServer(healthCheckSetting.healthCheckPort);
+        healthCheckSrv = startHealthCheckServer(
+          healthCheckSetting.healthCheckPort,
+        );
       }
 
       await clearRegistrationsCmd();
