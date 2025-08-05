@@ -55,9 +55,7 @@ export async function tryGetDestination(
   return null;
 }
 
-export function isPdf(
-  destination: WalkupDestination,
-) {
+export function isPdf(destination: WalkupDestination) {
   if (
     destination.shortcut === KnownShortcut.SavePDF ||
     destination.shortcut === KnownShortcut.EmailPDF ||

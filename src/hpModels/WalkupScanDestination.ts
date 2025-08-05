@@ -61,9 +61,13 @@ export default class WalkupScanDestination {
     if (
       Object.prototype.hasOwnProperty.call(this.data, "wus:WalkupScanSettings")
     ) {
-      return EnumUtils.getState("ScanPlexMode", ScanPlexMode, this.data["wus:WalkupScanSettings"]["0"][
-        "scantype:ScanSettings"
-        ][0]["dd:ScanPlexMode"][0]);
+      return EnumUtils.getState(
+        "ScanPlexMode",
+        ScanPlexMode,
+        this.data["wus:WalkupScanSettings"]["0"]["scantype:ScanSettings"][0][
+          "dd:ScanPlexMode"
+        ][0],
+      );
     }
     return null;
   }
