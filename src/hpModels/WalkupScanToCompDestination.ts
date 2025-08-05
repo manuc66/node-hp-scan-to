@@ -67,9 +67,13 @@ export default class WalkupScanToCompDestination {
         "wus:WalkupScanToCompSettings",
       )
     ) {
-      return EnumUtils.getState("ScanPlexMode", ScanPlexMode, this.data["wus:WalkupScanToCompSettings"]["0"]["scantype:ScanSettings"][
-        "0"
-        ]["dd:ScanPlexMode"][0]);
+      return EnumUtils.getState(
+        "ScanPlexMode",
+        ScanPlexMode,
+        this.data["wus:WalkupScanToCompSettings"]["0"]["scantype:ScanSettings"][
+          "0"
+        ]["dd:ScanPlexMode"][0],
+      );
     }
     return null;
   }
