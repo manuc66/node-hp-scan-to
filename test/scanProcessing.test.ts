@@ -6,6 +6,7 @@ import { InputSource } from "../src/type/InputSource";
 import { ScanConfig } from "../src/type/scanConfigs";
 import { IScanJobSettings } from "../src/hpModels/IScanJobSettings";
 import { IScanStatus } from "../src/hpModels/IScanStatus";
+import { ScanMode } from "../src/type/scanMode";
 
 describe("scanProcessing", () => {
   let scanConfig: ScanConfig;
@@ -14,6 +15,7 @@ describe("scanProcessing", () => {
   beforeEach(async () => {
     scanConfig = {
       resolution: 200,
+      mode: ScanMode.Color,
       width: null,
       height: null,
       directoryConfig: {

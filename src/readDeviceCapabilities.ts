@@ -8,6 +8,7 @@ import { InputSource } from "./type/InputSource";
 import { IScanJobSettings } from "./hpModels/IScanJobSettings";
 import EsclScanJobSettings from "./hpModels/EsclScanJobSettings";
 import ScanJobSettings from "./hpModels/ScanJobSettings";
+import { ScanMode } from "./type/scanMode";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,
@@ -93,6 +94,7 @@ export async function readDeviceCapabilities(
     inputSource: InputSource,
     contentType: "Document" | "Photo",
     resolution: number,
+    mode: ScanMode,
     width: number | null,
     height: number | null,
     isDuplex: boolean,
@@ -103,6 +105,7 @@ export async function readDeviceCapabilities(
         inputSource,
         contentType,
         resolution,
+        mode,
         width,
         height,
         isDuplex,
@@ -112,6 +115,7 @@ export async function readDeviceCapabilities(
         inputSource,
         contentType,
         resolution,
+        mode,
         width,
         height,
         isDuplex,

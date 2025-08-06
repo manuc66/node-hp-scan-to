@@ -2,11 +2,13 @@ import xml2js from "xml2js";
 import { InputSource } from "../type/InputSource";
 import { parseXmlString } from "./ParseXmlString";
 import { IScanJobSettings } from "./IScanJobSettings";
+import { ScanMode } from "../type/scanMode";
 
 export default class ScanJobSettings implements IScanJobSettings {
   private readonly inputSource: InputSource;
   private readonly contentType: "Document" | "Photo";
   private readonly resolution: number;
+  private readonly mode: ScanMode;
   private readonly width: number | null;
   private readonly height: number | null;
   private readonly isDuplex: boolean;
@@ -15,6 +17,7 @@ export default class ScanJobSettings implements IScanJobSettings {
     inputSource: InputSource,
     contentType: "Document" | "Photo",
     resolution: number,
+    mode: ScanMode,
     width: number | null,
     height: number | null,
     isDuplex: boolean,
@@ -22,6 +25,7 @@ export default class ScanJobSettings implements IScanJobSettings {
     this.inputSource = inputSource;
     this.contentType = contentType;
     this.resolution = resolution;
+    this.mode = mode;
     this.width = width;
     this.height = height;
     this.isDuplex = isDuplex;
@@ -70,6 +74,8 @@ export default class ScanJobSettings implements IScanJobSettings {
         Width: number;
         XResolution: number[];
         YResolution: number[];
+        ColorSpace: string[];
+        BitDepth: number[];
         AdfOptions?: [{ AdfOption: ["Duplex"] }];
         ContentType: string[];
       };
@@ -77,6 +83,14 @@ export default class ScanJobSettings implements IScanJobSettings {
 
     parsed.ScanSettings.XResolution[0] = this.resolution;
     parsed.ScanSettings.YResolution[0] = this.resolution;
+
+    if (this.mode === ScanMode.Gray) {
+      parsed.ScanSettings.ColorSpace = ["Gray"];
+      parsed.ScanSettings.BitDepth = [8];
+    } else {
+      parsed.ScanSettings.ColorSpace = ["Color"];
+      parsed.ScanSettings.BitDepth = [8];
+    }
 
     if (this.width !== null) {
       parsed.ScanSettings.Width = this.width;
