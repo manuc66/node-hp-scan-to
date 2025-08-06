@@ -1,6 +1,6 @@
 import { describe } from "mocha";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 
 import { setupProgram } from "../src/program";
 import { Help } from "@commander-js/extra-typings";
