@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DuplexAssemblyMode } from "./DuplexAssemblyMode";
 
 // Configuration schema for the config file
 export const configSchema = z.object({
@@ -47,6 +48,7 @@ export const configSchema = z.object({
   ///
   add_emulated_duplex: z.boolean().optional(), // Enable emulated duplex feature
   emulated_duplex_label: z.string().optional(), // Label for emulated duplex target
+  emulated_duplex_assembly_mode: z.enum(Object.values(DuplexAssemblyMode)).optional(),
 
   ///
   /// Single Scan Options
