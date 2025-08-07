@@ -1,9 +1,17 @@
-import { RegistrationConfig, SelectedScanTarget } from "../type/scanTargetDefinitions";
+import {
+  RegistrationConfig,
+  SelectedScanTarget,
+} from "../type/scanTargetDefinitions";
 import HPApi from "../HPApi";
 import { readDeviceCapabilities } from "../readDeviceCapabilities";
 import { ScanContent } from "../type/ScanContent";
 import { waitScanEvent, waitScanRequest } from "../listening";
-import { isPdf, saveScanFromEvent, tryGetDestination, WalkupDestination } from "../scanProcessing";
+import {
+  isPdf,
+  saveScanFromEvent,
+  tryGetDestination,
+  WalkupDestination,
+} from "../scanProcessing";
 import { postProcessing } from "../postProcessing";
 import PathHelper from "../PathHelper";
 import { delay } from "../delay";
@@ -140,7 +148,8 @@ async function processScanWithDestination(
   if (
     lastScanTarget != null &&
     frontOfDoubleSidedScanContext != null &&
-    lastScanTarget.isDuplexSingleSide && lastDuplexMode == DuplexMode.FrontOfDoubleSided &&
+    lastScanTarget.isDuplexSingleSide &&
+    lastDuplexMode == DuplexMode.FrontOfDoubleSided &&
     (duplexMode == DuplexMode.Simplex || duplexMode == DuplexMode.Duplex)
   ) {
     await processFinishedPartialDuplexScan(
@@ -224,8 +233,14 @@ async function handleScanResult(
       console.log(
         "Emulated duplex scan completed; front and back pages are being assembled",
       );
-      const frontScans = frontOfDoubleSidedScanContext?.scanJobContent ?? { elements: [] };
-      finalScanJobContent =  assembleDuplexScan(frontScans, scanJobContent, duplexAssemblyMode);
+      const frontScans = frontOfDoubleSidedScanContext?.scanJobContent ?? {
+        elements: [],
+      };
+      finalScanJobContent = assembleDuplexScan(
+        frontScans,
+        scanJobContent,
+        duplexAssemblyMode,
+      );
     } else {
       finalScanJobContent = scanJobContent;
     }
@@ -278,8 +293,11 @@ function determineDuplexModes(
   return { duplexMode, targetDuplexMode };
 }
 
-function assembleDuplexScan(frontScan: ScanContent, backScan: ScanContent,
-                            mode: DuplexAssemblyMode,) {
+function assembleDuplexScan(
+  frontScan: ScanContent,
+  backScan: ScanContent,
+  mode: DuplexAssemblyMode,
+) {
   let frontContent = frontScan.elements;
   let backContent = backScan.elements;
 
@@ -321,7 +339,6 @@ function assembleDuplexScan(frontScan: ScanContent, backScan: ScanContent,
 
   return duplexScan;
 }
-
 
 type ScanParameters = {
   pageCountingStrategy: PageCountingStrategy;

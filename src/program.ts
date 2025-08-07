@@ -458,10 +458,11 @@ function createListenCliCmd(configFile: FileConfig) {
     )
     .addOption(
       new Option(
-      '--emulated-duplex-assembly-mode <mode>',
-      'Duplex assembly mode (default: document-wise)')
+        "--emulated-duplex-assembly-mode <mode>",
+        "Duplex assembly mode (default: document-wise)",
+      )
         .choices(Object.values(DuplexAssemblyMode))
-        .helpGroup(HelpGroupsHeadings.scan)
+        .helpGroup(HelpGroupsHeadings.scan),
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
@@ -501,7 +502,7 @@ function createListenCliCmd(configFile: FileConfig) {
             options.emulatedDuplexAssemblyMode,
             configFile.emulated_duplex_assembly_mode,
             DuplexAssemblyMode.DOCUMENT_WISE,
-          )
+          ),
         });
       }
 
