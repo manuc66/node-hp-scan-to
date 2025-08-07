@@ -26,6 +26,7 @@ import { FileConfig } from "./type/FileConfig";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings";
 import { Server as NetServer } from "net";
 import { ScanMode } from "./type/scanMode";
+import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
@@ -455,6 +456,13 @@ function createListenCliCmd(configFile: FileConfig) {
         "The emulated duplex label to display on the device (the default is to suffix the main label with duplex)",
       ).helpGroup(HelpGroupsHeadings.deviceControlScreen),
     )
+    .addOption(
+      new Option(
+      '--emulated-duplex-assembly-mode <mode>',
+      'Duplex assembly mode (default: document-wise)')
+        .choices(Object.values(DuplexAssemblyMode))
+        .helpGroup(HelpGroupsHeadings.scan)
+    )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
       const ip = await getDeviceIp(options, configFile);
@@ -489,6 +497,11 @@ function createListenCliCmd(configFile: FileConfig) {
             `${registrationConfig.label} duplex`,
           ),
           isDuplexSingleSide: true,
+          duplexAssemblyMode: getConfiguredValue(
+            options.emulatedDuplexAssemblyMode,
+            configFile.emulated_duplex_assembly_mode,
+            DuplexAssemblyMode.DOCUMENT_WISE,
+          )
         });
       }
 

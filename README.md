@@ -201,6 +201,7 @@ Scan Options:
   -h, --height <height>                                            Height in pixels of the scans (default: max)
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
   --prefer-eSCL                                                    Prefer eSCL protocol if available
+  --emulated-duplex-assembly-mode <mode>                           Duplex assembly mode (default: document-wise) (choices: "page-wise", "document-wise", "reverse-front", "reverse-both")
 
 Options:
   --device-up-polling-interval <deviceUpPollingInterval>           Device up polling interval in milliseconds
