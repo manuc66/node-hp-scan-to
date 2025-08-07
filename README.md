@@ -70,14 +70,17 @@ There is a good chance it also works on other unlisted HP All-in-One Printer.
 - ✔️ Automatic document feeder (ADF) support with dual-side scanning
 - ✔️ Multi-page platen scanning
 - ✔️ Automatic IP address discovery
+- ✔️ Compatible with HP printers that support network scanning (eSCL or /Scan API)
 
 ### App Features
 
 - ✔️ Multi-platform: Linux, Windows, and macOS
 - ✔️ Prebuilt Docker images (multi-architecture)
 - ✔️ Command line (CLI) support
-- ✔️ Customizable file names, resolutions, and device labels
+- ✔️ Customizable file names, resolutions, color mode, and target labels
 - ✔️ Clear all registered targets
+- ✔️ Single scan command line
+- ✔️ ADF auto-scan mode
 - ✔️ Emulated double side scan
 - ✔️ Multiple output target support:
   - Local folders
