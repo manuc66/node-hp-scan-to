@@ -293,11 +293,11 @@ function determineDuplexModes(
   return { duplexMode, targetDuplexMode };
 }
 
-function assembleDuplexScan(
+export function assembleDuplexScan(
   frontScan: ScanContent,
   backScan: ScanContent,
   mode: DuplexAssemblyMode,
-) {
+): ScanContent {
   let frontContent = frontScan.elements;
   let backContent = backScan.elements;
 

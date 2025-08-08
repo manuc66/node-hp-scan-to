@@ -446,23 +446,17 @@ function createListenCliCmd(configFile: FileConfig) {
     )
     .addOption(
       new Option(
-        "--add-emulated-duplex",
-        "Enable emulated duplex scanning",
-      ).helpGroup(HelpGroupsHeadings.deviceControlScreen),
+        "--add-emulated-duplex [mode]",
+        "Enable emulated duplex scanning, with optional assembly mode (default: document-wise)",
+      )
+        .choices(Object.values(DuplexAssemblyMode))
+        .helpGroup(HelpGroupsHeadings.deviceControlScreen),
     )
     .addOption(
       new Option(
         "--emulated-duplex-label <label>",
         "The emulated duplex label to display on the device (the default is to suffix the main label with duplex)",
       ).helpGroup(HelpGroupsHeadings.deviceControlScreen),
-    )
-    .addOption(
-      new Option(
-        "--emulated-duplex-assembly-mode <mode>",
-        "Duplex assembly mode (default: document-wise)",
-      )
-        .choices(Object.values(DuplexAssemblyMode))
-        .helpGroup(HelpGroupsHeadings.scan),
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
@@ -486,8 +480,8 @@ function createListenCliCmd(configFile: FileConfig) {
 
       if (
         getConfiguredValue(
-          options.addEmulatedDuplex,
-          configFile.add_emulated_duplex,
+          options.addEmulatedDuplex == undefined ? undefined : true,
+          configFile.add_emulated_duplex ,
           false,
         )
       ) {
@@ -499,7 +493,7 @@ function createListenCliCmd(configFile: FileConfig) {
           ),
           isDuplexSingleSide: true,
           duplexAssemblyMode: getConfiguredValue(
-            options.emulatedDuplexAssemblyMode,
+            options.addEmulatedDuplex == true ? DuplexAssemblyMode.DOCUMENT_WISE : options.addEmulatedDuplex,
             configFile.emulated_duplex_assembly_mode,
             DuplexAssemblyMode.DOCUMENT_WISE,
           ),
