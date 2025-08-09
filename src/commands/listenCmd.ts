@@ -21,6 +21,7 @@ import { ScanConfig } from "../type/scanConfigs";
 import { PageCountingStrategy } from "../type/pageCountingStrategy";
 import { ScanPlexMode } from "../hpModels/ScanPlexMode";
 import { DeviceCapabilities } from "../type/DeviceCapabilities";
+import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode";
 
 let iteration = 0;
 
@@ -147,7 +148,8 @@ async function processScanWithDestination(
   if (
     lastScanTarget != null &&
     frontOfDoubleSidedScanContext != null &&
-    lastScanTarget.isDuplexSingleSide && lastDuplexMode == DuplexMode.FrontOfDoubleSided &&
+    lastScanTarget.isDuplexSingleSide &&
+    lastDuplexMode == DuplexMode.FrontOfDoubleSided &&
     (duplexMode == DuplexMode.Simplex || duplexMode == DuplexMode.Duplex)
   ) {
     await processFinishedPartialDuplexScan(
@@ -198,6 +200,7 @@ async function processScanWithDestination(
     scanJobContent,
     scanDate,
     scanToPdf,
+    selectedScanTarget.duplexAssemblyMode ?? DuplexAssemblyMode.DOCUMENT_WISE,
   );
   return { scanCount, frontOfDoubleSidedScanContext, duplexMode };
 }
@@ -212,6 +215,7 @@ async function handleScanResult(
   scanJobContent: ScanContent,
   scanDate: Date,
   scanToPdf: boolean,
+  duplexAssemblyMode: DuplexAssemblyMode,
 ) {
   if (duplexMode == DuplexMode.FrontOfDoubleSided) {
     frontOfDoubleSidedScanContext = {
@@ -226,9 +230,16 @@ async function handleScanResult(
   } else {
     let finalScanJobContent: ScanContent;
     if (duplexMode == DuplexMode.BackOfDoubleSided) {
+      console.log(
+        "Emulated duplex scan completed; front and back pages are being assembled",
+      );
+      const frontScans = frontOfDoubleSidedScanContext?.scanJobContent ?? {
+        elements: [],
+      };
       finalScanJobContent = assembleDuplexScan(
-        frontOfDoubleSidedScanContext,
+        frontScans,
         scanJobContent,
+        duplexAssemblyMode,
       );
     } else {
       finalScanJobContent = scanJobContent;
@@ -282,22 +293,51 @@ function determineDuplexModes(
   return { duplexMode, targetDuplexMode };
 }
 
-function assembleEmulatedDoubleSideScan(
-  previousScanContent: ScanContent,
-  scanJobContent: ScanContent,
-) {
-  const frontContent = previousScanContent.elements;
-  const backContent = scanJobContent.elements;
-  const duplexScanJobContent: ScanContent = { elements: [] };
-  for (let i = 0; i < Math.max(frontContent.length, backContent.length); i++) {
+export function assembleDuplexScan(
+  frontScan: ScanContent,
+  backScan: ScanContent,
+  mode: DuplexAssemblyMode,
+): ScanContent {
+  let frontContent = frontScan.elements;
+  let backContent = backScan.elements;
+
+  // Apply inversions based on the selected mode
+  switch (mode) {
+    case DuplexAssemblyMode.PAGE_WISE:
+      // Fronts and backs are in natural order; no changes needed
+      break;
+
+    case DuplexAssemblyMode.DOCUMENT_WISE:
+      // Backs are reversed because the stack was flipped
+      backContent = [...backContent].reverse();
+      break;
+
+    case DuplexAssemblyMode.REVERSE_FRONT:
+      // Fronts are reversed (e.g., stack inserted backwards)
+      frontContent = [...frontContent].reverse();
+      break;
+
+    case DuplexAssemblyMode.REVERSE_BOTH:
+      // Both fronts and backs are reversed
+      frontContent = [...frontContent].reverse();
+      backContent = [...backContent].reverse();
+      break;
+  }
+
+  const duplexScan: ScanContent = { elements: [] };
+  const maxLength = Math.max(frontContent.length, backContent.length);
+
+  // Interleave pages, tolerating missing last back page gracefully
+  for (let i = 0; i < maxLength; i++) {
     if (i < frontContent.length) {
-      duplexScanJobContent.elements.push(frontContent[i]);
+      duplexScan.elements.push(frontContent[i]);
     }
     if (i < backContent.length) {
-      duplexScanJobContent.elements.push(backContent[i]);
+      duplexScan.elements.push(backContent[i]);
     }
   }
-  return duplexScanJobContent;
+
+  return duplexScan;
 }
 
 type ScanParameters = {
@@ -390,19 +430,6 @@ async function processFinishedPartialDuplexScan(
     frontOfDoubleSidedScanContext.scanJobContent,
     frontOfDoubleSidedScanContext.scanDate,
     frontOfDoubleSidedScanContext.scanToPdf,
-  );
-}
-
-function assembleDuplexScan(
-  frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null,
-  scanJobContent: ScanContent,
-) {
-  console.log(
-    "Emulated duplex scan completed; front and back pages are being assembled",
-  );
-  return assembleEmulatedDoubleSideScan(
-    frontOfDoubleSidedScanContext?.scanJobContent ?? { elements: [] },
-    scanJobContent,
   );
 }
 

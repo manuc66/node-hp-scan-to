@@ -221,7 +221,7 @@ Nextcloud Options:
 
 Device Control Screen Options:
   -l, --label <label>                                              The label to display on the device (the default is the hostname)
-  --add-emulated-duplex                                            Enable emulated duplex scanning
+  --add-emulated-duplex [mode]                                     Enable emulated duplex scanning, with optional assembly mode (default: document-wise) (choices: "page-wise", "document-wise", "reverse-front", "reverse-both")
   --emulated-duplex-label <label>                                  The emulated duplex label to display on the device (the default is to suffix the main label with duplex)
 
 Global Options:
@@ -417,8 +417,9 @@ List of supported environment variables and their meaning, or correspondence wit
 | `DIR`                         | Directory to use                                                                                            | `-d` / `--directory`                                                          |
 | `IP`                          | IP address for the program                                                                                  | `-a` / `--address`                                                            |
 | `KEEP_FILES`                  | If set, scanned files are not deleted after uploading to Paperless-ngx or Nextcloud                         |                                                                               |
-| `LABEL`                       | Label to apply                                                                                              | `-l` / `--label`                                                              |
-| `NAME`                        | Name to set                                                                                                 | `-n` / `--name`                                                               |
+| `LABEL`                       | Label to set on the device's display as a scan target                                                       | `-l` / `--label`                                                              |
+| `NAME`                        | Name of the device to lookup for on the network                                                             | `-n` / `--name`                                                               |
+| `ADD_EMULATED_DUPLEX`         | Enable emulated duplex scanning, with optional assembly mode (default: document-wise)                       | `--add-emulated-duplex [mode]`                                                |
 | `NEXTCLOUD_PASSWORD`          | Password of Nextcloud user (either this or `NEXTCLOUD_PASSWORD_FILE` is required; file takes precedence)    |                                                                               |
 | `NEXTCLOUD_PASSWORD_FILE`     | File containing Nextcloud user password (either this or `NEXTCLOUD_PASSWORD` is required; takes precedence) | Example: `./nextcloud_password.secret` (preferred for Docker Compose secrets) |
 | `NEXTCLOUD_UPLOAD_FOLDER`     | Upload folder for documents or images (user must have write permission; defaults to `scan` if not set)      |                                                                               |
