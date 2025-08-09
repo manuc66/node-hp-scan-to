@@ -46,6 +46,17 @@ if [ -n "$MODE" ]; then
     ARGS+=("--mode" "$MODE")
 fi
 
+# Check if the variable exists (defined)
+if [ -v ADD_EMULATED_DUPLEX ]; then
+    # Add the emulated duplex scanning option
+    ARGS+=("--add-emulated-duplex")
+
+    # Check if the variable is not empty and dump its value
+    if [ -n "$ADD_EMULATED_DUPLEX" ]; then
+        ARGS+=("$ADD_EMULATED_DUPLEX")
+    fi
+fi
+
 if [ -n "$PAPERLESS_POST_DOCUMENT_URL" ]; then
     ARGS+=("-s" "$PAPERLESS_POST_DOCUMENT_URL")
 fi

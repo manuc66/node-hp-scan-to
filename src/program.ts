@@ -26,6 +26,7 @@ import { FileConfig } from "./type/FileConfig";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings";
 import { Server as NetServer } from "net";
 import { ScanMode } from "./type/scanMode";
+import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
@@ -445,9 +446,11 @@ function createListenCliCmd(configFile: FileConfig) {
     )
     .addOption(
       new Option(
-        "--add-emulated-duplex",
-        "Enable emulated duplex scanning",
-      ).helpGroup(HelpGroupsHeadings.deviceControlScreen),
+        "--add-emulated-duplex [mode]",
+        "Enable emulated duplex scanning, with optional assembly mode (default: document-wise)",
+      )
+        .choices(Object.values(DuplexAssemblyMode))
+        .helpGroup(HelpGroupsHeadings.deviceControlScreen),
     )
     .addOption(
       new Option(
@@ -477,8 +480,8 @@ function createListenCliCmd(configFile: FileConfig) {
 
       if (
         getConfiguredValue(
-          options.addEmulatedDuplex,
-          configFile.add_emulated_duplex,
+          options.addEmulatedDuplex == undefined ? undefined : true,
+          configFile.add_emulated_duplex ,
           false,
         )
       ) {
@@ -489,6 +492,11 @@ function createListenCliCmd(configFile: FileConfig) {
             `${registrationConfig.label} duplex`,
           ),
           isDuplexSingleSide: true,
+          duplexAssemblyMode: getConfiguredValue(
+            options.addEmulatedDuplex == true ? DuplexAssemblyMode.DOCUMENT_WISE : options.addEmulatedDuplex,
+            configFile.emulated_duplex_assembly_mode,
+            DuplexAssemblyMode.DOCUMENT_WISE,
+          ),
         });
       }
 
