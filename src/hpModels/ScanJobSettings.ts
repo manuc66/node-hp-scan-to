@@ -3,32 +3,40 @@ import { InputSource } from "../type/InputSource";
 import { parseXmlString } from "./ParseXmlString";
 import { IScanJobSettings } from "./IScanJobSettings";
 import { ScanMode } from "../type/scanMode";
+import ScanCaps from "./ScanCaps";
+import { ScanFormat } from "../type/scanFormat";
 
 export default class ScanJobSettings implements IScanJobSettings {
   private readonly inputSource: InputSource;
   private readonly contentType: "Document" | "Photo";
   private readonly resolution: number;
-  private readonly mode: ScanMode;
+  private readonly _mode: ScanMode;
   private readonly width: number | null;
   private readonly height: number | null;
   private readonly isDuplex: boolean;
+  private readonly _format: ScanFormat;
+  private readonly scanCaps: ScanCaps;
 
   constructor(
     inputSource: InputSource,
     contentType: "Document" | "Photo",
+    format: ScanFormat,
     resolution: number,
     mode: ScanMode,
     width: number | null,
     height: number | null,
     isDuplex: boolean,
+    scanCaps: ScanCaps
   ) {
     this.inputSource = inputSource;
     this.contentType = contentType;
+    this._format = format;
     this.resolution = resolution;
-    this.mode = mode;
+    this._mode = mode;
     this.width = width;
     this.height = height;
     this.isDuplex = isDuplex;
+    this.scanCaps = scanCaps;
   }
 
   get xResolution(): number {
@@ -36,6 +44,13 @@ export default class ScanJobSettings implements IScanJobSettings {
   }
   get yResolution(): number {
     return this.resolution;
+  }
+
+  get format() {
+    return this._format;
+  }
+  get mode(): ScanMode {
+    return this._mode;
   }
 
   async toXML(): Promise<string> {
@@ -72,6 +87,7 @@ export default class ScanJobSettings implements IScanJobSettings {
         InputSource: string[];
         Height: number;
         Width: number;
+        Format: string;
         XResolution: number[];
         YResolution: number[];
         ColorSpace: string[];
@@ -84,13 +100,29 @@ export default class ScanJobSettings implements IScanJobSettings {
     parsed.ScanSettings.XResolution[0] = this.resolution;
     parsed.ScanSettings.YResolution[0] = this.resolution;
 
+    let colorType: string;
     if (this.mode === ScanMode.Gray) {
       parsed.ScanSettings.ColorSpace = ["Gray"];
       parsed.ScanSettings.BitDepth = [8];
-    } else {
+      colorType = "Gray8";
+    } else if (this.mode === ScanMode.Color) {
       parsed.ScanSettings.ColorSpace = ["Color"];
       parsed.ScanSettings.BitDepth = [8];
+      colorType = "Color8";
     }
+    else {
+      parsed.ScanSettings.ColorSpace = ["K"];
+      parsed.ScanSettings.BitDepth = [1];
+      colorType = "K1";
+    }
+
+    if (!this.scanCaps.getSupportedFormats(colorType).includes(this.format)) {
+      parsed.ScanSettings.Format = this.scanCaps.getSupportedFormats(colorType)[0];
+    }
+    else {
+      parsed.ScanSettings.Format = this.format;
+    }
+
 
     if (this.width !== null) {
       parsed.ScanSettings.Width = this.width;

@@ -1,9 +1,21 @@
 "use strict";
 
 import { parseXmlString } from "./ParseXmlString";
+import { InputSource } from "../type/InputSource";
 
 export interface ScanCapsData {
   ScanCaps: {
+    ColorEntries: {
+      "ColorEntry": {
+        "ColorType": string[];
+        "Formats": {
+          "Format": []
+        }[],
+        "ImageTransforms": {
+          "ImageTransform": string[]
+        }
+      }[]
+    }[]
     Platen: {
       InputSourceCaps: {
         MaxWidth: string[];
@@ -81,6 +93,44 @@ export default class ScanCaps {
       );
     } else {
       return null;
+    }
+  }
+
+  getMaxHeight(source: InputSource): number | null {
+    if (source === InputSource.Platen) {
+      return this.platenMaxHeight;
+    } else if (source === InputSource.Adf) {
+      return this.adfMaxHeight;
+    }
+    return null;
+  }
+
+  getMaxWidth(source: InputSource): number | null {
+    if (source === InputSource.Platen) {
+      return this.platenMaxWidth;
+    } else if (source === InputSource.Adf) {
+      return this.adfMaxWidth;
+    }
+    return null;
+  }
+
+  getSupportedColorTypes(): string[] {
+    if (Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "ColorEntries")) {
+      return this.data["ScanCaps"]["ColorEntries"][0]["ColorEntry"].map(
+        (x) => x["ColorType"][0],
+      );
+    } else {
+      return [];
+    }
+  }
+
+  getSupportedFormats(colorType: string): string[] {
+    if (Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "ColorEntries")) {
+      return this.data["ScanCaps"]["ColorEntries"][0]["ColorEntry"].filter(
+        (x) => x["ColorType"][0] === colorType,
+      )[0]["Formats"][0]["Format"];
+    } else {
+      return [];
     }
   }
 

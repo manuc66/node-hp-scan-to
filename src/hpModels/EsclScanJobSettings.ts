@@ -3,12 +3,13 @@ import { InputSource } from "../type/InputSource";
 import { parseXmlString } from "./ParseXmlString";
 import { IScanJobSettings } from "./IScanJobSettings";
 import { ScanMode } from "../type/scanMode";
+import { ScanFormat } from "../type/scanFormat";
 
 export default class EsclScanJobSettings implements IScanJobSettings {
   private readonly inputSource: InputSource;
   private readonly contentType: "Document" | "Photo";
   private readonly resolution: number;
-  private readonly mode: ScanMode;
+  private readonly _mode: ScanMode;
   private readonly width: number | null;
   private readonly height: number | null;
   private readonly isDuplex: boolean;
@@ -25,7 +26,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     this.inputSource = inputSource;
     this.contentType = contentType;
     this.resolution = resolution;
-    this.mode = mode;
+    this._mode = mode;
     this.width = width;
     this.height = height;
     this.isDuplex = isDuplex;
@@ -147,5 +148,12 @@ export default class EsclScanJobSettings implements IScanJobSettings {
 
   get yResolution(): number {
     return this.resolution;
+  }
+
+  get format() {
+    return ScanFormat.Jpeg;
+  }
+  get mode(): ScanMode {
+    return this._mode;
   }
 }

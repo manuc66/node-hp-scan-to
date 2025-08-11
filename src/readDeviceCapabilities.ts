@@ -9,6 +9,7 @@ import { IScanJobSettings } from "./hpModels/IScanJobSettings";
 import EsclScanJobSettings from "./hpModels/EsclScanJobSettings";
 import ScanJobSettings from "./hpModels/ScanJobSettings";
 import { ScanMode } from "./type/scanMode";
+import { ScanFormat } from "./type/scanFormat";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,
@@ -100,7 +101,7 @@ export async function readDeviceCapabilities(
     isDuplex: boolean,
   ): IScanJobSettings => {
     let scanJobSettings: IScanJobSettings;
-    if (scanCaps?.isEscl) {
+    if (scanCaps instanceof EsclScanCaps) {
       scanJobSettings = new EsclScanJobSettings(
         inputSource,
         contentType,
@@ -114,11 +115,13 @@ export async function readDeviceCapabilities(
       scanJobSettings = new ScanJobSettings(
         inputSource,
         contentType,
+        ScanFormat.Raw,
         resolution,
         mode,
         width,
         height,
         isDuplex,
+        scanCaps as ScanCaps,
       );
     }
     return scanJobSettings;

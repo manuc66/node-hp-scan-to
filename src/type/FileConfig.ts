@@ -39,7 +39,7 @@ export const configSchema = z.object({
     ])
     .optional(), // Scan height in pixels
   resolution: z.number().int().positive().optional(), // DPI resolution
-  mode: z.enum(["Gray", "Color"]).optional(), // The scan mode
+  mode: z.enum(["Gray", "Color", "Lineart"]).optional(), // The scan mode
 
   prefer_escl: z.boolean().optional(), // Always upload scans as PDF
 
