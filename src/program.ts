@@ -17,16 +17,13 @@ import { adfAutoscanCmd } from "./commands/adfAutoscanCmd";
 import { singleScanCmd } from "./commands/singleScanCmd";
 import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd";
 import { DirectoryConfig } from "./type/directoryConfig";
-import {
-  AdfAutoScanConfig,
-  ScanConfig,
-  SingleScanConfig,
-} from "./type/scanConfigs";
+import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs";
 import { FileConfig } from "./type/FileConfig";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings";
 import { Server as NetServer } from "net";
 import { ScanMode } from "./type/scanMode";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode";
+import { ScanFormat } from "./type/scanFormat";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
@@ -414,6 +411,7 @@ function getScanConfiguration(
     mode,
     width: width,
     height: height,
+    format: ScanFormat.Raw,
     directoryConfig,
     paperlessConfig,
     nextcloudConfig,
