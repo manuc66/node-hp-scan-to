@@ -134,6 +134,13 @@ export function convertToBmp(
     fs.writeFileSync(outputFile, Buffer.concat([header, bmpData]));
   }
 }
+
+// function reverseBits(byte: number) {
+//   byte = ((byte & 0xF0) >> 4) | ((byte & 0x0F) << 4);
+//   byte = ((byte & 0xCC) >> 2) | ((byte & 0x33) << 2);
+//   byte = ((byte & 0xAA) >> 1) | ((byte & 0x55) << 1);
+//   return byte;
+// }
 //
 // // Example usage:
 // const width = 1700;

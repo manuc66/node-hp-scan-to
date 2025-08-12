@@ -146,6 +146,8 @@ async function handleScanProcessingState(
         tempDestinationFilePath,
       );
 
+      console.log("Raw page downloaded to:", rawImagePath);
+
       const destinationFilePath = PathHelper.getFileForPage(
         folder,
         scanCount,
@@ -157,6 +159,7 @@ async function handleScanProcessingState(
 
       convertToBmp(job.imageWidth!,job.imageHeight!, job.xResolution!, rawImagePath,destinationFilePath, scanJobSettings.mode);
 
+      console.log("Page downloaded to:", destinationFilePath);
       return createScanPage(job, currentPageNumber, destinationFilePath, null);
     }
     return null;
