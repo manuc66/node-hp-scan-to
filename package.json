@@ -61,7 +61,7 @@
     "@types/xml2js": "^0.4.11",
     "@typescript-eslint/eslint-plugin": "^8.29.0",
     "@typescript-eslint/parser": "^8.29.0",
-    "chai": "^5.2.0",
+    "chai": "^6.0.1",
     "codecov": "^3.8.3",
     "eslint": "^9.28.0",
     "eslint-config-prettier": "^10.1.5",
