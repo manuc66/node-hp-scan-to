@@ -481,7 +481,7 @@ function createListenCliCmd(configFile: FileConfig) {
       if (
         getConfiguredValue(
           options.addEmulatedDuplex == undefined ? undefined : true,
-          configFile.add_emulated_duplex ,
+          configFile.add_emulated_duplex,
           false,
         )
       ) {
@@ -493,7 +493,9 @@ function createListenCliCmd(configFile: FileConfig) {
           ),
           isDuplexSingleSide: true,
           duplexAssemblyMode: getConfiguredValue(
-            options.addEmulatedDuplex == true ? DuplexAssemblyMode.DOCUMENT_WISE : options.addEmulatedDuplex,
+            options.addEmulatedDuplex == true
+              ? DuplexAssemblyMode.DOCUMENT_WISE
+              : options.addEmulatedDuplex,
             configFile.emulated_duplex_assembly_mode,
             DuplexAssemblyMode.DOCUMENT_WISE,
           ),
