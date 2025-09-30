@@ -13,7 +13,7 @@ export default class PathHelper {
     date: Date,
   ): string {
     if (filePattern) {
-      return path.join(folder, `${dateformat(date, filePattern)}.${extension}`);
+      return this.makeUnique(path.join(folder, `${dateformat(date, filePattern)}.${extension}`), date);
     }
 
     return this.makeUnique(
@@ -60,12 +60,20 @@ export default class PathHelper {
     }
 
     let parsed = path.parse(filePath);
-    let tryName = `${parsed.dir}${path.sep}${parsed.name}_${dateformat(
+    const s = dateformat(
       date,
       "yyyymmdd",
-    )}${parsed.ext}`;
-    if (!fs.existsSync(tryName)) {
-      return tryName;
+    );
+
+    let tryName: string;
+    if (!parsed.name.includes(s)) {
+      tryName = `${parsed.dir}${path.sep}${parsed.name}_${s}${parsed.ext}`;
+      if (!fs.existsSync(tryName)) {
+        return tryName;
+      }
+    }
+    else {
+      tryName = `${parsed.dir}${path.sep}${parsed.name}${parsed.ext}`;
     }
 
     parsed = path.parse(tryName);
