@@ -88,7 +88,7 @@ async function handleScanProcessingState(
       job.binaryURL,
     );
 
-    const destinationFilePath = PathHelper.getFileForPage(
+    const destinationFilePath = await PathHelper.getFileForPage(
       folder,
       scanCount,
       currentPageNumber,
@@ -268,7 +268,7 @@ async function eSCLScanJobHandling(
 
     const pageNumber = getPageNumber(pageCountingStrategy, scanJobContent);
 
-    const destinationFilePath = PathHelper.getFileForPage(
+    const destinationFilePath = await PathHelper.getFileForPage(
       folder,
       scanCount,
       pageNumber,

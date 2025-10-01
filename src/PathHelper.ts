@@ -1,19 +1,28 @@
-import path from "path";
+import path from "node:path";
+import os from "node:os";
+import fs, { promises as Fs } from "node:fs";
 import dateformat from "dateformat";
-import os from "os";
-import fs, { promises as Fs } from "fs";
+import { customAlphabet } from "nanoid";
+
+const nanoid = customAlphabet(
+  "23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ",
+  6,
+);
 
 export default class PathHelper {
-  static getFileForPage(
+  static async getFileForPage(
     folder: string,
     scanCount: number,
     currentPageNumber: number,
     filePattern: string | undefined,
     extension: string,
     date: Date,
-  ): string {
+  ): Promise<string> {
     if (filePattern) {
-      return path.join(folder, `${dateformat(date, filePattern)}.${extension}`);
+      return this.makeUnique(
+        path.join(folder, `${dateformat(date, filePattern)}.${extension}`),
+        date,
+      );
     }
 
     return this.makeUnique(
@@ -31,7 +40,7 @@ export default class PathHelper {
     filePattern: string | undefined,
   ): Promise<number> {
     if (filePattern) {
-      return currentScanCount++;
+      return ++currentScanCount;
     }
     const files = await Fs.readdir(folder);
     for (let i = currentScanCount + 1; i < Number.MAX_SAFE_INTEGER; i++) {
@@ -54,46 +63,68 @@ export default class PathHelper {
     );
   }
 
-  static makeUnique(filePath: string, date: Date): string {
-    if (!fs.existsSync(filePath)) {
+  static async makeUnique(filePath: string, date: Date): Promise<string> {
+    if (await this.tryCreateFile(filePath)) {
       return filePath;
     }
 
-    let parsed = path.parse(filePath);
-    let tryName = `${parsed.dir}${path.sep}${parsed.name}_${dateformat(
-      date,
-      "yyyymmdd",
-    )}${parsed.ext}`;
-    if (!fs.existsSync(tryName)) {
-      return tryName;
+    const { dir, name, ext } = path.parse(filePath);
+
+    const dateStamp = dateformat(date, "yyyymmdd-HHMMss");
+
+    let baseName: string;
+    if (name.includes(dateStamp)) {
+      baseName = name;
+    } else {
+      baseName = `${name}_${dateStamp}`;
+      const pathWithDate = path.join(dir, `${baseName}${ext}`);
+      if (await this.tryCreateFile(pathWithDate)) {
+        return pathWithDate;
+      }
     }
 
-    parsed = path.parse(tryName);
-    let i = "a";
-    while (i <= "z") {
-      tryName = `${parsed.dir}${path.sep}${parsed.name}_${i}${parsed.ext}`;
-      if (!fs.existsSync(tryName)) {
-        return tryName;
+    // Retry nanoid a few times (paranoid safety) -- be bit para-nanoid ;-)
+    for (let i = 0; i < 3; i++) {
+      const finalPath = path.join(dir, `${baseName}_${nanoid()}${ext}`);
+      if (await this.tryCreateFile(finalPath)) {
+        return finalPath;
       }
-      i = String.fromCharCode(i.charCodeAt(0) + 1);
     }
-    throw new Error(
-      `Can not create unique file: ${filePath} iterated until: ${tryName}`,
-    );
+
+    // if the world collapses, who knows, who cares?
+    throw new Error(`Failed to create unique file: ${filePath}`);
   }
 
-  static getFileForScan(
+  private static async tryCreateFile(filePath: string): Promise<boolean> {
+    try {
+      const fd = await fs.promises.open(filePath, "wx");
+      await fd.close();
+      return true;
+    } catch (err: unknown) {
+      const e = err as NodeJS.ErrnoException;
+      if (e && e.code === "EEXIST") return false;
+      throw err;
+    }
+  }
+
+  static async getFileForScan(
     folder: string,
     scanCount: number,
     filePattern: string | undefined,
     extension: string,
     date: Date,
-  ): string {
+  ): Promise<string> {
     if (filePattern) {
-      return path.join(folder, `${dateformat(date, filePattern)}.${extension}`);
+      return await this.makeUnique(
+        path.join(folder, `${dateformat(date, filePattern)}.${extension}`),
+        date,
+      );
     }
 
-    return path.join(folder, `scan${scanCount}.${extension}`);
+    return await this.makeUnique(
+      path.join(folder, `scan${scanCount}.${extension}`),
+      date,
+    );
   }
 
   static async getOutputFolder(folder?: string): Promise<string> {

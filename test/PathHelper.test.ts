@@ -1,57 +1,61 @@
 import { describe } from "mocha";
 import { expect } from "chai";
 import PathHelper from "../src/PathHelper";
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import * as fsp from "fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 const now: Date = new Date();
 
 describe("PathHelper", () => {
   describe("getFileForPage", () => {
     it("Can format a file with formatted timestamp", async () => {
-      const nextFileName = PathHelper.getFileForPage(
-        "someFolder",
+      const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "test-"));
+      const nextFileName = await PathHelper.getFileForPage(
+        tempDir,
         2,
         1,
-        '"scan"_dd.mm.yyyy_HH:MM:ss',
+        '"scan"_dd.mm.yyyy_HHMMss',
         "jpg",
         now,
       );
       expect(nextFileName).to.be.eq(
-        `someFolder${path.sep}scan_${("" + now.getDate()).padStart(2, "0")}.${(
+        `${tempDir}${path.sep}scan_${("" + now.getDate()).padStart(2, "0")}.${(
           "" +
           (now.getMonth() + 1)
         ).padStart(2, "0")}.${("" + now.getFullYear()).padStart(4, "0")}_${(
           "" + now.getHours()
-        ).padStart(2, "0")}:${("" + now.getMinutes()).padStart(2, "0")}:${(
+        ).padStart(2, "0")}${("" + now.getMinutes()).padStart(2, "0")}${(
           "" + now.getSeconds()
         ).padStart(2, "0")}.jpg`,
       );
     });
     it("Can format a file based on scan count and page number", async () => {
-      const nextFileName = PathHelper.getFileForPage(
-        "someFolder",
+      const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "test-"));
+      const nextFileName = await PathHelper.getFileForPage(
+        tempDir,
         2,
         1,
         undefined,
         "jpg",
         now,
       );
-      expect(nextFileName).to.be.eq(`someFolder${path.sep}scan2_page1.jpg`);
+      expect(nextFileName).to.be.eq(`${tempDir}${path.sep}scan2_page1.jpg`);
     });
   });
   describe("getFileForScan", () => {
     it("Can format a file with formatted timestamp", async () => {
-      const nextFileName = PathHelper.getFileForScan(
-        "someFolder",
+      const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "test-"));
+      const nextFileName = await PathHelper.getFileForScan(
+        tempDir,
         2,
         '"scan"_dd.mm.yyyy_HH:MM:ss',
         "pdf",
         now,
       );
       expect(nextFileName).to.be.eq(
-        `someFolder${path.sep}scan_${("" + now.getDate()).padStart(2, "0")}.${(
+        `${tempDir}${path.sep}scan_${("" + now.getDate()).padStart(2, "0")}.${(
           "" +
           (now.getMonth() + 1)
         ).padStart(2, "0")}.${("" + now.getFullYear()).padStart(4, "0")}_${(
@@ -62,14 +66,15 @@ describe("PathHelper", () => {
       );
     });
     it("Can format a file based on scan count and page number", async () => {
-      const nextFileName = PathHelper.getFileForScan(
-        "someFolder",
+      const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "test-"));
+      const nextFileName = await PathHelper.getFileForScan(
+        tempDir,
         2,
         undefined,
         "pdf",
         now,
       );
-      expect(nextFileName).to.be.eq(`someFolder${path.sep}scan2.pdf`);
+      expect(nextFileName).to.be.eq(`${tempDir}${path.sep}scan2.pdf`);
     });
   });
   describe("getOutputFolder", () => {
@@ -98,12 +103,12 @@ describe("PathHelper", () => {
       });
     });
   });
-  describe("makeUnique", () => {
+  describe("makeUnique", async () => {
     it("return the file if it does not exist first", async () => {
       const folder = await PathHelper.getOutputFolder();
       const filePath = path.join(folder, "someFolder.pdf");
 
-      const uniqueFile = PathHelper.makeUnique(filePath, now);
+      const uniqueFile = await PathHelper.makeUnique(filePath, new Date());
 
       expect(filePath).to.be.eq(uniqueFile);
     });
@@ -113,7 +118,7 @@ describe("PathHelper", () => {
       const filePath = path.join(folder, "someFolder.pdf");
       fs.openSync(filePath, "w");
 
-      const uniqueFile = PathHelper.makeUnique(filePath, now);
+      const uniqueFile = PathHelper.makeUnique(filePath, new Date());
 
       expect(filePath).to.be.not.eq(uniqueFile);
     });
@@ -122,26 +127,13 @@ describe("PathHelper", () => {
       const folder = await PathHelper.getOutputFolder();
       const filePath = path.join(folder, "someFolder.pdf");
       fs.openSync(filePath, "w");
-      const another = PathHelper.makeUnique(filePath, now);
+      const another = await PathHelper.makeUnique(filePath, new Date());
       fs.openSync(another, "w");
 
-      const uniqueFile = PathHelper.makeUnique(filePath, now);
+      const uniqueFile = PathHelper.makeUnique(filePath, new Date());
 
       expect(filePath).to.be.not.eq(uniqueFile);
       expect(another).to.be.not.eq(uniqueFile);
-    });
-
-    it("conflict resolution terminate with error", async () => {
-      const folder = await PathHelper.getOutputFolder();
-      const filePath = path.join(folder, "someFolder.pdf");
-      fs.openSync(filePath, "w");
-
-      expect(() => {
-        for (let i = 0; i < 50; ++i) {
-          const another = PathHelper.makeUnique(filePath, now);
-          fs.openSync(another, "w");
-        }
-      }).to.throw(/Can not create unique file:/);
     });
   });
   describe("getTargetFolder", () => {
