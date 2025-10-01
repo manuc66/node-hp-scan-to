@@ -40,7 +40,7 @@ export default class PathHelper {
     filePattern: string | undefined,
   ): Promise<number> {
     if (filePattern) {
-      return currentScanCount++;
+      return ++currentScanCount;
     }
     const files = await Fs.readdir(folder);
     for (let i = currentScanCount + 1; i < Number.MAX_SAFE_INTEGER; i++) {
@@ -71,10 +71,16 @@ export default class PathHelper {
     const { dir, name, ext } = path.parse(filePath);
 
     const dateStamp = dateformat(date, "yyyymmdd-HHMMss");
-    const baseName = name.includes(dateStamp) ? name : `${name}_${dateStamp}`;
-    const pathWithDate = path.join(dir, `${baseName}${ext}`);
-    if (await this.tryCreateFile(pathWithDate)) {
-      return pathWithDate;
+
+    let baseName: string;
+    if (name.includes(dateStamp)) {
+      baseName = name;
+    } else {
+      baseName = `${name}_${dateStamp}`;
+      const pathWithDate = path.join(dir, `${baseName}${ext}`);
+      if (await this.tryCreateFile(pathWithDate)) {
+        return pathWithDate;
+      }
     }
 
     // Retry nanoid a few times (paranoid safety) -- be bit para-nanoid ;-)
@@ -101,18 +107,24 @@ export default class PathHelper {
     }
   }
 
-  static getFileForScan(
+  static async getFileForScan(
     folder: string,
     scanCount: number,
     filePattern: string | undefined,
     extension: string,
     date: Date,
-  ): string {
+  ): Promise<string> {
     if (filePattern) {
-      return path.join(folder, `${dateformat(date, filePattern)}.${extension}`);
+      return await this.makeUnique(
+        path.join(folder, `${dateformat(date, filePattern)}.${extension}`),
+        date,
+      );
     }
 
-    return path.join(folder, `scan${scanCount}.${extension}`);
+    return await this.makeUnique(
+      path.join(folder, `scan${scanCount}.${extension}`),
+      date,
+    );
   }
 
   static async getOutputFolder(folder?: string): Promise<string> {

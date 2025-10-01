@@ -46,15 +46,16 @@ describe("PathHelper", () => {
   });
   describe("getFileForScan", () => {
     it("Can format a file with formatted timestamp", async () => {
-      const nextFileName = PathHelper.getFileForScan(
-        "someFolder",
+      const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "test-"));
+      const nextFileName = await PathHelper.getFileForScan(
+        tempDir,
         2,
         '"scan"_dd.mm.yyyy_HH:MM:ss',
         "pdf",
         now,
       );
       expect(nextFileName).to.be.eq(
-        `someFolder${path.sep}scan_${("" + now.getDate()).padStart(2, "0")}.${(
+        `${tempDir}${path.sep}scan_${("" + now.getDate()).padStart(2, "0")}.${(
           "" +
           (now.getMonth() + 1)
         ).padStart(2, "0")}.${("" + now.getFullYear()).padStart(4, "0")}_${(
@@ -65,14 +66,15 @@ describe("PathHelper", () => {
       );
     });
     it("Can format a file based on scan count and page number", async () => {
-      const nextFileName = PathHelper.getFileForScan(
-        "someFolder",
+      const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "test-"));
+      const nextFileName = await PathHelper.getFileForScan(
+        tempDir,
         2,
         undefined,
         "pdf",
         now,
       );
-      expect(nextFileName).to.be.eq(`someFolder${path.sep}scan2.pdf`);
+      expect(nextFileName).to.be.eq(`${tempDir}${path.sep}scan2.pdf`);
     });
   });
   describe("getOutputFolder", () => {
