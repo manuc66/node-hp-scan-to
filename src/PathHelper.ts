@@ -153,14 +153,14 @@ export default class PathHelper {
 
   static async getTargetFolder(directory: string | undefined) {
     const folder = await PathHelper.getOutputFolder(directory);
-    console.log(`Target folder: ${folder}`);
+    console.log(`Output folder: ${folder}`);
     await this.checkIfFolderIsWritable(folder);
     return folder;
   }
 
   static async getTempFolder(directory: string | undefined) {
     const tempFolder = await PathHelper.getOutputFolder(directory);
-    console.log(`Temp folder: ${tempFolder}`);
+    console.log(`Temporary folder: ${tempFolder}`);
     await this.checkIfFolderIsWritable(tempFolder);
     return tempFolder;
   }
