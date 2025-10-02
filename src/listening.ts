@@ -30,7 +30,7 @@ export async function waitScanRequest(compEventURI: string): Promise<boolean> {
       return false;
     }
 
-    console.log(`Waiting user input: ${i + 1}/${waitMax}`);
+    console.log(`Waiting for user input (attempt ${i + 1} of ${waitMax})`);
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
   }
   return true;
@@ -38,16 +38,30 @@ export async function waitScanRequest(compEventURI: string): Promise<boolean> {
 
 export async function waitForScanEventFromTarget(
   scanTarget: ScanTarget,
-  afterEtag: string | null = null,
+  afterEtag: string,
 ): Promise<Event> {
-  return (await waitForScanEvent([scanTarget], afterEtag)).event;
+  console.log('Waiting for additional pages or scan completion...');
+  return (await waitForScanEventInternal([scanTarget], afterEtag)).event;
 }
 
 export async function waitForScanEvent(
   scanTargets: ScanTarget[],
   afterEtag: string | null = null,
 ): Promise<SelectedScanTarget> {
-  console.log("Start listening for new ScanEvent");
+  const targetList = scanTargets
+    .map((x) => `${x.label} (${x.resourceURI.split("/").pop()})`)
+    .join(", ");
+  const since = afterEtag ? ` since event ${afterEtag}` : "";
+  console.log(`Waiting for scan event from: ${targetList}${since}`);
+
+  return await waitForScanEventInternal(scanTargets, afterEtag);
+}
+
+async function waitForScanEventInternal(
+  scanTargets: ScanTarget[],
+  afterEtag: string | null = null,
+): Promise<SelectedScanTarget> {
+
 
   let eventTable = await HPApi.getEvents(afterEtag ?? "");
   let acceptedScanEvent: Event | undefined = undefined;
@@ -70,93 +84,58 @@ export async function waitForScanEvent(
   return { event: acceptedScanEvent, ...scanTarget! };
 }
 
-async function registerWalkupScanToCompDestination(
-  registrationConfig: RegistrationConfig,
-): Promise<string> {
-  const walkupScanDestinations = await HPApi.getWalkupScanToCompDestinations();
-  const destinations = walkupScanDestinations.destinations;
-
-  console.log(
-    "Host destinations fetched:",
-    destinations.map((d) => d.name).join(", "),
-  );
-
-  const hostname = registrationConfig.label;
-  const destination = destinations.find((x) => x.name === hostname);
-
-  let resourceURI;
-  if (destination) {
-    console.log(
-      `Re-using existing destination: ${hostname} - ${destination.resourceURI}`,
-    );
-    resourceURI = destination.resourceURI;
-  } else {
-    resourceURI = await HPApi.registerWalkupScanToCompDestination(
-      new Destination(hostname, hostname, true),
-    );
-    console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
-  }
-
-  console.log(`Using: ${hostname}`);
-
-  return resourceURI;
-}
-
 async function registerWalkupScanDestination(
-  registrationConfig: RegistrationConfig,
-): Promise<string> {
-  const walkupScanDestinations = await HPApi.getWalkupScanDestinations();
+  registrationConfigs: RegistrationConfig[],
+  isScanToComp: boolean = false,
+): Promise<ScanTarget[]> {
+  const registerMethod = isScanToComp
+    ? (destination: Destination) =>
+        HPApi.registerWalkupScanToCompDestination(destination)
+    : (destination: Destination) =>
+        HPApi.registerWalkupScanDestination(destination);
+
+  const walkupScanDestinations = isScanToComp
+    ? await HPApi.getWalkupScanToCompDestinations()
+    : await HPApi.getWalkupScanDestinations();
+
   const destinations = walkupScanDestinations.destinations;
 
   console.log(
-    "Host destinations fetched:",
-    destinations.map((d) => d.name).join(", "),
+    `Discovered available host destinations: ${destinations.map((d) => d.name).join(", ")}`,
   );
 
-  const hostname = registrationConfig.label;
-  const destination = destinations.find((x) => x.name === hostname);
+  const scanTargets: ScanTarget [] = [];
 
-  let resourceURI;
-  if (destination) {
-    console.log(
-      `Re-using existing destination: ${hostname} - ${destination.resourceURI}`,
-    );
-    resourceURI = destination.resourceURI;
-  } else {
-    resourceURI = await HPApi.registerWalkupScanDestination(
-      new Destination(hostname, hostname, false),
-    );
-    console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
+  for (const registrationConfig of registrationConfigs) {
+    const hostname = registrationConfig.label;
+    const destination = destinations.find((x) => x.name === hostname);
+
+    let resourceURI: string;
+    if (destination) {
+      resourceURI = destination.resourceURI;
+    } else {
+      const newDestination = new Destination(hostname, hostname, isScanToComp);
+      resourceURI = await registerMethod(newDestination);
+      console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
+    }
+
+    scanTargets.push({
+      resourceURI,
+      ...registrationConfig,
+    });
   }
 
-  console.log(`Using: ${hostname}`);
-
-  return resourceURI;
+  return scanTargets;
 }
 
 export async function waitScanEvent(
   deviceCapabilities: DeviceCapabilities,
   registrationConfigs: RegistrationConfig[],
 ): Promise<SelectedScanTarget> {
-  const scanTargets: ScanTarget[] = [];
-  for (let i = 0; i < registrationConfigs.length; i++) {
-    const registrationConfig = registrationConfigs[i];
-    let resourceURI: string;
-    if (deviceCapabilities.useWalkupScanToComp) {
-      resourceURI =
-        await registerWalkupScanToCompDestination(registrationConfig);
-    } else {
-      resourceURI = await registerWalkupScanDestination(registrationConfig);
-    }
-    scanTargets.push({
-      resourceURI: resourceURI,
-      ...registrationConfig,
-    });
-  }
+  const scanTargets = await registerWalkupScanDestination(
+    registrationConfigs,
+    deviceCapabilities.useWalkupScanToComp,
+  );
 
-  const targetList = scanTargets
-    .map((x) => `${x.label}@${x.resourceURI}`)
-    .join(", ");
-  console.log(`Waiting scan event for: ${targetList}`);
   return await waitForScanEvent(scanTargets);
 }

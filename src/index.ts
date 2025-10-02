@@ -27,5 +27,5 @@ async function main() {
   await program.parseAsync(process.argv);
 }
 
-console.log(`Current commit ID: ${commitInfo.commitId}`);
+console.log(`Running with Git commit ID: ${commitInfo.commitId}`);
 main().catch((err) => console.log(err));
