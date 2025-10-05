@@ -31,8 +31,7 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
       await fs.unlink(pdfFilePath);
     } else {
       logger.error(
-        "Pdf generation has failed, nothing is going to be uploaded to paperless for: " +
-          item.path,
+        `Pdf generation has failed, nothing is going to be uploaded to paperless for: ${item.path}`,
       );
     }
   }

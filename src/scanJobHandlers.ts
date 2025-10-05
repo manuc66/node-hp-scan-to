@@ -217,7 +217,7 @@ function getPageNumber(
     | PageCountingStrategy.EvenOnly,
   scanJobContent: ScanContent,
 ) {
-  switch (pageCountingStrategy) {
+switch (pageCountingStrategy) {
     case PageCountingStrategy.Normal:
       return scanJobContent.elements.length + 1;
     case PageCountingStrategy.OddOnly:
@@ -226,8 +226,7 @@ function getPageNumber(
       return (scanJobContent.elements.length + 1) * 2;
     default:
       throw new Error(
-        `Unknown page counting strategy: ` +
-          JSON.stringify(pageCountingStrategy),
+        `Unknown page counting strategy: ${JSON.stringify(pageCountingStrategy)}`,
       );
   }
 }

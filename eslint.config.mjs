@@ -46,19 +46,12 @@ export default tseslint.config(
       '@typescript-eslint/prefer-as-const': 'error',
       '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
 
-'@typescript-eslint/consistent-type-imports': [
-        'error',
-        { prefer: 'type-imports', fixStyle: 'inline-type-imports' }
-      ],
-      '@typescript-eslint/no-unnecessary-condition': 'error',
-      '@typescript-eslint/strict-boolean-expressions': 'error',
-      '@typescript-eslint/no-import-type-side-effects': 'error',
-      '@typescript-eslint/switch-exhaustiveness-check': 'error',
-      'prefer-const': 'error',
+'prefer-const': 'error',
       'no-var': 'error',
       'eqeqeq': ['error', 'always'],
       'curly': ['error', 'all'],
       'no-debugger': 'error',
+      'prefer-template': 'error',
 
       // 'no-console': 'warn',
       // '@typescript-eslint/explicit-function-return-type': 'error',

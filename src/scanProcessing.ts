@@ -118,7 +118,7 @@ if (scanStatus.scannerState !== ScannerState.Idle) {
     return { elements: [] };
   }
 
-  logger.info("ADF status: " + scanStatus.adfState);
+  logger.info(`ADF status: ${scanStatus.adfState}`);
 
   const inputSource = scanStatus.getInputSource();
 
@@ -265,7 +265,7 @@ logger.info(`Converting scan to PDF...`);
     return;
   }
 
-  logger.info("ADF is: " + scanStatus.adfState);
+  logger.info(`ADF is: ${scanStatus.adfState}`);
 
   const inputSource = scanStatus.getInputSource();
 

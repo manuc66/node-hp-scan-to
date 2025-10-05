@@ -449,7 +449,7 @@ if (this.debug) {
   static appendTimeout(url: string, timeout: number | null = null): string {
     timeout ??= 1200;
     if (timeout > 0) {
-      url += "?timeout=" + timeout;
+      url += `?timeout=${timeout}`;
     }
     return url;
   }
@@ -656,10 +656,10 @@ if (this.debug) {
   async downloadEsclPage(
     jobUri: string,
     destination: string,
-  ): Promise<{ path: string; contentType: string | undefined }> {
+): Promise<{ path: string; contentType: string | undefined }> {
     return await this.esclWaitDeviceBusy(async () => {
       return await this.downloadPageWithMeta(
-        jobUri + "/NextDocument",
+        `${jobUri}/NextDocument`,
         destination,
         60_000,
       );
@@ -669,10 +669,10 @@ if (this.debug) {
   async getEsclScanImageInfo(
     jobUri: string,
   ): Promise<EsclScanImageInfo> {
-    return await this.esclWaitDeviceBusy(async () => {
+return await this.esclWaitDeviceBusy(async () => {
       const response = await this.callAxios({
         baseURL: `http://${this.deviceIP}`,
-        url: jobUri + "/ScanImageInfo",
+        url: `${jobUri}/ScanImageInfo`,
         method: "GET",
         responseType: "text",
       });
