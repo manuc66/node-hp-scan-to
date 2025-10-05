@@ -4,6 +4,9 @@ import { scanFromAdf, waitAdfLoaded } from "../scanProcessing";
 import { delay } from "../delay";
 import { AdfAutoScanConfig } from "../type/scanConfigs";
 import PathHelper from "../PathHelper";
+import { getLoggerForFile } from "../logger";
+
+const logger = getLoggerForFile(__filename);
 
 let iteration = 0;
 export async function adfAutoscanCmd(
@@ -26,13 +29,13 @@ export async function adfAutoscanCmd(
   );
 
   if (!deviceCapabilities.hasAdfDetectPaperLoaded) {
-    console.log(
+    logger.warn(
       "WARNING: The automatic scan feature is likely unsupported on this device, as its advertised capabilities do not include this feature.",
     );
   }
 
   if (adfAutoScanConfig.isDuplex && !deviceCapabilities.hasAdfDuplex) {
-    console.log(
+    logger.warn(
       "WARNING: The requested duplex scan method is likely unsupported on this device, as its advertised capabilities do not include this feature.",
     );
   }
@@ -42,7 +45,7 @@ export async function adfAutoscanCmd(
   let errorCount = 0;
   while (keepActive) {
     iteration++;
-    console.log(`Iteration ${iteration} (Errors so far:${errorCount})`);
+    logger.info(`Iteration ${iteration} (Errors so far:${errorCount})`);
     try {
       await waitAdfLoaded(
         adfAutoScanConfig.pollingInterval,
@@ -52,7 +55,7 @@ export async function adfAutoscanCmd(
 
       scanCount++;
 
-      console.log(`Scan event captured, saving scan #${scanCount}`);
+      logger.info(`Scan event captured, saving scan #${scanCount}`);
 
       await scanFromAdf(
         scanCount,
@@ -63,7 +66,7 @@ export async function adfAutoscanCmd(
         new Date(),
       );
     } catch (e) {
-      console.log(e);
+      logger.error(e);
       if (await HPApi.isAlive()) {
         errorCount++;
       } else {

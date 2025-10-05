@@ -1,5 +1,8 @@
-import http from "http";
-import { Server as NetServer } from "net";
+import http from "node:http";
+import { Server as NetServer } from "node:net";
+import { getLoggerForFile } from "./logger";
+
+const logger = getLoggerForFile(__filename);
 
 export function startHealthCheckServer(PORT: number): NetServer {
   const server = http.createServer((req, res) => {
@@ -13,7 +16,7 @@ export function startHealthCheckServer(PORT: number): NetServer {
   });
 
   server.listen(PORT, () => {
-    console.log(`Health endpoint exposed on port ${PORT} on path: /health`);
+    logger.info(`Health endpoint exposed on port ${PORT} on path: /health`);
   });
   return server;
 }

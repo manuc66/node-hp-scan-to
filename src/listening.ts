@@ -8,6 +8,9 @@ import {
   SelectedScanTarget,
 } from "./type/scanTargetDefinitions";
 import { EventType } from "./hpModels/WalkupScanToCompEvent";
+import { getLoggerForFile } from "./logger";
+
+const logger = getLoggerForFile(__filename);
 
 export async function waitScanRequest(compEventURI: string): Promise<boolean> {
   const waitMax = 50;
@@ -23,14 +26,14 @@ export async function waitScanRequest(compEventURI: string): Promise<boolean> {
     } else if (eventType === EventType.ScanNewPageRequested) {
       break;
     } else if (eventType === EventType.ScanPagesComplete) {
-      console.log("no more page to scan, scan is finished");
+      logger.info("no more page to scan, scan is finished");
       return false;
     } else {
-      console.log(`Unknown eventType: ${eventTypeStr}`);
+      logger.warn(`Unknown eventType: ${eventTypeStr}`);
       return false;
     }
 
-    console.log(`Waiting for user input (attempt ${i + 1} of ${waitMax})`);
+    logger.info(`Waiting for user input (attempt ${i + 1} of ${waitMax})`);
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
   }
   return true;
@@ -40,7 +43,7 @@ export async function waitForScanEventFromTarget(
   scanTarget: ScanTarget,
   afterEtag: string,
 ): Promise<Event> {
-  console.log('Waiting for additional pages or scan completion...');
+  logger.info("Waiting for additional pages or scan completion...");
   return (await waitForScanEventInternal([scanTarget], afterEtag)).event;
 }
 
@@ -52,7 +55,7 @@ export async function waitForScanEvent(
     .map((x) => `${x.label} (${x.resourceURI.split("/").pop()})`)
     .join(", ");
   const since = afterEtag ? ` since event ${afterEtag}` : "";
-  console.log(`Waiting for scan event from: ${targetList}${since}`);
+  logger.info(`Waiting for scan event from: ${targetList}${since}`);
 
   return await waitForScanEventInternal(scanTargets, afterEtag);
 }
@@ -61,8 +64,6 @@ async function waitForScanEventInternal(
   scanTargets: ScanTarget[],
   afterEtag: string | null = null,
 ): Promise<SelectedScanTarget> {
-
-
   let eventTable = await HPApi.getEvents(afterEtag ?? "");
   let acceptedScanEvent: Event | undefined = undefined;
   let scanTarget: ScanTarget;
@@ -100,11 +101,11 @@ async function registerWalkupScanDestination(
 
   const destinations = walkupScanDestinations.destinations;
 
-  console.log(
+  logger.info(
     `Discovered available host destinations: ${destinations.map((d) => d.name).join(", ")}`,
   );
 
-  const scanTargets: ScanTarget [] = [];
+  const scanTargets: ScanTarget[] = [];
 
   for (const registrationConfig of registrationConfigs) {
     const hostname = registrationConfig.label;
@@ -116,7 +117,7 @@ async function registerWalkupScanDestination(
     } else {
       const newDestination = new Destination(hostname, hostname, isScanToComp);
       resourceURI = await registerMethod(newDestination);
-      console.log(`New Destination registered: ${hostname} - ${resourceURI}`);
+      logger.info(`New Destination registered: ${hostname} - ${resourceURI}`);
     }
 
     scanTargets.push({

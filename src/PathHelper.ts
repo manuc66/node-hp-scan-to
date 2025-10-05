@@ -3,6 +3,9 @@ import os from "node:os";
 import fs, { promises as Fs } from "node:fs";
 import dateformat from "dateformat";
 import { customAlphabet } from "nanoid";
+import { getLoggerForFile } from "./logger";
+
+const logger = getLoggerForFile(__filename);
 
 const nanoid = customAlphabet(
   "23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ",
@@ -153,14 +156,14 @@ export default class PathHelper {
 
   static async getTargetFolder(directory: string | undefined) {
     const folder = await PathHelper.getOutputFolder(directory);
-    console.log(`Output folder: ${folder}`);
+    logger.info(`Output folder: ${folder}`);
     await this.checkIfFolderIsWritable(folder);
     return folder;
   }
 
   static async getTempFolder(directory: string | undefined) {
     const tempFolder = await PathHelper.getOutputFolder(directory);
-    console.log(`Temporary folder: ${tempFolder}`);
+    logger.info(`Temporary folder: ${tempFolder}`);
     await this.checkIfFolderIsWritable(tempFolder);
     return tempFolder;
   }

@@ -3,6 +3,9 @@ import PathHelper from "./PathHelper";
 import fs from "fs/promises";
 import path from "path";
 import { jsPDF } from "jspdf";
+import { getLoggerForFile } from "./logger";
+
+const logger = getLoggerForFile(__filename);
 
 export async function mergeToPdf(
   folder: string,
@@ -26,7 +29,7 @@ export async function mergeToPdf(
     }
     return pdfFilePath;
   }
-  console.log(`No page available to build a pdf file`);
+  logger.error(`No page available to build a pdf file`);
   return null;
 }
 

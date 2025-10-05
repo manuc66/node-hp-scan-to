@@ -27,17 +27,19 @@ import { HelpGroupsHeadings } from "./type/helpGroupsHeadings";
 import { Server as NetServer } from "net";
 import { ScanMode } from "./type/scanMode";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode";
+import baseLogger, { getLoggerForFile } from "./logger";
 
+const logger = getLoggerForFile(__filename);
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
     const bonjour = new Bonjour();
-    console.log("Searching device...");
+    logger.info("Searching device...");
     const browser = bonjour.find(
       {
         type: "http",
       },
       (service) => {
-        console.log(".");
+        logger.info(".");
         if (
           service.name.startsWith(deviceNamePrefix) &&
           service.port === 80 &&
@@ -46,7 +48,7 @@ function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
         ) {
           browser.stop();
           bonjour.destroy();
-          console.log(`Found: ${service.name}`);
+          logger.info(`Found: ${service.name}`);
           resolve(service.addresses[0]);
         }
       },
@@ -181,16 +183,15 @@ async function getDeviceIp(options: ProgramOption, configFile: FileConfig) {
     );
     ip = await findOfficejetIp(name);
   }
-  console.log(`Using device at IP: ${ip}`);
+  logger.info(`Using device at IP: ${ip}`);
   return ip;
 }
 
 function getIsDebug(options: ProgramOption, configFile: FileConfig) {
   const debug = getConfiguredValue(options.debug, configFile.debug, false);
 
-  if (debug) {
-    console.log(`IsDebug: ${debug}`);
-  }
+  logger.info(`IsDebug: ${debug}`);
+
   return debug;
 }
 
@@ -224,7 +225,7 @@ function getPaperlessConfig(
       false,
     );
 
-    console.log(
+    logger.info(
       `Paperless configuration provided, post document url: ${paperlessPostDocumentUrl}, the token length: ${configPaperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
     );
     return {
@@ -287,7 +288,7 @@ function getNextcloudConfig(
 
     const passLength = configNextcloudPassword?.length;
     const usernameLength = configNextcloudUsername.length;
-    console.log(
+    logger.info(
       `Nextcloud configuration provided, url: ${configNextcloudUrl}, username length: ${usernameLength}, password length: ${passLength}, upload folder: ${configNextcloudUploadFolder}, keepFiles: ${configNextcloudKeepFiles}`,
     );
     return {
@@ -464,7 +465,9 @@ function createListenCliCmd(configFile: FileConfig) {
       HPApi.setDeviceIP(ip);
 
       const isDebug = getIsDebug(options, configFile);
-      HPApi.setDebug(isDebug);
+      if (isDebug) {
+        baseLogger.level = "debug";
+      }
 
       const registrationConfigs: RegistrationConfig[] = [];
 
@@ -563,7 +566,9 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
       HPApi.setDeviceIP(ip);
 
       const isDebug = getIsDebug(options, fileConfig);
-      HPApi.setDebug(isDebug);
+      if (isDebug) {
+        baseLogger.level = "debug";
+      }
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(
         options,
@@ -638,7 +643,9 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
       HPApi.setDeviceIP(ip);
 
       const isDebug = getIsDebug(options, fileConfig);
-      HPApi.setDebug(isDebug);
+      if (isDebug) {
+        baseLogger.level = "debug";
+      }
 
       let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
@@ -685,7 +692,9 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
       HPApi.setDeviceIP(ip);
 
       const isDebug = getIsDebug(options, fileConfig);
-      HPApi.setDebug(isDebug);
+      if (isDebug) {
+        baseLogger.level = "debug";
+      }
 
       let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);

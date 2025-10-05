@@ -14,6 +14,9 @@ import { IScanJobSettings } from "./hpModels/IScanJobSettings";
 import { EventType } from "./hpModels/WalkupScanToCompEvent";
 import { EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus";
 import EsclScanImageInfo from "./hpModels/EsclScanImageInfo";
+import { getLoggerForFile } from "./logger";
+
+const logger = getLoggerForFile(__filename);
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -33,7 +36,7 @@ async function waitDeviceUntilItIsReadyToUploadOrCompleted(
     } else if (job.jobState == JobState.Processing) {
       isReadyToUpload = false;
     } else {
-      console.log(`Unknown jobState: ${jobStateStr}`);
+      logger.warn(`Unknown jobState: ${jobStateStr}`);
     }
     await delay(300);
   } while (!isReadyToUpload);
@@ -83,7 +86,6 @@ async function handleScanProcessingState(
     job.binaryURL != null &&
     job.currentPageNumber != null
   ) {
-
     const destinationFilePath = await PathHelper.getFileForPage(
       folder,
       scanCount,
@@ -93,7 +95,7 @@ async function handleScanProcessingState(
       date,
     );
 
-    console.log(
+    logger.info(
       `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`,
     );
     const filePath = await HPApi.downloadPage(
@@ -108,7 +110,7 @@ async function handleScanProcessingState(
     );
     return createScanPage(job, currentPageNumber, filePath, adfHeight);
   } else {
-    console.log(`Unknown pageState: ${job.pageState}`);
+    logger.warn(`Unknown pageState: ${job.pageState}`);
     await delay(200);
     return null;
   }
@@ -172,14 +174,14 @@ async function hpScanJobHandling(
         scanJobContent.elements.push(page);
       }
     } else if (job.jobState === JobState.Canceled) {
-      console.log("Job cancelled by device");
+      logger.info("Job cancelled by device");
       break;
     } else {
-      console.log(`Unhandled jobState: ${jobStateStr}`);
+      logger.info(`Unhandled jobState: ${jobStateStr}`);
       await delay(200);
     }
   }
-  console.log(
+  logger.info(
     `Job state: ${job.jobState} (${scanJobContent.elements.length} page(s))`,
   );
   return job.jobState;
@@ -192,20 +194,20 @@ function logJobInfo(
 ) {
   if (jobUrl.indexOf(scanImageInfo.jobURI) == -1) {
     // for an unknown reason this happens on an HP Smart Tank Plus 570!
-    console.log(
+    logger.debug(
       `Incoherent state !!!! Job URI has changed: ${jobUrl} -> ${scanImageInfo.jobURI} -- crazy!`,
     );
   }
 
-  console.log("From scanImageInfo:");
-  console.log(`\tJob Uri: ${scanImageInfo?.jobURI ?? null}`);
-  console.log(`\tJob Uuid: ${scanImageInfo?.jobUuid ?? null}`);
+  logger.debug("From scanImageInfo:");
+  logger.debug(`\tJob Uri: ${scanImageInfo?.jobURI ?? null}`);
+  logger.debug(`\tJob Uuid: ${scanImageInfo?.jobUuid ?? null}`);
 
-  console.log("From jobInfo:");
-  console.log(`\tJob Uri: ${jobInfo?.getJobUri() ?? null}`);
-  console.log(`\tJob Uuid: ${jobInfo?.getJobUuid() ?? null}`);
-  console.log(`\tJob state reason: ${jobInfo?.getJobStateReason() ?? null}`);
-  console.log(`\tJob state: ${jobInfo?.getJobState() ?? null}`);
+  logger.debug("From jobInfo:");
+  logger.debug(`\tJob Uri: ${jobInfo?.getJobUri() ?? null}`);
+  logger.debug(`\tJob Uuid: ${jobInfo?.getJobUuid() ?? null}`);
+  logger.debug(`\tJob state reason: ${jobInfo?.getJobStateReason() ?? null}`);
+  logger.debug(`\tJob state: ${jobInfo?.getJobState() ?? null}`);
 }
 
 function mapToJobState(jobStateReason: JobStateReason) {
@@ -217,7 +219,7 @@ function mapToJobState(jobStateReason: JobStateReason) {
     return JobState.Completed;
   }
 
-  console.log(
+  logger.warn(
     `Unknown job state reason: ${jobStateReason}, job will be cancelled`,
   );
 
@@ -233,15 +235,13 @@ async function getAndFixHeightWHenAdf(
   if (inputSource == InputSource.Adf) {
     sizeFixed = await fixJpegHeight(filePath);
     if (sizeFixed == null) {
-      console.log(
+      logger.warn(
         `Image height has not been fixed, DNF may not have been found and approximate height is: ${actualHeight}`,
       );
     } else {
-      if (HPApi.isDebug()) {
-        console.log(
-          `Image height has been fixed to: ${sizeFixed} (contained in jpeg's DNL), scan job indicates: ${actualHeight}`,
-        );
-      }
+      logger.debug(
+        `Image height has been fixed to: ${sizeFixed} (contained in jpeg's DNL), scan job indicates: ${actualHeight}`,
+      );
     }
   }
   return sizeFixed;
@@ -281,7 +281,7 @@ async function eSCLScanJobHandling(
     const filePath = await HPApi.downloadEsclPage(jobUrl, destinationFilePath);
 
     const scanImageInfo = await HPApi.getEsclScanImageInfo(jobLocation);
-    console.log("scanImageInfo:", scanImageInfo.jobURI);
+    logger.info(`scanImageInfo: ${scanImageInfo.jobURI}`);
 
     const actualHeight = scanImageInfo.actualHeight;
 
@@ -293,7 +293,7 @@ async function eSCLScanJobHandling(
 
     const scannerStatus = await HPApi.getEsclScanStatus();
 
-    console.log("Page downloaded to:", filePath);
+    logger.info(`Page downloaded to: ${filePath}`);
 
     const page: ScanPage = {
       path: filePath,
@@ -308,9 +308,7 @@ async function eSCLScanJobHandling(
 
     jobInfo = scannerStatus.findJobByUri(jobLocation);
 
-    if (HPApi.isDebug()) {
-      logJobInfo(jobUrl, scanImageInfo, jobInfo);
-    }
+    logJobInfo(jobUrl, scanImageInfo, jobInfo);
 
     jobStateReason = jobInfo?.getJobStateReason() ?? null;
   } while (
@@ -320,7 +318,7 @@ async function eSCLScanJobHandling(
   );
 
   if (jobStateReason == null) {
-    console.log(
+    logger.warn(
       "Job state reason is null, it means that the current " +
         "job was not found in the device's status, this is probably a bug " +
         "in the device, the current scan will be marked as cancelled",
@@ -343,9 +341,9 @@ export async function executeScanJob(
 ): Promise<JobState> {
   const jobUrl = await deviceCapabilities.submitScanJob(scanJobSettings);
 
-  console.log(`Creating job with settings: ${JSON.stringify(scanJobSettings)}`);
+  logger.info(`Creating job with settings: ${JSON.stringify(scanJobSettings)}`);
 
-  console.log("New job created:", jobUrl);
+  logger.info(`New job created: ${jobUrl}`);
 
   let jobState: JobState;
   if (deviceCapabilities.isEscl) {
@@ -392,7 +390,7 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
       // continue waiting
     } else {
       wait = false;
-      console.log(`Unknown eventType: ${eventTypeStr}`);
+      logger.warn(`Unknown eventType: ${eventTypeStr}`);
     }
   }
   return startNewScanJob;

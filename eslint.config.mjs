@@ -41,7 +41,7 @@ export default tseslint.config(
       '@typescript-eslint': tseslint.plugin,
     },
 
-  //   rules: {
+     rules: {
   //     // TypeScript specific rules
   //     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
   //     '@typescript-eslint/explicit-function-return-type': 'warn',
@@ -50,8 +50,8 @@ export default tseslint.config(
   //     '@typescript-eslint/no-var-requires': 'error',
   //
   //     // General ESLint rules
-  //     'no-console': 'warn',
-  //     'no-debugger': 'error',
+       'no-console': 'error',
+       'no-debugger': 'error',
   //     //'prefer-const': 'error',
   //     'no-var': 'error',
   //
@@ -62,7 +62,7 @@ export default tseslint.config(
   //       'ignoreMemberSort': false,
   //       'memberSyntaxSortOrder': ['none', 'all', 'multiple', 'single'],
   //     }],
-  //   },
+     },
   },
 
   // Ignore patterns
