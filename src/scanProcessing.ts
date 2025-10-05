@@ -157,7 +157,7 @@ export async function saveScanFromEvent(
     logger.warn("Scanner state is not Idle, aborting scan attempt...!");
   }
 
-  logger.info("ADF status: " + scanStatus.adfState);
+  logger.info(`ADF status: ${scanStatus.adfState}`);
 
   const inputSource = scanStatus.getInputSource();
   const scanWidth = getScanWidth(
@@ -295,7 +295,7 @@ export async function singleScan(
     logger.info("Scanner state is not Idle, aborting scan attempt...!");
   }
 
-  logger.info("ADF is: " + scanStatus.adfState);
+  logger.info(`ADF is: ${scanStatus.adfState}`);
 
   const inputSource = scanStatus.getInputSource();
 

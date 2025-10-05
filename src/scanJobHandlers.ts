@@ -131,7 +131,7 @@ function getPageNumber(
     return (scanJobContent.elements.length + 1) * 2;
   } else {
     throw new Error(
-      `Unknown page counting strategy: ` + JSON.stringify(pageCountingStrategy),
+      `Unknown page counting strategy: ${JSON.stringify(pageCountingStrategy)}`,
     );
   }
 }

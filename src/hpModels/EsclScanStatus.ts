@@ -138,7 +138,7 @@ export default class EsclScanStatus implements IScanStatus {
     return this.getJobInfos().find(
       (x) =>
         jobLocation === PathHelper.getPathFromHttpLocation(x.getJobUri()) ||
-        jobLocation === PathHelper.getPathFromHttpLocation(x.getJobUri()) + "/",
+        jobLocation === `${PathHelper.getPathFromHttpLocation(x.getJobUri())}/`,
     );
   }
 

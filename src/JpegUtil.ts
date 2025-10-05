@@ -278,14 +278,15 @@ export default class JpegUtil {
     while (i < buffer.length) {
       if (buffer[i] != 0xff) {
         logger.debug(
-          "We should be at the begining of the next block, but got: " +
-            buffer[i],
+          `We should be at the begining of the next block, but got: ${
+            buffer[i]
+          }`,
         );
         return false;
       }
 
       if (i + 1 >= buffer.length) {
-        logger.debug("End of stream prematurely found in marker: " + marker);
+        logger.debug(`End of stream prematurely found in marker: ${marker}`);
         return false;
       }
 

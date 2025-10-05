@@ -52,6 +52,7 @@ export default tseslint.config(
   //     // General ESLint rules
        'no-console': 'error',
        'no-debugger': 'error',
+       'prefer-template': 'error',
   //     //'prefer-const': 'error',
   //     'no-var': 'error',
   //

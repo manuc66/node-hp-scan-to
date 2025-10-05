@@ -137,7 +137,7 @@ async function processScanWithDestination(
   scanCount: number,
   frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null,
 ) {
-  logger.info("Selected shortcut: " + destination.shortcut);
+  logger.info(`Selected shortcut: ${destination.shortcut}`);
 
   const { duplexMode, targetDuplexMode } = determineDuplexModes(
     destination,

@@ -53,8 +53,8 @@ export default class PathHelper {
           files.some((x) => x.startsWith(currentScanCountProbe)) &&
           files.some(
             (x) =>
-              x.startsWith(currentScanCountProbe + "_") ||
-              files.some((x) => x.startsWith(currentScanCountProbe + ".")),
+              x.startsWith(`${currentScanCountProbe}_`) ||
+              files.some((x) => x.startsWith(`${currentScanCountProbe}.`)),
           )
         )
       ) {
