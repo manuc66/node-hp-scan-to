@@ -33,17 +33,19 @@ import type { Server as NetServer } from "net";
 import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
+import baseLogger, { getLoggerForFile } from "./logger.js";
 
+const logger = getLoggerForFile(__filename);
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
     const bonjour = new Bonjour();
-    console.log("Searching device...");
+    logger.info("Searching device...");
     const browser = bonjour.find(
       {
         type: "http",
       },
       (service) => {
-        console.log(".");
+        logger.info(".");
         if (
           service.name.startsWith(deviceNamePrefix) &&
           service.port === 80 &&
@@ -52,7 +54,7 @@ function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
         ) {
           browser.stop();
           bonjour.destroy();
-          console.log(`Found: ${service.name}`);
+          logger.info(`Found: ${service.name}`);
           resolve(service.addresses[0]);
         }
       },
@@ -249,16 +251,15 @@ async function getDeviceIp(
     );
     ip = await findOfficejetIp(name);
   }
-  console.log(`Using device at IP: ${ip}`);
+  logger.info(`Using device at IP: ${ip}`);
   return ip;
 }
 
 function getIsDebug(options: ProgramOption, configFile: FileConfig) {
   const debug = getConfiguredValue(options.debug, configFile.debug, false);
 
-  if (debug) {
-    console.log(`IsDebug: ${debug}`);
-  }
+  logger.info(`IsDebug: ${debug}`);
+
   return debug;
 }
 
@@ -301,7 +302,7 @@ function getPaperlessConfig(
       false,
     );
 
-    let paperlessToken: string;
+let paperlessToken: string;
     if (configPaperlessTokenFile !== undefined) {
       paperlessToken = fs
         .readFileSync(configPaperlessTokenFile, "utf8")
@@ -310,7 +311,7 @@ function getPaperlessConfig(
       paperlessToken = configPaperlessToken ?? "";
     }
 
-    console.log(
+    logger.info(
       `Paperless configuration provided, post document url: ${paperlessPostDocumentUrl}, the token length: ${paperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
     );
     return {
@@ -374,7 +375,7 @@ function getNextcloudConfig(
 
     const passLength = configNextcloudPassword?.length;
     const usernameLength = configNextcloudUsername.length;
-    console.log(
+    logger.info(
       `Nextcloud configuration provided, url: ${configNextcloudUrl}, username length: ${usernameLength}, password length: ${passLength}, upload folder: ${configNextcloudUploadFolder}, keepFiles: ${configNextcloudKeepFiles}`,
     );
     return {
@@ -589,7 +590,10 @@ function createListenCliCmd(configFile: FileConfig) {
       const options = cmd.optsWithGlobals();
       const ip = await getDeviceIp(options, configFile);
       const isDebug = getIsDebug(options, configFile);
-      const api = new DeviceClient(ip, isDebug);
+const api = new DeviceClient(ip, isDebug);
+      if (isDebug) {
+        baseLogger.level = "debug";
+      }
 
       const registrationConfigs: RegistrationConfig[] = [];
 
@@ -686,7 +690,10 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
-      const api = new DeviceClient(ip, isDebug);
+const api = new DeviceClient(ip, isDebug);
+      if (isDebug) {
+        baseLogger.level = "debug";
+      }
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(
         options,
@@ -760,6 +767,9 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
       const api = new DeviceClient(ip, isDebug);
+      if (isDebug) {
+        baseLogger.level = "debug";
+      }
 
       let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
@@ -805,6 +815,9 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
       const api = new DeviceClient(ip, isDebug);
+      if (isDebug) {
+        baseLogger.level = "debug";
+      }
 
       let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);

@@ -11,6 +11,9 @@ import ScanJobSettings from "./hpModels/ScanJobSettings.js";
 import type { ScanMode } from "./type/scanMode.js";
 import type { ImageFormat } from "./imageFormats/index.js";
 import type { IScanCaps } from "./IScanCaps.js";
+import { getLoggerForFile } from "./logger.js";
+
+const logger = getLoggerForFile(__filename);
 
 async function getScanCaps(
   api: DeviceClient,
@@ -73,23 +76,23 @@ export async function readDeviceCapabilities(
   } else if (discoveryTree.WalkupScanManifestURI !== null) {
     await api.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
   } else {
-    console.log(
+    logger.warn(
       "WARNING: No compatible device capabilities detected. The device may not support the listen command, and while the application will continue to run, it is likely to encounter a crash. If your device has an automatic document feeder, you may want to try using the adf-autoscan command.",
     );
   }
   const scanCaps = await getScanCaps(api, discoveryTree, preferEscl);
 
-  if (scanCaps === null) {
-    console.log(
+if (scanCaps === null) {
+    logger.warn(
       "WARNING: No scan capabilities found on the device, the device is likely not well supported",
     );
   }
 
   if (scanCaps?.isEscl === true) {
-    console.log(
+    logger.info(
       "eSCL detected: ScanRegions use 1/300in units; MaxWidth/MaxHeight are assumed in the same units.",
     );
-    console.log(
+    logger.info(
       `eSCL max (platen): ${scanCaps.platenMaxWidth}x${scanCaps.platenMaxHeight}, ` +
         `ADF: ${scanCaps.adfMaxWidth}x${scanCaps.adfMaxHeight}, ` +
         `ADF duplex: ${scanCaps.adfDuplexMaxWidth}x${scanCaps.adfDuplexMaxHeight}`,

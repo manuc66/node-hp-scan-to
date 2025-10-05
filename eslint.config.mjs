@@ -46,7 +46,7 @@ export default tseslint.config(
       '@typescript-eslint/prefer-as-const': 'error',
       '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
 
-      '@typescript-eslint/consistent-type-imports': [
+'@typescript-eslint/consistent-type-imports': [
         'error',
         { prefer: 'type-imports', fixStyle: 'inline-type-imports' }
       ],

@@ -16,6 +16,9 @@ import { EventType } from "./hpModels/WalkupScanToCompEvent.js";
 import { type EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus.js";
 import type EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import type { ImageFormat, JobDesc } from "./imageFormats/index.js";
+import { getLoggerForFile } from "./logger.js";
+
+const logger = getLoggerForFile(__filename);
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   api: DeviceClient,
@@ -67,7 +70,7 @@ async function handleNativeJpegFlow(
     "jpg",
     date,
   );
-  console.log(
+  logger.info(
     `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`,
   );
 
@@ -110,7 +113,7 @@ async function handleOtherFormatFlow(
     date,
   );
 
-  console.log(
+  logger.info(
     `Downloading page ${job.currentPageNumber} → ${tempDestinationFilePath}`,
   );
 
@@ -137,7 +140,7 @@ async function handleOtherFormatFlow(
     destinationFilePath,
   );
 
-  console.log("Page downloaded to:", destinationFilePath);
+  logger.info("Page downloaded to:", destinationFilePath);
   return {
     path: destinationFilePath,
     pageNumber: currentPageNumber,
@@ -201,7 +204,7 @@ export async function handleScanProcessingState(
       );
     }
   } else {
-    console.log(`Unknown pageState: ${job.pageState}`);
+    logger.warn(`Unknown pageState: ${job.pageState}`);
     await delay(200);
     return null;
   }
@@ -272,14 +275,14 @@ async function hpScanJobHandling(
         scanJobContent.elements.push(page);
       }
     } else if (job.jobState === JobState.Blocked) {
-      console.log("Job blocked, waiting for printer to complete");
+      logger.info("Job blocked, waiting for printer to complete");
       continue;
     } else {
-      console.log("Job cancelled by device");
+      logger.info("Job cancelled by device");
       break;
     }
   }
-  console.log(
+  logger.info(
     `Job state: ${job.jobState} (${scanJobContent.elements.length} page(s))`,
   );
   return job.jobState;
@@ -291,20 +294,20 @@ function logJobInfo(
   jobInfo: EsclJobInfo | undefined,
 ) {
   if (!jobUrl.includes(scanImageInfo.jobURI)) {
-    console.log(
+    logger.warn(
       `Incoherent state !!!! Job URI has changed: ${jobUrl} -> ${scanImageInfo.jobURI} -- crazy!`,
     );
   }
 
-  console.log("From scanImageInfo:");
-  console.log(`\tJob Uri: ${scanImageInfo.jobURI}`);
-  console.log(`\tJob Uuid: ${scanImageInfo.jobUuid}`);
+  logger.debug("From scanImageInfo:");
+  logger.debug(`\tJob Uri: ${scanImageInfo.jobURI}`);
+  logger.debug(`\tJob Uuid: ${scanImageInfo.jobUuid}`);
 
-  console.log("From jobInfo:");
-  console.log(`\tJob Uri: ${jobInfo?.getJobUri() ?? null}`);
-  console.log(`\tJob Uuid: ${jobInfo?.getJobUuid() ?? null}`);
-  console.log(`\tJob state reason: ${jobInfo?.getJobStateReason() ?? null}`);
-  console.log(`\tJob state: ${jobInfo?.getJobState() ?? null}`);
+  logger.debug("From jobInfo:");
+  logger.debug(`\tJob Uri: ${jobInfo?.getJobUri() ?? null}`);
+  logger.debug(`\tJob Uuid: ${jobInfo?.getJobUuid() ?? null}`);
+  logger.debug(`\tJob state reason: ${jobInfo?.getJobStateReason() ?? null}`);
+  logger.debug(`\tJob state: ${jobInfo?.getJobState() ?? null}`);
 }
 
 function mapToJobState(jobStateReason: JobStateReason) {
@@ -316,7 +319,7 @@ function mapToJobState(jobStateReason: JobStateReason) {
     return JobState.Completed;
   }
 
-  console.log(
+  logger.warn(
     `Unknown job state reason: ${jobStateReason}, job will be cancelled`,
   );
 
@@ -333,12 +336,12 @@ async function getAndFixHeightWHenAdf(
   if (inputSource === InputSource.Adf) {
     sizeFixed = await fixJpegHeight(filePath);
     if (sizeFixed === null) {
-      console.log(
+      logger.warn(
         `Image height has not been fixed, DNF may not have been found and approximate height is: ${actualHeight}`,
       );
     } else {
       if (api.isDebug()) {
-        console.log(
+        logger.debug(
           `Image height has been fixed to: ${sizeFixed} (contained in jpeg's DNL), scan job indicates: ${actualHeight}`,
         );
       }
@@ -393,7 +396,7 @@ async function eSCLScanJobHandling(
       );
 
       const scanImageInfo = await api.getEsclScanImageInfo(jobLocation);
-      console.log("scanImageInfo:", scanImageInfo.jobURI);
+      logger.info("scanImageInfo:", scanImageInfo.jobURI);
 
       const actualHeight = scanImageInfo.actualHeight;
 
@@ -404,7 +407,7 @@ async function eSCLScanJobHandling(
         actualHeight,
       );
 
-      console.log("Page downloaded to:", filePath);
+      logger.info(filePath, "Page downloaded to");
 
       const page: ScanPage = {
         path: filePath.path,
@@ -430,7 +433,7 @@ async function eSCLScanJobHandling(
         new Date(),
       );
 
-      console.log(
+      logger.info(
         `Downloading page ${currentPageNumber} → ${tempDestinationFilePath}`,
       );
 
@@ -439,7 +442,7 @@ async function eSCLScanJobHandling(
         tempDestinationFilePath,
       );
 
-      console.log("Page downloaded content-type:", downloadMeta.contentType);
+      logger.info("Page downloaded content-type:", downloadMeta.contentType);
 
       const scanImageInfo = await api.getEsclScanImageInfo(jobLocation);
 
@@ -464,7 +467,7 @@ async function eSCLScanJobHandling(
         destinationFilePath,
       );
 
-      console.log("Page downloaded to:", destinationFilePath);
+      logger.info("Page downloaded to:", destinationFilePath);
 
       const page: ScanPage = {
         path: destinationFilePath,
@@ -493,7 +496,7 @@ async function eSCLScanJobHandling(
   );
 
   if (jobStateReason === null) {
-    console.log(
+    logger.warn(
       "Job state reason is null, it means that the current " +
         "job was not found in the device's status, this is probably a bug " +
         "in the device, the current scan will be marked as cancelled",
@@ -518,9 +521,9 @@ export async function executeScanJob(
 ): Promise<JobState> {
   const jobUrl = await deviceCapabilities.submitScanJob(scanJobSettings);
 
-  console.log(`Creating job with settings: ${JSON.stringify(scanJobSettings)}`);
+  logger.info(`Creating job with settings: ${JSON.stringify(scanJobSettings)}`);
 
-  console.log("New job created:", jobUrl);
+  logger.info("New job created:", jobUrl);
 
   let jobState: JobState;
   if (deviceCapabilities.isEscl) {
@@ -576,10 +579,10 @@ async function waitScanNewPageRequest(
     } else if (eventType === EventType.ScanPagesComplete) {
       wait = false;
     } else if (eventType === EventType.ScanRequested) {
-      console.log(`Waiting for user input (attempt ${i} of ${waitMax})`);
+      logger.info(`Waiting for user input (attempt ${i} of ${waitMax})`);
     } else {
       wait = false;
-      console.log(`Unknown eventType: ${eventTypeStr}`);
+      logger.warn(`Unknown eventType: ${eventTypeStr}`);
     }
   }
   return startNewScanJob;
