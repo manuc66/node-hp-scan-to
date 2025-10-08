@@ -7,6 +7,7 @@ import config, { IConfig } from "config";
 import * as commitInfo from "./commitInfo.json";
 import { configSchema, FileConfig } from "./type/FileConfig";
 import { setupProgram } from "./program";
+import logger, { getLoggerForFile } from "./logger";
 
 const validateConfig = (config: IConfig) => {
   const result = configSchema.safeParse(config);
@@ -20,6 +21,10 @@ const validateConfig = (config: IConfig) => {
 };
 
 async function main() {
+  const logger = getLoggerForFile(__filename);
+  logger.info(`Running with Git commit ID: ${commitInfo.commitId}`);
+  logger.debug({ env: process.env.NODE_ENV }, "Environment detected");
+
   const fileConfig: FileConfig = validateConfig(config);
 
   const program = setupProgram(fileConfig);
@@ -27,5 +32,4 @@ async function main() {
   await program.parseAsync(process.argv);
 }
 
-console.log(`Running with Git commit ID: ${commitInfo.commitId}`);
-main().catch((err) => console.log(err));
+main().catch((err) => logger.error(err));

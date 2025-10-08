@@ -1,3 +1,7 @@
+import { getLoggerForFile } from "../logger";
+
+const logger = getLoggerForFile(__filename);
+
 export class EnumUtils {
   static getState<T>(
     stateType: string,
@@ -7,7 +11,7 @@ export class EnumUtils {
     if (
       !Object.values(stateEnum as Record<string, T>).includes(stateStr as T)
     ) {
-      console.error(
+      logger.error(
         `"${stateStr}" is not a known ${stateType} value, you would be kind as a reader of this message to fill an issue to help at better state handling.`,
       );
     }

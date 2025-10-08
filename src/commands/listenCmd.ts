@@ -22,7 +22,9 @@ import { PageCountingStrategy } from "../type/pageCountingStrategy";
 import { ScanPlexMode } from "../hpModels/ScanPlexMode";
 import { DeviceCapabilities } from "../type/DeviceCapabilities";
 import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode";
+import { getLoggerForFile } from "../logger";
 
+const logger = getLoggerForFile(__filename);
 let iteration = 0;
 
 export async function listenCmd(
@@ -57,7 +59,7 @@ export async function listenCmd(
     null;
   while (keepActive) {
     iteration++;
-    console.log(`Iteration ${iteration} (Errors so far:${errorCount})`);
+    logger.info(`Iteration ${iteration} (Errors so far:${errorCount})`);
     try {
       const selectedScanTarget: SelectedScanTarget = await waitScanEvent(
         deviceCapabilities,
@@ -77,7 +79,7 @@ export async function listenCmd(
         destination = await tryGetDestination(selectedScanTarget.event);
       }
       if (!destination) {
-        console.log(
+        logger.warn(
           "No shortcut selected - Impossible to proceed with scan, skipping.",
         );
         continue;
@@ -103,12 +105,10 @@ export async function listenCmd(
       lastDuplexMode = r.duplexMode;
     } catch (e) {
       if (await HPApi.isAlive()) {
-        console.log(e);
+        logger.error(e);
         errorCount++;
       } else {
-        if (HPApi.isDebug()) {
-          console.log(e);
-        }
+        logger.debug(e);
         deviceUp = false;
       }
     }
@@ -137,7 +137,7 @@ async function processScanWithDestination(
   scanCount: number,
   frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null,
 ) {
-  console.log("Selected shortcut: " + destination.shortcut);
+  logger.info(`Selected shortcut: ${destination.shortcut}`);
 
   const { duplexMode, targetDuplexMode } = determineDuplexModes(
     destination,
@@ -230,7 +230,7 @@ async function handleScanResult(
   } else {
     let finalScanJobContent: ScanContent;
     if (duplexMode == DuplexMode.BackOfDoubleSided) {
-      console.log(
+      logger.info(
         "Emulated duplex scan completed; front and back pages are being assembled",
       );
       const frontScans = frontOfDoubleSidedScanContext?.scanJobContent ?? {
@@ -359,7 +359,7 @@ async function setupScanParameters(
   let pageCountingStrategy: PageCountingStrategy;
   let scanToPdf: boolean;
   let scanDate: Date;
-  console.log(`Scan mode: ${targetDuplexMode}`);
+  logger.info(`Scan mode: ${targetDuplexMode}`);
   if (duplexMode == DuplexMode.Duplex) {
     pageCountingStrategy = PageCountingStrategy.Normal;
     scanToPdf = isPdf(destination);
@@ -369,7 +369,7 @@ async function setupScanParameters(
       scanCount,
       scanConfig.directoryConfig.filePattern,
     );
-    console.log(`Scan event captured, saving scan #${scanCount}`);
+    logger.info(`Scan event captured, saving scan #${scanCount}`);
   } else if (targetDuplexMode == TargetDuplexMode.EmulatedDuplex) {
     if (duplexMode == DuplexMode.FrontOfDoubleSided) {
       pageCountingStrategy = PageCountingStrategy.OddOnly;
@@ -381,7 +381,7 @@ async function setupScanParameters(
         scanConfig.directoryConfig.filePattern,
       );
 
-      console.log(
+      logger.info(
         `Scan event captured, saving front sides of scan #${scanCount}`,
       );
     } else {
@@ -390,7 +390,7 @@ async function setupScanParameters(
         frontOfDoubleSidedScanContext?.scanToPdf ?? isPdf(destination);
       scanDate = frontOfDoubleSidedScanContext?.scanDate ?? new Date();
       scanCount = frontOfDoubleSidedScanContext?.scanCount ?? scanCount;
-      console.log(
+      logger.info(
         `Scan event captured, saving back sides of scan #${scanCount}`,
       );
     }
@@ -403,7 +403,7 @@ async function setupScanParameters(
       scanCount,
       scanConfig.directoryConfig.filePattern,
     );
-    console.log(`Scan event captured, saving scan #${scanCount}`);
+    logger.info(`Scan event captured, saving scan #${scanCount}`);
   }
 
   return { pageCountingStrategy, scanToPdf, scanDate, scanCount };
@@ -415,7 +415,7 @@ async function processFinishedPartialDuplexScan(
   scanCount: number,
   frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext,
 ) {
-  console.log(
+  logger.info(
     `Scan target changed from ${lastScanTarget.label} to ${selectedScanTarget.label}, saving scan #${scanCount} before processing`,
   );
 

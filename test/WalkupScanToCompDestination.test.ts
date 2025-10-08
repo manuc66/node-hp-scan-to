@@ -1,7 +1,7 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import path from "path";
-import * as fs from "fs/promises";
+import path from "node:path";
+import * as fs from "node:fs/promises";
 import WalkupScanToCompDestination from "../src/hpModels/WalkupScanToCompDestination";
 import { ScanPlexMode } from "../src/hpModels/ScanPlexMode";
 

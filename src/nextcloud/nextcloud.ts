@@ -1,8 +1,11 @@
 import axios, { AxiosError } from "axios";
 import { ScanContent } from "../type/ScanContent";
 import { NextcloudConfig } from "./NextcloudConfig";
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { getLoggerForFile } from "../logger";
+
+const logger = getLoggerForFile(__filename);
 
 export async function uploadImagesToNextcloud(
   scanJobContent: ScanContent,
@@ -24,7 +27,7 @@ export async function uploadPdfToNextcloud(
     if (pdfFilePath) {
       await uploadToNextcloud(pdfFilePath, nextcloudConfig);
     } else {
-      console.log(
+      logger.error(
         "Pdf generation has failed, nothing is going to be uploaded to Nextcloud",
       );
     }
@@ -45,12 +48,12 @@ async function uploadToNextcloud(
   try {
     fileBuffer = await fs.readFile(filePath);
   } catch (e) {
-    console.error("Fail to read file:", e);
+    logger.error(e, "Fail to read file:", e);
     return;
   }
   const auth = { username, password };
 
-  console.log(`Start uploading to Nextcloud: ${fileName}`);
+  logger.info(`Start uploading to Nextcloud: ${fileName}`);
   try {
     const response = await axios({
       method: "PUT",
@@ -65,11 +68,11 @@ async function uploadToNextcloud(
     } else {
       action = "updated";
     }
-    console.log(
+    logger.info(
       `Document successfully ${action} file at Nextcloud. (Folder: ${uploadFolder}, File: ${fileName})`,
     );
   } catch (error) {
-    console.error("Fail to upload document:", error);
+    logger.error(error, "Fail to upload document");
   }
 }
 
@@ -79,7 +82,7 @@ async function checkFolderAndUpload(
 ) {
   const folderExists = await checkNextcloudFolderExists(nextcloudConfig);
   if (!folderExists) {
-    console.log(
+    logger.error(
       "Upload folder does not exist or user has no permission; skipping upload",
     );
     return;
@@ -95,7 +98,7 @@ async function checkNextcloudFolderExists(
   const folderUrl = buildFolderUrl(baseUrl, username, uploadFolder);
   const auth = { username, password };
 
-  console.log("Check if upload folder exists");
+  logger.info("Check if upload folder exists");
   try {
     // Check if the upload folder exists
     await axios({
@@ -104,19 +107,23 @@ async function checkNextcloudFolderExists(
       auth,
       headers: { Depth: 0 },
     });
-    console.log(`Found upload folder '${uploadFolder}' in Nextcloud`);
+    logger.info(`Found upload folder '${uploadFolder}' in Nextcloud`);
   } catch (error) {
     const axiosError = error as AxiosError;
     if (axiosError.response?.status === 404) {
-      console.warn(`Upload folder '${uploadFolder}' not found in Nextcloud`);
+      logger.warn(`Upload folder '${uploadFolder}' not found in Nextcloud`);
     } else if (axiosError.response?.status === 401) {
-      console.warn(
+      logger.warn(
         `User has no permission to access upload folder '${uploadFolder}' in Nextcloud`,
       );
     } else {
-      console.error("Fail to check upload folder exists:", axiosError.toJSON());
+      logger.error(
+        axiosError,
+        "Fail to check upload folder exists:",
+        axiosError.toJSON(),
+      );
     }
-    console.trace("Error response:", axiosError.response);
+    logger.debug(axiosError.response);
     return false;
   }
   return true;

@@ -1,19 +1,11 @@
-let debug = false;
+import { getLoggerForFile } from "./logger";
+
+const logger = getLoggerForFile(__filename);
 
 const start_of_Frame_0 = "FFC0";
 const define_number_of_lines = "FFDC";
 
 export default class JpegUtil {
-  static setDebug(dbg: boolean) {
-    debug = dbg;
-  }
-
-  private static logDebug(msg: string | object) {
-    if (debug) {
-      console.log(msg);
-    }
-  }
-
   private static numToHex(s: number) {
     return s.toString(16).padStart(2, "0").toUpperCase();
   }
@@ -116,12 +108,12 @@ export default class JpegUtil {
     });
 
     if (numberOfLine == null) {
-      this.logDebug("DNL marker not found impossible to fix height");
+      logger.debug("DNL marker not found impossible to fix height");
       return null;
     }
 
     if (startOfStartOfFrame == null || lengthOfStartOfFrame == null) {
-      this.logDebug(
+      logger.debug(
         "Start of frame 0 not found, either jpeg parsing is broken either the stream is corrupted",
       );
       return null;
@@ -182,7 +174,7 @@ export default class JpegUtil {
     let i: number = 0;
 
     if (!this.isSOIHeader(i, buffer)) {
-      this.logDebug("Not a valid SOI header");
+      logger.debug("Not a valid SOI header");
       return false;
     }
 
@@ -190,7 +182,7 @@ export default class JpegUtil {
 
     // Check for valid JPEG header (null terminated JFIF)
     if (!this.isValidJpegHeader(i, buffer)) {
-      this.logDebug("Not a valid JFIF string");
+      logger.debug("Not a valid JFIF string");
       return false;
     }
 
@@ -239,7 +231,7 @@ export default class JpegUtil {
       // read the new block length
       const blockLength = buffer[i + 2] * 256 + buffer[i + 3];
 
-      this.logDebug(`block size for ${marker} is ${blockLength}`);
+      logger.debug(`block size for ${marker} is ${blockLength}`);
       return blockLength;
     }
   }
@@ -259,7 +251,7 @@ export default class JpegUtil {
             return j;
           }
         } else {
-          this.logDebug(
+          logger.debug(
             `Premature end of stream reach while searching for the block size inside marker ${current_marker}`,
           );
           return null;
@@ -285,20 +277,21 @@ export default class JpegUtil {
     i += blockLength;
     while (i < buffer.length) {
       if (buffer[i] != 0xff) {
-        this.logDebug(
-          "We should be at the begining of the next block, but got: " +
-            buffer[i],
+        logger.debug(
+          `We should be at the begining of the next block, but got: ${
+            buffer[i]
+          }`,
         );
         return false;
       }
 
       if (i + 1 >= buffer.length) {
-        this.logDebug("End of stream prematurely found in marker: " + marker);
+        logger.debug(`End of stream prematurely found in marker: ${marker}`);
         return false;
       }
 
       if (buffer[i + 1] == 0x00) {
-        this.logDebug(`Bad marker at ${i} 0x00 just after marker ${marker}`);
+        logger.debug(`Bad marker at ${i} 0x00 just after marker ${marker}`);
         return false;
       }
 
@@ -306,7 +299,7 @@ export default class JpegUtil {
 
       const foundBlockLength = this.getBlockLength(buffer, i, marker);
       if (foundBlockLength == null) {
-        this.logDebug(
+        logger.debug(
           `Was not able to determine block size for marker ${marker}`,
         );
         return false;
@@ -321,7 +314,7 @@ export default class JpegUtil {
       i = i + 2 + blockLength;
     }
 
-    this.logDebug("End of payload reached");
+    logger.debug("End of payload reached");
     return true;
   }
 }

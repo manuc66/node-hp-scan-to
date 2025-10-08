@@ -1,15 +1,15 @@
 "use strict";
 
-import { promisify } from "util";
-import fs from "fs";
+import { promisify } from "node:util";
+import fs from "node:fs";
 import axios, {
   AxiosError,
   AxiosRequestConfig,
   AxiosResponse,
   RawAxiosRequestHeaders,
 } from "axios";
-import * as stream from "stream";
-import { Stream } from "stream";
+import * as stream from "node:stream";
+import { Stream } from "node:stream";
 import EventTable, { EtagEventTable } from "./hpModels/EventTable";
 import Job from "./hpModels/Job";
 import ScanStatus from "./hpModels/ScanStatus";
@@ -26,28 +26,22 @@ import WalkupScanManifest from "./hpModels/WalkupScanManifest";
 import ScanJobManifest from "./hpModels/ScanJobManifest";
 import ScanCaps from "./hpModels/ScanCaps";
 import { delay } from "./delay";
-import * as net from "net";
+import * as net from "node:net";
 import EsclScanJobManifest from "./hpModels/EsclManifest";
 import EsclScanCaps from "./hpModels/EsclScanCaps";
 import EsclScanStatus from "./hpModels/EsclScanStatus";
 import { IScanJobSettings } from "./hpModels/IScanJobSettings";
 import EsclScanImageInfo from "./hpModels/EsclScanImageInfo";
 import PathHelper from "./PathHelper";
+import logger, { getLoggerForFile } from "./logger";
 
 let printerIP = "192.168.1.11";
-let debug = false;
 let callCount = 0;
 
 export default class HPApi {
+  private static logger = getLoggerForFile(__filename);
   static setDeviceIP(ip: string): void {
     printerIP = ip;
-  }
-
-  static setDebug(dbg: boolean): void {
-    debug = dbg;
-  }
-  static isDebug(): boolean {
-    return debug;
   }
 
   private static logDebug(
@@ -55,11 +49,13 @@ export default class HPApi {
     isRequest: boolean,
     msg: object | string,
   ): void {
-    if (debug) {
-      const id = String(callId).padStart(4, "0");
-      const content = typeof msg === "string" ? msg : JSON.stringify(msg);
-      console.log(id + (isRequest ? " -> " : " <- ") + content);
-    }
+    if (!logger.isLevelEnabled("debug")) return;
+
+    const id = String(callId).padStart(4, "0");
+    const prefix = id + (isRequest ? " -> " : " <- ");
+    const content = typeof msg === "string" ? msg : JSON.stringify(msg);
+
+    this.logger.debug({ callId, isRequest, msg }, prefix + content);
   }
 
   private static async callAxios(
@@ -117,7 +113,7 @@ export default class HPApi {
     let first = true;
     while (!(await HPApi.isAlive())) {
       if (first) {
-        console.log(
+        logger.info(
           `Device ip: ${printerIP} is down! [${new Date().toISOString()}]`,
         );
       }
@@ -125,7 +121,7 @@ export default class HPApi {
       await delay(deviceUpPollingInterval);
     }
     if (!first) {
-      console.log(
+      logger.info(
         `Device ip: ${printerIP} is up again! [${new Date().toISOString()}]`,
       );
     }
@@ -440,7 +436,7 @@ export default class HPApi {
       timeout = 1200;
     }
     if (timeout > 0) {
-      url += "?timeout=" + timeout;
+      url += `?timeout=${timeout}`;
     }
     return url;
   }
@@ -607,7 +603,7 @@ export default class HPApi {
     destination: string,
   ): Promise<string> {
     return await HPApi.downloadPage(
-      jobUri + "/NextDocument",
+      `${jobUri}/NextDocument`,
       destination,
       60_000,
     );
@@ -618,7 +614,7 @@ export default class HPApi {
   ): Promise<EsclScanImageInfo> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
-      url: jobUri + "/ScanImageInfo",
+      url: `${jobUri}/ScanImageInfo`,
       method: "GET",
       responseType: "text",
     });

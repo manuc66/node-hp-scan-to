@@ -15,6 +15,9 @@ import { existsSync } from "node:fs";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
 import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { ScanConfig } from "./type/scanConfigs";
+import { getLoggerForFile } from "./logger";
+
+const logger = getLoggerForFile(__filename);
 
 export async function postProcessing(
   scanConfig: ScanConfig,
@@ -124,15 +127,15 @@ function displayPdfScan(
   scanCount: number,
 ) {
   if (pdfFilePath === null) {
-    console.log(`Pdf generated has not been generated`);
+    logger.error(`Pdf generated has not been generated`);
     return;
   }
 
-  console.log(
+  logger.info(
     `Scan #${scanCount} saved as PDF: ${pdfFilePath} with the following pages:`,
   );
   scanJobContent.elements.forEach((e) =>
-    console.log(
+    logger.info(
       `\t- page ${e.pageNumber.toString().padStart(3, " ")} | ${e.width}x${
         e.height
       } | (temp file deleted ${e.path})`,
@@ -141,9 +144,9 @@ function displayPdfScan(
 }
 
 function displayJpegScan(scanJobContent: ScanContent, scanCount: number) {
-  console.log(`Scan #${scanCount} completed with the following pages:`);
+  logger.info(`Scan #${scanCount} completed with the following pages:`);
   scanJobContent.elements.forEach((e) =>
-    console.log(
+    logger.info(
       `\t- page ${e.pageNumber.toString().padStart(3, " ")} | ${e.width}x${
         e.height
       } | ${e.path}`,
@@ -163,9 +166,9 @@ async function cleanUpFilesIfNeeded(
       filePaths.map(async (filePath) => {
         if (existsSync(filePath)) {
           await fs.unlink(filePath);
-          console.log(`File ${filePath} has been removed from the filesystem`);
+          logger.info(`File ${filePath} has been removed from the filesystem`);
         } else {
-          console.log(
+          logger.warn(
             `File ${filePath} was already removed from the filesystem`,
           );
         }

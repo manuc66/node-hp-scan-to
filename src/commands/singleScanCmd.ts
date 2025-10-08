@@ -3,6 +3,9 @@ import { readDeviceCapabilities } from "../readDeviceCapabilities";
 import { singleScan } from "../scanProcessing";
 import { SingleScanConfig } from "../type/scanConfigs";
 import PathHelper from "../PathHelper";
+import { getLoggerForFile } from "../logger";
+
+const logger = getLoggerForFile(__filename);
 
 export async function singleScanCmd(
   singleScanConfig: SingleScanConfig,
@@ -33,6 +36,6 @@ export async function singleScanCmd(
       new Date(),
     );
   } catch (e) {
-    console.log(e);
+    logger.error(e);
   }
 }

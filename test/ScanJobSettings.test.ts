@@ -1,8 +1,8 @@
 import { describe } from "mocha";
 import { expect } from "chai";
 import ScanJobSettings from "../src/hpModels/ScanJobSettings";
-import path from "path";
-import * as fs from "fs/promises";
+import path from "node:path";
+import * as fs from "node:fs/promises";
 import { InputSource } from "../src/type/InputSource";
 import { ScanMode } from "../src/type/scanMode";
 
