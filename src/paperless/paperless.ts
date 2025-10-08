@@ -1,8 +1,8 @@
-import fsSync from "fs";
+import fsSync from "node:fs";
 import FormData from "form-data";
 import axios from "axios";
 import type { ScanContent } from "../type/ScanContent.js";
-import fs from "fs/promises";
+import fs from "node:fs/promises";
 import { convertToPdf, mergeToPdf } from "../pdfProcessing.js";
 import type { PaperlessConfig } from "./PaperlessConfig.js";
 import type { ScanConfig } from "../type/scanConfigs.js";

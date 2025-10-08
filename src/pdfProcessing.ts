@@ -1,9 +1,9 @@
 import type { ScanContent, ScanPage } from "./type/ScanContent.js";
 import PathHelper from "./PathHelper.js";
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { jsPDF } from "jspdf";
-import { getLoggerForFile } from "./logger";
+import { getLoggerForFile } from "./logger.js";
 
 const logger = getLoggerForFile(__filename);
 

@@ -3,7 +3,7 @@
 
 "use strict";
 
-import os from "os";
+import os from "node:os";
 // default-import + destructure: this dependency is CommonJS and some loaders
 // (tsx) do not expose its named exports to ESM consumers
 import bonjourService from "bonjour-service";
@@ -13,7 +13,7 @@ import DeviceClient from "./DeviceClient.js";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import { startHealthCheckServer } from "./healthcheck.js";
-import fs from "fs";
+import fs from "node:fs";
 import { Command, Option } from "@commander-js/extra-typings";
 import type { RegistrationConfig } from "./type/scanTargetDefinitions.js";
 import { listenCmd } from "./commands/listenCmd.js";
@@ -29,7 +29,7 @@ import type {
 import { discoverCmd } from "./commands/discoverCmd.js";
 import type { FileConfig } from "./type/FileConfig.js";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
-import type { Server as NetServer } from "net";
+import type { Server as NetServer } from "node:net";
 import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";

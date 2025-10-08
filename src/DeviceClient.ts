@@ -1,7 +1,7 @@
 "use strict";
 
-import { promisify } from "util";
-import fs from "fs";
+import { promisify } from "node:util";
+import fs from "node:fs";
 import axios, {
   AxiosError,
   type AxiosRequestConfig,
