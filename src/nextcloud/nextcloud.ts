@@ -1,8 +1,8 @@
 import axios, { AxiosError } from "axios";
 import { ScanContent } from "../type/ScanContent";
 import { NextcloudConfig } from "./NextcloudConfig";
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { getLoggerForFile } from "../logger";
 
 const logger = getLoggerForFile(__filename);

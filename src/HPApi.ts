@@ -1,15 +1,15 @@
 "use strict";
 
-import { promisify } from "util";
-import fs from "fs";
+import { promisify } from "node:util";
+import fs from "node:fs";
 import axios, {
   AxiosError,
   AxiosRequestConfig,
   AxiosResponse,
   RawAxiosRequestHeaders,
 } from "axios";
-import * as stream from "stream";
-import { Stream } from "stream";
+import * as stream from "node:stream";
+import { Stream } from "node:stream";
 import EventTable, { EtagEventTable } from "./hpModels/EventTable";
 import Job from "./hpModels/Job";
 import ScanStatus from "./hpModels/ScanStatus";
@@ -26,7 +26,7 @@ import WalkupScanManifest from "./hpModels/WalkupScanManifest";
 import ScanJobManifest from "./hpModels/ScanJobManifest";
 import ScanCaps from "./hpModels/ScanCaps";
 import { delay } from "./delay";
-import * as net from "net";
+import * as net from "node:net";
 import EsclScanJobManifest from "./hpModels/EsclManifest";
 import EsclScanCaps from "./hpModels/EsclScanCaps";
 import EsclScanStatus from "./hpModels/EsclScanStatus";

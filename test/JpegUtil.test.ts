@@ -1,11 +1,11 @@
 import { describe } from "mocha";
 import { expect } from "chai";
 import JpegUtil from "../src/JpegUtil";
-import fs0 from "fs";
+import fs0 from "node:fs";
 
-import fs01 from "fs/promises";
+import fs01 from "node:fs/promises";
 
-import path from "path";
+import path from "node:path";
 
 const fs = { ...fs0, ...fs01 };
 describe("JpegUtil", () => {

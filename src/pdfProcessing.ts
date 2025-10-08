@@ -1,7 +1,7 @@
 import { ScanContent, ScanPage } from "./type/ScanContent";
 import PathHelper from "./PathHelper";
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { jsPDF } from "jspdf";
 import { getLoggerForFile } from "./logger";
 

@@ -1,7 +1,7 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import path from "path";
-import * as fs from "fs/promises";
+import path from "node:path";
+import * as fs from "node:fs/promises";
 import { InputSource } from "../src/type/InputSource";
 import EsclScanJobSettings from "../src/hpModels/EsclScanJobSettings";
 import { ScanMode } from "../src/type/scanMode";

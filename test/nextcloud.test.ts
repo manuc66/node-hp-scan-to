@@ -1,5 +1,5 @@
 import { describe } from "mocha";
-import path from "path";
+import path from "node:path";
 import { ScanContent, ScanPage } from "../src/type/ScanContent";
 import {
   uploadImagesToNextcloud,
@@ -7,7 +7,7 @@ import {
 } from "../src/nextcloud/nextcloud";
 import { NextcloudConfig } from "../src/nextcloud/NextcloudConfig";
 import { convertToPdf } from "../src/pdfProcessing";
-import fs from "fs";
+import fs from "node:fs";
 import nock from "nock";
 
 describe("nextcloud", () => {

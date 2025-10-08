@@ -2,7 +2,7 @@ import { describe } from "mocha";
 import { expect } from "chai";
 import PathHelper from "../src/PathHelper";
 import fs from "node:fs";
-import * as fsp from "fs/promises";
+import * as fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 

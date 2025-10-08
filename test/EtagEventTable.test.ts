@@ -1,7 +1,7 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import path from "path";
-import * as fs from "fs/promises";
+import path from "node:path";
+import * as fs from "node:fs/promises";
 import EventTable from "../src/hpModels/EventTable";
 import { EtagEventTable } from "../src/hpModels/EventTable";
 

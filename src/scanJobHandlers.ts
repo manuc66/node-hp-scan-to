@@ -7,7 +7,7 @@ import { delay } from "./delay";
 import PathHelper from "./PathHelper";
 import { InputSource } from "./type/InputSource";
 import { SelectedScanTarget } from "./type/scanTargetDefinitions";
-import fs from "fs/promises";
+import fs from "node:fs/promises";
 import JpegUtil from "./JpegUtil";
 import { PageCountingStrategy } from "./type/pageCountingStrategy";
 import { IScanJobSettings } from "./hpModels/IScanJobSettings";

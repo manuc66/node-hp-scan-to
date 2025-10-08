@@ -3,13 +3,13 @@
 
 "use strict";
 
-import os from "os";
+import os from "node:os";
 import { Bonjour } from "bonjour-service";
 import HPApi from "./HPApi";
 import { PaperlessConfig } from "./paperless/PaperlessConfig";
 import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
 import { startHealthCheckServer } from "./healthcheck";
-import fs from "fs";
+import fs from "node:fs";
 import { Command, Option } from "@commander-js/extra-typings";
 import { RegistrationConfig } from "./type/scanTargetDefinitions";
 import { listenCmd } from "./commands/listenCmd";
@@ -24,7 +24,7 @@ import {
 } from "./type/scanConfigs";
 import { FileConfig } from "./type/FileConfig";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings";
-import { Server as NetServer } from "net";
+import { Server as NetServer } from "node:net";
 import { ScanMode } from "./type/scanMode";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode";
 import baseLogger, { getLoggerForFile } from "./logger";
