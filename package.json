@@ -10,9 +10,7 @@
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": {
-    "node-hp-scan-to": "dist/index.js"
-  },
+  "bin": "dist/index.js",
   "scripts": {
     "prestart": "node getCommitId.js",
     "start": "ts-node src/index.ts",
@@ -78,8 +76,7 @@
     "ts-mockito": "^2.6.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.41.0",
-    "yarn": "^1.22.22"
+    "typescript-eslint": "^8.41.0"
   },
   "dependencies": {
     "@commander-js/extra-typings": "^14.0.0",
@@ -88,12 +85,11 @@
     "commander": "^14.0.0",
     "config": "^4.1.1",
     "dateformat": "^5.0.3",
-    "is-docker": "^4.0.0",
     "jspdf": "^3.0.2",
     "nanoid": "^5.1.6",
     "pino": "^10.0.0",
     "xml2js": "^0.6.2",
     "zod": "^4.1.3"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "yarn@4.10.3"
 }
