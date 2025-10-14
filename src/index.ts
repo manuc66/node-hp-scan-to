@@ -4,6 +4,7 @@
 "use strict";
 
 import config, { IConfig } from "config";
+import z from "zod";
 import * as commitInfo from "./commitInfo.json";
 import { configSchema, FileConfig } from "./type/FileConfig";
 import { setupProgram } from "./program";
@@ -11,9 +12,9 @@ import { setupProgram } from "./program";
 const validateConfig = (config: IConfig) => {
   const result = configSchema.safeParse(config);
   if (!result.success) {
-    const errors = result.error.format();
+    const errors = z.prettifyError(result.error);
     throw new Error(
-      `Configuration validation error: ${JSON.stringify(errors)}`,
+      `Configuration validation error: ${errors}`,
     );
   }
   return result.data;

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { DuplexAssemblyMode } from "./DuplexAssemblyMode";
 
 // Configuration schema for the config file
-export const configSchema = z.object({
+export const configSchema = z.strictObject({
   ///
   /// Network and Identification
   ///

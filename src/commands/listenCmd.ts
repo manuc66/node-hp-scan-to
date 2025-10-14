@@ -57,7 +57,7 @@ export async function listenCmd(
     null;
   while (keepActive) {
     iteration++;
-    console.log(`Iteration ${iteration} (Errors so far:${errorCount})`);
+    console.log(`Iteration ${iteration} (Errors so far: ${errorCount})`);
     try {
       const selectedScanTarget: SelectedScanTarget = await waitScanEvent(
         deviceCapabilities,

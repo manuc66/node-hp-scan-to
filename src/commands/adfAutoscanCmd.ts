@@ -42,7 +42,7 @@ export async function adfAutoscanCmd(
   let errorCount = 0;
   while (keepActive) {
     iteration++;
-    console.log(`Iteration ${iteration} (Errors so far:${errorCount})`);
+    console.log(`Iteration ${iteration} (Errors so far: ${errorCount})`);
     try {
       await waitAdfLoaded(
         adfAutoScanConfig.pollingInterval,
