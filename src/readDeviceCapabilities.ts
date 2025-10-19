@@ -51,7 +51,7 @@ export async function readDeviceCapabilities(
   preferEscl: boolean,
 ): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
-  let useWalkupScanToComp = false;
+  let useWalkupScanToComp: boolean | undefined;
 
   const discoveryTree = await HPApi.getDiscoveryTree();
 
@@ -70,16 +70,13 @@ export async function readDeviceCapabilities(
   } else if (discoveryTree.WalkupScanManifestURI != null) {
     // No caps to load here but check we can load the specified manifest
     await HPApi.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
-  } else {
-    logger.warn(
-      "WARNING: No compatible device capabilities detected. The device may not support the listen command, and while the application will continue to run, it is likely to encounter a crash. If your device has an automatic document feeder, you may want to try using the adf-autoscan command.",
-    );
+    useWalkupScanToComp = false;
   }
   const scanCaps = await getScanCaps(discoveryTree, preferEscl);
 
   if (scanCaps == null) {
     logger.warn(
-      "WARNING: No scan capabilities found on the device, the device is likely not well supported",
+      "No scan capabilities detected on the device. It seems that the device may not be adequately supported or may not support scanning at all.",
     );
   }
 

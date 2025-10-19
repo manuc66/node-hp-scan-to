@@ -5,7 +5,7 @@ import { ScanMode } from "./scanMode";
 
 export interface DeviceCapabilities {
   supportsMultiItemScanFromPlaten: boolean;
-  useWalkupScanToComp: boolean;
+  useWalkupScanToComp: boolean | undefined;
   platenMaxWidth: number | null;
   platenMaxHeight: number | null;
   adfMaxWidth: number | null;
