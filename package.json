@@ -85,6 +85,7 @@
     "commander": "^14.0.0",
     "config": "^4.1.1",
     "dateformat": "^5.0.3",
+    "form-data": "^4.0.4",
     "jspdf": "^3.0.2",
     "nanoid": "^5.1.6",
     "pino": "^10.0.0",
