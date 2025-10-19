@@ -145,10 +145,20 @@ export async function waitScanEvent(
   deviceCapabilities: DeviceCapabilities,
   registrationConfigs: RegistrationConfig[],
 ): Promise<SelectedScanTarget | null> {
+  let useWalkupScanToComp: boolean;
+  if (deviceCapabilities.useWalkupScanToComp !== undefined) {
+    useWalkupScanToComp = deviceCapabilities.useWalkupScanToComp;
+  } else {
+    logger.warn(
+      "No compatible device capabilities detected. It appears that your device may not support the listen command. While the application will still run, there is a possibility it may crash. If your device includes an automatic document feeder, consider using the adf-autoscan command instead.",
+    );
+    useWalkupScanToComp = false;
+  }
+
   const scanTargets = await registerWalkupScanDestination(
     api,
     registrationConfigs,
-    deviceCapabilities.useWalkupScanToComp,
+    useWalkupScanToComp,
   );
 
   return await waitForScanEvent(api, scanTargets);
