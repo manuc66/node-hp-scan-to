@@ -28,8 +28,8 @@
     "start-dev": "nodemon",
     "prepublishOnly": "npm run prebuild && tsc -p ./ --outDir dist/",
     "prettier": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "test": "npx mocha --require tsx/register ./test/**/*.test.ts",
-    "test-ci": "npx nyc --reporter=lcov mocha -r tsx/register ./test/**/*.test.ts && codecov"
+    "test": "mocha --require tsx/cjs ./test/**/*.test.ts",
+    "test-ci": "nyc --reporter=lcov mocha --require tsx/cjs ./test/**/*.test.ts && codecov"
   },
   "files": [
     "dist",
