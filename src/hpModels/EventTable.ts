@@ -1,7 +1,7 @@
 "use strict";
 
-import Event, { EventData } from "./Event";
-import { parseXmlString } from "./ParseXmlString";
+import Event, { EventData } from "./Event.js";
+import { parseXmlString } from "./ParseXmlString.js";
 
 export interface EtagEventTable {
   etag: string;

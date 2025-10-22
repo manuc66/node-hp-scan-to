@@ -2,8 +2,8 @@
 
 import WalkupScanDestination, {
   WalkupScanDestinationData,
-} from "./WalkupScanDestination";
-import { parseXmlString } from "./ParseXmlString";
+} from "./WalkupScanDestination.js";
+import { parseXmlString } from "./ParseXmlString.js";
 
 export interface WalkupScanDestinationsData {
   "wus:WalkupScanDestinations": {

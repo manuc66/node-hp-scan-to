@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "outDir": "dist",
-    "module": "commonjs",
-    "target": "ES2021",
+    "module": "NodeNext",
+    "target": "ES2022",
     "noImplicitAny": true,
     "sourceMap": true,
     "inlineSources": false,
@@ -12,7 +12,7 @@
     "strict": true,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
+    "moduleResolution": "nodenext",
     "resolveJsonModule": true,
     "declaration": true,
     "noUnusedLocals": true,
@@ -21,12 +21,6 @@
     "noFallthroughCasesInSwitch": true,
     "noEmitOnError": true,
     "baseUrl": ".",
-	"paths": {
-		"*": [
-			"node_modules/*",
-			"src/types/*"
-		]
-    }
   },
   "exclude": [
     "node_modules",

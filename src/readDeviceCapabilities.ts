@@ -1,14 +1,14 @@
-import HPApi from "./HPApi";
-import ScanCaps from "./hpModels/ScanCaps";
-import DiscoveryTree from "./type/DiscoveryTree";
-import EsclScanCaps from "./hpModels/EsclScanCaps";
-import { IScanStatus } from "./hpModels/IScanStatus";
-import { DeviceCapabilities } from "./type/DeviceCapabilities";
-import { InputSource } from "./type/InputSource";
-import { IScanJobSettings } from "./hpModels/IScanJobSettings";
-import EsclScanJobSettings from "./hpModels/EsclScanJobSettings";
-import ScanJobSettings from "./hpModels/ScanJobSettings";
-import { ScanMode } from "./type/scanMode";
+import HPApi from "./HPApi.js";
+import ScanCaps from "./hpModels/ScanCaps.js";
+import DiscoveryTree from "./type/DiscoveryTree.js";
+import EsclScanCaps from "./hpModels/EsclScanCaps.js";
+import { IScanStatus } from "./hpModels/IScanStatus.js";
+import { DeviceCapabilities } from "./type/DeviceCapabilities.js";
+import { InputSource } from "./type/InputSource.js";
+import { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
+import EsclScanJobSettings from "./hpModels/EsclScanJobSettings.js";
+import ScanJobSettings from "./hpModels/ScanJobSettings.js";
+import { ScanMode } from "./type/scanMode.js";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,

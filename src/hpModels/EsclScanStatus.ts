@@ -1,11 +1,11 @@
 "use strict";
-import { InputSource } from "../type/InputSource";
-import { parseXmlString } from "./ParseXmlString";
-import { IScanStatus } from "./IScanStatus";
-import { ScannerState } from "./ScannerState";
-import { AdfState } from "./AdfState";
-import { EnumUtils } from "./EnumUtils";
-import PathHelper from "../PathHelper";
+import { InputSource } from "../type/InputSource.js";
+import { parseXmlString } from "./ParseXmlString.js";
+import { IScanStatus } from "./IScanStatus.js";
+import { ScannerState } from "./ScannerState.js";
+import { AdfState } from "./AdfState.js";
+import { EnumUtils } from "./EnumUtils.js";
+import PathHelper from "../PathHelper.js";
 
 export enum JobStateReason {
   JobCompletedSuccessfully = "JobCompletedSuccessfully",

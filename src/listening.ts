@@ -1,13 +1,13 @@
-import HPApi from "./HPApi";
-import Event from "./hpModels/Event";
-import Destination from "./hpModels/Destination";
-import { DeviceCapabilities } from "./type/DeviceCapabilities";
+import HPApi from "./HPApi.js";
+import Event from "./hpModels/Event.js";
+import Destination from "./hpModels/Destination.js";
+import { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import {
   RegistrationConfig,
   ScanTarget,
   SelectedScanTarget,
-} from "./type/scanTargetDefinitions";
-import { EventType } from "./hpModels/WalkupScanToCompEvent";
+} from "./type/scanTargetDefinitions.js";
+import { EventType } from "./hpModels/WalkupScanToCompEvent.js";
 
 export async function waitScanRequest(compEventURI: string): Promise<boolean> {
   const waitMax = 50;

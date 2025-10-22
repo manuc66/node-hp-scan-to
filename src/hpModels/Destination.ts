@@ -1,7 +1,7 @@
 "use strict";
 
 import { Builder } from "xml2js";
-import { parseXmlString } from "./ParseXmlString";
+import { parseXmlString } from "./ParseXmlString.js";
 
 type WalkupScanDestinationData = {
   WalkupScanDestination: {
