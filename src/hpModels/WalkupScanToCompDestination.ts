@@ -1,9 +1,9 @@
 "use strict";
 
-import { parseXmlString } from "./ParseXmlString";
-import { KnownShortcut } from "../type/KnownShortcut";
-import { ScanPlexMode } from "./ScanPlexMode";
-import { EnumUtils } from "./EnumUtils";
+import { parseXmlString } from "./ParseXmlString.js";
+import { KnownShortcut } from "../type/KnownShortcut.js";
+import { ScanPlexMode } from "./ScanPlexMode.js";
+import { EnumUtils } from "./EnumUtils.js";
 
 interface WalkupScanToCompDestinationRoot {
   "wus:WalkupScanToCompDestination": WalkupScanToCompDestinationData;

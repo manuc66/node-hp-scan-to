@@ -1,20 +1,20 @@
-import { ScanContent } from "./type/ScanContent";
-import { mergeToPdf } from "./pdfProcessing";
+import { ScanContent } from "./type/ScanContent.js";
+import { mergeToPdf } from "./pdfProcessing.js";
 import {
   convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless,
   mergeToPdfAndUploadAsSingleDocumentToPaperless,
   uploadImagesAsSeparateDocumentsToPaperless,
   uploadPdfToPaperless,
-} from "./paperless/paperless";
+} from "./paperless/paperless.js";
 import {
   uploadPdfToNextcloud,
   uploadImagesToNextcloud,
-} from "./nextcloud/nextcloud";
+} from "./nextcloud/nextcloud.js";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { PaperlessConfig } from "./paperless/PaperlessConfig";
-import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
-import { ScanConfig } from "./type/scanConfigs";
+import { PaperlessConfig } from "./paperless/PaperlessConfig.js";
+import { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
+import { ScanConfig } from "./type/scanConfigs.js";
 
 export async function postProcessing(
   scanConfig: ScanConfig,

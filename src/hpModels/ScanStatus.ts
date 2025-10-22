@@ -1,10 +1,10 @@
 "use strict";
-import { InputSource } from "../type/InputSource";
-import { parseXmlString } from "./ParseXmlString";
-import { IScanStatus } from "./IScanStatus";
-import { AdfState } from "./AdfState";
-import { ScannerState } from "./ScannerState";
-import { EnumUtils } from "./EnumUtils";
+import { InputSource } from "../type/InputSource.js";
+import { parseXmlString } from "./ParseXmlString.js";
+import { IScanStatus } from "./IScanStatus.js";
+import { AdfState } from "./AdfState.js";
+import { ScannerState } from "./ScannerState.js";
+import { EnumUtils } from "./EnumUtils.js";
 
 export interface ScanStatusData {
   ScanStatus: {

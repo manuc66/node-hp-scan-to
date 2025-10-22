@@ -1,4 +1,4 @@
-import HPApi from "../HPApi";
+import HPApi from "../HPApi.js";
 
 export async function clearRegistrationsCmd() {
   const dests = await HPApi.getWalkupScanToCompDestinations();

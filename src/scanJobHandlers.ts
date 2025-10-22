@@ -1,19 +1,19 @@
-import HPApi from "./HPApi";
-import { DeviceCapabilities } from "./type/DeviceCapabilities";
-import { waitForScanEventFromTarget } from "./listening";
-import { ScanContent, ScanPage } from "./type/ScanContent";
-import Job, { JobState, PageState } from "./hpModels/Job";
-import { delay } from "./delay";
-import PathHelper from "./PathHelper";
-import { InputSource } from "./type/InputSource";
-import { SelectedScanTarget } from "./type/scanTargetDefinitions";
+import HPApi from "./HPApi.js";
+import { DeviceCapabilities } from "./type/DeviceCapabilities.js";
+import { waitForScanEventFromTarget } from "./listening.js";
+import { ScanContent, ScanPage } from "./type/ScanContent.js";
+import Job, { JobState, PageState } from "./hpModels/Job.js";
+import { delay } from "./delay.js";
+import PathHelper from "./PathHelper.js";
+import { InputSource } from "./type/InputSource.js";
+import { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
 import fs from "fs/promises";
-import JpegUtil from "./JpegUtil";
-import { PageCountingStrategy } from "./type/pageCountingStrategy";
-import { IScanJobSettings } from "./hpModels/IScanJobSettings";
-import { EventType } from "./hpModels/WalkupScanToCompEvent";
-import { EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus";
-import EsclScanImageInfo from "./hpModels/EsclScanImageInfo";
+import JpegUtil from "./JpegUtil.js";
+import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
+import { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
+import { EventType } from "./hpModels/WalkupScanToCompEvent.js";
+import { EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus.js";
+import EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,

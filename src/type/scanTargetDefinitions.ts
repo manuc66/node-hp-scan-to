@@ -1,5 +1,5 @@
-import Event from "../hpModels/Event";
-import { DuplexAssemblyMode } from "./DuplexAssemblyMode";
+import Event from "../hpModels/Event.js";
+import { DuplexAssemblyMode } from "./DuplexAssemblyMode.js";
 
 export type RegistrationConfig = {
   label: string;

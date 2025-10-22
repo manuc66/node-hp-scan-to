@@ -8,6 +8,7 @@
     "cli",
     "computer"
   ],
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -15,10 +16,10 @@
   },
   "scripts": {
     "prestart": "node getCommitId.js",
-    "start": "ts-node src/index.ts",
-    "start:single-scan": "ts-node src/index.ts single-scan",
-    "start:adf-autoscan": "ts-node src/index.ts adf-autoscan",
-    "start-debug": "ts-node src/index.ts -D",
+    "start": "tsx src/index.ts",
+    "start:single-scan": "tsx src/index.ts single-scan",
+    "start:adf-autoscan": "tsx src/index.ts adf-autoscan",
+    "start-debug": "tsx src/index.ts -D",
     "prebuild": "node getCommitId.js",
     "lint": "eslint . --ext .ts,.tsx",
     "build": "tsc -p .",
@@ -27,8 +28,8 @@
     "start-dev": "nodemon",
     "prepublishOnly": "npm run prebuild && tsc -p ./ --outDir dist/",
     "prettier": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "test": "npx mocha --require ts-node/register ./test/**/*.test.ts",
-    "test-ci": "npx nyc --reporter=lcov mocha -r ts-node/register ./test/**/*.test.ts && codecov"
+    "test": "npx mocha --require tsx/register ./test/**/*.test.ts",
+    "test-ci": "npx nyc --reporter=lcov mocha -r tsx/register ./test/**/*.test.ts && codecov"
   },
   "files": [
     "dist",
@@ -73,7 +74,7 @@
     "nyc": "^17.1.0",
     "prettier": "^3.6.2",
     "ts-mockito": "^2.6.1",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.41.0",
     "yarn": "^1.22.22"

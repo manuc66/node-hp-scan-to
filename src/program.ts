@@ -5,28 +5,28 @@
 
 import os from "os";
 import { Bonjour } from "bonjour-service";
-import HPApi from "./HPApi";
-import { PaperlessConfig } from "./paperless/PaperlessConfig";
-import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
-import { startHealthCheckServer } from "./healthcheck";
+import HPApi from "./HPApi.js";
+import { PaperlessConfig } from "./paperless/PaperlessConfig.js";
+import { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
+import { startHealthCheckServer } from "./healthcheck.js";
 import fs from "fs";
 import { Command, Option } from "@commander-js/extra-typings";
-import { RegistrationConfig } from "./type/scanTargetDefinitions";
-import { listenCmd } from "./commands/listenCmd";
-import { adfAutoscanCmd } from "./commands/adfAutoscanCmd";
-import { singleScanCmd } from "./commands/singleScanCmd";
-import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd";
-import { DirectoryConfig } from "./type/directoryConfig";
+import { RegistrationConfig } from "./type/scanTargetDefinitions.js";
+import { listenCmd } from "./commands/listenCmd.js";
+import { adfAutoscanCmd } from "./commands/adfAutoscanCmd.js";
+import { singleScanCmd } from "./commands/singleScanCmd.js";
+import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd.js";
+import { DirectoryConfig } from "./type/directoryConfig.js";
 import {
   AdfAutoScanConfig,
   ScanConfig,
   SingleScanConfig,
-} from "./type/scanConfigs";
-import { FileConfig } from "./type/FileConfig";
-import { HelpGroupsHeadings } from "./type/helpGroupsHeadings";
+} from "./type/scanConfigs.js";
+import { FileConfig } from "./type/FileConfig.js";
+import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
 import { Server as NetServer } from "net";
-import { ScanMode } from "./type/scanMode";
-import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode";
+import { ScanMode } from "./type/scanMode.js";
+import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {

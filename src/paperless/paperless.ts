@@ -1,11 +1,11 @@
 import fsSync from "fs";
 import FormData from "form-data";
 import axios from "axios";
-import { ScanContent } from "../type/ScanContent";
+import { ScanContent } from "../type/ScanContent.js";
 import fs from "fs/promises";
-import { convertToPdf, mergeToPdf } from "../pdfProcessing";
-import { PaperlessConfig } from "./PaperlessConfig";
-import { ScanConfig } from "../type/scanConfigs";
+import { convertToPdf, mergeToPdf } from "../pdfProcessing.js";
+import { PaperlessConfig } from "./PaperlessConfig.js";
+import { ScanConfig } from "../type/scanConfigs.js";
 
 export async function uploadImagesAsSeparateDocumentsToPaperless(
   scanJobContent: ScanContent,
