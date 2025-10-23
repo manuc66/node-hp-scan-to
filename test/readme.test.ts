@@ -1,10 +1,11 @@
 import { describe } from "mocha";
 import fs from "node:fs";
 import path from "node:path";
-
-import { setupProgram } from "../src/program";
+import { setupProgram } from "../src/program.js";
 import { Help } from "@commander-js/extra-typings";
 import { expect } from "chai";
+
+const __dirname = import.meta.dirname;
 
 describe("README", () => {
   describe("command usage documentation", async () => {

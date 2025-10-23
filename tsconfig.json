@@ -2,7 +2,9 @@
   "compilerOptions": {
     "outDir": "dist",
     "module": "NodeNext",
-    "target": "ES2022",
+    "target": "ESNext",
+    "moduleResolution": "nodenext",
+    "lib": ["ES2023"],
     "noImplicitAny": true,
     "sourceMap": true,
     "inlineSources": false,
@@ -12,7 +14,6 @@
     "strict": true,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "nodenext",
     "resolveJsonModule": true,
     "declaration": true,
     "noUnusedLocals": true,
@@ -26,7 +27,8 @@
     "node_modules",
     "dist"
   ],
-  "include": [
-    "src"
-  ]
+  "include": ["src/**/*", "test/**/*"],
+  "ts-node": {
+    "esm": true
+  }
 }

@@ -1,9 +1,11 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import path from "path";
-import * as fs from "fs/promises";
-import ScanStatus from "../src/hpModels/ScanStatus";
-import { AdfState } from "../src/hpModels/AdfState";
+import path from "node:path";
+import * as fs from "node:fs/promises";
+import ScanStatus from "../src/hpModels/ScanStatus.js";
+import { AdfState } from "../src/hpModels/AdfState.js";
+
+const __dirname = import.meta.dirname;
 
 describe("ScanStatus", () => {
   describe("Parsing scanStatus.xml", async () => {

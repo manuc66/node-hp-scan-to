@@ -1,9 +1,9 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import PathHelper from "../src/PathHelper";
-import fs from "fs";
-import os from "os";
-import path from "path";
+import PathHelper from "../src/PathHelper.js";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 const now: Date = new Date();
 
