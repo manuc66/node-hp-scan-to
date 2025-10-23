@@ -6,23 +6,23 @@
 import os from "os";
 import { Bonjour } from "bonjour-service";
 import HPApi from "./HPApi.js";
-import { PaperlessConfig } from "./paperless/PaperlessConfig.js";
-import { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
+import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
+import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import { startHealthCheckServer } from "./healthcheck.js";
 import fs from "fs";
 import { Command, Option } from "@commander-js/extra-typings";
-import { RegistrationConfig } from "./type/scanTargetDefinitions.js";
+import type { RegistrationConfig } from "./type/scanTargetDefinitions.js";
 import { listenCmd } from "./commands/listenCmd.js";
 import { adfAutoscanCmd } from "./commands/adfAutoscanCmd.js";
 import { singleScanCmd } from "./commands/singleScanCmd.js";
 import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd.js";
-import { DirectoryConfig } from "./type/directoryConfig.js";
-import {
+import type { DirectoryConfig } from "./type/directoryConfig.js";
+import type {
   AdfAutoScanConfig,
   ScanConfig,
   SingleScanConfig,
 } from "./type/scanConfigs.js";
-import { FileConfig } from "./type/FileConfig.js";
+import type { FileConfig } from "./type/FileConfig.js";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
 import { Server as NetServer } from "net";
 import { ScanMode } from "./type/scanMode.js";
@@ -595,14 +595,14 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
         pollingInterval:
           (options.pollingInterval
             ? parseInt(options.pollingInterval, 10)
-            : undefined) ||
-          fileConfig.autoscan_pollingInterval ||
+            : undefined) ??
+          fileConfig.autoscan_pollingInterval ??
           1000,
         startScanDelay:
           (options.startScanDelay
             ? parseInt(options.startScanDelay, 10)
-            : undefined) ||
-          fileConfig.autoscan_startScanDelay ||
+            : undefined) ??
+          fileConfig.autoscan_startScanDelay ??
           5000,
       };
 

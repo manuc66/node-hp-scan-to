@@ -1,26 +1,26 @@
-import {
+import type {
   RegistrationConfig,
   SelectedScanTarget,
 } from "../type/scanTargetDefinitions.js";
 import HPApi from "../HPApi.js";
 import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
-import { ScanContent } from "../type/ScanContent.js";
+import type { ScanContent } from "../type/ScanContent.js";
 import { waitScanEvent, waitScanRequest } from "../listening.js";
 import {
   isPdf,
   saveScanFromEvent,
   tryGetDestination,
-  WalkupDestination,
+  type WalkupDestination,
 } from "../scanProcessing.js";
 import { postProcessing } from "../postProcessing.js";
 import PathHelper from "../PathHelper.js";
 import { delay } from "../delay.js";
 import { DuplexMode } from "../type/duplexMode.js";
 import { TargetDuplexMode } from "../type/targetDuplexMode.js";
-import { ScanConfig } from "../type/scanConfigs.js";
+import type { ScanConfig } from "../type/scanConfigs.js";
 import { PageCountingStrategy } from "../type/pageCountingStrategy.js";
 import { ScanPlexMode } from "../hpModels/ScanPlexMode.js";
-import { DeviceCapabilities } from "../type/DeviceCapabilities.js";
+import type { DeviceCapabilities } from "../type/DeviceCapabilities.js";
 import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode.js";
 
 let iteration = 0;
@@ -340,12 +340,12 @@ export function assembleDuplexScan(
   return duplexScan;
 }
 
-type ScanParameters = {
+interface ScanParameters {
   pageCountingStrategy: PageCountingStrategy;
   scanToPdf: boolean;
   scanDate: Date;
   scanCount: number;
-};
+}
 
 async function setupScanParameters(
   duplexMode: DuplexMode,
@@ -433,7 +433,7 @@ async function processFinishedPartialDuplexScan(
   );
 }
 
-type FrontOfDoubleSidedScanContext = {
+interface FrontOfDoubleSidedScanContext {
   scanConfig: ScanConfig;
   folder: string;
   tempFolder: string;
@@ -441,4 +441,4 @@ type FrontOfDoubleSidedScanContext = {
   scanJobContent: ScanContent;
   scanDate: Date;
   scanToPdf: boolean;
-};
+}

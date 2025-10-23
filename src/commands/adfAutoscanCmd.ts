@@ -2,7 +2,7 @@ import HPApi from "../HPApi.js";
 import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
 import { scanFromAdf, waitAdfLoaded } from "../scanProcessing.js";
 import { delay } from "../delay.js";
-import { AdfAutoScanConfig } from "../type/scanConfigs.js";
+import type { AdfAutoScanConfig } from "../type/scanConfigs.js";
 import PathHelper from "../PathHelper.js";
 
 let iteration = 0;

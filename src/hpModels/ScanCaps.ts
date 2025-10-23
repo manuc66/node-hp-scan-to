@@ -39,9 +39,9 @@ export default class ScanCaps {
   }
 
   get platenMaxWidth(): number | null {
-    if (Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Platen")) {
+    if (Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Platen")) {
       return Number.parseInt(
-        this.data["ScanCaps"]["Platen"][0]["InputSourceCaps"][0]["MaxWidth"][0],
+        this.data.ScanCaps.Platen[0].InputSourceCaps[0].MaxWidth[0],
         10,
       );
     } else {
@@ -50,11 +50,9 @@ export default class ScanCaps {
   }
 
   get platenMaxHeight(): number | null {
-    if (Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Platen")) {
+    if (Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Platen")) {
       return Number.parseInt(
-        this.data["ScanCaps"]["Platen"][0]["InputSourceCaps"][0][
-          "MaxHeight"
-        ][0],
+        this.data.ScanCaps.Platen[0].InputSourceCaps[0].MaxHeight[0],
         10,
       );
     } else {
@@ -63,9 +61,9 @@ export default class ScanCaps {
   }
 
   get adfMaxWidth(): number | null {
-    if (Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf")) {
+    if (Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Adf")) {
       return Number.parseInt(
-        this.data["ScanCaps"]["Adf"][0]["InputSourceCaps"][0]["MaxWidth"][0],
+        this.data.ScanCaps.Adf[0].InputSourceCaps[0].MaxWidth[0],
         10,
       );
     } else {
@@ -74,9 +72,9 @@ export default class ScanCaps {
   }
 
   get adfMaxHeight(): number | null {
-    if (Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf")) {
+    if (Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Adf")) {
       return Number.parseInt(
-        this.data["ScanCaps"]["Adf"][0]["InputSourceCaps"][0]["MaxHeight"][0],
+        this.data.ScanCaps.Adf[0].InputSourceCaps[0].MaxHeight[0],
         10,
       );
     } else {
@@ -86,16 +84,14 @@ export default class ScanCaps {
 
   get adfDuplexMaxWidth(): number | null {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf") &&
+      Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Adf") &&
       Object.prototype.hasOwnProperty.call(
-        this.data["ScanCaps"]["Adf"][0],
+        this.data.ScanCaps.Adf[0],
         "AdfDuplexer",
       )
     ) {
       return Number.parseInt(
-        this.data["ScanCaps"]["Adf"][0]["AdfDuplexer"][0][
-          "AdfDuplexMaxWidth"
-        ][0],
+        this.data.ScanCaps.Adf[0].AdfDuplexer[0].AdfDuplexMaxWidth[0],
         10,
       );
     } else {
@@ -105,16 +101,14 @@ export default class ScanCaps {
 
   get adfDuplexMaxHeight(): number | null {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf") &&
+      Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Adf") &&
       Object.prototype.hasOwnProperty.call(
-        this.data["ScanCaps"]["Adf"][0],
+        this.data.ScanCaps.Adf[0],
         "AdfDuplexer",
       )
     ) {
       return Number.parseInt(
-        this.data["ScanCaps"]["Adf"][0]["AdfDuplexer"][0][
-          "AdfDuplexMaxHeight"
-        ][0],
+        this.data.ScanCaps.Adf[0].AdfDuplexer[0].AdfDuplexMaxHeight[0],
         10,
       );
     } else {
@@ -124,14 +118,13 @@ export default class ScanCaps {
 
   get hasAdfDetectPaperLoaded(): boolean {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf") &&
+      Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Adf") &&
       Object.prototype.hasOwnProperty.call(
-        this.data["ScanCaps"]["Adf"][0],
+        this.data.ScanCaps.Adf[0],
         "AdfOptions",
       )
     ) {
-      const options =
-        this.data["ScanCaps"]["Adf"][0]["AdfOptions"][0]["AdfOption"];
+      const options = this.data.ScanCaps.Adf[0].AdfOptions[0].AdfOption;
       return options.includes("DetectPaperLoaded");
     }
     return false;
@@ -139,20 +132,17 @@ export default class ScanCaps {
 
   get hasAdfDuplex(): boolean {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["ScanCaps"], "Adf") &&
+      Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Adf") &&
       Object.prototype.hasOwnProperty.call(
-        this.data["ScanCaps"]["Adf"][0],
+        this.data.ScanCaps.Adf[0],
         "AdfOptions",
       )
     ) {
-      const options =
-        this.data["ScanCaps"]["Adf"][0]["AdfOptions"][0]["AdfOption"];
+      const options = this.data.ScanCaps.Adf[0].AdfOptions[0].AdfOption;
       return options.includes("Duplex");
     }
     return false;
   }
 
-  get isEscl(): boolean {
-    return false;
-  }
+  readonly isEscl: boolean = false;
 }

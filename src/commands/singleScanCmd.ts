@@ -1,7 +1,7 @@
 import HPApi from "../HPApi.js";
 import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
 import { singleScan } from "../scanProcessing.js";
-import { SingleScanConfig } from "../type/scanConfigs.js";
+import type { SingleScanConfig } from "../type/scanConfigs.js";
 import PathHelper from "../PathHelper.js";
 
 export async function singleScanCmd(

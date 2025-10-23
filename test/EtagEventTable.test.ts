@@ -3,7 +3,7 @@ import { expect } from "chai";
 import path from "node:path";
 import * as fs from "node:fs/promises";
 import EventTable from "../src/hpModels/EventTable.js";
-import { EtagEventTable } from "../src/hpModels/EventTable.js";
+import type { EtagEventTable } from "../src/hpModels/EventTable.js";
 
 const __dirname = import.meta.dirname;
 

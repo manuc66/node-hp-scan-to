@@ -1,7 +1,7 @@
 "use strict";
 import { InputSource } from "../type/InputSource.js";
 import { parseXmlString } from "./ParseXmlString.js";
-import { IScanStatus } from "./IScanStatus.js";
+import type { IScanStatus } from "./IScanStatus.js";
 import { AdfState } from "./AdfState.js";
 import { ScannerState } from "./ScannerState.js";
 import { EnumUtils } from "./EnumUtils.js";
@@ -28,18 +28,18 @@ export default class ScanStatus implements IScanStatus {
     return EnumUtils.getState(
       "ScannerState",
       ScannerState,
-      this.data["ScanStatus"].ScannerState["0"],
+      this.data.ScanStatus.ScannerState["0"],
     );
   }
 
   get adfState(): AdfState {
     if (
-      Object.prototype.hasOwnProperty.call(this.data["ScanStatus"], "AdfState")
+      Object.prototype.hasOwnProperty.call(this.data.ScanStatus, "AdfState")
     ) {
       return EnumUtils.getState(
         "AdfState",
         AdfState,
-        this.data["ScanStatus"].AdfState["0"],
+        this.data.ScanStatus.AdfState["0"],
       );
     } else {
       return AdfState.Empty;

@@ -1,11 +1,11 @@
 import Event from "../hpModels/Event.js";
 import { DuplexAssemblyMode } from "./DuplexAssemblyMode.js";
 
-export type RegistrationConfig = {
+export interface RegistrationConfig {
   label: string;
   isDuplexSingleSide: boolean;
   duplexAssemblyMode?: DuplexAssemblyMode;
-};
+}
 
 export type ScanTarget = RegistrationConfig & {
   resourceURI: string;

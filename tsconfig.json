@@ -2,8 +2,8 @@
   "compilerOptions": {
     "outDir": "dist",
     "module": "NodeNext",
-    "target": "ESNext",
-    "moduleResolution": "nodenext",
+    "target": "ES2023",
+    "moduleResolution": "NodeNext",
     "lib": ["ES2023"],
     "noImplicitAny": true,
     "sourceMap": true,
@@ -21,14 +21,13 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noEmitOnError": true,
-    "baseUrl": ".",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "baseUrl": "."
   },
   "exclude": [
     "node_modules",
     "dist"
   ],
-  "include": ["src/**/*", "test/**/*"],
-  "ts-node": {
-    "esm": true
-  }
+  "include": ["src/**/*", "test/**/*"]
 }

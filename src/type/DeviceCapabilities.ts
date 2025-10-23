@@ -1,5 +1,5 @@
-import { IScanStatus } from "../hpModels/IScanStatus.js";
-import { IScanJobSettings } from "../hpModels/IScanJobSettings.js";
+import type { IScanStatus } from "../hpModels/IScanStatus.js";
+import type { IScanJobSettings } from "../hpModels/IScanJobSettings.js";
 import { InputSource } from "./InputSource.js";
 import { ScanMode } from "./scanMode.js";
 

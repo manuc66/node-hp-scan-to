@@ -1,7 +1,7 @@
 import xml2js from "xml2js";
 import { InputSource } from "../type/InputSource.js";
 import { parseXmlString } from "./ParseXmlString.js";
-import { IScanJobSettings } from "./IScanJobSettings.js";
+import type { IScanJobSettings } from "./IScanJobSettings.js";
 import { ScanMode } from "../type/scanMode.js";
 
 export default class ScanJobSettings implements IScanJobSettings {
@@ -102,7 +102,7 @@ export default class ScanJobSettings implements IScanJobSettings {
 
     parsed.ScanSettings.InputSource[0] = this.inputSource;
     if (this.inputSource === InputSource.Adf && this.isDuplex) {
-      parsed.ScanSettings["AdfOptions"] = [{ AdfOption: ["Duplex"] }];
+      parsed.ScanSettings.AdfOptions = [{ AdfOption: ["Duplex"] }];
     }
     parsed.ScanSettings.ContentType[0] = this.contentType;
 

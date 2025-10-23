@@ -3,9 +3,9 @@
 
 "use strict";
 
-import config, { IConfig } from "config";
+import config, { type IConfig } from "config";
 import commitInfo from "./commitInfo.json" with { type: "json" };
-import { configSchema, FileConfig } from "./type/FileConfig.js";
+import { configSchema, type FileConfig } from "./type/FileConfig.js";
 import { setupProgram } from "./program.js";
 
 const validateConfig = (config: IConfig) => {

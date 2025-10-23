@@ -1,7 +1,7 @@
 "use strict";
 
 import WalkupScanDestination, {
-  WalkupScanDestinationData,
+  type WalkupScanDestinationData,
 } from "./WalkupScanDestination.js";
 import { parseXmlString } from "./ParseXmlString.js";
 

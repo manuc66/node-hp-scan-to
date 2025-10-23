@@ -1,7 +1,7 @@
 "use strict";
 import { InputSource } from "../type/InputSource.js";
 import { parseXmlString } from "./ParseXmlString.js";
-import { IScanStatus } from "./IScanStatus.js";
+import type { IScanStatus } from "./IScanStatus.js";
 import { ScannerState } from "./ScannerState.js";
 import { AdfState } from "./AdfState.js";
 import { EnumUtils } from "./EnumUtils.js";

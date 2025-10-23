@@ -1,16 +1,16 @@
 import HPApi from "./HPApi.js";
-import { DeviceCapabilities } from "./type/DeviceCapabilities.js";
+import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import { waitForScanEventFromTarget } from "./listening.js";
-import { ScanContent, ScanPage } from "./type/ScanContent.js";
+import type { ScanContent, ScanPage } from "./type/ScanContent.js";
 import Job, { JobState, PageState } from "./hpModels/Job.js";
 import { delay } from "./delay.js";
 import PathHelper from "./PathHelper.js";
 import { InputSource } from "./type/InputSource.js";
-import { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
+import type { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
 import fs from "fs/promises";
 import JpegUtil from "./JpegUtil.js";
 import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
-import { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
+import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
 import { EventType } from "./hpModels/WalkupScanToCompEvent.js";
 import { EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus.js";
 import EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
@@ -191,7 +191,7 @@ function logJobInfo(
   scanImageInfo: EsclScanImageInfo,
   jobInfo: EsclJobInfo | undefined,
 ) {
-  if (jobUrl.indexOf(scanImageInfo.jobURI) == -1) {
+  if (!jobUrl.includes(scanImageInfo.jobURI)) {
     // for an unknown reason this happens on an HP Smart Tank Plus 570!
     console.log(
       `Incoherent state !!!! Job URI has changed: ${jobUrl} -> ${scanImageInfo.jobURI} -- crazy!`,

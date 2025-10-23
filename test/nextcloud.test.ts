@@ -1,11 +1,11 @@
 import { describe } from "mocha";
 import path from "node:path";
-import { ScanContent, ScanPage } from "../src/type/ScanContent.js";
+import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import {
   uploadImagesToNextcloud,
   uploadPdfToNextcloud,
 } from "../src/nextcloud/nextcloud.js";
-import { NextcloudConfig } from "../src/nextcloud/NextcloudConfig.js";
+import type { NextcloudConfig } from "../src/nextcloud/NextcloudConfig.js";
 import { convertToPdf } from "../src/pdfProcessing.js";
 import fs from "node:fs";
 import nock from "nock";

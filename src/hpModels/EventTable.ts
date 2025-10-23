@@ -1,6 +1,6 @@
 "use strict";
 
-import Event, { EventData } from "./Event.js";
+import Event, { type EventData } from "./Event.js";
 import { parseXmlString } from "./ParseXmlString.js";
 
 export interface EtagEventTable {
@@ -33,7 +33,7 @@ export default class EventTable {
 
   get events(): Event[] {
     const eventTable = this.data["ev:EventTable"];
-    if (eventTable != null && eventTable["ev:Event"] != null) {
+    if (eventTable?.["ev:Event"] != null) {
       return eventTable["ev:Event"].map((x) => new Event(x));
     } else {
       return [];
