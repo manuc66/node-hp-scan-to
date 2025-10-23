@@ -1,8 +1,10 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import path from "path";
-import * as fs from "fs/promises";
-import EsclScanCaps from "../src/hpModels/EsclScanCaps";
+import path from "node:path";
+import * as fs from "node:fs/promises";
+import EsclScanCaps from "../src/hpModels/EsclScanCaps.js";
+
+const __dirname = import.meta.dirname;
 
 describe("EsclScanCaps", () => {
   describe("Parsing eSCL_ScannerCapabilities_Duplex.xml", async () => {
