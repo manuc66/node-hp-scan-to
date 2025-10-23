@@ -22,7 +22,6 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "build": "tsc -p .",
-    "build:docker": "tsc -p .",
     "built-start": "tsc -p . && node --trace-warnings ./dist/index.js",
     "start-dev": "tsx watch src/index.ts",
     "prepublishOnly": "npm run prebuild && tsc -p ./ --outDir dist/",
@@ -37,7 +36,7 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=20.18.1"
+    "node": ">=20.11.0"
   },
   "author": {
     "email": "manuc66@gmail.com",
