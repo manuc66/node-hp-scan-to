@@ -4,13 +4,13 @@ import { promisify } from "util";
 import fs from "fs";
 import axios, {
   AxiosError,
-  AxiosRequestConfig,
-  AxiosResponse,
-  RawAxiosRequestHeaders,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+  type RawAxiosRequestHeaders,
 } from "axios";
 import * as stream from "stream";
 import { Stream } from "stream";
-import EventTable, { EtagEventTable } from "./hpModels/EventTable.js";
+import EventTable, { type EtagEventTable } from "./hpModels/EventTable.js";
 import Job from "./hpModels/Job.js";
 import ScanStatus from "./hpModels/ScanStatus.js";
 import WalkupScanDestination from "./hpModels/WalkupScanDestination.js";
@@ -30,7 +30,7 @@ import * as net from "net";
 import EsclScanJobManifest from "./hpModels/EsclManifest.js";
 import EsclScanCaps from "./hpModels/EsclScanCaps.js";
 import EsclScanStatus from "./hpModels/EsclScanStatus.js";
-import { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
+import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
 import EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import PathHelper from "./PathHelper.js";
 
@@ -95,7 +95,7 @@ export default class HPApi {
   }
 
   static async isAlive(timeout: number | null = null): Promise<boolean> {
-    const definedTimeout = timeout || 10000; // default of 10 seconds
+    const definedTimeout = timeout ?? 10000; // default of 10 seconds
     return new Promise((resolve) => {
       const socket = net.createConnection(80, printerIP, () => {
         clearTimeout(timer);
@@ -147,7 +147,7 @@ export default class HPApi {
   }
 
   static async getWalkupScanDestinations(
-    uri: string = "/WalkupScan/WalkupScanDestinations",
+    uri = "/WalkupScan/WalkupScanDestinations",
   ): Promise<WalkupScanDestinations> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -385,8 +385,8 @@ export default class HPApi {
   }
 
   static async getEvents(
-    etag: string = "",
-    decisecondTimeout: number = 0,
+    etag = "",
+    decisecondTimeout = 0,
   ): Promise<EtagEventTable> {
     const url = this.appendTimeout("/EventMgmt/EventTable", decisecondTimeout);
 
@@ -416,7 +416,7 @@ export default class HPApi {
       throw error;
     }
 
-    const etagReceived = response.headers["etag"] as unknown;
+    const etagReceived = response.headers.etag as unknown;
     if (typeof etagReceived !== "string") {
       throw new Error("Missing etag when getting Job");
     }
@@ -436,9 +436,7 @@ export default class HPApi {
   }
 
   static appendTimeout(url: string, timeout: number | null = null): string {
-    if (timeout == null) {
-      timeout = 1200;
-    }
+    timeout ??= 1200;
     if (timeout > 0) {
       url += "?timeout=" + timeout;
     }

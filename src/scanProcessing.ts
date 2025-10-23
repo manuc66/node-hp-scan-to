@@ -2,21 +2,21 @@ import Event from "./hpModels/Event.js";
 import WalkupScanDestination from "./hpModels/WalkupScanDestination.js";
 import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination.js";
 import HPApi from "./HPApi.js";
-import { DeviceCapabilities } from "./type/DeviceCapabilities.js";
-import { ScanContent } from "./type/ScanContent.js";
+import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
+import type { ScanContent } from "./type/ScanContent.js";
 import { delay } from "./delay.js";
 import { InputSource } from "./type/InputSource.js";
 import { postProcessing } from "./postProcessing.js";
-import { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
+import type { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers.js";
 import { KnownShortcut } from "./type/KnownShortcut.js";
-import {
+import type {
   AdfAutoScanConfig,
   ScanConfig,
   SingleScanConfig,
 } from "./type/scanConfigs.js";
 import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
-import { IScanStatus } from "./hpModels/IScanStatus.js";
+import type { IScanStatus } from "./hpModels/IScanStatus.js";
 import { ScannerState } from "./hpModels/ScannerState.js";
 import { ScanPlexMode } from "./hpModels/ScanPlexMode.js";
 

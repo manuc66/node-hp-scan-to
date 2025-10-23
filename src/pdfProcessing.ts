@@ -1,4 +1,4 @@
-import { ScanContent, ScanPage } from "./type/ScanContent.js";
+import type { ScanContent, ScanPage } from "./type/ScanContent.js";
 import PathHelper from "./PathHelper.js";
 import fs from "fs/promises";
 import path from "path";

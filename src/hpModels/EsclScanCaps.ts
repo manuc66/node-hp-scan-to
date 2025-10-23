@@ -194,7 +194,5 @@ export default class EsclScanCaps {
     return false;
   }
 
-  get isEscl(): boolean {
-    return true;
-  }
+  readonly isEscl: boolean = true;
 }

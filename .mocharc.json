@@ -1,5 +1,8 @@
 {
-  "extension": ["ts"],
+  "spec": ["test/**/*.test.ts"],
+  "node-option": ["import=tsx"],
+  "extensions": ["ts"],
   "reporter": "spec",
-  "spec": ["test/**/*.ts"]
+  "timeout": 5000,
+  "color": true
 }

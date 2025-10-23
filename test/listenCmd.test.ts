@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ScanContent, ScanPage } from "../src/type/ScanContent.js";
+import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import { assembleDuplexScan } from "../src/commands/listenCmd.js";
 import { DuplexAssemblyMode } from "../src/type/DuplexAssemblyMode.js";
 

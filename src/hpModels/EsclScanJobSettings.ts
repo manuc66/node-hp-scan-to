@@ -1,7 +1,7 @@
 import xml2js from "xml2js";
 import { InputSource } from "../type/InputSource.js";
 import { parseXmlString } from "./ParseXmlString.js";
-import { IScanJobSettings } from "./IScanJobSettings.js";
+import type { IScanJobSettings } from "./IScanJobSettings.js";
 import { ScanMode } from "../type/scanMode.js";
 
 export default class EsclScanJobSettings implements IScanJobSettings {

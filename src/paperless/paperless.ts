@@ -1,18 +1,18 @@
 import fsSync from "fs";
 import FormData from "form-data";
 import axios from "axios";
-import { ScanContent } from "../type/ScanContent.js";
+import type { ScanContent } from "../type/ScanContent.js";
 import fs from "fs/promises";
 import { convertToPdf, mergeToPdf } from "../pdfProcessing.js";
-import { PaperlessConfig } from "./PaperlessConfig.js";
-import { ScanConfig } from "../type/scanConfigs.js";
+import type { PaperlessConfig } from "./PaperlessConfig.js";
+import type { ScanConfig } from "../type/scanConfigs.js";
 
 export async function uploadImagesAsSeparateDocumentsToPaperless(
   scanJobContent: ScanContent,
   paperlessConfig: PaperlessConfig,
 ) {
-  for (let i = 0; i < scanJobContent.elements.length; ++i) {
-    const filePath = scanJobContent.elements[i].path;
+  for (const item of scanJobContent.elements) {
+    const filePath = item.path;
     await uploadToPaperless(filePath, paperlessConfig);
   }
 }
@@ -21,18 +21,15 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
   scanJobContent: ScanContent,
   paperlessConfig: PaperlessConfig,
 ) {
-  for (let i = 0; i < scanJobContent.elements.length; ++i) {
-    const pdfFilePath = await convertToPdf(
-      scanJobContent.elements[i],
-      !paperlessConfig.keepFiles,
-    );
+  for (const item of scanJobContent.elements) {
+    const pdfFilePath = await convertToPdf(item, !paperlessConfig.keepFiles);
     if (pdfFilePath) {
       await uploadToPaperless(pdfFilePath, paperlessConfig);
       await fs.unlink(pdfFilePath);
     } else {
       console.log(
         "Pdf generation has failed, nothing is going to be uploaded to paperless for: " +
-          scanJobContent.elements[i].path,
+          item.path,
       );
     }
   }
