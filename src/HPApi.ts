@@ -349,9 +349,9 @@ export default class HPApi {
 
     if (
       response.status === 201 &&
-      typeof response.headers.location === "string"
+      typeof response.headers['location'] === "string"
     ) {
-      return PathHelper.getPathFromHttpLocation(response.headers.location);
+      return PathHelper.getPathFromHttpLocation(response.headers['location']);
     } else {
       throw new Error(
         `Unexpected status code when getting ${url}: ${response.status}`,
@@ -374,12 +374,12 @@ export default class HPApi {
 
     if (
       response.status === 201 &&
-      typeof response.headers.location === "string"
+      typeof response.headers['location'] === "string"
     ) {
-      return PathHelper.getPathFromHttpLocation(response.headers.location);
+      return PathHelper.getPathFromHttpLocation(response.headers['location']);
     } else {
       throw new Error(
-        `Unexpected status code or location when registering to ${url}: ${response.status} - ${response.headers.location}`,
+        `Unexpected status code or location when registering to ${url}: ${response.status} - ${response.headers['location']}`,
       );
     }
   }
@@ -416,7 +416,7 @@ export default class HPApi {
       throw error;
     }
 
-    const etagReceived = response.headers.etag as unknown;
+    const etagReceived = response.headers['etag'] as unknown;
     if (typeof etagReceived !== "string") {
       throw new Error("Missing etag when getting Job");
     }
@@ -525,12 +525,12 @@ export default class HPApi {
 
     if (
       response.status === 201 &&
-      typeof response.headers.location === "string"
+      typeof response.headers['location'] === "string"
     ) {
-      return response.headers.location;
+      return response.headers['location'];
     } else {
       throw new Error(
-        `Unexpected status code or location when posting job: ${response.status} - ${response.headers.location}`,
+        `Unexpected status code or location when posting job: ${response.status} - ${response.headers['location']}`,
       );
     }
   }
@@ -549,12 +549,12 @@ export default class HPApi {
 
     if (
       response.status === 201 &&
-      typeof response.headers.location === "string"
+      typeof response.headers['location'] === "string"
     ) {
-      return response.headers.location;
+      return response.headers['location'];
     } else {
       throw new Error(
-        `Unexpected status code or location when posting job: ${response.status} - ${response.headers.location}`,
+        `Unexpected status code or location when posting job: ${response.status} - ${response.headers['location']}`,
       );
     }
   }
@@ -589,7 +589,7 @@ export default class HPApi {
       url: binaryURL,
       method: "GET",
       responseType: "stream",
-      timeout,
+      ...(timeout !== undefined && { timeout })
     });
 
     const destinationFileStream = fs.createWriteStream(destination);

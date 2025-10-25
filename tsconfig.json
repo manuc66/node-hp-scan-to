@@ -24,12 +24,24 @@
     "noEmitOnError": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    //"noUncheckedIndexedAccess": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
+    "useUnknownInCatchVariables": true,
+    "noImplicitUseStrict": false,
     "baseUrl": ".",
 
   },
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "test"
   ],
   "include": ["src/**/*"]
 }
