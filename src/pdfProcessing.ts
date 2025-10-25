@@ -13,7 +13,7 @@ export async function mergeToPdf(
   deleteFiles: boolean,
 ): Promise<string | null> {
   if (scanJobContent.elements.length > 0) {
-    const pdfFilePath: string = PathHelper.getFileForScan(
+    const pdfFilePath: string = await PathHelper.getFileForScan(
       folder,
       scanCount,
       filePattern,

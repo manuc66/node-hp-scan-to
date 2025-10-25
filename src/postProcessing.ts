@@ -129,24 +129,24 @@ function displayPdfScan(
   }
 
   console.log(
-    `The following page(s) have been rendered inside '${pdfFilePath}' as part of scan #${scanCount}: `,
+    `Scan #${scanCount} saved as PDF: ${pdfFilePath} with the following pages:`,
   );
   scanJobContent.elements.forEach((e) =>
     console.log(
-      `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
+      `\t- page ${e.pageNumber.toString().padStart(3, " ")} | ${e.width}x${
         e.height
-      }`,
+      } | (temp file deleted ${e.path})`,
     ),
   );
 }
 
 function displayJpegScan(scanJobContent: ScanContent, scanCount: number) {
-  console.log(`The following page(s) are part of scan #${scanCount}: `);
+  console.log(`Scan #${scanCount} completed with the following pages:`);
   scanJobContent.elements.forEach((e) =>
     console.log(
-      `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
+      `\t- page ${e.pageNumber.toString().padStart(3, " ")} | ${e.width}x${
         e.height
-      } - ${e.path}`,
+      } | ${e.path}`,
     ),
   );
 }
