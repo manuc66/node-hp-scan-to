@@ -1,14 +1,14 @@
-import HPApi from "./HPApi";
-import ScanCaps from "./hpModels/ScanCaps";
-import DiscoveryTree from "./type/DiscoveryTree";
-import EsclScanCaps from "./hpModels/EsclScanCaps";
-import { IScanStatus } from "./hpModels/IScanStatus";
-import { DeviceCapabilities } from "./type/DeviceCapabilities";
-import { InputSource } from "./type/InputSource";
-import { IScanJobSettings } from "./hpModels/IScanJobSettings";
-import EsclScanJobSettings from "./hpModels/EsclScanJobSettings";
-import ScanJobSettings from "./hpModels/ScanJobSettings";
-import { ScanMode } from "./type/scanMode";
+import HPApi from "./HPApi.js";
+import ScanCaps from "./hpModels/ScanCaps.js";
+import DiscoveryTree from "./type/DiscoveryTree.js";
+import EsclScanCaps from "./hpModels/EsclScanCaps.js";
+import type { IScanStatus } from "./hpModels/IScanStatus.js";
+import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
+import { InputSource } from "./type/InputSource.js";
+import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
+import EsclScanJobSettings from "./hpModels/EsclScanJobSettings.js";
+import ScanJobSettings from "./hpModels/ScanJobSettings.js";
+import { ScanMode } from "./type/scanMode.js";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,
@@ -139,15 +139,15 @@ export async function readDeviceCapabilities(
   return {
     supportsMultiItemScanFromPlaten,
     useWalkupScanToComp,
-    platenMaxWidth: scanCaps?.platenMaxWidth || null,
-    platenMaxHeight: scanCaps?.platenMaxHeight || null,
-    adfMaxWidth: scanCaps?.adfMaxWidth || null,
-    adfMaxHeight: scanCaps?.adfMaxHeight || null,
-    adfDuplexMaxWidth: scanCaps?.adfDuplexMaxWidth || null,
-    adfDuplexMaxHeight: scanCaps?.adfDuplexMaxHeight || null,
-    hasAdfDuplex: scanCaps?.hasAdfDuplex || false,
-    hasAdfDetectPaperLoaded: scanCaps?.hasAdfDetectPaperLoaded || false,
-    isEscl: scanCaps?.isEscl || false,
+    platenMaxWidth: scanCaps?.platenMaxWidth ?? null,
+    platenMaxHeight: scanCaps?.platenMaxHeight ?? null,
+    adfMaxWidth: scanCaps?.adfMaxWidth ?? null,
+    adfMaxHeight: scanCaps?.adfMaxHeight ?? null,
+    adfDuplexMaxWidth: scanCaps?.adfDuplexMaxWidth ?? null,
+    adfDuplexMaxHeight: scanCaps?.adfDuplexMaxHeight ?? null,
+    hasAdfDuplex: scanCaps?.hasAdfDuplex ?? false,
+    hasAdfDetectPaperLoaded: scanCaps?.hasAdfDetectPaperLoaded ?? false,
+    isEscl: scanCaps?.isEscl ?? false,
     getScanStatus,
     createScanJobSettings,
     submitScanJob,

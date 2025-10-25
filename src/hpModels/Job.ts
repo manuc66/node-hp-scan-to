@@ -1,7 +1,7 @@
 "use strict";
 
-import { parseXmlString } from "./ParseXmlString";
-import { EnumUtils } from "./EnumUtils";
+import { parseXmlString } from "./ParseXmlString.js";
+import { EnumUtils } from "./EnumUtils.js";
 
 export interface JobData {
   "j:Job": {

@@ -1,8 +1,8 @@
 "use strict";
-import { KnownShortcut } from "../type/KnownShortcut";
-import { parseXmlString } from "./ParseXmlString";
-import { EnumUtils } from "./EnumUtils";
-import { ScanPlexMode } from "./ScanPlexMode";
+import { KnownShortcut } from "../type/KnownShortcut.js";
+import { parseXmlString } from "./ParseXmlString.js";
+import { EnumUtils } from "./EnumUtils.js";
+import { ScanPlexMode } from "./ScanPlexMode.js";
 
 interface WalkupScanDestinationsData {
   "wus:WalkupScanDestinations": {

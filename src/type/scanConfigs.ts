@@ -1,9 +1,9 @@
-import { DirectoryConfig } from "./directoryConfig";
-import { PaperlessConfig } from "../paperless/PaperlessConfig";
-import { NextcloudConfig } from "../nextcloud/NextcloudConfig";
-import { ScanMode } from "./scanMode";
+import type { DirectoryConfig } from "./directoryConfig.js";
+import type { PaperlessConfig } from "../paperless/PaperlessConfig.js";
+import type { NextcloudConfig } from "../nextcloud/NextcloudConfig.js";
+import { ScanMode } from "./scanMode.js";
 
-export type ScanConfig = {
+export interface ScanConfig {
   resolution: number;
   mode: ScanMode;
   width: number | null;
@@ -12,7 +12,7 @@ export type ScanConfig = {
   paperlessConfig: PaperlessConfig | undefined;
   nextcloudConfig: NextcloudConfig | undefined;
   preferEscl: boolean;
-};
+}
 export type AdfAutoScanConfig = ScanConfig & {
   isDuplex: boolean;
   generatePdf: boolean;

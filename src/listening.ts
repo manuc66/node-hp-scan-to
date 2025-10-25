@@ -1,13 +1,13 @@
-import HPApi from "./HPApi";
-import Event from "./hpModels/Event";
-import Destination from "./hpModels/Destination";
-import { DeviceCapabilities } from "./type/DeviceCapabilities";
-import {
+import HPApi from "./HPApi.js";
+import Event from "./hpModels/Event.js";
+import Destination from "./hpModels/Destination.js";
+import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
+import type {
   RegistrationConfig,
   ScanTarget,
   SelectedScanTarget,
-} from "./type/scanTargetDefinitions";
-import { EventType } from "./hpModels/WalkupScanToCompEvent";
+} from "./type/scanTargetDefinitions.js";
+import { EventType } from "./hpModels/WalkupScanToCompEvent.js";
 
 export async function waitScanRequest(compEventURI: string): Promise<boolean> {
   const waitMax = 50;
@@ -75,9 +75,7 @@ async function waitForScanEventInternal(
       scanTarget = scanTargets[i];
       acceptedScanEvent = eventTable.eventTable.events.find(
         (ev) =>
-          ev.isScanEvent &&
-          ev.destinationURI &&
-          ev.destinationURI.indexOf(scanTarget.resourceURI) >= 0,
+          ev.isScanEvent && ev.destinationURI?.includes(scanTarget.resourceURI),
       );
     }
   }
@@ -86,7 +84,7 @@ async function waitForScanEventInternal(
 
 async function registerWalkupScanDestination(
   registrationConfigs: RegistrationConfig[],
-  isScanToComp: boolean = false,
+  isScanToComp = false,
 ): Promise<ScanTarget[]> {
   const registerMethod = isScanToComp
     ? (destination: Destination) =>

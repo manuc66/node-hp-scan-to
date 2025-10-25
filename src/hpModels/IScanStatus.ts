@@ -1,6 +1,6 @@
-import { InputSource } from "../type/InputSource";
-import { ScannerState } from "./ScannerState";
-import { AdfState } from "./AdfState";
+import { InputSource } from "../type/InputSource.js";
+import { ScannerState } from "./ScannerState.js";
+import { AdfState } from "./AdfState.js";
 
 export interface IScanStatus {
   readonly scannerState: ScannerState;

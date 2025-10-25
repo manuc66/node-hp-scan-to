@@ -1,8 +1,8 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import { ScanContent, ScanPage } from "../src/type/ScanContent";
-import { assembleDuplexScan } from "../src/commands/listenCmd";
-import { DuplexAssemblyMode } from "../src/type/DuplexAssemblyMode";
+import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
+import { assembleDuplexScan } from "../src/commands/listenCmd.js";
+import { DuplexAssemblyMode } from "../src/type/DuplexAssemblyMode.js";
 
 // Utility function to create a ScanPage with default values
 const createScanPage = (overrides: Partial<ScanPage>): ScanPage => {

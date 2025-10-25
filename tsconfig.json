@@ -1,18 +1,20 @@
 {
   "compilerOptions": {
-    "outDir": "dist",
-    "module": "commonjs",
-    "target": "ES2021",
-    "noImplicitAny": true,
+    "target": "ES2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "esModuleInterop": true,
     "sourceMap": true,
+    "strict": true,
+
+    "outDir": "dist",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "noImplicitAny": true,
     "inlineSources": false,
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
     "resolveJsonModule": true,
     "declaration": true,
     "noUnusedLocals": true,
@@ -20,19 +22,26 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noEmitOnError": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    //"noUncheckedIndexedAccess": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
+    "useUnknownInCatchVariables": true,
+    "noImplicitUseStrict": false,
     "baseUrl": ".",
-	"paths": {
-		"*": [
-			"node_modules/*",
-			"src/types/*"
-		]
-    }
+
   },
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "test"
   ],
-  "include": [
-    "src"
-  ]
+  "include": ["src/**/*"]
 }

@@ -175,11 +175,9 @@ export default class JpegUtil {
   }
   static parse(
     buffer: Buffer,
-    markerHandler: {
-      [key: string]: (start: number, length: number) => boolean;
-    },
+    markerHandler: Record<string, (start: number, length: number) => boolean>,
   ): boolean {
-    let i: number = 0;
+    let i = 0;
 
     if (!this.isSOIHeader(i, buffer)) {
       this.logDebug("Not a valid SOI header");
@@ -272,9 +270,7 @@ export default class JpegUtil {
   private static parseMarker(
     buffer: Buffer,
     i: number,
-    markerHandler: {
-      [key: string]: (start: number, length: number) => boolean;
-    },
+    markerHandler: Record<string, (start: number, length: number) => boolean>,
   ): boolean {
     let marker = "";
 
@@ -314,7 +310,7 @@ export default class JpegUtil {
       blockLength = foundBlockLength;
 
       const handler = markerHandler[marker];
-      if (handler != null && handler(i + 2, blockLength)) {
+      if (handler?.(i + 2, blockLength)) {
         return true;
       }
 

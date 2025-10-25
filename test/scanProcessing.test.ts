@@ -1,12 +1,12 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import { getScanWidth, getScanHeight } from "../src/scanProcessing";
-import { DeviceCapabilities } from "../src/type/DeviceCapabilities";
-import { InputSource } from "../src/type/InputSource";
-import { ScanConfig } from "../src/type/scanConfigs";
-import { IScanJobSettings } from "../src/hpModels/IScanJobSettings";
-import { IScanStatus } from "../src/hpModels/IScanStatus";
-import { ScanMode } from "../src/type/scanMode";
+import { getScanWidth, getScanHeight } from "../src/scanProcessing.js";
+import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
+import { InputSource } from "../src/type/InputSource.js";
+import type { ScanConfig } from "../src/type/scanConfigs.js";
+import type { IScanJobSettings } from "../src/hpModels/IScanJobSettings.js";
+import type { IScanStatus } from "../src/hpModels/IScanStatus.js";
+import { ScanMode } from "../src/type/scanMode.js";
 
 describe("scanProcessing", () => {
   let scanConfig: ScanConfig;

@@ -3,11 +3,11 @@
 
 "use strict";
 
-import config, { IConfig } from "config";
+import config, { type IConfig } from "config";
 import z from "zod";
-import * as commitInfo from "./commitInfo.json";
-import { configSchema, FileConfig } from "./type/FileConfig";
-import { setupProgram } from "./program";
+import commitInfo from "./commitInfo.json" with { type: "json" };
+import { configSchema, type FileConfig } from "./type/FileConfig.js";
+import { setupProgram } from "./program.js";
 
 const validateConfig = (config: IConfig) => {
   const result = configSchema.safeParse(config);

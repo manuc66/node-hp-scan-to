@@ -1,6 +1,6 @@
 import axios, { AxiosError } from "axios";
-import { ScanContent } from "../type/ScanContent";
-import { NextcloudConfig } from "./NextcloudConfig";
+import type { ScanContent } from "../type/ScanContent.js";
+import type { NextcloudConfig } from "./NextcloudConfig.js";
 import fs from "fs/promises";
 import path from "path";
 

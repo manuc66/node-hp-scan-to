@@ -1,24 +1,24 @@
-import Event from "./hpModels/Event";
-import WalkupScanDestination from "./hpModels/WalkupScanDestination";
-import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination";
-import HPApi from "./HPApi";
-import { DeviceCapabilities } from "./type/DeviceCapabilities";
-import { ScanContent } from "./type/ScanContent";
-import { delay } from "./delay";
-import { InputSource } from "./type/InputSource";
-import { postProcessing } from "./postProcessing";
-import { SelectedScanTarget } from "./type/scanTargetDefinitions";
-import { executeScanJob, executeScanJobs } from "./scanJobHandlers";
-import { KnownShortcut } from "./type/KnownShortcut";
-import {
+import Event from "./hpModels/Event.js";
+import WalkupScanDestination from "./hpModels/WalkupScanDestination.js";
+import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination.js";
+import HPApi from "./HPApi.js";
+import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
+import type { ScanContent } from "./type/ScanContent.js";
+import { delay } from "./delay.js";
+import { InputSource } from "./type/InputSource.js";
+import { postProcessing } from "./postProcessing.js";
+import type { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
+import { executeScanJob, executeScanJobs } from "./scanJobHandlers.js";
+import { KnownShortcut } from "./type/KnownShortcut.js";
+import type {
   AdfAutoScanConfig,
   ScanConfig,
   SingleScanConfig,
-} from "./type/scanConfigs";
-import { PageCountingStrategy } from "./type/pageCountingStrategy";
-import { IScanStatus } from "./hpModels/IScanStatus";
-import { ScannerState } from "./hpModels/ScannerState";
-import { ScanPlexMode } from "./hpModels/ScanPlexMode";
+} from "./type/scanConfigs.js";
+import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
+import type { IScanStatus } from "./hpModels/IScanStatus.js";
+import { ScannerState } from "./hpModels/ScannerState.js";
+import { ScanPlexMode } from "./hpModels/ScanPlexMode.js";
 
 export interface WalkupDestination {
   get shortcut(): null | KnownShortcut;

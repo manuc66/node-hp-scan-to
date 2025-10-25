@@ -1,14 +1,16 @@
 import { describe } from "mocha";
-import path from "path";
-import { ScanContent, ScanPage } from "../src/type/ScanContent";
+import path from "node:path";
+import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import {
   uploadImagesToNextcloud,
   uploadPdfToNextcloud,
-} from "../src/nextcloud/nextcloud";
-import { NextcloudConfig } from "../src/nextcloud/NextcloudConfig";
-import { convertToPdf } from "../src/pdfProcessing";
-import fs from "fs";
+} from "../src/nextcloud/nextcloud.js";
+import type { NextcloudConfig } from "../src/nextcloud/NextcloudConfig.js";
+import { convertToPdf } from "../src/pdfProcessing.js";
+import fs from "node:fs";
 import nock from "nock";
+
+const __dirname = import.meta.dirname;
 
 describe("nextcloud", () => {
   // prepare test data

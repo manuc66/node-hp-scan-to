@@ -4,8 +4,9 @@ WORKDIR /app
 COPY . .
 COPY src/commitInfo.json /app/src/commitInfo.json
 
-RUN yarn install --frozen-lockfile --dev \
- && yarn build:docker \
+RUN corepack enable\
+ && yarn install --frozen-lockfile \
+ && yarn build \
  && rm dist/*.d.ts dist/*.js.map
 
 FROM node:22-alpine AS app
@@ -43,9 +44,11 @@ RUN export SYS_ARCH=$(uname -m); \
 
 # add builded app
 WORKDIR /app
-COPY --from=build /app/dist/ /app/package.json ./
-RUN yarn install --frozen-lockfile --production \
- && yarn cache clean --force
+COPY --from=build /app/dist/ /app/package.json /app/yarn.lock /app/.yarnrc.yml ./
+RUN corepack enable \
+ && yarn install --immutable \
+ && yarn workspaces focus --production --all \
+ && yarn cache clean --all
 
 VOLUME ["/scan"]
 ENTRYPOINT ["/init"]

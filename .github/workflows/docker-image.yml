@@ -53,10 +53,12 @@ jobs:
           flavor: |
             latest=false
 
+      - name: Enable Corepack
+        run: corepack enable
       - name: Setup NodeJS
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '22.18.0'
+          node-version: '20.18.1'
           cache: 'yarn'
       - name: Install project dependencies
         run: yarn install --frozen-lockfile
@@ -101,10 +103,12 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v3
+      - name: Enable Corepack
+        run: corepack enable
       - name: Setup NodeJS
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '22.18.0'
+          node-version: '20.18.1'
           registry-url: 'https://registry.npmjs.org/'
       - name: Install dependencies
         run: yarn install --frozen-lockfile

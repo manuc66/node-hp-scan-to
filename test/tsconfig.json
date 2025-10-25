@@ -1,21 +1,15 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "baseUrl": "./",
-    "module": "commonjs",
-    "experimentalDecorators": true,
-    "strictPropertyInitialization": false,
-    "isolatedModules": false,
-    "strict": false,
-    "noImplicitAny": false,
-    "typeRoots" : [
-      "../node_modules/@types"
-    ]
+    "types": ["node", "mocha", "chai"],
+    "noEmit": true,
+    "allowJs": false
   },
-  "exclude": [
-    "../node_modules"
-  ],
   "include": [
-    "./**/*.ts"
+    "**/*"
+  ],
+  "exclude": [
+    "../node_modules",
+    "../dist"
   ]
 }

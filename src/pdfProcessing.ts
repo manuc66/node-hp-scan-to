@@ -1,5 +1,5 @@
-import { ScanContent, ScanPage } from "./type/ScanContent";
-import PathHelper from "./PathHelper";
+import type { ScanContent, ScanPage } from "./type/ScanContent.js";
+import PathHelper from "./PathHelper.js";
 import fs from "fs/promises";
 import path from "path";
 import { jsPDF } from "jspdf";
