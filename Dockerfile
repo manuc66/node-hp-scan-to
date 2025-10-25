@@ -9,6 +9,14 @@ RUN corepack enable\
  && yarn build \
  && rm dist/*.d.ts dist/*.js.map
 
+# New stage to install only production dependencies
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json yarn.lock .yarnrc.yml ./
+RUN corepack enable \
+ && yarn install --immutable --production \
+ && yarn workspaces focus --production --all
+
 FROM node:22-alpine AS app
 ENV NODE_ENV=production
 ADD root/ /
@@ -42,13 +50,11 @@ RUN export SYS_ARCH=$(uname -m); \
     echo "⬇️ Install shadow (for groupmod and usermod) and tzdata (for TZ env variable)" \
     && apk add --no-cache shadow tzdata curl bash
 
-# add builded app
+# Copy built app and production dependencies without yarn
 WORKDIR /app
-COPY --from=build /app/dist/ /app/package.json /app/yarn.lock /app/.yarnrc.yml ./
-RUN corepack enable \
- && yarn install --immutable \
- && yarn workspaces focus --production --all \
- && yarn cache clean --all
+COPY --from=build /app/dist/ ./
+COPY --from=build /app/package.json ./
+COPY --from=deps /app/node_modules/ ./node_modules/
 
 VOLUME ["/scan"]
 ENTRYPOINT ["/init"]
