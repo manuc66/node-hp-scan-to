@@ -84,7 +84,7 @@ async function waitForScanEventInternal(
 
 async function registerWalkupScanDestination(
   registrationConfigs: RegistrationConfig[],
-  isScanToComp: boolean = false,
+  isScanToComp = false,
 ): Promise<ScanTarget[]> {
   const registerMethod = isScanToComp
     ? (destination: Destination) =>

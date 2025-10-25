@@ -102,7 +102,7 @@ export default class PathHelper {
       return true;
     } catch (err: unknown) {
       const e = err as NodeJS.ErrnoException;
-      if (e && e.code === "EEXIST") return false;
+      if (e?.code === "EEXIST") return false;
       throw err;
     }
   }
