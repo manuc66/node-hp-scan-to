@@ -48,7 +48,7 @@ COPY --from=build /app/dist/ /app/package.json ./
 RUN corepack enable \
  && yarn install --immutable --immutable-cache \
  && yarn workspaces focus --production --all \
- && yarn cache clean --force
+ && yarn cache clean --all
 
 VOLUME ["/scan"]
 ENTRYPOINT ["/init"]
