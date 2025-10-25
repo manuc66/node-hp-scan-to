@@ -46,7 +46,7 @@ RUN export SYS_ARCH=$(uname -m); \
 WORKDIR /app
 COPY --from=build /app/dist/ /app/package.json /app/yarn.lock /app/.yarnrc.yml ./
 RUN corepack enable \
- && yarn install --immutable --immutable-cache \
+ && yarn install --immutable \
  && yarn workspaces focus --production --all \
  && yarn cache clean --all
 
