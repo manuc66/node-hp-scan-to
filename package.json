@@ -11,9 +11,7 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": {
-    "node-hp-scan-to": "dist/index.js"
-  },
+  "bin": "dist/index.js",
   "scripts": {
     "prestart": "node getCommitId.js",
     "start": "tsx src/index.ts",
