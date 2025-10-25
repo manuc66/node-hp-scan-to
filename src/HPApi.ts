@@ -600,34 +600,53 @@ export default class HPApi {
     return destination;
   }
 
+  static async esclWaitDeviceBusy<T>(fn: () => Promise<T>): Promise<T> {
+    let i = 0;
+    do {
+      i++;
+      try {
+        return await fn();
+      } catch (error) {
+        if (error instanceof AxiosError && error.status === 503) {
+          console.log("Waiting, device is busy");
+          await HPApi.delay(1000);
+          continue;
+        }
+        throw error;
+      }
+    } while (i < 30);
+    throw new Error(`Failed, max retries reached: ${i}`);
+  }
+
   static async downloadEsclPage(
     jobUri: string,
     destination: string,
   ): Promise<string> {
-    return await HPApi.downloadPage(
-      jobUri + "/NextDocument",
-      destination,
-      60_000,
+    return await HPApi.esclWaitDeviceBusy(
+      async () =>
+        await HPApi.downloadPage(jobUri + "/NextDocument", destination, 60_000),
     );
   }
 
   static async getEsclScanImageInfo(
     jobUri: string,
   ): Promise<EsclScanImageInfo> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
-      url: jobUri + "/ScanImageInfo",
-      method: "GET",
-      responseType: "text",
-    });
+    return await HPApi.esclWaitDeviceBusy(async () => {
+      const response = await HPApi.callAxios({
+        baseURL: `http://${printerIP}`,
+        url: jobUri + "/ScanImageInfo",
+        method: "GET",
+        responseType: "text",
+      });
 
-    if (response.status !== 200) {
-      throw new Error(
-        `Unexpected status code when getting /eSCL/ScannerStatus : ${response.status}`,
-      );
-    } else {
-      const content = response.data;
-      return EsclScanImageInfo.createScanImageInfo(content);
-    }
+      if (response.status !== 200) {
+        throw new Error(
+          `Unexpected status code when getting /eSCL/ScannerStatus : ${response.status}`,
+        );
+      } else {
+        const content = response.data;
+        return EsclScanImageInfo.createScanImageInfo(content);
+      }
+    });
   }
 }
