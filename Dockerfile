@@ -45,8 +45,9 @@ RUN export SYS_ARCH=$(uname -m); \
 # add builded app
 WORKDIR /app
 COPY --from=build /app/dist/ /app/package.json ./
-RUN corepack enable\
- && yarn install --frozen-lockfile --production \
+RUN corepack enable \
+ && yarn install --immutable --immutable-cache \
+ && yarn workspaces focus --production --all \
  && yarn cache clean --force
 
 VOLUME ["/scan"]
