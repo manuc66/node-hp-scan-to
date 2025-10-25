@@ -5,7 +5,7 @@ COPY . .
 COPY src/commitInfo.json /app/src/commitInfo.json
 
 RUN corepack enable\
- && yarn install --frozen-lockfile --dev \
+ && yarn install --frozen-lockfile \
  && yarn build:docker \
  && rm dist/*.d.ts dist/*.js.map
 
