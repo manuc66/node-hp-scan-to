@@ -22,6 +22,7 @@
     "prebuild": "node getCommitId.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "typecheck": "tsc -p . --noEmit",
     "build": "tsc -p .",
     "built-start": "tsc -p . && node --trace-warnings ./dist/index.js",
     "start-dev": "tsx watch src/index.ts",
