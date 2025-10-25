@@ -1,4 +1,4 @@
-FROM node:24-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY . .
@@ -10,14 +10,14 @@ RUN corepack enable\
  && rm dist/*.d.ts dist/*.js.map
 
 # New stage to install only production dependencies
-FROM node:24-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json yarn.lock .yarnrc.yml ./
 RUN corepack enable \
  && yarn install --immutable \
  && yarn workspaces focus --production --all
 
-FROM node:24-alpine AS app
+FROM node:22-alpine AS app
 ENV NODE_ENV=production
 ADD root/ /
 
