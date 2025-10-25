@@ -58,6 +58,8 @@ jobs:
         with:
           node-version: '20.18.1'
           cache: 'yarn'
+      - name: Enable Corepack
+        run: corepack enable
       - name: Install project dependencies
         run: yarn install --frozen-lockfile
       - name: Test
@@ -106,6 +108,8 @@ jobs:
         with:
           node-version: '20.18.1'
           registry-url: 'https://registry.npmjs.org/'
+      - name: Enable Corepack
+        run: corepack enable
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Test
