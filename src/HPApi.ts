@@ -490,7 +490,7 @@ export default class HPApi {
   static async getEsclScanStatus(): Promise<EsclScanStatus> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
-      url: "/eSCL/ScannerStatus ",
+      url: "/eSCL/ScannerStatus",
       method: "GET",
       responseType: "text",
     });
