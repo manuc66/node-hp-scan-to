@@ -28,7 +28,7 @@ export interface WalkupDestination {
 export async function tryGetDestination(
   event: Event,
 ): Promise<WalkupDestination | null> {
-  // this code can in some cases be executed before the user actually chooses between Document or Photo
+  // this code can in some cases be executed before the user actually chooses between Document or Photo,
   // so, let's fetch the contentType (Document or Photo) until we get a value
   let destination: WalkupScanDestination | WalkupScanToCompDestination | null =
     null;
@@ -136,15 +136,19 @@ export async function saveScanFromEvent(
 ): Promise<ScanContent> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
+
+  let filePattern: string | undefined;
   if (isPdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
+    filePattern = undefined;
     console.log(
-      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`,
+      `Converting scan to PDF…`,
     );
   } else {
     contentType = "Photo";
     destinationFolder = folder;
+    filePattern = scanConfig.directoryConfig.filePattern;
   }
 
   const scanStatus = await deviceCapabilities.getScanStatus();
@@ -153,7 +157,7 @@ export async function saveScanFromEvent(
     console.log("Scanner state is not Idle, aborting scan attempt...!");
   }
 
-  console.log("Afd is : " + scanStatus.adfState);
+  console.log("ADF status: " + scanStatus.adfState);
 
   const inputSource = scanStatus.getInputSource();
   const scanWidth = getScanWidth(
@@ -189,12 +193,8 @@ export async function saveScanFromEvent(
     scanJobContent,
     selectedScanTarget,
     deviceCapabilities,
-    scanConfig.directoryConfig.filePattern,
+    filePattern,
     pageCountingStrategy,
-  );
-
-  console.log(
-    `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`,
   );
 
   return scanJobContent;
@@ -214,7 +214,7 @@ export async function scanFromAdf(
     contentType = "Document";
     destinationFolder = tempFolder;
     console.log(
-      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`,
+      `Converting scan to PDF…`,
     );
   } else {
     contentType = "Photo";
@@ -286,7 +286,7 @@ export async function singleScan(
     contentType = "Document";
     destinationFolder = tempFolder;
     console.log(
-      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`,
+      `Converting scan to PDF…`,
     );
   } else {
     contentType = "Photo";
@@ -299,7 +299,7 @@ export async function singleScan(
     console.log("Scanner state is not Idle, aborting scan attempt...!");
   }
 
-  console.log("Afd is : " + scanStatus.adfState);
+  console.log("ADF is: " + scanStatus.adfState);
 
   const inputSource = scanStatus.getInputSource();
 

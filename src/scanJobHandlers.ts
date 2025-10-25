@@ -83,12 +83,8 @@ async function handleScanProcessingState(
     job.binaryURL != null &&
     job.currentPageNumber != null
   ) {
-    console.log(
-      `Ready to download page job page ${job.currentPageNumber} at:`,
-      job.binaryURL,
-    );
 
-    const destinationFilePath = PathHelper.getFileForPage(
+    const destinationFilePath = await PathHelper.getFileForPage(
       folder,
       scanCount,
       currentPageNumber,
@@ -96,11 +92,14 @@ async function handleScanProcessingState(
       "jpg",
       date,
     );
+
+    console.log(
+      `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`,
+    );
     const filePath = await HPApi.downloadPage(
       job.binaryURL,
       destinationFilePath,
     );
-    console.log("Page downloaded to:", filePath);
 
     const adfHeight = await getAndFixHeightWHenAdf(
       inputSource,
@@ -181,7 +180,7 @@ async function hpScanJobHandling(
     }
   }
   console.log(
-    `Job state: ${job.jobState}, totalPages: ${scanJobContent.elements.length}:`,
+    `Job state: ${job.jobState} (${scanJobContent.elements.length} page(s))`,
   );
   return job.jobState;
 }
@@ -268,7 +267,7 @@ async function eSCLScanJobHandling(
 
     const pageNumber = getPageNumber(pageCountingStrategy, scanJobContent);
 
-    const destinationFilePath = PathHelper.getFileForPage(
+    const destinationFilePath = await PathHelper.getFileForPage(
       folder,
       scanCount,
       pageNumber,

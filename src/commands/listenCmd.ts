@@ -57,7 +57,7 @@ export async function listenCmd(
     null;
   while (keepActive) {
     iteration++;
-    console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
+    console.log(`Iteration ${iteration} (Errors so far: ${errorCount})`);
     try {
       const selectedScanTarget: SelectedScanTarget = await waitScanEvent(
         deviceCapabilities,
@@ -359,8 +359,8 @@ async function setupScanParameters(
   let pageCountingStrategy: PageCountingStrategy;
   let scanToPdf: boolean;
   let scanDate: Date;
+  console.log(`Scan mode: ${targetDuplexMode}`);
   if (duplexMode == DuplexMode.Duplex) {
-    console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
     pageCountingStrategy = PageCountingStrategy.Normal;
     scanToPdf = isPdf(destination);
     scanDate = new Date();
@@ -372,7 +372,6 @@ async function setupScanParameters(
     console.log(`Scan event captured, saving scan #${scanCount}`);
   } else if (targetDuplexMode == TargetDuplexMode.EmulatedDuplex) {
     if (duplexMode == DuplexMode.FrontOfDoubleSided) {
-      console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
       pageCountingStrategy = PageCountingStrategy.OddOnly;
       scanToPdf = isPdf(destination);
       scanDate = new Date();
@@ -386,7 +385,6 @@ async function setupScanParameters(
         `Scan event captured, saving front sides of scan #${scanCount}`,
       );
     } else {
-      console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
       pageCountingStrategy = PageCountingStrategy.EvenOnly;
       scanToPdf =
         frontOfDoubleSidedScanContext?.scanToPdf ?? isPdf(destination);
@@ -397,7 +395,6 @@ async function setupScanParameters(
       );
     }
   } else {
-    console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
     pageCountingStrategy = PageCountingStrategy.Normal;
     scanToPdf = isPdf(destination);
     scanDate = new Date();

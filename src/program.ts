@@ -181,7 +181,7 @@ async function getDeviceIp(options: ProgramOption, configFile: FileConfig) {
     );
     ip = await findOfficejetIp(name);
   }
-  console.log(`Using device ip: ${ip}`);
+  console.log(`Using device at IP: ${ip}`);
   return ip;
 }
 

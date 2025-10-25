@@ -1,3 +1,4 @@
+import { describe } from "mocha";
 import { expect } from "chai";
 import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import { assembleDuplexScan } from "../src/commands/listenCmd.js";
