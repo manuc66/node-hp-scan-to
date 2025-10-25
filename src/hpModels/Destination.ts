@@ -1,15 +1,15 @@
 "use strict";
 
 import { Builder } from "xml2js";
-import { parseXmlString } from "./ParseXmlString";
+import { parseXmlString } from "./ParseXmlString.js";
 
-type WalkupScanDestinationData = {
+interface WalkupScanDestinationData {
   WalkupScanDestination: {
     Hostname: { _: string }[];
     Name: { _: string }[];
     LinkType: string[];
   };
-};
+}
 
 export default class Destination {
   private readonly name: string;
@@ -24,8 +24,8 @@ export default class Destination {
     this.toComp = toComp;
   }
 
-  async toXML() {
-    let rawDestination: string = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  async toXML(): Promise<string> {
+    let rawDestination = '<?xml version="1.0" encoding="UTF-8"?>\n';
     if (this.toComp) {
       rawDestination +=
         '<WalkupScanDestination xmlns="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +

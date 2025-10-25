@@ -1,8 +1,10 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import path from "path";
-import * as fs from "fs/promises";
-import EsclScanJobManifest from "../src/hpModels/EsclManifest";
+import path from "node:path";
+import * as fs from "node:fs/promises";
+import EsclScanJobManifest from "../src/hpModels/EsclManifest.js";
+
+const __dirname = import.meta.dirname;
 
 describe("ScanJobManifest", () => {
   describe("Parsing EsclManifest1_ScanJet_Pro_4500.xml", async () => {

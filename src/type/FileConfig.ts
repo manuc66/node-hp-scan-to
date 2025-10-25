@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DuplexAssemblyMode } from "./DuplexAssemblyMode";
+import { DuplexAssemblyMode } from "./DuplexAssemblyMode.js";
 
 // Configuration schema for the config file
 export const configSchema = z.strictObject({

@@ -4,35 +4,35 @@ import { promisify } from "util";
 import fs from "fs";
 import axios, {
   AxiosError,
-  AxiosRequestConfig,
-  AxiosResponse,
-  RawAxiosRequestHeaders,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+  type RawAxiosRequestHeaders,
 } from "axios";
 import * as stream from "stream";
 import { Stream } from "stream";
-import EventTable, { EtagEventTable } from "./hpModels/EventTable";
-import Job from "./hpModels/Job";
-import ScanStatus from "./hpModels/ScanStatus";
-import WalkupScanDestination from "./hpModels/WalkupScanDestination";
-import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination";
-import WalkupScanDestinations from "./hpModels/WalkupScanDestinations";
-import WalkupScanToCompDestinations from "./hpModels/WalkupScanToCompDestinations";
-import Destination from "./hpModels/Destination";
-import WalkupScanToCompEvent from "./hpModels/WalkupScanToCompEvent";
-import DiscoveryTree from "./type/DiscoveryTree";
-import WalkupScanToCompManifest from "./hpModels/WalkupScanToCompManifest";
-import WalkupScanToCompCaps from "./hpModels/WalkupScanToCompCaps";
-import WalkupScanManifest from "./hpModels/WalkupScanManifest";
-import ScanJobManifest from "./hpModels/ScanJobManifest";
-import ScanCaps from "./hpModels/ScanCaps";
-import { delay } from "./delay";
+import EventTable, { type EtagEventTable } from "./hpModels/EventTable.js";
+import Job from "./hpModels/Job.js";
+import ScanStatus from "./hpModels/ScanStatus.js";
+import WalkupScanDestination from "./hpModels/WalkupScanDestination.js";
+import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination.js";
+import WalkupScanDestinations from "./hpModels/WalkupScanDestinations.js";
+import WalkupScanToCompDestinations from "./hpModels/WalkupScanToCompDestinations.js";
+import Destination from "./hpModels/Destination.js";
+import WalkupScanToCompEvent from "./hpModels/WalkupScanToCompEvent.js";
+import DiscoveryTree from "./type/DiscoveryTree.js";
+import WalkupScanToCompManifest from "./hpModels/WalkupScanToCompManifest.js";
+import WalkupScanToCompCaps from "./hpModels/WalkupScanToCompCaps.js";
+import WalkupScanManifest from "./hpModels/WalkupScanManifest.js";
+import ScanJobManifest from "./hpModels/ScanJobManifest.js";
+import ScanCaps from "./hpModels/ScanCaps.js";
+import { delay } from "./delay.js";
 import * as net from "net";
-import EsclScanJobManifest from "./hpModels/EsclManifest";
-import EsclScanCaps from "./hpModels/EsclScanCaps";
-import EsclScanStatus from "./hpModels/EsclScanStatus";
-import { IScanJobSettings } from "./hpModels/IScanJobSettings";
-import EsclScanImageInfo from "./hpModels/EsclScanImageInfo";
-import PathHelper from "./PathHelper";
+import EsclScanJobManifest from "./hpModels/EsclManifest.js";
+import EsclScanCaps from "./hpModels/EsclScanCaps.js";
+import EsclScanStatus from "./hpModels/EsclScanStatus.js";
+import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
+import EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
+import PathHelper from "./PathHelper.js";
 
 let printerIP = "192.168.1.11";
 let debug = false;
@@ -95,7 +95,7 @@ export default class HPApi {
   }
 
   static async isAlive(timeout: number | null = null): Promise<boolean> {
-    const definedTimeout = timeout || 10000; // default of 10 seconds
+    const definedTimeout = timeout ?? 10000; // default of 10 seconds
     return new Promise((resolve) => {
       const socket = net.createConnection(80, printerIP, () => {
         clearTimeout(timer);
@@ -147,7 +147,7 @@ export default class HPApi {
   }
 
   static async getWalkupScanDestinations(
-    uri: string = "/WalkupScan/WalkupScanDestinations",
+    uri = "/WalkupScan/WalkupScanDestinations",
   ): Promise<WalkupScanDestinations> {
     const response = await HPApi.callAxios({
       baseURL: `http://${printerIP}`,
@@ -349,9 +349,9 @@ export default class HPApi {
 
     if (
       response.status === 201 &&
-      typeof response.headers.location === "string"
+      typeof response.headers['location'] === "string"
     ) {
-      return PathHelper.getPathFromHttpLocation(response.headers.location);
+      return PathHelper.getPathFromHttpLocation(response.headers['location']);
     } else {
       throw new Error(
         `Unexpected status code when getting ${url}: ${response.status}`,
@@ -374,19 +374,19 @@ export default class HPApi {
 
     if (
       response.status === 201 &&
-      typeof response.headers.location === "string"
+      typeof response.headers['location'] === "string"
     ) {
-      return PathHelper.getPathFromHttpLocation(response.headers.location);
+      return PathHelper.getPathFromHttpLocation(response.headers['location']);
     } else {
       throw new Error(
-        `Unexpected status code or location when registering to ${url}: ${response.status} - ${response.headers.location}`,
+        `Unexpected status code or location when registering to ${url}: ${response.status} - ${response.headers['location']}`,
       );
     }
   }
 
   static async getEvents(
-    etag: string = "",
-    decisecondTimeout: number = 0,
+    etag = "",
+    decisecondTimeout = 0,
   ): Promise<EtagEventTable> {
     const url = this.appendTimeout("/EventMgmt/EventTable", decisecondTimeout);
 
@@ -416,7 +416,7 @@ export default class HPApi {
       throw error;
     }
 
-    const etagReceived = response.headers["etag"] as unknown;
+    const etagReceived = response.headers['etag'] as unknown;
     if (typeof etagReceived !== "string") {
       throw new Error("Missing etag when getting Job");
     }
@@ -436,9 +436,7 @@ export default class HPApi {
   }
 
   static appendTimeout(url: string, timeout: number | null = null): string {
-    if (timeout == null) {
-      timeout = 1200;
-    }
+    timeout ??= 1200;
     if (timeout > 0) {
       url += "?timeout=" + timeout;
     }
@@ -527,12 +525,12 @@ export default class HPApi {
 
     if (
       response.status === 201 &&
-      typeof response.headers.location === "string"
+      typeof response.headers['location'] === "string"
     ) {
-      return response.headers.location;
+      return response.headers['location'];
     } else {
       throw new Error(
-        `Unexpected status code or location when posting job: ${response.status} - ${response.headers.location}`,
+        `Unexpected status code or location when posting job: ${response.status} - ${response.headers['location']}`,
       );
     }
   }
@@ -551,12 +549,12 @@ export default class HPApi {
 
     if (
       response.status === 201 &&
-      typeof response.headers.location === "string"
+      typeof response.headers['location'] === "string"
     ) {
-      return response.headers.location;
+      return response.headers['location'];
     } else {
       throw new Error(
-        `Unexpected status code or location when posting job: ${response.status} - ${response.headers.location}`,
+        `Unexpected status code or location when posting job: ${response.status} - ${response.headers['location']}`,
       );
     }
   }
@@ -591,7 +589,7 @@ export default class HPApi {
       url: binaryURL,
       method: "GET",
       responseType: "stream",
-      timeout,
+      ...(timeout !== undefined && { timeout })
     });
 
     const destinationFileStream = fs.createWriteStream(destination);

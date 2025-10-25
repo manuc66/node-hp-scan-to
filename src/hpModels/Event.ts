@@ -1,6 +1,6 @@
 "use strict";
 
-export type EventData = {
+export interface EventData {
   "dd:UnqualifiedEventCategory": string[];
   "dd:AgingStamp": string[];
   "ev:Payload": {
@@ -11,7 +11,7 @@ export type EventData = {
       "0": string;
     };
   }[];
-};
+}
 
 export default class Event {
   private readonly data: EventData;

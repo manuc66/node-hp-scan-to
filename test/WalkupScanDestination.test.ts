@@ -1,8 +1,10 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import path from "path";
-import * as fs from "fs/promises";
-import WalkupScanDestination from "../src/hpModels/WalkupScanDestination";
+import path from "node:path";
+import * as fs from "node:fs/promises";
+import WalkupScanDestination from "../src/hpModels/WalkupScanDestination.js";
+
+const __dirname = import.meta.dirname;
 
 describe("WalkupScanDestination", () => {
   describe("Parsing walkupScanToCompDestination_with_ScanPlexMode.xml", async () => {

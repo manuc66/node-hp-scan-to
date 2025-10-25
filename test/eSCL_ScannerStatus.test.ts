@@ -1,11 +1,13 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import path from "path";
-import * as fs from "fs/promises";
-import EsclScanStatus from "../src/hpModels/EsclScanStatus";
-import { AdfState } from "../src/hpModels/AdfState";
-import { ScannerState } from "../src/hpModels/ScannerState";
-import { InputSource } from "../src/type/InputSource";
+import path from "node:path";
+import * as fs from "node:fs/promises";
+import EsclScanStatus from "../src/hpModels/EsclScanStatus.js";
+import { AdfState } from "../src/hpModels/AdfState.js";
+import { ScannerState } from "../src/hpModels/ScannerState.js";
+import { InputSource } from "../src/type/InputSource.js";
+
+const __dirname = import.meta.dirname;
 
 describe("EsclScanStatus", () => {
   describe("Parsing eSCL_ScannerStatus_empty.xml", async () => {
