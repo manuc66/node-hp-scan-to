@@ -1,16 +1,18 @@
 {
   "compilerOptions": {
-    "outDir": "dist",
-    "module": "NodeNext",
-    "target": "ES2023",
-    "moduleResolution": "NodeNext",
-    "lib": ["ES2023"],
-    "noImplicitAny": true,
+    "target": "ES2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "esModuleInterop": true,
     "sourceMap": true,
+    "strict": true,
+
+    "outDir": "dist",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "noImplicitAny": true,
     "inlineSources": false,
     "skipLibCheck": true,
-    "strict": true,
-    "esModuleInterop": true,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
@@ -23,7 +25,7 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "baseUrl": ".",
-    "rootDir": "./src"
+
   },
   "exclude": [
     "node_modules",
