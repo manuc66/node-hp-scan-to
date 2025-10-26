@@ -24,7 +24,7 @@ import type {
 } from "./type/scanConfigs.js";
 import type { FileConfig } from "./type/FileConfig.js";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
-import { Server as NetServer } from "net";
+import type { Server as NetServer } from "net";
 import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 
@@ -42,7 +42,7 @@ function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
           service.name.startsWith(deviceNamePrefix) &&
           service.port === 80 &&
           service.type === "http" &&
-          service.addresses != null
+          service.addresses !== undefined
         ) {
           browser.stop();
           bonjour.destroy();
@@ -173,7 +173,7 @@ function setupScanParameters(commandName: string) {
 
 async function getDeviceIp(options: ProgramOption, configFile: FileConfig) {
   let ip = getOptConfiguredValue(options.address, configFile.ip);
-  if (!ip) {
+  if (ip !== undefined) {
     const name = getConfiguredValue(
       options.name,
       configFile.name,
@@ -207,7 +207,10 @@ function getPaperlessConfig(
     fileConfig.paperless_token,
   );
 
-  if (paperlessPostDocumentUrl && configPaperlessToken) {
+  if (
+    paperlessPostDocumentUrl !== undefined &&
+    configPaperlessToken !== undefined
+  ) {
     const configPaperlessKeepFiles = getConfiguredValue(
       options.keepFiles,
       fileConfig.keep_files,
@@ -261,9 +264,10 @@ function getNextcloudConfig(
   );
 
   if (
-    configNextcloudUrl &&
-    configNextcloudUsername &&
-    (configNextcloudPassword || configNextcloudPasswordFile)
+    configNextcloudUrl !== undefined &&
+    configNextcloudUsername !== undefined &&
+    (configNextcloudPassword !== undefined ||
+      configNextcloudPasswordFile !== undefined)
   ) {
     const configNextcloudUploadFolder = getConfiguredValue(
       options.nextcloudUploadFolder,
@@ -277,7 +281,7 @@ function getNextcloudConfig(
     );
 
     let nextcloudPassword: string;
-    if (configNextcloudPasswordFile) {
+    if (configNextcloudPasswordFile !== undefined) {
       nextcloudPassword = fs
         .readFileSync(configNextcloudPasswordFile, "utf8")
         .trimEnd();
@@ -461,7 +465,9 @@ function createListenCliCmd(configFile: FileConfig) {
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
       const ip = await getDeviceIp(options, configFile);
-      HPApi.setDeviceIP(ip);
+      if (ip !== undefined) {
+        HPApi.setDeviceIP(ip);
+      }
 
       const isDebug = getIsDebug(options, configFile);
       HPApi.setDebug(isDebug);
@@ -480,7 +486,7 @@ function createListenCliCmd(configFile: FileConfig) {
 
       if (
         getConfiguredValue(
-          options.addEmulatedDuplex == undefined ? undefined : true,
+          options.addEmulatedDuplex === undefined ? undefined : true,
           configFile.add_emulated_duplex,
           false,
         )
@@ -493,7 +499,7 @@ function createListenCliCmd(configFile: FileConfig) {
           ),
           isDuplexSingleSide: true,
           duplexAssemblyMode: getConfiguredValue(
-            options.addEmulatedDuplex == true
+            options.addEmulatedDuplex === true
               ? DuplexAssemblyMode.DOCUMENT_WISE
               : options.addEmulatedDuplex,
             configFile.emulated_duplex_assembly_mode,
@@ -560,7 +566,9 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
       const options = cmd.optsWithGlobals();
 
       const ip = await getDeviceIp(options, fileConfig);
-      HPApi.setDeviceIP(ip);
+      if (ip !== undefined) {
+        HPApi.setDeviceIP(ip);
+      }
 
       const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);
@@ -593,13 +601,13 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
           false,
         ),
         pollingInterval:
-          (options.pollingInterval
+          (options.pollingInterval !== undefined
             ? parseInt(options.pollingInterval, 10)
             : undefined) ??
           fileConfig.autoscan_pollingInterval ??
           1000,
         startScanDelay:
-          (options.startScanDelay
+          (options.startScanDelay !== undefined
             ? parseInt(options.startScanDelay, 10)
             : undefined) ??
           fileConfig.autoscan_startScanDelay ??
@@ -635,7 +643,9 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
       const options = cmd.optsWithGlobals();
 
       const ip = await getDeviceIp(options, fileConfig);
-      HPApi.setDeviceIP(ip);
+      if (ip !== undefined) {
+        HPApi.setDeviceIP(ip);
+      }
 
       const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);
@@ -682,7 +692,9 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
       const options: ProgramOption = cmd.optsWithGlobals();
 
       const ip = await getDeviceIp(options, fileConfig);
-      HPApi.setDeviceIP(ip);
+      if (ip !== undefined) {
+        HPApi.setDeviceIP(ip);
+      }
 
       const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);

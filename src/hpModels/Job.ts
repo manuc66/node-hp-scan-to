@@ -122,7 +122,7 @@ export default class Job {
   get xResolution(): number | null {
     if (this.data["j:Job"].ScanJob[0].PreScanPage) {
       return parseInt(
-        this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
+        this.data["j:Job"].ScanJob[0].PreScanPage[0]?.BufferInfo?.[0]
           ?.ScanSettings?.[0]?.XResolution[0] ?? "",
       );
     }

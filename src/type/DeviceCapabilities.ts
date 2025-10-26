@@ -1,7 +1,7 @@
 import type { IScanStatus } from "../hpModels/IScanStatus.js";
 import type { IScanJobSettings } from "../hpModels/IScanJobSettings.js";
-import { InputSource } from "./InputSource.js";
-import { ScanMode } from "./scanMode.js";
+import type { InputSource } from "./InputSource.js";
+import type { ScanMode } from "./scanMode.js";
 
 export interface DeviceCapabilities {
   supportsMultiItemScanFromPlaten: boolean;
