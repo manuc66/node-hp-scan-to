@@ -13,9 +13,7 @@ const validateConfig = (config: IConfig) => {
   const result = configSchema.safeParse(config);
   if (!result.success) {
     const errors = z.prettifyError(result.error);
-    throw new Error(
-      `Configuration validation error: ${errors}`,
-    );
+    throw new Error(`Configuration validation error: ${errors}`);
   }
   return result.data;
 };

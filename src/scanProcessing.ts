@@ -1,6 +1,6 @@
-import Event from "./hpModels/Event.js";
-import WalkupScanDestination from "./hpModels/WalkupScanDestination.js";
-import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination.js";
+import type Event from "./hpModels/Event.js";
+import type WalkupScanDestination from "./hpModels/WalkupScanDestination.js";
+import type WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination.js";
 import HPApi from "./HPApi.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type { ScanContent } from "./type/ScanContent.js";
@@ -18,7 +18,7 @@ import type {
 import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
 import type { IScanStatus } from "./hpModels/IScanStatus.js";
 import { ScannerState } from "./hpModels/ScannerState.js";
-import { ScanPlexMode } from "./hpModels/ScanPlexMode.js";
+import type { ScanPlexMode } from "./hpModels/ScanPlexMode.js";
 
 export interface WalkupDestination {
   get shortcut(): null | KnownShortcut;
@@ -35,11 +35,11 @@ export async function tryGetDestination(
 
   for (let i = 0; i < 20; i++) {
     const destinationURI = event.destinationURI;
-    if (destinationURI) {
+    if (destinationURI !== undefined) {
       destination = await HPApi.getDestination(destinationURI);
 
       const shortcut = destination.shortcut;
-      if (shortcut != null) {
+      if (shortcut !== null) {
         return destination;
       }
     } else {
@@ -55,11 +55,11 @@ export async function tryGetDestination(
   return null;
 }
 
-export function isPdf(destination: WalkupDestination) {
+export function isPdf(destination: WalkupDestination): boolean {
   if (
     destination.shortcut === KnownShortcut.SavePDF ||
     destination.shortcut === KnownShortcut.EmailPDF ||
-    destination.shortcut == KnownShortcut.SaveDocument1
+    destination.shortcut === KnownShortcut.SaveDocument1
   ) {
     return true;
   } else if (
@@ -88,8 +88,8 @@ export function getScanWidth(
         : deviceCapabilities.adfMaxWidth
       : deviceCapabilities.platenMaxWidth;
 
-  if (scanConfig.width && scanConfig.width > 0) {
-    if (maxWidth && scanConfig.width > maxWidth) {
+  if (scanConfig.width !== null && scanConfig.width > 0) {
+    if (maxWidth !== null && scanConfig.width > maxWidth) {
       return maxWidth;
     } else {
       return scanConfig.width;
@@ -112,8 +112,8 @@ export function getScanHeight(
         : deviceCapabilities.adfMaxHeight
       : deviceCapabilities.platenMaxHeight;
 
-  if (scanConfig.height && scanConfig.height > 0) {
-    if (maxHeight && scanConfig.height > maxHeight) {
+  if (scanConfig.height !== null && scanConfig.height > 0) {
+    if (maxHeight !== null && scanConfig.height > maxHeight) {
       return maxHeight;
     } else {
       return scanConfig.height;
@@ -142,9 +142,7 @@ export async function saveScanFromEvent(
     contentType = "Document";
     destinationFolder = tempFolder;
     filePattern = undefined;
-    console.log(
-      `Converting scan to PDF…`,
-    );
+    console.log(`Converting scan to PDF…`);
   } else {
     contentType = "Photo";
     destinationFolder = folder;
@@ -207,15 +205,13 @@ export async function scanFromAdf(
   adfAutoScanConfig: AdfAutoScanConfig,
   deviceCapabilities: DeviceCapabilities,
   date: Date,
-) {
+): Promise<void> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
   if (adfAutoScanConfig.generatePdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
-    console.log(
-      `Converting scan to PDF…`,
-    );
+    console.log(`Converting scan to PDF...`);
   } else {
     contentType = "Photo";
     destinationFolder = folder;
@@ -279,15 +275,13 @@ export async function singleScan(
   scanConfig: SingleScanConfig,
   deviceCapabilities: DeviceCapabilities,
   date: Date,
-) {
+): Promise<void> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
   if (scanConfig.generatePdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
-    console.log(
-      `Converting scan to PDF…`,
-    );
+    console.log(`Converting scan to PDF...`);
   } else {
     contentType = "Photo";
     destinationFolder = folder;
@@ -358,7 +352,7 @@ export async function waitAdfLoaded(
   pollingInterval: number,
   startScanDelay: number,
   getScanStatus: () => Promise<IScanStatus>,
-) {
+): Promise<void> {
   let ready = false;
   while (!ready) {
     let scanStatus: IScanStatus = await getScanStatus();

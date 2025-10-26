@@ -1,43 +1,43 @@
 import HPApi from "./HPApi.js";
-import ScanCaps from "./hpModels/ScanCaps.js";
-import DiscoveryTree from "./type/DiscoveryTree.js";
-import EsclScanCaps from "./hpModels/EsclScanCaps.js";
+import type ScanCaps from "./hpModels/ScanCaps.js";
+import type DiscoveryTree from "./type/DiscoveryTree.js";
+import type EsclScanCaps from "./hpModels/EsclScanCaps.js";
 import type { IScanStatus } from "./hpModels/IScanStatus.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
-import { InputSource } from "./type/InputSource.js";
+import type { InputSource } from "./type/InputSource.js";
 import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
 import EsclScanJobSettings from "./hpModels/EsclScanJobSettings.js";
 import ScanJobSettings from "./hpModels/ScanJobSettings.js";
-import { ScanMode } from "./type/scanMode.js";
+import type { ScanMode } from "./type/scanMode.js";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,
   preferEscl: boolean,
 ): Promise<ScanCaps | EsclScanCaps | null> {
   let scanCaps: ScanCaps | null = null;
-  if (discoveryTree.ScanJobManifestURI != null) {
+  if (discoveryTree.ScanJobManifestURI !== null) {
     const scanJobManifest = await HPApi.getScanJobManifest(
       discoveryTree.ScanJobManifestURI,
     );
-    if (scanJobManifest.ScanCapsURI != null) {
+    if (scanJobManifest.ScanCapsURI !== null) {
       scanCaps = await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);
     }
   }
 
   let eSclScanCaps: EsclScanCaps | null = null;
-  if (discoveryTree.EsclManifestURI != null) {
+  if (discoveryTree.EsclManifestURI !== null) {
     const scanJobManifest = await HPApi.getEsclScanJobManifest(
       discoveryTree.EsclManifestURI,
     );
-    if (scanJobManifest.scanCapsURI != null) {
+    if (scanJobManifest.scanCapsURI !== null) {
       eSclScanCaps = await HPApi.getEsclScanCaps(scanJobManifest.scanCapsURI);
     }
   }
 
-  if (preferEscl && eSclScanCaps != null) {
+  if (preferEscl && eSclScanCaps !== null) {
     return eSclScanCaps;
   }
-  if (scanCaps != null) {
+  if (scanCaps !== null) {
     return scanCaps;
   }
 
@@ -52,19 +52,19 @@ export async function readDeviceCapabilities(
 
   const discoveryTree = await HPApi.getDiscoveryTree();
 
-  if (discoveryTree.WalkupScanToCompManifestURI != null) {
+  if (discoveryTree.WalkupScanToCompManifestURI !== null) {
     useWalkupScanToComp = true;
     const walkupScanToCompManifest = await HPApi.getWalkupScanToCompManifest(
       discoveryTree.WalkupScanToCompManifestURI,
     );
-    if (walkupScanToCompManifest.WalkupScanToCompCapsURI != null) {
+    if (walkupScanToCompManifest.WalkupScanToCompCapsURI !== null) {
       const walkupScanToCompCaps = await HPApi.getWalkupScanToCompCaps(
         walkupScanToCompManifest.WalkupScanToCompCapsURI,
       );
       supportsMultiItemScanFromPlaten =
         walkupScanToCompCaps.supportsMultiItemScanFromPlaten;
     }
-  } else if (discoveryTree.WalkupScanManifestURI != null) {
+  } else if (discoveryTree.WalkupScanManifestURI !== null) {
     // No caps to load here but check we can load the specified manifest
     await HPApi.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
   } else {
@@ -74,7 +74,7 @@ export async function readDeviceCapabilities(
   }
   const scanCaps = await getScanCaps(discoveryTree, preferEscl);
 
-  if (scanCaps == null) {
+  if (scanCaps === null) {
     console.log(
       "WARNING: No scan capabilities found on the device, the device is likely not well supported",
     );
@@ -82,7 +82,7 @@ export async function readDeviceCapabilities(
 
   const getScanStatus = async (): Promise<IScanStatus> => {
     let scanStatus: IScanStatus;
-    if (scanCaps?.isEscl) {
+    if (scanCaps?.isEscl === true) {
       scanStatus = await HPApi.getEsclScanStatus();
     } else {
       scanStatus = await HPApi.getScanStatus();
@@ -100,7 +100,7 @@ export async function readDeviceCapabilities(
     isDuplex: boolean,
   ): IScanJobSettings => {
     let scanJobSettings: IScanJobSettings;
-    if (scanCaps?.isEscl) {
+    if (scanCaps?.isEscl === true) {
       scanJobSettings = new EsclScanJobSettings(
         inputSource,
         contentType,
@@ -128,7 +128,7 @@ export async function readDeviceCapabilities(
     scanJobSettings: IScanJobSettings,
   ): Promise<string> => {
     let jobUrl: string;
-    if (scanCaps?.isEscl) {
+    if (scanCaps?.isEscl === true) {
       jobUrl = await HPApi.postEsclJob(scanJobSettings);
     } else {
       jobUrl = await HPApi.postJob(scanJobSettings);
