@@ -18,7 +18,7 @@ export default class PathHelper {
     extension: string,
     date: Date,
   ): Promise<string> {
-    if (filePattern) {
+    if (filePattern !== undefined) {
       return this.makeUnique(
         path.join(folder, `${dateformat(date, filePattern)}.${extension}`),
         date,
@@ -39,7 +39,7 @@ export default class PathHelper {
     currentScanCount: number,
     filePattern: string | undefined,
   ): Promise<number> {
-    if (filePattern) {
+    if (filePattern !== undefined) {
       return ++currentScanCount;
     }
     const files = await Fs.readdir(folder);
@@ -101,8 +101,9 @@ export default class PathHelper {
       await fd.close();
       return true;
     } catch (err: unknown) {
-      const e = err as NodeJS.ErrnoException;
-      if (e?.code === "EEXIST") return false;
+      if (err instanceof Error && 'code' in err && err.code === 'EEXIST') {
+        return false;
+      }
       throw err;
     }
   }
@@ -114,7 +115,7 @@ export default class PathHelper {
     extension: string,
     date: Date,
   ): Promise<string> {
-    if (filePattern) {
+    if (filePattern !== undefined) {
       return await this.makeUnique(
         path.join(folder, `${dateformat(date, filePattern)}.${extension}`),
         date,
@@ -151,21 +152,21 @@ export default class PathHelper {
     }
   }
 
-  static async getTargetFolder(directory: string | undefined) {
+  static async getTargetFolder(directory: string | undefined): Promise<string> {
     const folder = await PathHelper.getOutputFolder(directory);
     console.log(`Output folder: ${folder}`);
     await this.checkIfFolderIsWritable(folder);
     return folder;
   }
 
-  static async getTempFolder(directory: string | undefined) {
+  static async getTempFolder(directory: string | undefined): Promise<string> {
     const tempFolder = await PathHelper.getOutputFolder(directory);
     console.log(`Temporary folder: ${tempFolder}`);
     await this.checkIfFolderIsWritable(tempFolder);
     return tempFolder;
   }
 
-  static getPathFromHttpLocation(input: string) {
+  static getPathFromHttpLocation(input: string): string {
     if (input.startsWith("http://") || input.startsWith("https://")) {
       const url = new URL(input);
       return url.pathname; // Extract path from URL

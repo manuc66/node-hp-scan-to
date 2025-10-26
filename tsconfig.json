@@ -36,7 +36,6 @@
     "useUnknownInCatchVariables": true,
     "noImplicitUseStrict": false,
     "baseUrl": ".",
-
   },
   "exclude": [
     "node_modules",

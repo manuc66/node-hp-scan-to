@@ -8,8 +8,8 @@ import axios, {
   type AxiosResponse,
   type RawAxiosRequestHeaders,
 } from "axios";
-import * as stream from "stream";
-import { Stream } from "stream";
+import * as stream from "node:stream";
+import type Stream from "node:stream";
 import EventTable, { type EtagEventTable } from "./hpModels/EventTable.js";
 import Job from "./hpModels/Job.js";
 import ScanStatus from "./hpModels/ScanStatus.js";
@@ -17,7 +17,7 @@ import WalkupScanDestination from "./hpModels/WalkupScanDestination.js";
 import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination.js";
 import WalkupScanDestinations from "./hpModels/WalkupScanDestinations.js";
 import WalkupScanToCompDestinations from "./hpModels/WalkupScanToCompDestinations.js";
-import Destination from "./hpModels/Destination.js";
+import type Destination from "./hpModels/Destination.js";
 import WalkupScanToCompEvent from "./hpModels/WalkupScanToCompEvent.js";
 import DiscoveryTree from "./type/DiscoveryTree.js";
 import WalkupScanToCompManifest from "./hpModels/WalkupScanToCompManifest.js";
@@ -324,7 +324,7 @@ export default class HPApi {
       method: "DELETE",
       responseType: "text",
     });
-    if (response.status === 204 || response.status == 200) {
+    if (response.status === 204 || response.status === 200) {
       return true;
     } else {
       throw new Error(
@@ -349,9 +349,9 @@ export default class HPApi {
 
     if (
       response.status === 201 &&
-      typeof response.headers['location'] === "string"
+      typeof response.headers["location"] === "string"
     ) {
-      return PathHelper.getPathFromHttpLocation(response.headers['location']);
+      return PathHelper.getPathFromHttpLocation(response.headers["location"]);
     } else {
       throw new Error(
         `Unexpected status code when getting ${url}: ${response.status}`,
@@ -374,12 +374,12 @@ export default class HPApi {
 
     if (
       response.status === 201 &&
-      typeof response.headers['location'] === "string"
+      typeof response.headers["location"] === "string"
     ) {
-      return PathHelper.getPathFromHttpLocation(response.headers['location']);
+      return PathHelper.getPathFromHttpLocation(response.headers["location"]);
     } else {
       throw new Error(
-        `Unexpected status code or location when registering to ${url}: ${response.status} - ${response.headers['location']}`,
+        `Unexpected status code or location when registering to ${url}: ${response.status} - ${response.headers["location"]}`,
       );
     }
   }
@@ -405,7 +405,9 @@ export default class HPApi {
     } catch (error) {
       const axiosError = error as AxiosError;
 
-      if (!axiosError.isAxiosError) throw error;
+      if (!axiosError.isAxiosError) {
+        throw error;
+      }
 
       if (axiosError.response?.status === 304) {
         return {
@@ -416,7 +418,7 @@ export default class HPApi {
       throw error;
     }
 
-    const etagReceived = response.headers['etag'] as unknown;
+    const etagReceived = response.headers["etag"] as unknown;
     if (typeof etagReceived !== "string") {
       throw new Error("Missing etag when getting Job");
     }
@@ -525,12 +527,12 @@ export default class HPApi {
 
     if (
       response.status === 201 &&
-      typeof response.headers['location'] === "string"
+      typeof response.headers["location"] === "string"
     ) {
-      return response.headers['location'];
+      return response.headers["location"];
     } else {
       throw new Error(
-        `Unexpected status code or location when posting job: ${response.status} - ${response.headers['location']}`,
+        `Unexpected status code or location when posting job: ${response.status} - ${response.headers["location"]}`,
       );
     }
   }
@@ -549,12 +551,12 @@ export default class HPApi {
 
     if (
       response.status === 201 &&
-      typeof response.headers['location'] === "string"
+      typeof response.headers["location"] === "string"
     ) {
-      return response.headers['location'];
+      return response.headers["location"];
     } else {
       throw new Error(
-        `Unexpected status code or location when posting job: ${response.status} - ${response.headers['location']}`,
+        `Unexpected status code or location when posting job: ${response.status} - ${response.headers["location"]}`,
       );
     }
   }
@@ -562,7 +564,7 @@ export default class HPApi {
    * @param jobURL
    * @return {Promise<Job|*>}
    */
-  static async getJob(jobURL: string) {
+  static async getJob(jobURL: string): Promise<Job> {
     const response = await HPApi.callAxios({
       url: jobURL,
       method: "GET",
@@ -589,7 +591,7 @@ export default class HPApi {
       url: binaryURL,
       method: "GET",
       responseType: "stream",
-      ...(timeout !== undefined && { timeout })
+      ...(timeout !== undefined && { timeout }),
     });
 
     const destinationFileStream = fs.createWriteStream(destination);

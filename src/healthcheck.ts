@@ -1,5 +1,5 @@
-import http from "http";
-import { Server as NetServer } from "net";
+import http from "node:http";
+import type { Server as NetServer } from "node:net";
 
 export function startHealthCheckServer(PORT: number): NetServer {
   const server = http.createServer((req, res) => {

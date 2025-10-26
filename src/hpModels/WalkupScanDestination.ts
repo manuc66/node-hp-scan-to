@@ -1,5 +1,5 @@
 "use strict";
-import { KnownShortcut } from "../type/KnownShortcut.js";
+import type { KnownShortcut } from "../type/KnownShortcut.js";
 import { parseXmlString } from "./ParseXmlString.js";
 import { EnumUtils } from "./EnumUtils.js";
 import { ScanPlexMode } from "./ScanPlexMode.js";

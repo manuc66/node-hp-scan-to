@@ -100,12 +100,13 @@ export default class JpegUtil {
   }
 
   static fixSizeWithDNL(buffer: Buffer): number | null {
-    let numberOfLine: number | null = null;
-    let startOfStartOfFrame: number | null = null;
-    let lengthOfStartOfFrame: number | null = null;
+    let numberOfLine: number | undefined;
+    let startOfStartOfFrame: number | undefined;
+    let lengthOfStartOfFrame: number | undefined;
     this.parse(buffer, {
       [define_number_of_lines]: (start: number, length: number) => {
-        numberOfLine = this.readNumberOfLineFromDNL(buffer, start, length);
+        numberOfLine =
+          this.readNumberOfLineFromDNL(buffer, start, length) ?? undefined;
         return false; // don't stop
       },
       [start_of_Frame_0]: (start: number, length: number) => {
@@ -115,12 +116,15 @@ export default class JpegUtil {
       },
     });
 
-    if (numberOfLine == null) {
+    if (numberOfLine === undefined) {
       this.logDebug("DNL marker not found impossible to fix height");
       return null;
     }
 
-    if (startOfStartOfFrame == null || lengthOfStartOfFrame == null) {
+    if (
+      startOfStartOfFrame === undefined ||
+      lengthOfStartOfFrame === undefined
+    ) {
       this.logDebug(
         "Start of frame 0 not found, either jpeg parsing is broken either the stream is corrupted",
       );
@@ -198,21 +202,21 @@ export default class JpegUtil {
   private static isValidJpegHeader(i: number, buffer: Buffer) {
     return (
       i + 6 < buffer.length &&
-      buffer[i + 2] == "J".charCodeAt(0) &&
-      buffer[i + 3] == "F".charCodeAt(0) &&
-      buffer[i + 4] == "I".charCodeAt(0) &&
-      buffer[i + 5] == "F".charCodeAt(0) &&
-      buffer[i + 6] == 0x00
+      buffer[i + 2] === "J".charCodeAt(0) &&
+      buffer[i + 3] === "F".charCodeAt(0) &&
+      buffer[i + 4] === "I".charCodeAt(0) &&
+      buffer[i + 5] === "F".charCodeAt(0) &&
+      buffer[i + 6] === 0x00
     );
   }
 
   private static isSOIHeader(i: number, buffer: Buffer) {
     return (
       i + 3 < buffer.length &&
-      buffer[i] == 0xff &&
-      buffer[i + 1] == 0xd8 &&
-      buffer[i + 2] == 0xff &&
-      buffer[i + 3] == 0xe0
+      buffer[i] === 0xff &&
+      buffer[i + 1] === 0xd8 &&
+      buffer[i + 2] === 0xff &&
+      buffer[i + 3] === 0xe0
     );
   }
 
@@ -250,7 +254,7 @@ export default class JpegUtil {
     for (let j = 0; i + j < buffer.length; j++) {
       if (buffer[i + j] === 0xff) {
         if (i + j + 1 < buffer.length) {
-          if (buffer[i + j + 1] == 0x00) {
+          if (buffer[i + j + 1] === 0x00) {
             // it's ok just continue
           } else {
             // we've just found the end of the Start of Scan
@@ -280,7 +284,7 @@ export default class JpegUtil {
     //Increase the file index to get to the next block
     i += blockLength;
     while (i < buffer.length) {
-      if (buffer[i] != 0xff) {
+      if (buffer[i] !== 0xff) {
         this.logDebug(
           "We should be at the begining of the next block, but got: " +
             buffer[i],
@@ -293,7 +297,7 @@ export default class JpegUtil {
         return false;
       }
 
-      if (buffer[i + 1] == 0x00) {
+      if (buffer[i + 1] === 0x00) {
         this.logDebug(`Bad marker at ${i} 0x00 just after marker ${marker}`);
         return false;
       }
@@ -301,7 +305,7 @@ export default class JpegUtil {
       marker = this.numToHex(buffer[i]) + this.numToHex(buffer[i + 1]);
 
       const foundBlockLength = this.getBlockLength(buffer, i, marker);
-      if (foundBlockLength == null) {
+      if (foundBlockLength === null) {
         this.logDebug(
           `Was not able to determine block size for marker ${marker}`,
         );
@@ -309,9 +313,11 @@ export default class JpegUtil {
       }
       blockLength = foundBlockLength;
 
-      const handler = markerHandler[marker];
-      if (handler?.(i + 2, blockLength)) {
-        return true;
+      if (marker in markerHandler) {
+        const handler = markerHandler[marker];
+        if (handler(i + 2, blockLength)) {
+          return true;
+        }
       }
 
       i = i + 2 + blockLength;

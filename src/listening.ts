@@ -1,5 +1,5 @@
 import HPApi from "./HPApi.js";
-import Event from "./hpModels/Event.js";
+import type Event from "./hpModels/Event.js";
 import Destination from "./hpModels/Destination.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type {
@@ -15,18 +15,14 @@ export async function waitScanRequest(compEventURI: string): Promise<boolean> {
     const walkupScanToCompEvent =
       await HPApi.getWalkupScanToCompEvent(compEventURI);
     const eventType = walkupScanToCompEvent.eventType;
-    const eventTypeStr = eventType.toString();
     if (eventType === EventType.HostSelected) {
       // this ok to wait
     } else if (eventType === EventType.ScanRequested) {
       break;
     } else if (eventType === EventType.ScanNewPageRequested) {
       break;
-    } else if (eventType === EventType.ScanPagesComplete) {
-      console.log("no more page to scan, scan is finished");
-      return false;
     } else {
-      console.log(`Unknown eventType: ${eventTypeStr}`);
+      console.log("no more page to scan, scan is finished");
       return false;
     }
 
@@ -39,19 +35,19 @@ export async function waitScanRequest(compEventURI: string): Promise<boolean> {
 export async function waitForScanEventFromTarget(
   scanTarget: ScanTarget,
   afterEtag: string,
-): Promise<Event> {
-  console.log('Waiting for additional pages or scan completion...');
-  return (await waitForScanEventInternal([scanTarget], afterEtag)).event;
+): Promise<Event | undefined> {
+  console.log("Waiting for additional pages or scan completion...");
+  return (await waitForScanEventInternal([scanTarget], afterEtag))?.event;
 }
 
 export async function waitForScanEvent(
   scanTargets: ScanTarget[],
   afterEtag: string | null = null,
-): Promise<SelectedScanTarget> {
+): Promise<SelectedScanTarget | null> {
   const targetList = scanTargets
     .map((x) => `${x.label} (${x.resourceURI.split("/").pop()})`)
     .join(", ");
-  const since = afterEtag ? ` since event ${afterEtag}` : "";
+  const since = afterEtag !== null ? ` since event ${afterEtag}` : "";
   console.log(`Waiting for scan event from: ${targetList}${since}`);
 
   return await waitForScanEventInternal(scanTargets, afterEtag);
@@ -60,26 +56,32 @@ export async function waitForScanEvent(
 async function waitForScanEventInternal(
   scanTargets: ScanTarget[],
   afterEtag: string | null = null,
-): Promise<SelectedScanTarget> {
-
-
+): Promise<SelectedScanTarget | null> {
   let eventTable = await HPApi.getEvents(afterEtag ?? "");
   let acceptedScanEvent: Event | undefined = undefined;
-  let scanTarget: ScanTarget;
+  let scanTarget: ScanTarget | undefined = undefined;
   let currentEtag = eventTable.etag;
-  while (acceptedScanEvent == null) {
+  while (acceptedScanEvent === undefined) {
     eventTable = await HPApi.getEvents(currentEtag, 1200);
     currentEtag = eventTable.etag;
 
-    for (let i = 0; i < scanTargets.length && acceptedScanEvent == null; i++) {
+    for (
+      let i = 0;
+      i < scanTargets.length && acceptedScanEvent === undefined;
+      i++
+    ) {
       scanTarget = scanTargets[i];
       acceptedScanEvent = eventTable.eventTable.events.find(
         (ev) =>
-          ev.isScanEvent && ev.destinationURI?.includes(scanTarget.resourceURI),
+          ev.isScanEvent &&
+          ev.destinationURI?.includes(scanTargets[i].resourceURI) !== undefined,
       );
     }
   }
-  return { event: acceptedScanEvent, ...scanTarget! };
+  if (scanTarget === undefined) {
+    return null;
+  }
+  return { event: acceptedScanEvent, ...scanTarget };
 }
 
 async function registerWalkupScanDestination(
@@ -102,7 +104,7 @@ async function registerWalkupScanDestination(
     `Discovered available host destinations: ${destinations.map((d) => d.name).join(", ")}`,
   );
 
-  const scanTargets: ScanTarget [] = [];
+  const scanTargets: ScanTarget[] = [];
 
   for (const registrationConfig of registrationConfigs) {
     const hostname = registrationConfig.label;
@@ -129,7 +131,7 @@ async function registerWalkupScanDestination(
 export async function waitScanEvent(
   deviceCapabilities: DeviceCapabilities,
   registrationConfigs: RegistrationConfig[],
-): Promise<SelectedScanTarget> {
+): Promise<SelectedScanTarget | null> {
   const scanTargets = await registerWalkupScanDestination(
     registrationConfigs,
     deviceCapabilities.useWalkupScanToComp,
