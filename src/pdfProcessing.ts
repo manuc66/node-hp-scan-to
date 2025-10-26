@@ -54,7 +54,7 @@ export async function createPdfFrom(
     const heightInInches = element.height / element.yResolution;
     const format = [widthInInches, heightInInches];
 
-    if (doc == null) {
+    if (doc === null) {
       doc = new jsPDF({ unit: "in", floatPrecision: 3, format });
     } else {
       doc.addPage(format);

@@ -1,7 +1,7 @@
 import type { DirectoryConfig } from "./directoryConfig.js";
 import type { PaperlessConfig } from "../paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "../nextcloud/NextcloudConfig.js";
-import { ScanMode } from "./scanMode.js";
+import type { ScanMode } from "./scanMode.js";
 
 export interface ScanConfig {
   resolution: number;

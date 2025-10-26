@@ -1,4 +1,4 @@
-import axios, { AxiosError } from "axios";
+import axios, { type AxiosError } from "axios";
 import type { ScanContent } from "../type/ScanContent.js";
 import type { NextcloudConfig } from "./NextcloudConfig.js";
 import fs from "fs/promises";
@@ -21,7 +21,7 @@ export async function uploadPdfToNextcloud(
   nextcloudConfig: NextcloudConfig,
 ) {
   await checkFolderAndUpload(nextcloudConfig, async () => {
-    if (pdfFilePath) {
+    if (pdfFilePath !== null) {
       await uploadToNextcloud(pdfFilePath, nextcloudConfig);
     } else {
       console.log(

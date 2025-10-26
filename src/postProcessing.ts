@@ -64,7 +64,7 @@ async function handlePdfPostProcessing(
     scanDate,
     true,
   );
-  if (pdfFilePath != null) {
+  if (pdfFilePath !== null) {
     displayPdfScan(pdfFilePath, scanJobContent, scanCount);
     if (paperlessConfig) {
       await uploadPdfToPaperless(pdfFilePath, paperlessConfig);
