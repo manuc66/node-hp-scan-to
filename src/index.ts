@@ -10,7 +10,7 @@ import { configSchema, type FileConfig } from "./type/FileConfig.js";
 import { setupProgram } from "./program.js";
 
 const validateConfig = (config: IConfig) => {
-  const result = configSchema.safeParse(config);
+  const result = configSchema.safeParse(config.util.toObject());
   if (!result.success) {
     const errors = z.prettifyError(result.error);
     throw new Error(`Configuration validation error: ${errors}`);
