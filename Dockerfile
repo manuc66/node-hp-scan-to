@@ -5,6 +5,7 @@ COPY . .
 COPY src/commitInfo.json /app/src/commitInfo.json
 
 RUN corepack enable
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN yarn install --frozen-lockfile
 RUN yarn build \
  && rm dist/*.d.ts dist/*.js.map
@@ -13,9 +14,10 @@ RUN yarn build \
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json yarn.lock .yarnrc.yml ./
-RUN corepack enable \
- && yarn install --immutable \
- && yarn workspaces focus --production --all
+RUN corepack enable
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+RUN yarn install --immutable
+RUN yarn workspaces focus --production --all
 
 FROM node:22-alpine AS app
 ENV NODE_ENV=production
