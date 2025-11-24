@@ -4,9 +4,9 @@ WORKDIR /app
 COPY . .
 COPY src/commitInfo.json /app/src/commitInfo.json
 
-RUN corepack enable\
- && yarn install --frozen-lockfile \
- && yarn build \
+RUN corepack enable
+RUN yarn install --frozen-lockfile
+RUN yarn build \
  && rm dist/*.d.ts dist/*.js.map
 
 # New stage to install only production dependencies
