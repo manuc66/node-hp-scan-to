@@ -1,21 +1,19 @@
-FROM node:22-alpine AS build
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /app
 
 COPY . .
 COPY src/commitInfo.json /app/src/commitInfo.json
 
 RUN corepack enable
-ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN yarn install --frozen-lockfile
 RUN yarn build \
  && rm dist/*.d.ts dist/*.js.map
 
 # New stage to install only production dependencies
-FROM node:22-alpine AS deps
+FROM --platform=$BUILDPLATFORM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json yarn.lock .yarnrc.yml ./
 RUN corepack enable
-ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN yarn install --immutable
 RUN yarn workspaces focus --production --all
 
