@@ -4,18 +4,18 @@ WORKDIR /app
 COPY . .
 COPY src/commitInfo.json /app/src/commitInfo.json
 
-RUN corepack enable
-RUN yarn install --frozen-lockfile
-RUN yarn build \
- && rm dist/*.d.ts dist/*.js.map
+RUN corepack enable \
+    && yarn install --frozen-lockfile \
+    && yarn build \
+    && rm dist/*.d.ts dist/*.js.map
 
 # New stage to install only production dependencies
 FROM --platform=$BUILDPLATFORM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json yarn.lock .yarnrc.yml ./
-RUN corepack enable
-RUN yarn install --immutable
-RUN yarn workspaces focus --production --all
+RUN corepack enable \
+    && yarn install --immutable \
+    && yarn workspaces focus --production --all
 
 FROM node:22-alpine AS app
 ENV NODE_ENV=production
