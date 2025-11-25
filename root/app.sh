@@ -61,7 +61,9 @@ if [ -n "$PAPERLESS_POST_DOCUMENT_URL" ]; then
     ARGS+=("-s" "$PAPERLESS_POST_DOCUMENT_URL")
 fi
 
-if [ -n "$PAPERLESS_TOKEN" ]; then
+if [ -n "$PAPERLESS_TOKEN_FILE" ]; then
+    ARGS+=("--paperless-token-file" "$PAPERLESS_TOKEN_FILE")
+elif [ -n "$PAPERLESS_TOKEN" ]; then
     ARGS+=("-o" "$PAPERLESS_TOKEN")
 fi
 

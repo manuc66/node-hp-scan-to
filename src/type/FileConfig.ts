@@ -71,6 +71,7 @@ export const configSchema = z.strictObject({
   ///
   paperless_post_document_url: z.string().optional(), // Paperless POST URL
   paperless_token: z.string().optional(), // Paperless API token
+  paperless_token_file: z.string().optional(), // Paperless API token
   paperless_group_multi_page_scan_into_a_pdf: z.boolean().optional(), // Group multi-page scans into a single PDF
   paperless_always_send_as_pdf_file: z.boolean().optional(), // Always upload scans as PDF
 

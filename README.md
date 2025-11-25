@@ -155,7 +155,8 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `-k`, `--keep-files`                  | Retain scanned files after uploading to Paperless-ngx or Nextcloud (disabled by default).                        | `-k` (disabled by default)                                        |
 | `-l`, `--label`                       | The name of the computer running this app. Defaults to the hostname.                                             | `-l <hostname>` (default: system hostname)                        |
 | `-n`, `--name`                        | Printer name (quote if it contains spaces).                                                                      | `-n "Officejet 6500 E710n-z"` (no default)                        |
-| `-o`, `--paperless-token`             | Paperless-ngx API token.                                                                                         | `-o xxxxxxxxxxxx` (no default)                                    |
+| `-o`, `--paperless-token`             | The paperless token. Required unless `----paperless-token-file` is used. Overrides if both are provided.                   | `-o xxxxxxxxxxxx` (no default)                                    |
+| `--paperless-token-file`              | File name that contains the paperless token. Required unless `--nextcloud-password` is used. Takes precedence if both are provided.| `--paperless-token-file some/path/to/file` (no default)          |
 | `-p`, `--pattern`                     | Filename pattern (no extension). Use quotes for static text, supports date/time masks (see [dateformat docs](https://www.npmjs.com/package/dateformat#mask-options)). Defaults to `scan<increasing number>_page<page number>`. | `-p scan1_page1`                                                  |
 | `-r`, `--resolution`                  | Scan resolution in DPI. Defaults to 200.                                                                         | `-r 200`                                                          |
 | `--mode <mode> `                      | Selects the scan mode (default: Color) (choices: "Gray", "Color").                                               | `--mode Gray`                                                     |
@@ -208,15 +209,16 @@ Options:
 
 Paperless Options:
   -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
-  -o, --paperless-token <paperless_token>                          The paperless token
+  -o, --paperless-token <paperless_token>                          The paperless token. Either this or paperless-token-file is required for paperless integration.
+  --paperless-token-file <paperless_token_file>                    File name that contains the paperless token. Either this or paperless-token is required for paperless integration.
   --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
   --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
 
 Nextcloud Options:
   --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
   --nextcloud-username <nextcloud_username>                        The nextcloud username
-  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required
-  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required
+  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.
+  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
   --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
 
 Device Control Screen Options:
@@ -273,15 +275,16 @@ Options:
 
 Paperless Options:
   -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
-  -o, --paperless-token <paperless_token>                          The paperless token
+  -o, --paperless-token <paperless_token>                          The paperless token. Either this or paperless-token-file is required for paperless integration.
+  --paperless-token-file <paperless_token_file>                    File name that contains the paperless token. Either this or paperless-token is required for paperless integration.
   --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
   --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
 
 Nextcloud Options:
   --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
   --nextcloud-username <nextcloud_username>                        The nextcloud username
-  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required
-  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required
+  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.
+  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
   --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
 
 Auto-scan Options:
@@ -366,15 +369,16 @@ Options:
 
 Paperless Options:
   -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
-  -o, --paperless-token <paperless_token>                          The paperless token
+  -o, --paperless-token <paperless_token>                          The paperless token. Either this or paperless-token-file is required for paperless integration.
+  --paperless-token-file <paperless_token_file>                    File name that contains the paperless token. Either this or paperless-token is required for paperless integration.
   --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
   --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
 
 Nextcloud Options:
   --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
   --nextcloud-username <nextcloud_username>                        The nextcloud username
-  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required
-  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required
+  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.
+  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
   --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
 
 Global Options:
@@ -411,28 +415,29 @@ All scanned files are written to the volume `/scan`, the filename can be changed
 
 List of supported environment variables and their meaning, or correspondence with [command-line flags](#cli-options):
 
-| Environment Variable          | Description                                                                                                 | Corresponding CLI Flag or Notes                                               |
-|-------------------------------|-------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
-| `CMDLINE`                     | Additional command-line flags added at the end of the command                                               | Set to `-D` to enable debug logs                                              |
-| `DIR`                         | Directory to use                                                                                            | `-d` / `--directory`                                                          |
-| `IP`                          | IP address for the program                                                                                  | `-a` / `--address`                                                            |
-| `KEEP_FILES`                  | If set, scanned files are not deleted after uploading to Paperless-ngx or Nextcloud                         |                                                                               |
-| `LABEL`                       | Label to set on the device's display as a scan target                                                       | `-l` / `--label`                                                              |
-| `NAME`                        | Name of the device to lookup for on the network                                                             | `-n` / `--name`                                                               |
-| `ADD_EMULATED_DUPLEX`         | Enable emulated duplex scanning, with optional assembly mode (default: document-wise)                       | `--add-emulated-duplex [mode]`                                                |
-| `NEXTCLOUD_PASSWORD`          | Password of Nextcloud user (either this or `NEXTCLOUD_PASSWORD_FILE` is required; file takes precedence)    |                                                                               |
-| `NEXTCLOUD_PASSWORD_FILE`     | File containing Nextcloud user password (either this or `NEXTCLOUD_PASSWORD` is required; takes precedence) | Example: `./nextcloud_password.secret` (preferred for Docker Compose secrets) |
-| `NEXTCLOUD_UPLOAD_FOLDER`     | Upload folder for documents or images (user must have write permission; defaults to `scan` if not set)      |                                                                               |
-| `NEXTCLOUD_URL`               | Nextcloud URL                                                                                               | Example: `https://nextcloud.example.tld`                                      |
-| `NEXTCLOUD_USERNAME`          | Nextcloud username                                                                                          |                                                                               |
-| `PAPERLESS_POST_DOCUMENT_URL` | Paperless-ngx post document URL (if provided with token, a PDF is uploaded)                                 | Example: `http://<paperless-host>:<port>/api/documents/post_document/`        |
-| `PAPERLESS_TOKEN`             | Paperless-ngx API token                                                                                     | Example: `xxxxxxxxxxxx...`                                                    |
-| `PATTERN`                     | Pattern to use                                                                                              | `-p` / `--pattern`                                                            |
-| `PGID`                        | ID of the group that will run the program                                                                   |                                                                               |
-| `PUID`                        | ID of the user that will run the program                                                                    |                                                                               |
-| `RESOLUTION`                  | Resolution setting                                                                                          | `-r` / `--resolution`                                                         |
-| `MODE`                        | Scan mode setting                                                                                           | `--mode`                                                                      |
-| `TEMP_DIR`                    | Temporary directory                                                                                         | `-t` / `--temp-directory`                                                     |
+| Environment Variable          | Description                                                                                                   | Corresponding CLI Flag or Notes                                               |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `CMDLINE`                     | Additional command-line flags added at the end of the command                                                 | Set to `-D` to enable debug logs                                              |
+| `DIR`                         | Directory to use                                                                                              | `-d` / `--directory`                                                          |
+| `IP`                          | IP address for the program                                                                                    | `-a` / `--address`                                                            |
+| `KEEP_FILES`                  | If set, scanned files are not deleted after uploading to Paperless-ngx or Nextcloud                           |                                                                               |
+| `LABEL`                       | Label to set on the device's display as a scan target                                                         | `-l` / `--label`                                                              |
+| `NAME`                        | Name of the device to lookup for on the network                                                               | `-n` / `--name`                                                               |
+| `ADD_EMULATED_DUPLEX`         | Enable emulated duplex scanning, with optional assembly mode (default: document-wise)                         | `--add-emulated-duplex [mode]`                                                |
+| `NEXTCLOUD_PASSWORD`          | Password of Nextcloud user (either this or `NEXTCLOUD_PASSWORD_FILE` is required; file takes precedence)      |                                                                               |
+| `NEXTCLOUD_PASSWORD_FILE`     | File containing Nextcloud user password (either this or `NEXTCLOUD_PASSWORD` is required; takes precedence)   | Example: `./nextcloud_password.secret` (preferred for Docker Compose secrets) |
+| `NEXTCLOUD_UPLOAD_FOLDER`     | Upload folder for documents or images (user must have write permission; defaults to `scan` if not set)        |                                                                               |
+| `NEXTCLOUD_URL`               | Nextcloud URL                                                                                                 | Example: `https://nextcloud.example.tld`                                      |
+| `NEXTCLOUD_USERNAME`          | Nextcloud username                                                                                            |                                                                               |
+| `PAPERLESS_POST_DOCUMENT_URL` | Paperless-ngx post document URL (if provided with token, a PDF is uploaded)                                   | Example: `http://<paperless-host>:<port>/api/documents/post_document/`        |
+| `PAPERLESS_TOKEN`             | Paperless-ngx API token (either this or `NEXTCLOUD_PASSWORD_FILE` is required; file takes precedence)         | Example: `xxxxxxxxxxxx...`                                                    |
+| `PAPERLESS_TOKEN_FILE`        | File containing paperless-ngx API token (either this or `PAPERLESS_TOKEN_FILE` is required; takes precedence) | Example: `./paperless_token.secret` (preferred for Docker Compose secrets)    |
+| `PATTERN`                     | Pattern to use                                                                                                | `-p` / `--pattern`                                                            |
+| `PGID`                        | ID of the group that will run the program                                                                     |                                                                               |
+| `PUID`                        | ID of the user that will run the program                                                                      |                                                                               |
+| `RESOLUTION`                  | Resolution setting                                                                                            | `-r` / `--resolution`                                                         |
+| `MODE`                        | Scan mode setting                                                                                             | `--mode`                                                                      |
+| `TEMP_DIR`                    | Temporary directory                                                                                           | `-t` / `--temp-directory`                                                     |
 
 **Additional Notes:**
 

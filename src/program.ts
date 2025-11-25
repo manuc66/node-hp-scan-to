@@ -118,7 +118,13 @@ function setupScanParameters(commandName: string) {
     .addOption(
       new Option(
         "-o, --paperless-token <paperless_token>",
-        "The paperless token",
+        "The paperless token. Either this or paperless-token-file is required for paperless integration.",
+      ).helpGroup(HelpGroupsHeadings.paperless),
+    )
+    .addOption(
+      new Option(
+        "--paperless-token-file <paperless_token_file>",
+        "File name that contains the paperless token. Either this or paperless-token is required for paperless integration.",
       ).helpGroup(HelpGroupsHeadings.paperless),
     )
     .addOption(
@@ -154,13 +160,13 @@ function setupScanParameters(commandName: string) {
     .addOption(
       new Option(
         "--nextcloud-password <nextcloud_app_password>",
-        "The nextcloud app password for username. Either this or nextcloud-password-file is required",
+        "The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.",
       ).helpGroup(HelpGroupsHeadings.nextcloud),
     )
     .addOption(
       new Option(
         "--nextcloud-password-file <nextcloud_app_password_file>",
-        "File name that contains the nextcloud app password for username. Either this or nextcloud-password is required",
+        "File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.",
       ).helpGroup(HelpGroupsHeadings.nextcloud),
     )
     .addOption(
@@ -210,9 +216,15 @@ function getPaperlessConfig(
     fileConfig.paperless_token,
   );
 
+  const configPaperlessTokenFile = getOptConfiguredValue(
+    options.paperlessTokenFile,
+    fileConfig.paperless_token_file,
+  );
+
   if (
     paperlessPostDocumentUrl !== undefined &&
-    configPaperlessToken !== undefined
+    (configPaperlessToken !== undefined ||
+      configPaperlessTokenFile !== undefined)
   ) {
     const configPaperlessKeepFiles = getConfiguredValue(
       options.keepFiles,
@@ -230,12 +242,21 @@ function getPaperlessConfig(
       false,
     );
 
+    let paperlessToken: string;
+    if (configPaperlessTokenFile !== undefined) {
+      paperlessToken = fs
+        .readFileSync(configPaperlessTokenFile, "utf8")
+        .trimEnd();
+    } else {
+      paperlessToken = configPaperlessToken ?? "";
+    }
+
     console.log(
-      `Paperless configuration provided, post document url: ${paperlessPostDocumentUrl}, the token length: ${configPaperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
+      `Paperless configuration provided, post document url: ${paperlessPostDocumentUrl}, the token length: ${paperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
     );
     return {
       postDocumentUrl: paperlessPostDocumentUrl,
-      authToken: configPaperlessToken,
+      authToken: paperlessToken,
       keepFiles: configPaperlessKeepFiles,
       groupMultiPageScanIntoAPdf: groupMultiPageScanIntoAPdf,
       alwaysSendAsPdfFile: alwaysSendAsPdfFile,
