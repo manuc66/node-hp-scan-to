@@ -101,7 +101,7 @@ export default class PathHelper {
       await fd.close();
       return true;
     } catch (err: unknown) {
-      if (err instanceof Error && 'code' in err && err.code === 'EEXIST') {
+      if (err instanceof Error && "code" in err && err.code === "EEXIST") {
         return false;
       }
       throw err;
