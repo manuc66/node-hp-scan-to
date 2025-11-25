@@ -81,7 +81,6 @@ async function handleScanProcessingState(
     job.binaryURL !== null &&
     job.currentPageNumber !== null
   ) {
-
     const destinationFilePath = await PathHelper.getFileForPage(
       folder,
       scanCount,

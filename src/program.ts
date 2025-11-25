@@ -171,9 +171,12 @@ function setupScanParameters(commandName: string) {
     );
 }
 
-async function getDeviceIp(options: ProgramOption, configFile: FileConfig) {
+async function getDeviceIp(
+  options: ProgramOption,
+  configFile: FileConfig,
+): Promise<string> {
   let ip = getOptConfiguredValue(options.address, configFile.ip);
-  if (ip !== undefined) {
+  if (ip === undefined) {
     const name = getConfiguredValue(
       options.name,
       configFile.name,
@@ -465,9 +468,7 @@ function createListenCliCmd(configFile: FileConfig) {
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
       const ip = await getDeviceIp(options, configFile);
-      if (ip !== undefined) {
-        HPApi.setDeviceIP(ip);
-      }
+      HPApi.setDeviceIP(ip);
 
       const isDebug = getIsDebug(options, configFile);
       HPApi.setDebug(isDebug);
@@ -566,9 +567,7 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
       const options = cmd.optsWithGlobals();
 
       const ip = await getDeviceIp(options, fileConfig);
-      if (ip !== undefined) {
-        HPApi.setDeviceIP(ip);
-      }
+      HPApi.setDeviceIP(ip);
 
       const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);
@@ -643,9 +642,7 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
       const options = cmd.optsWithGlobals();
 
       const ip = await getDeviceIp(options, fileConfig);
-      if (ip !== undefined) {
-        HPApi.setDeviceIP(ip);
-      }
+      HPApi.setDeviceIP(ip);
 
       const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);
@@ -692,9 +689,7 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
       const options: ProgramOption = cmd.optsWithGlobals();
 
       const ip = await getDeviceIp(options, fileConfig);
-      if (ip !== undefined) {
-        HPApi.setDeviceIP(ip);
-      }
+      HPApi.setDeviceIP(ip);
 
       const isDebug = getIsDebug(options, fileConfig);
       HPApi.setDebug(isDebug);
