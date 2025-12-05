@@ -1,11 +1,11 @@
 "use strict";
 
-import Event, { type EventData } from "./Event.js";
+import Event, { type EventData, type IEvent } from "./Event.js";
 import { parseXmlString } from "./ParseXmlString.js";
 
 export interface EtagEventTable {
   etag: string;
-  eventTable: EventTable;
+  eventTable: IEventTable;
 }
 
 export interface EventTableData {
@@ -14,7 +14,11 @@ export interface EventTableData {
   };
 }
 
-export default class EventTable {
+interface IEventTable {
+  readonly events: IEvent[];
+}
+
+export default class EventTable implements IEventTable {
   private readonly data: EventTableData;
   constructor(data: EventTableData) {
     this.data = data;
