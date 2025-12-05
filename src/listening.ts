@@ -1,5 +1,5 @@
 import HPApi from "./HPApi.js";
-import type Event from "./hpModels/Event.js";
+import type { IEvent } from "./hpModels/Event.js";
 import Destination from "./hpModels/Destination.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type {
@@ -35,7 +35,7 @@ export async function waitScanRequest(compEventURI: string): Promise<boolean> {
 export async function waitForScanEventFromTarget(
   scanTarget: ScanTarget,
   afterEtag: string,
-): Promise<Event | undefined> {
+): Promise<IEvent | undefined> {
   console.log("Waiting for additional pages or scan completion...");
   return (await waitForScanEventInternal([scanTarget], afterEtag))?.event;
 }
@@ -58,7 +58,7 @@ async function waitForScanEventInternal(
   afterEtag: string | null = null,
 ): Promise<SelectedScanTarget | null> {
   let eventTable = await HPApi.getEvents(afterEtag ?? "");
-  let acceptedScanEvent: Event | undefined = undefined;
+  let acceptedScanEvent: IEvent | undefined = undefined;
   let scanTarget: ScanTarget | undefined = undefined;
   let currentEtag = eventTable.etag;
   while (acceptedScanEvent === undefined) {
@@ -74,7 +74,7 @@ async function waitForScanEventInternal(
       acceptedScanEvent = eventTable.eventTable.events.find(
         (ev) =>
           ev.isScanEvent &&
-          ev.destinationURI?.includes(scanTargets[i].resourceURI) !== undefined,
+          ev.destinationURI?.includes(scanTargets[i].resourceURI) === true,
       );
     }
   }
@@ -108,7 +108,8 @@ async function registerWalkupScanDestination(
 
   for (const registrationConfig of registrationConfigs) {
     const hostname = registrationConfig.label;
-    const destination = destinations.find((x) => x.name === hostname);
+    const destination = destinations
+      .find((x) => x.name === hostname);
 
     let resourceURI: string;
     if (destination) {
