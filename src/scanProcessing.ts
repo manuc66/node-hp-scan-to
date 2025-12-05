@@ -1,4 +1,4 @@
-import type Event from "./hpModels/Event.js";
+import type { IEvent } from "./hpModels/Event.js";
 import type WalkupScanDestination from "./hpModels/WalkupScanDestination.js";
 import type WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination.js";
 import HPApi from "./HPApi.js";
@@ -26,7 +26,7 @@ export interface WalkupDestination {
 }
 
 export async function tryGetDestination(
-  event: Event,
+  event: IEvent,
 ): Promise<WalkupDestination | null> {
   // this code can in some cases be executed before the user actually chooses between Document or Photo,
   // so, let's fetch the contentType (Document or Photo) until we get a value
