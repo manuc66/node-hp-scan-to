@@ -108,8 +108,7 @@ async function registerWalkupScanDestination(
 
   for (const registrationConfig of registrationConfigs) {
     const hostname = registrationConfig.label;
-    const destination = destinations
-      .find((x) => x.name === hostname);
+    const destination = destinations.find((x) => x.name === hostname);
 
     let resourceURI: string;
     if (destination) {

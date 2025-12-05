@@ -29,17 +29,18 @@ describe("waitForScanEvent (includes(...) !== undefined bug guard)", () => {
       destinationURI: "/WalkupScan/WalkupScanDestinations/AnotherTarget",
       unqualifiedEventCategory: "ScanEvent",
       agingStamp: "199-9",
-      compEventURI: "/WalkupScanToComp/WalkupScanToCompDestinations/aa8578e2-b94f-1f08-bcba-705a0fe5b7aa"
-
+      compEventURI:
+        "/WalkupScanToComp/WalkupScanToCompDestinations/aa8578e2-b94f-1f08-bcba-705a0fe5b7aa",
     };
 
     // Matching event (should be accepted)
-    const matchingEvent:IEvent = {
+    const matchingEvent: IEvent = {
       isScanEvent: true,
       destinationURI: `/prefix${targetUri}`, // includes targetUri
       unqualifiedEventCategory: "ScanEvent",
       agingStamp: "199-10",
-      compEventURI: "/WalkupScanToComp/WalkupScanToCompDestinations/1c8578e2-b94f-1f08-bcba-705a0fe5b7ce"
+      compEventURI:
+        "/WalkupScanToComp/WalkupScanToCompDestinations/1c8578e2-b94f-1f08-bcba-705a0fe5b7ce",
     };
 
     // Prepare responses for successive HPApi.getEvents calls:
@@ -72,7 +73,9 @@ describe("waitForScanEvent (includes(...) !== undefined bug guard)", () => {
 
     // This is the important assertion: ensure the returned event's destinationURI actually includes the target URI.
     // If the buggy predicate is present, result.event will be nonMatchingEvent and this will fail.
-    expect(result!.event.destinationURI).to.include(targetUri,
-      "Bug detected: function returned an event whose destinationURI does not include the expected resourceURI (likely due to using includes(...) !== undefined).");
+    expect(result!.event.destinationURI).to.include(
+      targetUri,
+      "Bug detected: function returned an event whose destinationURI does not include the expected resourceURI (likely due to using includes(...) !== undefined).",
+    );
   });
 });
