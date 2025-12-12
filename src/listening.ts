@@ -11,7 +11,8 @@ import { EventType } from "./hpModels/WalkupScanToCompEvent.js";
 
 export async function waitScanRequest(compEventURI: string): Promise<boolean> {
   const waitMax = 50;
-  for (let i = 0; i < waitMax; i++) {
+  let i = 0;
+  for (;i < waitMax; i++) {
     const walkupScanToCompEvent =
       await HPApi.getWalkupScanToCompEvent(compEventURI);
     const eventType = walkupScanToCompEvent.eventType;
@@ -29,7 +30,7 @@ export async function waitScanRequest(compEventURI: string): Promise<boolean> {
     console.log(`Waiting for user input (attempt ${i + 1} of ${waitMax})`);
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
   }
-  return true;
+  return i < waitMax;
 }
 
 export async function waitForScanEventFromTarget(
