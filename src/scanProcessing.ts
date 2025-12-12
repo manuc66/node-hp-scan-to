@@ -291,6 +291,7 @@ export async function singleScan(
 
   if (scanStatus.scannerState !== ScannerState.Idle) {
     console.log("Scanner state is not Idle, aborting scan attempt...!");
+    return;
   }
 
   console.log("ADF is: " + scanStatus.adfState);
