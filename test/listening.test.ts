@@ -1,9 +1,10 @@
 import { describe, it, afterEach } from "mocha";
 import { expect } from "chai";
-import { waitForScanEvent } from "../src/listening.js";
+import { waitForScanEvent, waitScanRequest } from "../src/listening.js";
 import HPApi from "../src/HPApi.js";
 import type { EtagEventTable } from "../src/hpModels/EventTable.js";
 import type { IEvent } from "../src/hpModels/Event.js";
+import { EventType } from "../src/hpModels/WalkupScanToCompEvent.js";
 
 describe("waitForScanEvent (includes(...) !== undefined bug guard)", () => {
   const originalGetEvents = HPApi.getEvents;
@@ -77,5 +78,83 @@ describe("waitForScanEvent (includes(...) !== undefined bug guard)", () => {
       targetUri,
       "Bug detected: function returned an event whose destinationURI does not include the expected resourceURI (likely due to using includes(...) !== undefined).",
     );
+  });
+});
+
+describe("waitScanRequest()", () => {
+  const originalGetWalkupScanToCompEvent = HPApi.getWalkupScanToCompEvent;
+  const originalSetTimeout = globalThis.setTimeout;
+
+  beforeEach(() => {
+    // Make the internal 1s waits complete instantly so tests run fast.
+    globalThis.setTimeout = ((
+      cb: (...args: any[]) => void,
+      _ms?: number,
+      ...args: any[]
+    ) => {
+      cb(...args);
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout;
+  });
+
+  afterEach(() => {
+    HPApi.getWalkupScanToCompEvent = originalGetWalkupScanToCompEvent;
+    globalThis.setTimeout = originalSetTimeout;
+  });
+
+  it("returns false when it times out without receiving ScanRequested / ScanNewPageRequested", async () => {
+    let calls = 0;
+
+    HPApi.getWalkupScanToCompEvent = (async () => {
+      calls++;
+      return { eventType: EventType.HostSelected } as any;
+    }) as any;
+
+    const ok = await waitScanRequest("http://device/compEvent/1");
+
+    expect(ok).to.equal(false);
+    expect(calls).to.equal(50);
+  });
+
+  it("returns true when ScanRequested is received", async () => {
+    const sequence = [
+      EventType.HostSelected,
+      EventType.HostSelected,
+      EventType.ScanRequested,
+    ];
+    let idx = 0;
+
+    HPApi.getWalkupScanToCompEvent = (async () => {
+      const eventType = sequence[Math.min(idx, sequence.length - 1)];
+      idx++;
+      return { eventType } as any;
+    }) as any;
+
+    const ok = await waitScanRequest("http://device/compEvent/2");
+    expect(ok).to.equal(true);
+    expect(idx).to.be.greaterThanOrEqual(3);
+  });
+
+  it("returns true when ScanNewPageRequested is received", async () => {
+    HPApi.getWalkupScanToCompEvent = (async () => {
+      return { eventType: EventType.ScanNewPageRequested } as any;
+    }) as any;
+
+    const ok = await waitScanRequest("http://device/compEvent/3");
+    expect(ok).to.equal(true);
+  });
+
+  it("returns false immediately for an unexpected event type (scan finished)", async () => {
+    let calls = 0;
+
+    HPApi.getWalkupScanToCompEvent = (async () => {
+      calls++;
+      // Anything that is not HostSelected / ScanRequested / ScanNewPageRequested
+      return { eventType: EventType.ScanPagesComplete } as any;
+    }) as any;
+
+    const ok = await waitScanRequest("http://device/compEvent/4");
+    expect(ok).to.equal(false);
+    expect(calls).to.equal(1);
   });
 });
