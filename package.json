@@ -58,7 +58,7 @@
     "@types/config": "^3.3.5",
     "@types/dateformat": "^5.0.3",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^24.9.1",
+    "@types/node": "^25.0.1",
     "@types/xml2js": "^0.4.14",
     "c8": "^10.1.3",
     "chai": "^6.2.0",
