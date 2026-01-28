@@ -377,17 +377,13 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
     const walkupScanToCompEvent =
       await HPApi.getWalkupScanToCompEvent(compEventURI);
     const eventType = walkupScanToCompEvent.eventType;
-    const eventTypeStr = eventType.toString();
-    if (eventType === EventType.ScanNewPageRequested) {
+    if (eventType === EventType.ScanNewPageRequested || eventType === EventType.HostSelected) {
       startNewScanJob = true;
       wait = false;
     } else if (eventType === EventType.ScanPagesComplete) {
       wait = false;
-    } else if (eventType === EventType.ScanRequested) {
-      // continue waiting
     } else {
-      wait = false;
-      console.log(`Unknown eventType: ${eventTypeStr}`);
+      // continue waiting
     }
   }
   return startNewScanJob;
