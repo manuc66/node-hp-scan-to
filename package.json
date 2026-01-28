@@ -64,7 +64,7 @@
     "chai": "^6.2.0",
     "eslint": "^9.38.0",
     "eslint-config-prettier": "^10.1.8",
-    "globals": "^16.4.0",
+    "globals": "^17.2.0",
     "mocha": "^11.7.4",
     "nock": "^14.0.10",
     "prettier": "^3.6.2",

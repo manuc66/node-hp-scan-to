@@ -1728,10 +1728,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"globals@npm:^16.4.0":
-  version: 16.5.0
-  resolution: "globals@npm:16.5.0"
-  checksum: 10c0/615241dae7851c8012f5aa0223005b1ed6607713d6813de0741768bd4ddc39353117648f1a7086b4b0fa45eae733f1c0a0fe369aa4e543bb63f8de8990178ea9
+"globals@npm:^17.2.0":
+  version: 17.2.0
+  resolution: "globals@npm:17.2.0"
+  checksum: 10c0/fd25a98b08c1d31082337cbbb5ff1b90b9980e1db69a8621fb942bdb2cdca8aa54d61466742e8bf4910578ea5fa903b8bf83bffd1b2d45551cc614830dba910b
   languageName: node
   linkType: hard
 
@@ -2390,7 +2390,7 @@ __metadata:
     eslint: "npm:^9.38.0"
     eslint-config-prettier: "npm:^10.1.8"
     form-data: "npm:^4.0.4"
-    globals: "npm:^16.4.0"
+    globals: "npm:^17.2.0"
     jspdf: "npm:^4.0.0"
     mocha: "npm:^11.7.4"
     nanoid: "npm:^5.1.6"
