@@ -169,6 +169,9 @@ async function hpScanJobHandling(
       if (page !== null && job.jobState !== JobState.Canceled) {
         scanJobContent.elements.push(page);
       }
+    } else if (job.jobState === JobState.Blocked) {
+      console.log("Job blocked, waiting for printer to complete");
+      continue;
     } else {
       console.log("Job cancelled by device");
       break;
