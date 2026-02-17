@@ -33,6 +33,7 @@ export enum JobState {
   Completed = "Completed",
   Processing = "Processing",
   Canceled = "Canceled",
+  Blocked = "Blocked",
 }
 
 export enum PageState {
