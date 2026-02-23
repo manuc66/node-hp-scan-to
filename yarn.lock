@@ -1028,11 +1028,11 @@ __metadata:
   linkType: hard
 
 "config@npm:^4.1.1":
-  version: 4.3.0
-  resolution: "config@npm:4.3.0"
+  version: 4.4.0
+  resolution: "config@npm:4.4.0"
   dependencies:
     json5: "npm:^2.2.3"
-  checksum: 10c0/ffe8292504933452c284bf7c55e7c1ffb1aec22c0587dfda04979642adee8821b0e6c5483401c3baebbbab78dcb376ca697a06973afc312329e5a8526d023a88
+  checksum: 10c0/7ac26e88b279a4be4a0e1ae0f9e1834757c1691d6bcf86173ced7695e3c63af6c0311f5542ad049e0f3f58e7d9a97d5768c866a8f207779e66d214affb257f48
   languageName: node
   linkType: hard
 
