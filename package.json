@@ -60,7 +60,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.0.3",
     "@types/xml2js": "^0.4.14",
-    "c8": "^10.1.3",
+    "c8": "^11.0.0",
     "chai": "^6.2.0",
     "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
