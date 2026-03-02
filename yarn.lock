@@ -1044,11 +1044,11 @@ __metadata:
   linkType: hard
 
 "config@npm:^4.1.1":
-  version: 4.3.0
-  resolution: "config@npm:4.3.0"
+  version: 4.4.1
+  resolution: "config@npm:4.4.1"
   dependencies:
     json5: "npm:^2.2.3"
-  checksum: 10c0/ffe8292504933452c284bf7c55e7c1ffb1aec22c0587dfda04979642adee8821b0e6c5483401c3baebbbab78dcb376ca697a06973afc312329e5a8526d023a88
+  checksum: 10c0/f92c7b61d2456f933a53da1fea06abe116584df99dd1254a93e7b10c9487ddf17a1f865bd7ab8e4cf0cca23777dd89b6b1ba81e1c71e06111d36fbb00b49c28f
   languageName: node
   linkType: hard
 
