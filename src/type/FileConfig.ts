@@ -40,8 +40,11 @@ export const configSchema = z.strictObject({
     .optional(), // Scan height in pixels
   resolution: z.number().int().positive().optional(), // DPI resolution
   mode: z.enum(["Gray", "Color"]).optional(), // The scan mode
+  paper_size: z.string().optional(), // Paper size preset (A4, Letter, Legal, A5, B5, Max)
+  paper_dim: z.string().optional(), // Custom paper dimensions (e.g., "21x29.7cm", "8.5x11in")
 
   prefer_escl: z.boolean().optional(), // Always upload scans as PDF
+
 
   ///
   /// Duplex Scanning Options

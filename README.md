@@ -160,6 +160,8 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `-p`, `--pattern`                     | Filename pattern (no extension). Use quotes for static text, supports date/time masks (see [dateformat docs](https://www.npmjs.com/package/dateformat#mask-options)). Defaults to `scan<increasing number>_page<page number>`. | `-p scan1_page1`                                                  |
 | `-r`, `--resolution`                  | Scan resolution in DPI. Defaults to 200.                                                                         | `-r 200`                                                          |
 | `--mode <mode> `                      | Selects the scan mode (default: Color) (choices: "Gray", "Color").                                               | `--mode Gray`                                                     |
+| `--paper-size <size>`                 | Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive). Cannot be used with `--paper-dim`. | `--paper-size Letter`                                             |
+| `--paper-dim <dimensions>`            | Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with `--paper-size`. | `--paper-dim 8.5x11in`                                            |
 | `-s`, `--paperless-post-document-url` | Paperless-ngx API URL for uploading documents.                                                             | `-s https://domain.tld/api/documents/post_document/` (no default) |
 | `-t`, `--temp-directory`              | Temporary directory for processing. Defaults to `/tmp/scan-to-pc<random value>` if not set.                      | `-t /tmp/scan-to-pc5678`                                          |
 | `-w`, `--width`                       | Scan width in pixels. Defaults to 2481.                                                                          | `-w 2481`                                                         |
@@ -172,11 +174,97 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 
 **Notes:**
 
-- Date/time patterns for `--pattern` follow the [dateformat](https://www.npmjs.com/package/dateformat) library’s “Mask options” section.
+- Date/time patterns for `--pattern` follow the [dateformat](https://www.npmjs.com/package/dateformat) library's "Mask options" section.
 
 - Defaults like `/tmp/scan-to-pc<random value>` include a random suffix in practice (e.g., `/tmp/scan-to-pc1234`).
 
-#### CLI Commands
+#### Paper Size Configuration
+
+By default, scans use **A4 paper size** (210×297 mm). You can specify a different paper size or custom dimensions via CLI flags, environment variables, or the config file.
+
+##### Preset Paper Sizes
+
+The following preset sizes are available (case-insensitive):
+
+| Preset | Dimensions | Use Case |
+|--------|-----------|----------|
+| **A4** (default) | 210×297 mm | Standard European paper size |
+| **Letter** | 215.9×279.4 mm | Standard US letter size |
+| **Legal** | 215.9×355.6 mm | Standard US legal size |
+| **A5** | 148×210 mm | Half of A4 size |
+| **B5** | 176×250 mm | Between A4 and A5 |
+| **Max** | Device maximum | Uses the device's maximum scannable area (not auto-detect) |
+
+##### Custom Sizes
+
+You can specify custom paper dimensions with explicit units using the `--paper-dim` option:
+
+```bash
+# Centimeters
+npx node-hp-scan-to single-scan --paper-dim 21x29.7cm
+
+# Inches
+npx node-hp-scan-to single-scan --paper-dim 8.5x11in
+
+# Millimeters
+npx node-hp-scan-to single-scan --paper-dim 210x297mm
+```
+
+**Supported units:** `cm`, `mm`, `in` (inches). Units are **required** and **case-insensitive**.
+
+##### Configuration Precedence
+
+Paper size is resolved in the following order (highest to lowest priority):
+
+1. **CLI flags**: `--paper-size` or `--paper-dim`
+2. **Environment variables**: `PAPER_SIZE` or `PAPER_DIM`
+3. **Config file**: `paper_size` or `paper_dim` in `config/default.json`
+4. **Default**: A4 (210×297 mm)
+
+##### Important Rules
+
+- **Cannot specify both `--paper-size` and `--paper-dim` simultaneously.** You must choose one; attempting to use both will result in an error.
+- **Resolution (DPI) is independent** of paper size. You can specify both independently:
+  ```bash
+  npx node-hp-scan-to single-scan --paper-size Letter --resolution 300
+  ```
+- **Device maximum is respected.** If your custom size exceeds the device's maximum scannable area, the scan will be clamped to the device's limits.
+- **"Max" uses device capabilities, not auto-detection.** The `Max` preset uses the device's reported maximum scan area; it does **not** automatically detect the actual paper size in the scanner.
+
+##### Examples
+
+```bash
+# Use Letter size
+npx node-hp-scan-to single-scan --paper-size Letter
+
+# Use A5 (smaller) size
+npx node-hp-scan-to single-scan --paper-size A5
+
+# Use maximum scannable area
+npx node-hp-scan-to single-scan --paper-size Max
+
+# Use custom size in centimeters
+npx node-hp-scan-to single-scan --paper-dim 21x29.7cm
+
+# Use custom size in inches (8.5" × 11")
+npx node-hp-scan-to single-scan --paper-dim 8.5x11in
+
+# With Docker (environment variable)
+docker run -e PAPER_SIZE=Letter manuc66/node-hp-scan-to
+
+# With Docker Compose
+environment:
+  PAPER_SIZE: "Letter"
+  PAPER_DIM: null  # Must be null if not using custom dimensions
+
+# In config file (config/default.json)
+{
+  "paper_size": "A4",
+  "paper_dim": null
+}
+```
+
+
 
 ##### `listen`
 
@@ -200,6 +288,8 @@ Scan Options:
   --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
+  --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
+  --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
   --prefer-eSCL                                                    Prefer eSCL protocol if available
 
@@ -265,6 +355,8 @@ Scan Options:
   --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
+  --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
+  --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
   --prefer-eSCL                                                    Prefer eSCL protocol if available
   --duplex                                                         If specified, all the scans will be in duplex if the device support it
@@ -359,6 +451,8 @@ Scan Options:
   --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
+  --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
+  --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
   --prefer-eSCL                                                    Prefer eSCL protocol if available
   --duplex                                                         If specified, all the scans will be in duplex if the device support it
