@@ -38,7 +38,7 @@ describe("PaperSize - Edge Cases and Error Handling", () => {
       const resultCM = parsePaperSize("21x29.7CM");
       const resultMM = parsePaperSize("210x297MM");
       const resultIN = parsePaperSize("8.5x11IN");
-      
+
       expect(resultCM?.widthMm).to.equal(210);
       expect(resultMM?.widthMm).to.equal(210);
       expect(resultIN?.widthMm).to.be.approximately(215.9, 0.1);
@@ -85,9 +85,9 @@ describe("PaperSize - Edge Cases and Error Handling", () => {
     });
 
     it("should reject invalid preset names", () => {
-      expect(() => validateAndResolvePaperSize("InvalidPreset", undefined)).to.throw(
-        /Unknown paper size preset/,
-      );
+      expect(() =>
+        validateAndResolvePaperSize("InvalidPreset", undefined),
+      ).to.throw(/Unknown paper size preset/);
       expect(() => validateAndResolvePaperSize("A6", undefined)).to.throw(
         /Unknown paper size preset/,
       );
@@ -265,7 +265,10 @@ describe("PaperSize - Edge Cases and Error Handling", () => {
   describe("paperSizePresetToMm() boundary conditions", () => {
     it("should handle whitespace in preset names", () => {
       expect(paperSizePresetToMm("  A4  ")?.widthMm).to.equal(210);
-      expect(paperSizePresetToMm(" Letter ")?.widthMm).to.be.approximately(215.9, 0.1);
+      expect(paperSizePresetToMm(" Letter ")?.widthMm).to.be.approximately(
+        215.9,
+        0.1,
+      );
     });
 
     it("should return null for partial matches", () => {

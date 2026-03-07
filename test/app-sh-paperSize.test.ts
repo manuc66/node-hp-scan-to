@@ -26,7 +26,8 @@ describe("app.sh - Paper Size Environment Variables", () => {
     });
 
     it("should append --paper-size flag when PAPER_SIZE is set", () => {
-      const paperSizeFlag = /ARGS\+=\(['"]-{1,2}paper-size['"]\s+['"]\$PAPER_SIZE['"]\)/;
+      const paperSizeFlag =
+        /ARGS\+=\(['"]-{1,2}paper-size['"]\s+['"]\$PAPER_SIZE['"]\)/;
       expect(appShContent).to.match(paperSizeFlag);
     });
 
@@ -47,7 +48,8 @@ describe("app.sh - Paper Size Environment Variables", () => {
     });
 
     it("should append --paper-dim flag when PAPER_DIM is set", () => {
-      const paperDimFlag = /ARGS\+=\(['"]-{1,2}paper-dim['"]\s+['"]\$PAPER_DIM['"]\)/;
+      const paperDimFlag =
+        /ARGS\+=\(['"]-{1,2}paper-dim['"]\s+['"]\$PAPER_DIM['"]\)/;
       expect(appShContent).to.match(paperDimFlag);
     });
 

@@ -84,25 +84,39 @@ function setupScanParameters(commandName: string) {
       new Option(
         "-w, --width <width>",
         "Width in pixels of the scans (default: max)",
-      ).helpGroup(HelpGroupsHeadings.scan),
+      )
+        .conflicts("paperSize")
+        .conflicts("paperDim")
+        .helpGroup(HelpGroupsHeadings.scan),
     )
     .addOption(
       new Option(
         "-h, --height <height>",
         "Height in pixels of the scans (default: max)",
-      ).helpGroup(HelpGroupsHeadings.scan),
+      )
+        .conflicts("paperSize")
+        .conflicts("paperDim")
+        .helpGroup(HelpGroupsHeadings.scan),
     )
     .addOption(
       new Option(
         "--paper-size <size>",
         "Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)",
-      ).helpGroup(HelpGroupsHeadings.scan),
+      )
+        .conflicts("paperDim")
+        .conflicts("width")
+        .conflicts("height")
+        .helpGroup(HelpGroupsHeadings.scan),
     )
     .addOption(
       new Option(
         "--paper-dim <dimensions>",
         "Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.",
-      ).helpGroup(HelpGroupsHeadings.scan),
+      )
+        .conflicts("paperSize")
+        .conflicts("width")
+        .conflicts("height")
+        .helpGroup(HelpGroupsHeadings.scan),
     )
     .addOption(
       new Option(
@@ -450,7 +464,6 @@ function getScanConfiguration(
   );
 
   // Paper size configuration with precedence: CLI > Config > default (A4)
-  // Env vars are handled by app.sh which converts them to CLI flags
   const paperSize = getOptConfiguredValue(
     options.paperSize,
     fileConfig.paper_size,
@@ -461,6 +474,27 @@ function getScanConfiguration(
     fileConfig.paper_dim,
   );
 
+  const hasPaperSizeConfig = paperSize !== undefined || paperDim !== undefined;
+
+  // Consider width/height as configured only if they are defined, not null, not 0, and not "max"
+  // (0 and "max" are special values: 0 means "not set", "max" means "use device maximum")
+  const widthConfigured =
+    ((options.width !== undefined && options.width !== null && options.width !== 0 && options.width.toString().toLowerCase() !== "max") ||
+     (fileConfig.width !== undefined && fileConfig.width !== null && fileConfig.width !== 0 && fileConfig.width !== "max"));
+  const heightConfigured =
+    ((options.height !== undefined && options.height !== null && options.height !== 0 && options.height.toString().toLowerCase() !== "max") ||
+     (fileConfig.height !== undefined && fileConfig.height !== null && fileConfig.height !== 0 && fileConfig.height !== "max"));
+
+  if (hasPaperSizeConfig && (widthConfigured || heightConfigured)) {
+    throw new Error(
+      "Cannot specify both width/height and paper size (paper_size/paper_dim). Choose one or the other.",
+    );
+  }
+
+  // Apply A4 default only if neither paperSize nor paperDim is specified
+  const finalPaperSize =
+    paperSize ?? (paperDim === undefined ? "A4" : undefined);
+
   const scanConfig: ScanConfig = {
     resolution,
     mode,
@@ -470,7 +504,7 @@ function getScanConfiguration(
     paperlessConfig,
     nextcloudConfig,
     preferEscl,
-    ...(paperSize !== undefined ? { paperSize } : {}),
+    ...(finalPaperSize !== undefined ? { paperSize: finalPaperSize } : {}),
     ...(paperDim !== undefined ? { paperDim } : {}),
   };
   return scanConfig;

@@ -197,7 +197,12 @@ describe("Paper Size Configuration - Error Handling", () => {
     });
 
     it("should handle Max preset without device capabilities", () => {
-      const result = validateAndResolvePaperSize("Max", null, undefined, undefined);
+      const result = validateAndResolvePaperSize(
+        "Max",
+        null,
+        undefined,
+        undefined,
+      );
       // Max without device capabilities should return null
       expect(result).to.be.null;
     });

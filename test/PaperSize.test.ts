@@ -142,10 +142,7 @@ describe("PaperSize", () => {
     });
 
     it("resolves custom dimension", () => {
-      const result = validateAndResolvePaperSize(
-        undefined,
-        "210x297mm",
-      );
+      const result = validateAndResolvePaperSize(undefined, "210x297mm");
       expect(result?.resolvedMm).to.deep.equal({ widthMm: 210, heightMm: 297 });
       expect(result?.source).to.include("Custom");
     });

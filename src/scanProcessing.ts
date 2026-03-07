@@ -594,4 +594,3 @@ export async function waitAdfLoaded(
     }
   }
 }
-
