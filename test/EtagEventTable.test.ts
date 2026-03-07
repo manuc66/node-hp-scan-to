@@ -5,7 +5,9 @@ import * as fs from "node:fs/promises";
 import EventTable from "../src/hpModels/EventTable.js";
 import type { EtagEventTable } from "../src/hpModels/EventTable.js";
 
-const __dirname = import.meta.dirname;
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("EtagEventTable", () => {
   describe("Parsing eventTable.xml", async () => {

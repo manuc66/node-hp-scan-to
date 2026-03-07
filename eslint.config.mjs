@@ -5,7 +5,7 @@ import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'test/**', 'node_modules/**', 'coverage/**', '*.js', "eslint.config.mjs"]
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**', '*.js', "eslint.config.mjs"]
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -20,7 +20,7 @@ export default tseslint.config(
         ...globals.es2023
       },
       parserOptions: {
-        projectService: true,
+        project: ['./tsconfig.typecheck.json'],
         tsconfigRootDir: import.meta.dirname
       }
     },
@@ -64,6 +64,16 @@ export default tseslint.config(
       // '@typescript-eslint/explicit-function-return-type': 'error',
       // '@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
       //  '@typescript-eslint/explicit-module-boundary-types': 'error',
+    }
+  },
+  {
+    files: ['test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-misused-promises': 'off',
+      '@typescript-eslint/no-unused-expressions': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/unbound-method': 'off'
     }
   }
 );

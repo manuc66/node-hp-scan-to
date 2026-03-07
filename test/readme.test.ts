@@ -5,12 +5,12 @@ import { setupProgram } from "../src/program.js";
 import { Help } from "@commander-js/extra-typings";
 import { expect } from "chai";
 
-const __dirname = import.meta.dirname;
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("README", () => {
   describe("command usage documentation", async () => {
-    before(async () => {});
-
     it("have up-to-date listen usage", async () => {
       expectComandUsageIsUpdated("listen");
     });

@@ -94,6 +94,18 @@ function setupScanParameters(commandName: string) {
     )
     .addOption(
       new Option(
+        "--paper-size <size>",
+        "Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)",
+      ).helpGroup(HelpGroupsHeadings.scan),
+    )
+    .addOption(
+      new Option(
+        "--paper-dim <dimensions>",
+        "Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.",
+      ).helpGroup(HelpGroupsHeadings.scan),
+    )
+    .addOption(
+      new Option(
         "-t, --temp-directory <dir>",
         "Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)",
       ).helpGroup(HelpGroupsHeadings.scan),
@@ -437,6 +449,18 @@ function getScanConfiguration(
     false,
   );
 
+  // Paper size configuration with precedence: CLI > Config > default (A4)
+  // Env vars are handled by app.sh which converts them to CLI flags
+  const paperSize = getOptConfiguredValue(
+    options.paperSize,
+    fileConfig.paper_size,
+  );
+
+  const paperDim = getOptConfiguredValue(
+    options.paperDim,
+    fileConfig.paper_dim,
+  );
+
   const scanConfig: ScanConfig = {
     resolution,
     mode,
@@ -446,6 +470,8 @@ function getScanConfiguration(
     paperlessConfig,
     nextcloudConfig,
     preferEscl,
+    ...(paperSize !== undefined ? { paperSize } : {}),
+    ...(paperDim !== undefined ? { paperDim } : {}),
   };
   return scanConfig;
 }
