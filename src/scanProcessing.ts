@@ -85,6 +85,7 @@ function applyPaperSizeConfig(
   resolution: number,
   maxWidth: number | null,
   maxHeight: number | null,
+  isEscl: boolean,
   log = true,
 ): { width: number | null; height: number | null } | null {
   // No paper size configured, use defaults
@@ -92,13 +93,15 @@ function applyPaperSizeConfig(
     return null;
   }
 
+  const unitsPerInch = isEscl ? 300 : resolution;
+
   try {
     // Resolve paper size (preset or custom dimensions)
     const resolved = validateAndResolvePaperSize(
       scanConfig.paperSize,
       scanConfig.paperDim,
-      maxWidth !== null ? (maxWidth * 25.4) / resolution : undefined,
-      maxHeight !== null ? (maxHeight * 25.4) / resolution : undefined,
+      maxWidth !== null ? (maxWidth * 25.4) / unitsPerInch : undefined,
+      maxHeight !== null ? (maxHeight * 25.4) / unitsPerInch : undefined,
     );
 
     if (!resolved) {
@@ -113,24 +116,25 @@ function applyPaperSizeConfig(
       return null; // Let device max be used by getScanWidth/getScanHeight
     }
 
-    // Convert mm to pixels
-    const { widthPx, heightPx } = mmToPixels(
+    // Convert mm to scan units (pixels for legacy, 1/300in units for eSCL)
+    const { widthPx: widthUnits, heightPx: heightUnits } = mmToPixels(
       resolved.resolvedMm.widthMm,
       resolved.resolvedMm.heightMm,
-      resolution,
-      resolution,
+      unitsPerInch,
+      unitsPerInch,
     );
 
     // Clamp to device maximum if needed
     const finalWidth =
-      maxWidth !== null ? Math.min(widthPx, maxWidth) : widthPx;
+      maxWidth !== null ? Math.min(widthUnits, maxWidth) : widthUnits;
     const finalHeight =
-      maxHeight !== null ? Math.min(heightPx, maxHeight) : heightPx;
+      maxHeight !== null ? Math.min(heightUnits, maxHeight) : heightUnits;
 
     if (log) {
+      const unitLabel = isEscl ? "1/300in" : "px";
       console.log(
-        `Paper size: ${resolved.source} (${resolved.resolvedMm.widthMm}×${resolved.resolvedMm.heightMm}mm) ` +
-          `→ ${finalWidth}×${finalHeight}px @ ${resolution}DPI`,
+        `Paper size: ${resolved.source} (${resolved.resolvedMm.widthMm}x${resolved.resolvedMm.heightMm}mm) ` +
+          `→ ${finalWidth}x${finalHeight}${unitLabel} @ ${resolution}DPI`,
       );
     }
 
@@ -166,6 +170,7 @@ export function getScanWidth(
       scanConfig.resolution,
       maxWidth,
       maxHeight,
+      deviceCapabilities.isEscl,
       false,
     );
 
@@ -211,6 +216,7 @@ export function getScanHeight(
       scanConfig.resolution,
       maxWidth,
       maxHeight,
+      deviceCapabilities.isEscl,
       false,
     );
 
@@ -292,6 +298,7 @@ function getEffectiveScanConfig(
     scanConfig.resolution,
     maxWidth,
     maxHeight,
+    deviceCapabilities.isEscl,
   );
 
   if (paperSizeResult) {

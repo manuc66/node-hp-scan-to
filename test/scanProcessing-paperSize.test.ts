@@ -239,6 +239,50 @@ describe("scanProcessing - Paper Size Integration", () => {
     });
   });
 
+  describe("eSCL Paper Size Units", async () => {
+    it("uses 1/300in units regardless of requested DPI", async () => {
+      scanConfig.paperSize = "A4";
+      scanConfig.resolution = 200;
+      deviceCapabilities.isEscl = true;
+      // A4 in 1/300in units: ~2480x3508, height clamped to 3300
+      const width = getScanWidth(
+        scanConfig,
+        InputSource.Platen,
+        deviceCapabilities,
+        false,
+      );
+      const height = getScanHeight(
+        scanConfig,
+        InputSource.Platen,
+        deviceCapabilities,
+        false,
+      );
+      expect(width).to.be.approximately(2480, 10);
+      expect(height).to.equal(deviceCapabilities.platenMaxHeight);
+    });
+
+    it("applies Letter in 1/300in units", async () => {
+      scanConfig.paperSize = "Letter";
+      scanConfig.resolution = 200;
+      deviceCapabilities.isEscl = true;
+      // Letter: 8.5x11in -> 2550x3300 in 1/300in units
+      const width = getScanWidth(
+        scanConfig,
+        InputSource.Platen,
+        deviceCapabilities,
+        false,
+      );
+      const height = getScanHeight(
+        scanConfig,
+        InputSource.Platen,
+        deviceCapabilities,
+        false,
+      );
+      expect(width).to.equal(2550);
+      expect(height).to.equal(3300);
+    });
+  });
+
   describe("Paper Size Priority", async () => {
     it("ignores both paperSize and paperDim if not set", async () => {
       delete scanConfig.paperSize;
