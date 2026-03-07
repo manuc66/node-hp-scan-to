@@ -80,6 +80,17 @@ export async function readDeviceCapabilities(
     );
   }
 
+  if (scanCaps?.isEscl === true) {
+    console.log(
+      "eSCL detected: ScanRegions use 1/300in units; MaxWidth/MaxHeight are assumed in the same units.",
+    );
+    console.log(
+      `eSCL max (platen): ${scanCaps.platenMaxWidth}x${scanCaps.platenMaxHeight}, ` +
+        `ADF: ${scanCaps.adfMaxWidth}x${scanCaps.adfMaxHeight}, ` +
+        `ADF duplex: ${scanCaps.adfDuplexMaxWidth}x${scanCaps.adfDuplexMaxHeight}`,
+    );
+  }
+
   const getScanStatus = async (): Promise<IScanStatus> => {
     let scanStatus: IScanStatus;
     if (scanCaps?.isEscl === true) {
