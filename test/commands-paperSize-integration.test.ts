@@ -2,7 +2,11 @@ import { describe, it, beforeEach } from "mocha";
 import { expect } from "chai";
 import { getScanWidth, getScanHeight } from "../src/scanProcessing.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
-import type { ScanConfig, SingleScanConfig, AdfAutoScanConfig } from "../src/type/scanConfigs.js";
+import type {
+  ScanConfig,
+  SingleScanConfig,
+  AdfAutoScanConfig,
+} from "../src/type/scanConfigs.js";
 import { InputSource } from "../src/type/InputSource.js";
 import type { IScanJobSettings } from "../src/hpModels/IScanJobSettings.js";
 import type { IScanStatus } from "../src/hpModels/IScanStatus.js";

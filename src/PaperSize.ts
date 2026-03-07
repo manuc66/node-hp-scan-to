@@ -49,6 +49,41 @@ const PAPER_SIZE_PRESETS: Record<string, PaperSizeMm> = {
   b5: { widthMm: 176, heightMm: 250 },
 };
 
+function clampPaperSizeToDeviceMax(
+  widthMm: number,
+  heightMm: number,
+  maxWidthMm?: number | null,
+  maxHeightMm?: number | null,
+): PaperSizeMm {
+  let clampedWidthMm = widthMm;
+  let clampedHeightMm = heightMm;
+
+  if (
+    maxWidthMm !== null &&
+    maxWidthMm !== undefined &&
+    clampedWidthMm > maxWidthMm
+  ) {
+    console.warn(
+      `Paper width ${clampedWidthMm}mm exceeds device max ${maxWidthMm}mm. ` +
+        `Will be clamped to device maximum.`,
+    );
+    clampedWidthMm = maxWidthMm;
+  }
+  if (
+    maxHeightMm !== null &&
+    maxHeightMm !== undefined &&
+    clampedHeightMm > maxHeightMm
+  ) {
+    console.warn(
+      `Paper height ${clampedHeightMm}mm exceeds device max ${maxHeightMm}mm. ` +
+        `Will be clamped to device maximum.`,
+    );
+    clampedHeightMm = maxHeightMm;
+  }
+
+  return { widthMm: clampedWidthMm, heightMm: clampedHeightMm };
+}
+
 /**
  * Converts a paper size preset name to dimensions in millimeters.
  * @param preset - Paper size preset name (case-insensitive)
@@ -184,28 +219,15 @@ export function validateAndResolvePaperSize(
     let widthMm = parsed.widthMm;
     let heightMm = parsed.heightMm;
 
-    // Clamp to device max if provided
-    if (maxWidthMm !== null && maxWidthMm !== undefined && widthMm > maxWidthMm) {
-      console.warn(
-        `Paper width ${widthMm}mm exceeds device max ${maxWidthMm}mm. ` +
-          `Will be clamped to device maximum.`,
-      );
-      widthMm = maxWidthMm;
-    }
-    if (
-      maxHeightMm !== null &&
-      maxHeightMm !== undefined &&
-      heightMm > maxHeightMm
-    ) {
-      console.warn(
-        `Paper height ${heightMm}mm exceeds device max ${maxHeightMm}mm. ` +
-          `Will be clamped to device maximum.`,
-      );
-      heightMm = maxHeightMm;
-    }
+    const clamped = clampPaperSizeToDeviceMax(
+      widthMm,
+      heightMm,
+      maxWidthMm,
+      maxHeightMm,
+    );
 
     return {
-      resolvedMm: { widthMm, heightMm },
+      resolvedMm: { widthMm: clamped.widthMm, heightMm: clamped.heightMm },
       source: `Custom (${normalizedPaperDim})`,
     };
   }
@@ -241,27 +263,15 @@ export function validateAndResolvePaperSize(
     let widthMm = preset.widthMm;
     let heightMm = preset.heightMm;
 
-    if (maxWidthMm !== null && maxWidthMm !== undefined && widthMm > maxWidthMm) {
-      console.warn(
-        `Paper width ${widthMm}mm exceeds device max ${maxWidthMm}mm. ` +
-          `Will be clamped to device maximum.`,
-      );
-      widthMm = maxWidthMm;
-    }
-    if (
-      maxHeightMm !== null &&
-      maxHeightMm !== undefined &&
-      heightMm > maxHeightMm
-    ) {
-      console.warn(
-        `Paper height ${heightMm}mm exceeds device max ${maxHeightMm}mm. ` +
-          `Will be clamped to device maximum.`,
-      );
-      heightMm = maxHeightMm;
-    }
+    const clamped = clampPaperSizeToDeviceMax(
+      widthMm,
+      heightMm,
+      maxWidthMm,
+      maxHeightMm,
+    );
 
     return {
-      resolvedMm: { widthMm, heightMm },
+      resolvedMm: { widthMm: clamped.widthMm, heightMm: clamped.heightMm },
       source: normalized.toUpperCase(),
     };
   }

@@ -58,12 +58,7 @@ describe("CLI Program - Paper Size Options", () => {
     });
 
     it("should accept various custom dimension formats", async () => {
-      const dimensions = [
-        "21x29.7cm",
-        "8.5x11in",
-        "210x297mm",
-        "21x29.7cm",
-      ];
+      const dimensions = ["21x29.7cm", "8.5x11in", "210x297mm", "21x29.7cm"];
       for (const dim of dimensions) {
         const program = setupProgram(emptyConfig);
         const opts = parseSubcommandOptions(program, "listen", [
