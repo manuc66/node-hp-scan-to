@@ -49,40 +49,31 @@ const PAPER_SIZE_PRESETS: Record<string, PaperSizeMm> = {
   b5: { widthMm: 176, heightMm: 250 },
 };
 
+/**
+ * Clamps the requested paper size to the device maximum dimensions (in mm).
+ *
+ * If max dimensions are undefined or null, the original values are returned.
+ */
 function clampPaperSizeToDeviceMax(
   widthMm: number,
   heightMm: number,
   maxWidthMm?: number | null,
   maxHeightMm?: number | null,
 ): PaperSizeMm {
-  let clampedWidthMm = widthMm;
-  let clampedHeightMm = heightMm;
+  let clampedWidth = widthMm;
+  let clampedHeight = heightMm;
 
-  if (
-    maxWidthMm !== null &&
-    maxWidthMm !== undefined &&
-    clampedWidthMm > maxWidthMm
-  ) {
-    console.warn(
-      `Paper width ${clampedWidthMm}mm exceeds device max ${maxWidthMm}mm. ` +
-        `Will be clamped to device maximum.`,
-    );
-    clampedWidthMm = maxWidthMm;
-  }
-  if (
-    maxHeightMm !== null &&
-    maxHeightMm !== undefined &&
-    clampedHeightMm > maxHeightMm
-  ) {
-    console.warn(
-      `Paper height ${clampedHeightMm}mm exceeds device max ${maxHeightMm}mm. ` +
-        `Will be clamped to device maximum.`,
-    );
-    clampedHeightMm = maxHeightMm;
+  if (maxWidthMm !== null && maxWidthMm !== undefined) {
+    clampedWidth = Math.min(widthMm, maxWidthMm);
   }
 
-  return { widthMm: clampedWidthMm, heightMm: clampedHeightMm };
+  if (maxHeightMm !== null && maxHeightMm !== undefined) {
+    clampedHeight = Math.min(heightMm, maxHeightMm);
+  }
+
+  return { widthMm: clampedWidth, heightMm: clampedHeight };
 }
+
 
 /**
  * Converts a paper size preset name to dimensions in millimeters.
@@ -216,8 +207,8 @@ export function validateAndResolvePaperSize(
       );
     }
 
-    let widthMm = parsed.widthMm;
-    let heightMm = parsed.heightMm;
+    const widthMm = parsed.widthMm;
+    const heightMm = parsed.heightMm;
 
     const clamped = clampPaperSizeToDeviceMax(
       widthMm,
@@ -260,8 +251,8 @@ export function validateAndResolvePaperSize(
       );
     }
 
-    let widthMm = preset.widthMm;
-    let heightMm = preset.heightMm;
+    const widthMm = preset.widthMm;
+    const heightMm = preset.heightMm;
 
     const clamped = clampPaperSizeToDeviceMax(
       widthMm,
