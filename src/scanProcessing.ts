@@ -20,8 +20,8 @@ import type { IScanStatus } from "./hpModels/IScanStatus.js";
 import { ScannerState } from "./hpModels/ScannerState.js";
 import type { ScanPlexMode } from "./hpModels/ScanPlexMode.js";
 import {
-  validateAndResolvePaperSize,
   mmToPixels,
+  validateAndResolvePaperSize,
   isMaxPreset,
 } from "./PaperSize.js";
 
@@ -80,165 +80,130 @@ export function isPdf(destination: WalkupDestination): boolean {
   }
 }
 
+function getScanDimensionWithSelectors(
+  scanConfig: ScanConfig,
+  inputSource: InputSource,
+  deviceCapabilities: DeviceCapabilities,
+  isDuplex: boolean,
+  options: {
+    maxFromCaps: (caps: { maxWidth: number | null; maxHeight: number | null }) => number | null;
+    fromPaperResult: (r: { width: number | null; height: number | null }) => number | null;
+    fromConfig: (c: ScanConfig) => number | "max" | undefined;
+  },
+): number | null {
+  const caps = getMaxScanDimensions(inputSource, isDuplex, deviceCapabilities);
+  const maxDim = options.maxFromCaps(caps);
+  const hasPaperSizeConfig =
+    scanConfig.paperSize !== undefined || scanConfig.paperDim !== undefined;
+  if (hasPaperSizeConfig) {
+    const paperSizeResult = applyPaperSizeConfig(
+      scanConfig,
+      caps.maxWidth,
+      caps.maxHeight,
+
+    );
+    const valueFromPaper = paperSizeResult && options.fromPaperResult(paperSizeResult);
+    if (valueFromPaper !== null) {
+      return valueFromPaper;
+    }
+    return maxDim;
+  }
+  const dimConfig = options.fromConfig(scanConfig);
+  if (dimConfig !== undefined) {
+    if (dimConfig === "max" || dimConfig <= 0) {
+      return maxDim;
+    }
+    const dimConfigPixels = Math.round((dimConfig * 300) / scanConfig.resolution);
+
+    if (maxDim !== null && dimConfigPixels > maxDim) {
+      return maxDim;
+    }
+    return dimConfigPixels;
+  }
+  return maxDim;
+}
+
+export function getScanWidth(  scanConfig: ScanConfig,
+  inputSource: InputSource,
+  deviceCapabilities: DeviceCapabilities,
+  isDuplex: boolean) {
+  return getScanDimensionWithSelectors(scanConfig, inputSource, deviceCapabilities, isDuplex, {
+    maxFromCaps: (c) => c.maxWidth,
+    fromPaperResult: (r) => r.width,
+    fromConfig: (c) => c.width,
+  });
+}
+export function getScanHeight(  scanConfig: ScanConfig,
+  inputSource: InputSource,
+  deviceCapabilities: DeviceCapabilities,
+  isDuplex: boolean) {
+  return getScanDimensionWithSelectors(scanConfig, inputSource, deviceCapabilities, isDuplex, {
+    maxFromCaps: (c) => c.maxHeight,
+    fromPaperResult: (r) => r.height,
+    fromConfig: (c) => c.height,
+  });
+}
+/**
+ * Applies paper size / dimension configuration to compute scan region in pixels.
+ *
+ * This converts the configured paper size (preset or custom dimensions) into
+ * pixel dimensions at 300 DPI, taking into account:
+ * - Device maximum scan area
+ * - "Max" preset, which directly uses device capabilities
+ */
 function applyPaperSizeConfig(
   scanConfig: ScanConfig,
-  resolution: number,
   maxWidth: number | null,
   maxHeight: number | null,
-  isEscl: boolean,
-  log = true,
 ): { width: number | null; height: number | null } | null {
-  // No paper size configured, use defaults
-  if (scanConfig.paperSize === undefined && scanConfig.paperDim === undefined) {
+  const hasPaperSizeConfig =
+    scanConfig.paperSize !== undefined || scanConfig.paperDim !== undefined;
+
+  if (!hasPaperSizeConfig) {
     return null;
   }
 
-  const unitsPerInch = isEscl ? 300 : resolution;
-
-  try {
-    // Resolve paper size (preset or custom dimensions)
-    const resolved = validateAndResolvePaperSize(
-      scanConfig.paperSize,
-      scanConfig.paperDim,
-      maxWidth !== null ? (maxWidth * 25.4) / unitsPerInch : undefined,
-      maxHeight !== null ? (maxHeight * 25.4) / unitsPerInch : undefined,
-    );
-
-    if (!resolved) {
-      return null;
-    }
-
-    // Special case: "Max" uses device capabilities
-    if (isMaxPreset(scanConfig.paperSize)) {
-      if (log) {
-        console.log("Using device maximum scan area (Max preset)");
-      }
-      return null; // Let device max be used by getScanWidth/getScanHeight
-    }
-
-    // Convert mm to scan units (pixels for legacy, 1/300in units for eSCL)
-    const { widthPx: widthUnits, heightPx: heightUnits } = mmToPixels(
-      resolved.resolvedMm.widthMm,
-      resolved.resolvedMm.heightMm,
-      unitsPerInch,
-      unitsPerInch,
-    );
-
-    // Clamp to device maximum if needed
-    const finalWidth =
-      maxWidth !== null ? Math.min(widthUnits, maxWidth) : widthUnits;
-    const finalHeight =
-      maxHeight !== null ? Math.min(heightUnits, maxHeight) : heightUnits;
-
-    if (log) {
-      const unitLabel = isEscl ? "1/300in" : "px";
-      console.log(
-        `Paper size: ${resolved.source} (${resolved.resolvedMm.widthMm}x${resolved.resolvedMm.heightMm}mm) ` +
-          `→ ${finalWidth}x${finalHeight}${unitLabel} @ ${resolution}DPI`,
-      );
-    }
-
+  // Special handling for "Max" preset: use device capabilities directly
+  if (
+    isMaxPreset(scanConfig.paperSize) &&
+    maxWidth !== null &&
+    maxHeight !== null
+  ) {
     return {
-      width: finalWidth,
-      height: finalHeight,
+      width: maxWidth,
+      height: maxHeight,
     };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`Error resolving paper size: ${message}`);
-    throw error;
   }
-}
 
-export function getScanWidth(
-  scanConfig: ScanConfig,
-  inputSource: InputSource,
-  deviceCapabilities: DeviceCapabilities,
-  isDuplex: boolean,
-): number | null {
-  const { maxWidth, maxHeight } = getMaxScanDimensions(
-    inputSource,
-    isDuplex,
-    deviceCapabilities,
+  const maxWidthMm =
+    maxWidth !== null ? (maxWidth * 25.4) / 300 : undefined;
+  const maxHeightMm =
+    maxHeight !== null ? (maxHeight * 25.4) / 300 : undefined;
+
+  const resolved = validateAndResolvePaperSize(
+    scanConfig.paperSize,
+    scanConfig.paperDim,
+    maxWidthMm ?? undefined,
+    maxHeightMm ?? undefined,
   );
 
-  const hasPaperSizeConfig =
-    scanConfig.paperSize !== undefined || scanConfig.paperDim !== undefined;
-
-  if (hasPaperSizeConfig) {
-    const paperSizeResult = applyPaperSizeConfig(
-      scanConfig,
-      scanConfig.resolution,
-      maxWidth,
-      maxHeight,
-      deviceCapabilities.isEscl,
-      false,
-    );
-
-    if (
-      paperSizeResult?.width !== null &&
-      paperSizeResult?.width !== undefined
-    ) {
-      return paperSizeResult.width;
-    }
-
-    return maxWidth;
+  if (!resolved) {
+    return null;
   }
 
-  if (scanConfig.width !== null && scanConfig.width > 0) {
-    if (maxWidth !== null && scanConfig.width > maxWidth) {
-      return maxWidth;
-    } else {
-      return scanConfig.width;
-    }
-  }
-
-  return maxWidth;
-}
-
-export function getScanHeight(
-  scanConfig: ScanConfig,
-  inputSource: InputSource,
-  deviceCapabilities: DeviceCapabilities,
-  isDuplex: boolean,
-): number | null {
-  const { maxWidth, maxHeight } = getMaxScanDimensions(
-    inputSource,
-    isDuplex,
-    deviceCapabilities,
+  const pixels = mmToPixels(
+    resolved.resolvedMm.widthMm,
+    resolved.resolvedMm.heightMm,
+    300,
+    300,
   );
 
-  const hasPaperSizeConfig =
-    scanConfig.paperSize !== undefined || scanConfig.paperDim !== undefined;
-
-  if (hasPaperSizeConfig) {
-    const paperSizeResult = applyPaperSizeConfig(
-      scanConfig,
-      scanConfig.resolution,
-      maxWidth,
-      maxHeight,
-      deviceCapabilities.isEscl,
-      false,
-    );
-
-    if (
-      paperSizeResult?.height !== null &&
-      paperSizeResult?.height !== undefined
-    ) {
-      return paperSizeResult.height;
-    }
-
-    return maxHeight;
-  }
-
-  if (scanConfig.height !== null && scanConfig.height > 0) {
-    if (maxHeight !== null && scanConfig.height > maxHeight) {
-      return maxHeight;
-    } else {
-      return scanConfig.height;
-    }
-  }
-
-  return maxHeight;
+  const newVar = {
+    width: pixels.widthPx,
+    height: pixels.heightPx,
+  };
+  console.log('Pixels calculated:', newVar);
+  return newVar;
 }
 
 /**
@@ -271,46 +236,7 @@ function getMaxScanDimensions(
   }
 }
 
-/**
- * Creates an effective scan config with paper size settings applied.
- * Centralizes the logic for applying paper size to a scan config.
- *
- * @param scanConfig - Original scan configuration
- * @param inputSource - Scan input source (for getting device max)
- * @param isDuplex - Whether duplex scanning is enabled
- * @param deviceCapabilities - Device capabilities
- * @returns Effective config with paper size applied, or original config if no paper size specified
- */
-function getEffectiveScanConfig(
-  scanConfig: ScanConfig,
-  inputSource: InputSource,
-  isDuplex: boolean,
-  deviceCapabilities: DeviceCapabilities,
-): ScanConfig {
-  const { maxWidth, maxHeight } = getMaxScanDimensions(
-    inputSource,
-    isDuplex,
-    deviceCapabilities,
-  );
 
-  const paperSizeResult = applyPaperSizeConfig(
-    scanConfig,
-    scanConfig.resolution,
-    maxWidth,
-    maxHeight,
-    deviceCapabilities.isEscl,
-  );
-
-  if (paperSizeResult) {
-    return {
-      ...scanConfig,
-      width: paperSizeResult.width ?? scanConfig.width,
-      height: paperSizeResult.height ?? scanConfig.height,
-    };
-  }
-
-  return scanConfig;
-}
 
 export async function saveScanFromEvent(
   selectedScanTarget: SelectedScanTarget,
@@ -348,22 +274,14 @@ export async function saveScanFromEvent(
 
   const inputSource = scanStatus.getInputSource();
 
-  // Apply paper size configuration if provided
-  const effectiveConfig = getEffectiveScanConfig(
-    scanConfig,
-    inputSource,
-    isDuplex,
-    deviceCapabilities,
-  );
-
   const scanWidth = getScanWidth(
-    effectiveConfig,
+    scanConfig,
     inputSource,
     deviceCapabilities,
     isDuplex,
   );
   const scanHeight = getScanHeight(
-    effectiveConfig,
+    scanConfig,
     inputSource,
     deviceCapabilities,
     isDuplex,
@@ -415,22 +333,14 @@ export async function scanFromAdf(
     destinationFolder = folder;
   }
 
-  // Apply paper size configuration if provided
-  const effectiveConfig = getEffectiveScanConfig(
-    adfAutoScanConfig,
-    InputSource.Adf,
-    adfAutoScanConfig.isDuplex,
-    deviceCapabilities,
-  );
-
   const effectiveScanWidth = getScanWidth(
-    effectiveConfig,
+    adfAutoScanConfig,
     InputSource.Adf,
     deviceCapabilities,
     adfAutoScanConfig.isDuplex,
   );
   const effectiveScanHeight = getScanHeight(
-    effectiveConfig,
+    adfAutoScanConfig,
     InputSource.Adf,
     deviceCapabilities,
     adfAutoScanConfig.isDuplex,
@@ -503,22 +413,14 @@ export async function singleScan(
 
   const inputSource = scanStatus.getInputSource();
 
-  // Apply paper size configuration if provided
-  const effectiveConfig = getEffectiveScanConfig(
-    scanConfig,
-    inputSource,
-    scanConfig.isDuplex,
-    deviceCapabilities,
-  );
-
   const scanWidth = getScanWidth(
-    effectiveConfig,
+    scanConfig,
     inputSource,
     deviceCapabilities,
     scanConfig.isDuplex,
   );
   const scanHeight = getScanHeight(
-    effectiveConfig,
+    scanConfig,
     inputSource,
     deviceCapabilities,
     scanConfig.isDuplex,

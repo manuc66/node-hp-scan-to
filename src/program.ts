@@ -419,26 +419,6 @@ function getScanConfiguration(
     filePattern: getOptConfiguredValue(options.pattern, fileConfig.pattern),
   };
 
-  const configWidth = getConfiguredValue(
-    options.width,
-    fileConfig.width?.toString(),
-    "0",
-  );
-  const width =
-    configWidth.toLowerCase() === "max"
-      ? Number.MAX_SAFE_INTEGER
-      : parseInt(configWidth, 10);
-
-  const configHeight = getConfiguredValue(
-    options.height,
-    fileConfig.height?.toString(),
-    "0",
-  );
-  const height =
-    configHeight.toLowerCase() === "max"
-      ? Number.MAX_SAFE_INTEGER
-      : parseInt(configHeight, 10);
-
   const paperlessConfig = getPaperlessConfig(options, fileConfig);
   const nextcloudConfig = getNextcloudConfig(options, fileConfig);
 
@@ -476,36 +456,45 @@ function getScanConfiguration(
 
   const hasPaperSizeConfig = paperSize !== undefined || paperDim !== undefined;
 
-  // Consider width/height as configured only if they are defined, not null, not 0, and not "max"
-  // (0 and "max" are special values: 0 means "not set", "max" means "use device maximum")
-  const widthConfigured =
-    ((options.width !== undefined && options.width !== null && options.width !== 0 && options.width.toString().toLowerCase() !== "max") ||
-     (fileConfig.width !== undefined && fileConfig.width !== null && fileConfig.width !== 0 && fileConfig.width !== "max"));
-  const heightConfigured =
-    ((options.height !== undefined && options.height !== null && options.height !== 0 && options.height.toString().toLowerCase() !== "max") ||
-     (fileConfig.height !== undefined && fileConfig.height !== null && fileConfig.height !== 0 && fileConfig.height !== "max"));
+  const configWidth = getConfiguredValue(
+    options.width,
+    fileConfig.width?.toString(),
+    undefined,
+  );
 
-  if (hasPaperSizeConfig && (widthConfigured || heightConfigured)) {
+  const configHeight = getConfiguredValue(
+    options.height,
+    fileConfig.height?.toString(),
+    undefined,
+  );
+
+  if (
+    hasPaperSizeConfig &&
+    (configWidth !== undefined || configHeight !== undefined)
+  ) {
     throw new Error(
       "Cannot specify both width/height and paper size (paper_size/paper_dim). Choose one or the other.",
     );
   }
 
-  // Apply A4 default only if neither paperSize nor paperDim is specified
-  const finalPaperSize =
-    paperSize ?? (paperDim === undefined ? "A4" : undefined);
+  const providedWidth: number | "max" | undefined = configWidth === undefined ? undefined :
+    configWidth.toLowerCase() === "max" ? "max" :  parseInt(configWidth, 10);
+  const providedHeight: number | "max" | undefined = configHeight === undefined ? undefined:
+    configHeight.toLowerCase() === "max"
+      ? undefined
+      : parseInt(configHeight, 10);
 
   const scanConfig: ScanConfig = {
     resolution,
     mode,
-    width: width,
-    height: height,
+    width: providedWidth,
+    height: providedHeight,
+    paperSize,
+    paperDim,
     directoryConfig,
     paperlessConfig,
     nextcloudConfig,
     preferEscl,
-    ...(finalPaperSize !== undefined ? { paperSize: finalPaperSize } : {}),
-    ...(paperDim !== undefined ? { paperDim } : {}),
   };
   return scanConfig;
 }
