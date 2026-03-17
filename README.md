@@ -8,7 +8,7 @@
 [![CodeFactor](https://www.codefactor.io/repository/github/manuc66/node-hp-scan-to/badge)](https://www.codefactor.io/repository/github/manuc66/node-hp-scan-to)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmanuc66%2Fnode-hp-scan-to.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmanuc66%2Fnode-hp-scan-to?ref=badge_shield)
 
-**`node-hp-scan-to`** is a Node.js application that replicates HP's "_Scan to Computer_" functionality by [reverse engineering](protocol_doc/HP%20Officejet%206500%20E710n-z.md) the original protocol, allowing you to scan documents directly from your HP printer's scanner to your Linux, Windows, or macOS computer.
+**`node-hp-scan-to`** is a Node.js application that replicates HP's "_Scan to Computer_" functionality by [reverse engineering HP's proprietary protocols](protocol_doc/HP%20Officejet%206500%20E710n-z.md) and supporting the standardized [eSCL protocol](protocol_doc/HP%20PageWide%20Pro%20477dw%20MFP.md), allowing you to scan documents directly from your HP printer's scanner to your Linux, Windows, or macOS computer.
 
 
 Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be run on a bare-metal desktop or server, or in a container on Docker or Kubernetes. It can also be integrated with third-party document management solutions such as [Paperless-ngx](https://docs.paperless-ngx.com/) and [Nextcloud](https://Nextcloud.com/).
@@ -22,6 +22,8 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
   - [Supported Devices](#supported-devices)
   - [Supported Functions](#supported-functions)
   - [App Features](#app-features)
+  - [Protocol Support](#protocol-support)
+  - [Emulated Duplex Scanning Feature](#emulated-duplex-scanning-feature)
 - [Installation](#installation)
   - [Using NodeJS](#using-nodejs)
   - [Using Docker](#using-docker)
@@ -83,6 +85,14 @@ There is a good chance it also works on other unlisted HP All-in-One Printer.
   - Local folders
   - [Paperless-ngx API](https://docs.paperless-ngx.com/api/) upload
   - [Nextcloud WebDAV](https://docs.Nextcloud.com/server/latest/user_manual/en/files/access_webdav.html) upload
+
+### Protocol Support
+
+Supports both HP proprietary protocols (WalkupScanToComp, WalkupScan, ScanJob) and the standardized eSCL protocol.
+
+- **eSCL-only devices** (e.g., HP ScanJet Pro 4500 fn1): Automatically detected and supported ([#1307](https://github.com/manuc66/node-hp-scan-to/issues/1307))
+- **Dual-protocol devices**: Uses HP protocols by default; add `--prefer-eSCL` flag to use eSCL instead
+- See [eSCL protocol documentation](protocol_doc/HP%20PageWide%20Pro%20477dw%20MFP.md) for technical details
  
 ### Emulated Duplex Scanning Feature
 
