@@ -456,16 +456,14 @@ function getScanConfiguration(
 
   const hasPaperSizeConfig = paperSize !== undefined || paperDim !== undefined;
 
-  const configWidth = getConfiguredValue(
+  const configWidth = getOptConfiguredValue(
     options.width,
-    fileConfig.width?.toString(),
-    undefined,
+    fileConfig.width?.toString()
   );
 
-  const configHeight = getConfiguredValue(
+  const configHeight = getOptConfiguredValue(
     options.height,
-    fileConfig.height?.toString(),
-    undefined,
+    fileConfig.height?.toString()
   );
 
   if (
