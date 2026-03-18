@@ -1,7 +1,14 @@
 /**
  * Paper size configuration and conversion utilities.
  * Handles preset paper sizes (A4, Letter, etc.) and custom dimensions.
- * Converts between millimeters, centimeters, inches, and pixels.
+ *
+ * Responsibilities:
+ *   - Parse paper size strings (presets and custom "WxH<unit>" formats)
+ *   - Resolve paper size to millimeters
+ *   - Convert mm → scan region units given an arbitrary unit resolution
+ *
+ * This module is intentionally unaware of device capabilities (max dimensions,
+ * eSCL vs non-eSCL). Clamping to device limits is the caller's responsibility.
  */
 
 export enum PaperSizePreset {
@@ -9,9 +16,17 @@ export enum PaperSizePreset {
   Letter = "Letter",
   Legal = "Legal",
   A5 = "A5",
+  A6 = "A6",
   B5 = "B5",
+  Tabloid = "Tabloid",
   Max = "Max",
 }
+
+/**
+ * eSCL ScanRegion unit resolution (1/300 inch), per eSCL specification.
+ * ContentRegionUnits is always "ThreeHundredthsOfInches".
+ */
+export const ESCL_UNIT_RESOLUTION = 300;
 
 /**
  * Paper size in millimeters.
@@ -22,82 +37,65 @@ export interface PaperSizeMm {
 }
 
 /**
- * Parsed paper size information.
+ * Resolved paper size with its human-readable source label (for logging).
  */
 export interface ResolvedPaperSize {
   resolvedMm: PaperSizeMm;
+  /** Human-readable label, e.g. "A4", "Custom (21x29.7cm)" */
   source: string;
 }
 
 /**
- * Pixel dimensions (used for scan job submission).
+ * Scan region dimensions in device units (eSCL: 1/300", non-eSCL: pixels at scan DPI).
  */
-export interface ScanRegionPixels {
-  widthPx: number;
-  heightPx: number;
+export interface ScanRegionUnits {
+  width: number;
+  height: number;
 }
 
 /**
  * Paper size preset mapping to dimensions in millimeters.
- * Dimensions are standard ISO/US paper sizes.
  */
 const PAPER_SIZE_PRESETS: Record<string, PaperSizeMm> = {
   a4: { widthMm: 210, heightMm: 297 },
   letter: { widthMm: 215.9, heightMm: 279.4 },
   legal: { widthMm: 215.9, heightMm: 355.6 },
   a5: { widthMm: 148, heightMm: 210 },
+  a6: { widthMm: 105, heightMm: 148 },
   b5: { widthMm: 176, heightMm: 250 },
+  tabloid: { widthMm: 279.4, heightMm: 431.8 },
 };
 
 /**
- * Clamps the requested paper size to the device maximum dimensions (in mm).
+ * Converts millimeters to scan region units using the given unit resolution.
  *
- * If max dimensions are undefined or null, the original values are returned.
+ * @param mm - Dimension in millimeters
+ * @param unitResolution - Units per inch (300 for eSCL, scan DPI for non-eSCL)
  */
-function clampPaperSizeToDeviceMax(
-  widthMm: number,
-  heightMm: number,
-  maxWidthMm?: number | null,
-  maxHeightMm?: number | null,
-): PaperSizeMm {
-  let clampedWidth = widthMm;
-  let clampedHeight = heightMm;
-
-  if (maxWidthMm !== null && maxWidthMm !== undefined) {
-    clampedWidth = Math.min(widthMm, maxWidthMm);
-  }
-
-  if (maxHeightMm !== null && maxHeightMm !== undefined) {
-    clampedHeight = Math.min(heightMm, maxHeightMm);
-  }
-
-  return { widthMm: clampedWidth, heightMm: clampedHeight };
+export function mmToScanUnits(mm: number, unitResolution: number): number {
+  return Math.round((mm / 25.4) * unitResolution);
 }
-
 
 /**
  * Converts a paper size preset name to dimensions in millimeters.
- * @param preset - Paper size preset name (case-insensitive)
- * @returns Paper size in millimeters, or null if preset is unknown
+ * Returns null for the "Max" pseudo-preset (caller must handle device max).
  */
 export function paperSizePresetToMm(preset: string): PaperSizeMm | null {
   const normalized = preset.toLowerCase().trim();
   if (normalized === "max") {
-    return null; // Max is handled separately
+    return null;
   }
   return PAPER_SIZE_PRESETS[normalized] ?? null;
 }
 
 /**
- * Parses a custom paper size string in the format "WxHunit".
- * @param input - String like "21x29.7cm", "8.5x11in", "210x297mm"
- * @returns Paper size in millimeters, or null if parsing fails
+ * Parses a custom paper size string in the format "WxH<unit>".
+ * Supported units: mm, cm, in.
+ * Example: "21x29.7cm", "8.5x11in", "210x297mm"
  */
 export function parsePaperSize(input: string): PaperSizeMm | null {
-  const trimmed = input.trim();
-  // Match pattern: number x number + unit
   const match = /^(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*(cm|mm|in)$/i.exec(
-    trimmed,
+    input.trim(),
   );
 
   if (!match) {
@@ -112,177 +110,116 @@ export function parsePaperSize(input: string): PaperSizeMm | null {
     return null;
   }
 
-  let widthMm = width;
-  let heightMm = height;
-
   switch (unit) {
     case "cm":
-      widthMm = width * 10;
-      heightMm = height * 10;
-      break;
+      return { widthMm: width * 10, heightMm: height * 10 };
     case "in":
-      widthMm = width * 25.4;
-      heightMm = height * 25.4;
-      break;
-    case "mm":
-      // Already in mm
-      break;
+      return { widthMm: width * 25.4, heightMm: height * 25.4 };
+    default:
+      return { widthMm: width, heightMm: height };
   }
-
-  return { widthMm, heightMm };
 }
 
 /**
- * Converts paper size dimensions from millimeters to pixels.
- * @param widthMm - Width in millimeters
- * @param heightMm - Height in millimeters
- * @param dpiX - Horizontal resolution in DPI
- * @param dpiY - Vertical resolution in DPI
- * @returns Dimensions in pixels
- */
-export function mmToPixels(
-  widthMm: number,
-  heightMm: number,
-  dpiX: number,
-  dpiY: number,
-): ScanRegionPixels {
-  // Formula: pixels = (mm * dpi) / 25.4
-  const widthPx = Math.round((widthMm * dpiX) / 25.4);
-  const heightPx = Math.round((heightMm * dpiY) / 25.4);
-
-  return {
-    widthPx: Math.max(1, widthPx),
-    heightPx: Math.max(1, heightPx),
-  };
-}
-
-/**
- * Validates and resolves paper size configuration.
- * Converts user input (preset or custom) to millimeters.
+ * Resolves a paper size configuration (preset name or custom dimension string)
+ * to millimeters, without any device clamping.
  *
- * Validation rules:
- * - Only one of paperSize or paperDim should be provided
- * - If Max is specified, device max dimensions will be used later
- * - Custom dimensions are validated against device max
+ * - If both paperSizeInput and paperDimInput are provided, throws.
+ * - If "Max" preset is provided, returns null (caller owns device-max logic).
+ * - If neither is provided, returns null.
  *
- * @param paperSizeInput - Paper size preset (e.g., "A4", "Letter") or "Max"
- * @param paperDimInput - Custom dimensions (e.g., "21x29.7cm")
- * @param maxWidthMm - Device maximum width in mm (optional, used for validation)
- * @param maxHeightMm - Device maximum height in mm (optional, used for validation)
- * @returns Resolved paper size and source, or null if resolution fails
- * @throws Error if both paperSize and paperDim are provided
+ * @param paperSizeInput - Preset name (e.g. "A4", "Letter", "Max")
+ * @param paperDimInput  - Custom dimension string (e.g. "21x29.7cm")
  */
 export function validateAndResolvePaperSize(
   paperSizeInput?: string | null,
   paperDimInput?: string | null,
-  maxWidthMm?: number | null,
-  maxHeightMm?: number | null,
 ): ResolvedPaperSize | null {
-  let normalizedPaperSize =
-    typeof paperSizeInput === "string" ? paperSizeInput.trim() : undefined;
-  let normalizedPaperDim =
-    typeof paperDimInput === "string" ? paperDimInput.trim() : undefined;
+  const normalizedSize =
+    typeof paperSizeInput === "string"
+      ? paperSizeInput.trim() || undefined
+      : undefined;
+  const normalizedDim =
+    typeof paperDimInput === "string"
+      ? paperDimInput.trim() || undefined
+      : undefined;
 
-  if (normalizedPaperSize === "") {
-    normalizedPaperSize = undefined;
-  }
-  if (normalizedPaperDim === "") {
-    normalizedPaperDim = undefined;
-  }
-
-  // Error if both are provided
-  if (normalizedPaperSize !== undefined && normalizedPaperDim !== undefined) {
+  if (normalizedSize !== undefined && normalizedDim !== undefined) {
     throw new Error(
-      "Cannot specify both --paper-size and --paper-dim. Choose one or the other.",
+      "Cannot specify both --paper-size and --paper-dim. Choose one.",
     );
   }
 
-  // Try custom dimension first (highest priority)
-  if (normalizedPaperDim !== undefined) {
-    const parsed = parsePaperSize(normalizedPaperDim);
+  if (normalizedDim !== undefined) {
+    const parsed = parsePaperSize(normalizedDim);
     if (!parsed) {
       throw new Error(
-        `Invalid paper dimension format: "${normalizedPaperDim}". ` +
-          'Use format like "21x29.7cm", "8.5x11in", or "210x297mm".',
+        `Invalid paper dimension format: "${normalizedDim}". ` +
+          'Use "21x29.7cm", "8.5x11in", or "210x297mm".',
       );
     }
-
-    const widthMm = parsed.widthMm;
-    const heightMm = parsed.heightMm;
-
-    const clamped = clampPaperSizeToDeviceMax(
-      widthMm,
-      heightMm,
-      maxWidthMm,
-      maxHeightMm,
-    );
-
-    return {
-      resolvedMm: { widthMm: clamped.widthMm, heightMm: clamped.heightMm },
-      source: `Custom (${normalizedPaperDim})`,
-    };
+    return { resolvedMm: parsed, source: `Custom (${normalizedDim})` };
   }
 
-  // Try preset size
-  if (normalizedPaperSize !== undefined) {
-    const normalized = normalizedPaperSize.toLowerCase().trim();
-
-    // Special case: Max uses device capabilities (handled elsewhere)
-    if (normalized === "max") {
-      if (
-        maxWidthMm === null ||
-        maxWidthMm === undefined ||
-        maxHeightMm === null ||
-        maxHeightMm === undefined
-      ) {
-        return null;
-      }
-      return {
-        resolvedMm: { widthMm: maxWidthMm, heightMm: maxHeightMm },
-        source: "Max (device capabilities)",
-      };
+  if (normalizedSize !== undefined) {
+    if (normalizedSize.toLowerCase() === "max") {
+      // Caller is responsible for substituting device max dimensions.
+      return null;
     }
 
-    const preset = paperSizePresetToMm(normalizedPaperSize);
+    const preset = paperSizePresetToMm(normalizedSize);
     if (!preset) {
-      throw new Error(
-        `Unknown paper size preset: "${normalizedPaperSize}". ` +
-          "Supported presets: A4, Letter, Legal, A5, B5, Max.",
-      );
+      throw new Error(`Unknown paper size preset: "${normalizedSize}".`);
     }
-
-    const widthMm = preset.widthMm;
-    const heightMm = preset.heightMm;
-
-    const clamped = clampPaperSizeToDeviceMax(
-      widthMm,
-      heightMm,
-      maxWidthMm,
-      maxHeightMm,
-    );
-
-    return {
-      resolvedMm: { widthMm: clamped.widthMm, heightMm: clamped.heightMm },
-      source: normalized.toUpperCase(),
-    };
+    return { resolvedMm: preset, source: normalizedSize.toUpperCase() };
   }
 
-  // No paper size specified
   return null;
 }
 
 /**
- * Gets the default paper size (A4).
- * @returns Paper size in millimeters
+ * Converts resolved paper size (in mm) to scan region units, clamped to device
+ * maximum dimensions (also expressed in the same unit space).
+ *
+ * This is the final step before submitting a ScanRegion to the device.
+ *
+ * @param resolvedMm     - Paper size in millimeters (from validateAndResolvePaperSize)
+ * @param unitResolution - Units per inch: use ESCL_UNIT_RESOLUTION (300) for eSCL,
+ *                         or the scan DPI for non-eSCL devices
+ * @param maxWidth       - Device max width in device units (null = unconstrained)
+ * @param maxHeight      - Device max height in device units (null = unconstrained)
  */
-export function getDefaultPaperSize(): PaperSizeMm {
-  return { widthMm: 210, heightMm: 297 }; // A4
+export function paperSizeMmToScanRegion(
+  resolvedMm: PaperSizeMm,
+  unitResolution: number,
+  maxWidth: number | null,
+  maxHeight: number | null,
+): ScanRegionUnits {
+  let width = mmToScanUnits(resolvedMm.widthMm, unitResolution);
+  let height = mmToScanUnits(resolvedMm.heightMm, unitResolution);
+
+  if (maxWidth !== null) {
+    width = Math.min(width, maxWidth);
+  }
+  if (maxHeight !== null) {
+    height = Math.min(height, maxHeight);
+  }
+
+  return {
+    width: Math.max(1, width),
+    height: Math.max(1, height),
+  };
 }
 
 /**
- * Checks if a preset is the "Max" special case.
- * @param preset - Paper size preset name
- * @returns True if preset is "Max"
+ * Returns the default paper size (A4).
+ */
+export function getDefaultPaperSize(): PaperSizeMm {
+  return { widthMm: 210, heightMm: 297 };
+}
+
+/**
+ * Returns true if the given preset string is the "Max" pseudo-preset.
  */
 export function isMaxPreset(preset?: string | null): boolean {
   return preset?.toLowerCase().trim() === "max";

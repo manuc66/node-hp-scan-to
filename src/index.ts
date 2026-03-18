@@ -3,13 +3,13 @@
 
 "use strict";
 
-import config, { type IConfig } from "config";
+import config, { type Config } from "config";
 import z from "zod";
 import commitInfo from "./commitInfo.json" with { type: "json" };
 import { configSchema, type FileConfig } from "./type/FileConfig.js";
 import { setupProgram } from "./program.js";
 
-const validateConfig = (config: IConfig) => {
+const validateConfig = (config: Config) => {
   const result = configSchema.safeParse(config.util.toObject());
   if (!result.success) {
     const errors = z.prettifyError(result.error);

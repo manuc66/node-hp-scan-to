@@ -132,77 +132,30 @@ describe("Paper Size Configuration - Error Handling", () => {
       expect(result?.resolvedMm.heightMm).to.equal(1500);
     });
 
-    it("should clamp to device max when specified", () => {
-      const maxWidthMm = 250;
-      const maxHeightMm = 350;
-      const result = validateAndResolvePaperSize(
-        null,
-        "500x600mm",
-        maxWidthMm,
-        maxHeightMm,
-      );
-      expect(result).to.not.be.null;
-      expect(result?.resolvedMm.widthMm).to.equal(maxWidthMm);
-      expect(result?.resolvedMm.heightMm).to.equal(maxHeightMm);
-    });
-
     it("should not clamp when dimensions are within device max", () => {
-      const result = validateAndResolvePaperSize(null, "100x150mm", 300, 400);
+      const result = validateAndResolvePaperSize(null, "100x150mm");
       expect(result).to.not.be.null;
       expect(result?.resolvedMm.widthMm).to.equal(100);
       expect(result?.resolvedMm.heightMm).to.equal(150);
-    });
-
-    it("should handle partial clamping (one dimension exceeds max)", () => {
-      const result = validateAndResolvePaperSize(null, "100x500mm", 300, 400);
-      expect(result).to.not.be.null;
-      expect(result?.resolvedMm.widthMm).to.equal(100); // Within limit
-      expect(result?.resolvedMm.heightMm).to.equal(400); // Clamped
     });
   });
 
   describe("Device Capability Edge Cases", () => {
     it("should handle null device max dimensions", () => {
-      const result = validateAndResolvePaperSize("A4", null, null, null);
+      const result = validateAndResolvePaperSize("A4", null);
       expect(result).to.not.be.null;
       expect(result?.resolvedMm.widthMm).to.equal(210);
       expect(result?.resolvedMm.heightMm).to.equal(297);
     });
 
     it("should handle undefined device max dimensions", () => {
-      const result = validateAndResolvePaperSize(
-        "Letter",
-        null,
-        undefined,
-        undefined,
-      );
+      const result = validateAndResolvePaperSize("Letter", null);
       expect(result).to.not.be.null;
       expect(result?.resolvedMm.widthMm).to.be.approximately(215.9, 0.1);
     });
 
-    it("should handle zero device max dimensions", () => {
-      // This is an edge case - device with 0 max should probably not happen
-      const result = validateAndResolvePaperSize("A4", null, 0, 0);
-      expect(result).to.not.be.null;
-      // A4 dimensions should be clamped to 0 (edge case behavior)
-      expect(result?.resolvedMm.widthMm).to.equal(0);
-      expect(result?.resolvedMm.heightMm).to.equal(0);
-    });
-
-    it("should handle Max preset with device capabilities", () => {
-      const result = validateAndResolvePaperSize("Max", null, 300, 400);
-      expect(result).to.not.be.null;
-      expect(result?.resolvedMm.widthMm).to.equal(300);
-      expect(result?.resolvedMm.heightMm).to.equal(400);
-    });
-
     it("should handle Max preset without device capabilities", () => {
-      const result = validateAndResolvePaperSize(
-        "Max",
-        null,
-        undefined,
-        undefined,
-      );
+      const result = validateAndResolvePaperSize("Max", null);
       // Max without device capabilities should return null
       expect(result).to.be.null;
     });
@@ -247,11 +200,6 @@ describe("Paper Size Configuration - Error Handling", () => {
     it("should include custom dimensions in source", () => {
       const result = validateAndResolvePaperSize(null, "210x297mm");
       expect(result?.source).to.include("210x297mm");
-    });
-
-    it("should include Max preset in source", () => {
-      const result = validateAndResolvePaperSize("Max", null, 300, 400);
-      expect(result?.source).to.include("Max");
     });
 
     it("should provide meaningful source description", () => {

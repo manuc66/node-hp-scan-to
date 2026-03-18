@@ -122,7 +122,9 @@ describe("FileConfig - Width/Height Zero Handling", () => {
       const result = configSchema.safeParse(config);
       expect(result.success).to.be.false;
       if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.includes("width"))).to.be.true;
+        expect(
+          result.error.issues.some((issue) => issue.path.includes("width")),
+        ).to.be.true;
       }
     });
 
@@ -134,7 +136,9 @@ describe("FileConfig - Width/Height Zero Handling", () => {
       const result = configSchema.safeParse(config);
       expect(result.success).to.be.false;
       if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.includes("height"))).to.be.true;
+        expect(
+          result.error.issues.some((issue) => issue.path.includes("height")),
+        ).to.be.true;
       }
     });
 
@@ -147,8 +151,12 @@ describe("FileConfig - Width/Height Zero Handling", () => {
       const result = configSchema.safeParse(config);
       expect(result.success).to.be.false;
       if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.includes("width"))).to.be.true;
-        expect(result.error.issues.some((issue) => issue.path.includes("height"))).to.be.true;
+        expect(
+          result.error.issues.some((issue) => issue.path.includes("width")),
+        ).to.be.true;
+        expect(
+          result.error.issues.some((issue) => issue.path.includes("height")),
+        ).to.be.true;
       }
     });
   });
@@ -163,9 +171,13 @@ describe("FileConfig - Width/Height Zero Handling", () => {
       const result = configSchema.safeParse(config);
       expect(result.success).to.be.false;
       if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.includes("height"))).to.be.true;
+        expect(
+          result.error.issues.some((issue) => issue.path.includes("height")),
+        ).to.be.true;
         // width should not have an issue since it's 0
-        expect(result.error.issues.some((issue) => issue.path.includes("width"))).to.be.false;
+        expect(
+          result.error.issues.some((issue) => issue.path.includes("width")),
+        ).to.be.false;
       }
     });
 
@@ -178,9 +190,13 @@ describe("FileConfig - Width/Height Zero Handling", () => {
       const result = configSchema.safeParse(config);
       expect(result.success).to.be.false;
       if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.includes("width"))).to.be.true;
+        expect(
+          result.error.issues.some((issue) => issue.path.includes("width")),
+        ).to.be.true;
         // height should not have an issue since it's 0
-        expect(result.error.issues.some((issue) => issue.path.includes("height"))).to.be.false;
+        expect(
+          result.error.issues.some((issue) => issue.path.includes("height")),
+        ).to.be.false;
       }
     });
 
@@ -237,5 +253,3 @@ describe("FileConfig - Width/Height Zero Handling", () => {
     });
   });
 });
-
-

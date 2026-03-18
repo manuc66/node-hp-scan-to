@@ -3,7 +3,6 @@ import { expect } from "chai";
 import {
   parsePaperSize,
   validateAndResolvePaperSize,
-  mmToPixels,
   paperSizePresetToMm,
   isMaxPreset,
 } from "../src/PaperSize.js";
@@ -88,38 +87,13 @@ describe("PaperSize - Edge Cases and Error Handling", () => {
       expect(() =>
         validateAndResolvePaperSize("InvalidPreset", undefined),
       ).to.throw(/Unknown paper size preset/);
-      expect(() => validateAndResolvePaperSize("A6", undefined)).to.throw(
-        /Unknown paper size preset/,
-      );
-      expect(() => validateAndResolvePaperSize("Tabloid", undefined)).to.throw(
-        /Unknown paper size preset/,
-      );
-    });
-
-    it("should clamp dimensions exceeding device maximum", () => {
-      const maxWidthMm = 215.9; // Letter width
-      const maxHeightMm = 279.4; // Letter height
-
-      // Custom size larger than device max
-      const result = validateAndResolvePaperSize(
-        undefined,
-        "300x400mm",
-        maxWidthMm,
-        maxHeightMm,
-      );
-
-      expect(result).to.not.be.null;
-      expect(result?.resolvedMm.widthMm).to.equal(maxWidthMm);
-      expect(result?.resolvedMm.heightMm).to.equal(maxHeightMm);
+      expect(() =>
+        validateAndResolvePaperSize("NON_EXISTENT", undefined),
+      ).to.throw(/Unknown paper size preset/);
     });
 
     it("should not clamp dimensions within device limits", () => {
-      const result = validateAndResolvePaperSize(
-        undefined,
-        "100x150mm",
-        300,
-        400,
-      );
+      const result = validateAndResolvePaperSize(undefined, "100x150mm");
 
       expect(result).to.not.be.null;
       expect(result?.resolvedMm.widthMm).to.equal(100);
@@ -130,14 +104,6 @@ describe("PaperSize - Edge Cases and Error Handling", () => {
       expect(() => validateAndResolvePaperSize("A4", "8.5x11in")).to.throw(
         /both/,
       );
-    });
-
-    it("should handle Max preset correctly", () => {
-      const result = validateAndResolvePaperSize("Max", undefined, 300, 400);
-      // Max preset should return device max
-      expect(result).to.not.be.null;
-      expect(result?.resolvedMm.widthMm).to.equal(300);
-      expect(result?.resolvedMm.heightMm).to.equal(400);
     });
 
     it("should handle case-insensitive preset names", () => {
@@ -156,74 +122,9 @@ describe("PaperSize - Edge Cases and Error Handling", () => {
     });
 
     it("should work when device max is undefined", () => {
-      const result = validateAndResolvePaperSize(
-        "A4",
-        undefined,
-        undefined,
-        undefined,
-      );
+      const result = validateAndResolvePaperSize("A4", undefined);
       expect(result).to.not.be.null;
       expect(result?.resolvedMm.widthMm).to.equal(210);
-    });
-  });
-
-  describe("mmToPixels() edge cases", () => {
-    it("should handle zero resolution", () => {
-      const result = mmToPixels(210, 297, 0, 0);
-      expect(result.widthPx).to.equal(1);
-      expect(result.heightPx).to.equal(1);
-    });
-
-    it("should handle negative resolution (treated as positive)", () => {
-      const result = mmToPixels(210, 297, -300, -300);
-      expect(result.widthPx).to.equal(1);
-      expect(result.heightPx).to.equal(1);
-    });
-
-    it("should handle zero mm", () => {
-      const result = mmToPixels(0, 0, 300, 300);
-      expect(result.widthPx).to.equal(1);
-      expect(result.heightPx).to.equal(1);
-    });
-
-    it("should handle negative mm (edge case)", () => {
-      const result = mmToPixels(-210, -297, 300, 300);
-      expect(result.widthPx).to.equal(1);
-      expect(result.heightPx).to.equal(1);
-    });
-
-    it("should handle very high resolution", () => {
-      const result = mmToPixels(210, 297, 2400, 2400); // 2400 DPI
-      expect(result.widthPx).to.be.approximately(19843, 100); // ~19843 pixels
-      expect(result.heightPx).to.be.approximately(28063, 100);
-    });
-
-    it("should handle very low resolution", () => {
-      const result = mmToPixels(210, 297, 50, 50); // 50 DPI
-      expect(result.widthPx).to.be.approximately(413, 10);
-      expect(result.heightPx).to.be.approximately(585, 10);
-    });
-
-    it("should handle fractional mm values", () => {
-      const result = mmToPixels(210.5, 297.25, 300, 300);
-      expect(result.widthPx).to.be.a("number");
-      expect(result.widthPx).to.be.greaterThan(0);
-      expect(result.heightPx).to.be.greaterThan(0);
-    });
-
-    it("should handle fractional DPI values", () => {
-      const result = mmToPixels(210, 297, 299.5, 299.5);
-      expect(result.widthPx).to.be.a("number");
-      expect(result.widthPx).to.be.greaterThan(0);
-      expect(result.heightPx).to.be.greaterThan(0);
-    });
-
-    it("should be consistent with reverse calculation", () => {
-      const mm = 210;
-      const dpi = 300;
-      const pixels = mmToPixels(mm, mm, dpi, dpi).widthPx;
-      const backToMm = (pixels * 25.4) / dpi;
-      expect(backToMm).to.be.approximately(mm, 0.1);
     });
   });
 
@@ -284,46 +185,6 @@ describe("PaperSize - Edge Cases and Error Handling", () => {
     it("should allow tabs and newlines in input", () => {
       expect(paperSizePresetToMm("A4\n")?.widthMm).to.equal(210);
       expect(paperSizePresetToMm("\tA4")?.widthMm).to.equal(210);
-    });
-  });
-
-  describe("Real-world scenario tests", () => {
-    it("should handle A4 preset and convert correctly at standard DPI", () => {
-      const preset = paperSizePresetToMm("A4");
-      expect(preset).to.not.be.null;
-      const result = mmToPixels(preset!.widthMm, preset!.heightMm, 300, 300);
-
-      // A4 at 300 DPI should be approximately 2480 x 3508 pixels
-      expect(result.widthPx).to.be.approximately(2480, 10);
-      expect(result.heightPx).to.be.approximately(3508, 10);
-    });
-
-    it("should handle Letter preset and convert correctly at standard DPI", () => {
-      const preset = paperSizePresetToMm("Letter");
-      expect(preset).to.not.be.null;
-      const result = mmToPixels(preset!.widthMm, preset!.heightMm, 300, 300);
-
-      // Letter at 300 DPI should be approximately 2550 x 3300 pixels
-      expect(result.widthPx).to.be.approximately(2550, 10);
-      expect(result.heightPx).to.be.approximately(3300, 10);
-    });
-
-    it("should handle custom dimension string end-to-end", () => {
-      const parsed = parsePaperSize("8.5x11in");
-      expect(parsed).to.not.be.null;
-
-      const resolved = validateAndResolvePaperSize(undefined, "8.5x11in");
-      expect(resolved).to.not.be.null;
-
-      const result = mmToPixels(
-        resolved!.resolvedMm.widthMm,
-        resolved!.resolvedMm.heightMm,
-        300,
-        300,
-      );
-
-      expect(result.widthPx).to.be.approximately(2550, 10);
-      expect(result.heightPx).to.be.approximately(3300, 10);
     });
   });
 });

@@ -477,12 +477,18 @@ function getScanConfiguration(
     );
   }
 
-  const providedWidth: number | "max" | undefined = configWidth === undefined ? undefined :
-    configWidth.toLowerCase() === "max" ? "max" :  parseInt(configWidth, 10);
-  const providedHeight: number | "max" | undefined = configHeight === undefined ? undefined:
-    configHeight.toLowerCase() === "max"
+  const providedWidth: number | "max" | undefined =
+    configWidth === undefined
       ? undefined
-      : parseInt(configHeight, 10);
+      : configWidth.toLowerCase() === "max"
+        ? "max"
+        : parseInt(configWidth, 10);
+  const providedHeight: number | "max" | undefined =
+    configHeight === undefined
+      ? undefined
+      : configHeight.toLowerCase() === "max"
+        ? undefined
+        : parseInt(configHeight, 10);
 
   const scanConfig: ScanConfig = {
     resolution,

@@ -121,12 +121,12 @@ export const configSchema = z
 
     // Consider width/height as configured only if they are defined and not 0
     // (0 is treated as "not set" in the codebase)
-    const hasManualWidth = value.width !== undefined &&
-                           value.width !== 0 &&
-                           value.width !== "max";
-    const hasManualHeight = value.height !== undefined &&
-                            value.height !== 0 &&
-                            value.height !== "max";
+    const hasManualWidth =
+      value.width !== undefined && value.width !== 0 && value.width !== "max";
+    const hasManualHeight =
+      value.height !== undefined &&
+      value.height !== 0 &&
+      value.height !== "max";
     const hasManualSize = hasManualWidth || hasManualHeight;
 
     if (hasPaperSizeConfig && hasManualSize) {
