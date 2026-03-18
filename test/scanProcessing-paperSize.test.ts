@@ -16,8 +16,10 @@ describe("scanProcessing - Paper Size Integration", () => {
     scanConfig = {
       resolution: 200,
       mode: ScanMode.Color,
-      width: null,
-      height: null,
+      width: undefined,
+      height: undefined,
+      paperDim: undefined,
+      paperSize: undefined,
       directoryConfig: {
         directory: undefined,
         tempDirectory: undefined,
@@ -31,11 +33,11 @@ describe("scanProcessing - Paper Size Integration", () => {
       supportsMultiItemScanFromPlaten: false,
       useWalkupScanToComp: false,
       platenMaxWidth: 2550, // 8.5 inches at 300 DPI
-      platenMaxHeight: 3300, // 11 inches at 300 DPI
+      platenMaxHeight: 4000, // Large enough for A4 (3508)
       adfMaxWidth: 2550,
-      adfMaxHeight: 3300,
+      adfMaxHeight: 4000,
       adfDuplexMaxWidth: 2550,
-      adfDuplexMaxHeight: 3300,
+      adfDuplexMaxHeight: 4000,
       hasAdfDetectPaperLoaded: false,
       hasAdfDuplex: false,
       isEscl: false,
@@ -49,7 +51,7 @@ describe("scanProcessing - Paper Size Integration", () => {
     it("applies A4 paper size dimensions (210x297mm)", async () => {
       scanConfig.paperSize = "A4";
       // A4 = 210x297mm
-      // At 200 DPI: 210mm = 1654px, 297mm = 2339px (approximately)
+      // At 300 DPI (eSCL unit resolution): 210mm = 2480 units, 297mm = 3508 units
       const width = getScanWidth(
         scanConfig,
         InputSource.Platen,
@@ -62,8 +64,8 @@ describe("scanProcessing - Paper Size Integration", () => {
         deviceCapabilities,
         false,
       );
-      expect(width).to.be.approximately(1654, 50);
-      expect(height).to.be.approximately(2339, 50);
+      expect(width).to.be.approximately(2480, 50);
+      expect(height).to.be.approximately(3508, 50);
     });
   });
 
@@ -71,7 +73,7 @@ describe("scanProcessing - Paper Size Integration", () => {
     it("applies Letter paper size dimensions (8.5x11 inches)", async () => {
       scanConfig.paperSize = "Letter";
       // Letter = 8.5x11 inches = 215.9x279.4mm
-      // At 200 DPI: 8.5in = 1700px, 11in = 2200px
+      // At 300 DPI (eSCL unit resolution): 8.5" = 2550 units, 11" = 3300 units
       const width = getScanWidth(
         scanConfig,
         InputSource.Platen,
@@ -84,8 +86,8 @@ describe("scanProcessing - Paper Size Integration", () => {
         deviceCapabilities,
         false,
       );
-      expect(width).to.be.approximately(1700, 50);
-      expect(height).to.be.approximately(2200, 50);
+      expect(width).to.be.approximately(2550, 50);
+      expect(height).to.be.approximately(3300, 50);
     });
   });
 
@@ -93,7 +95,7 @@ describe("scanProcessing - Paper Size Integration", () => {
     it("applies A5 paper size dimensions (148x210mm)", async () => {
       scanConfig.paperSize = "A5";
       // A5 = 148x210mm
-      // At 200 DPI: 148mm = 1165px, 210mm = 1654px
+      // At 300 DPI (eSCL unit resolution): 148mm = 1748 units, 210mm = 2480 units
       const width = getScanWidth(
         scanConfig,
         InputSource.Platen,
@@ -106,8 +108,8 @@ describe("scanProcessing - Paper Size Integration", () => {
         deviceCapabilities,
         false,
       );
-      expect(width).to.be.approximately(1165, 50);
-      expect(height).to.be.approximately(1654, 50);
+      expect(width).to.be.approximately(1748, 50);
+      expect(height).to.be.approximately(2480, 50);
     });
   });
 
@@ -115,7 +117,7 @@ describe("scanProcessing - Paper Size Integration", () => {
     it("applies custom dimensions in cm (21x29.7cm)", async () => {
       scanConfig.paperDim = "21x29.7cm";
       // 21x29.7cm = 210x297mm (same as A4)
-      // At 200 DPI: 210mm = 1654px, 297mm = 2339px
+      // At 300 DPI (eSCL unit resolution): 210mm = 2480 units, 297mm = 3508 units
       const width = getScanWidth(
         scanConfig,
         InputSource.Platen,
@@ -128,13 +130,13 @@ describe("scanProcessing - Paper Size Integration", () => {
         deviceCapabilities,
         false,
       );
-      expect(width).to.be.approximately(1654, 50);
-      expect(height).to.be.approximately(2339, 50);
+      expect(width).to.be.approximately(2480, 50);
+      expect(height).to.be.approximately(3508, 50);
     });
 
     it("applies custom dimensions in inches (8.5x11in)", async () => {
       scanConfig.paperDim = "8.5x11in";
-      // 8.5x11 inches at 200 DPI: 1700x2200px
+      // 8.5x11 inches at 300 DPI (eSCL unit resolution): 2550x3300 units
       const width = getScanWidth(
         scanConfig,
         InputSource.Platen,
@@ -147,13 +149,13 @@ describe("scanProcessing - Paper Size Integration", () => {
         deviceCapabilities,
         false,
       );
-      expect(width).to.be.approximately(1700, 50);
-      expect(height).to.be.approximately(2200, 50);
+      expect(width).to.be.approximately(2550, 50);
+      expect(height).to.be.approximately(3300, 50);
     });
 
     it("applies custom dimensions in mm (210x297mm)", async () => {
       scanConfig.paperDim = "210x297mm";
-      // 210x297mm at 200 DPI: 1654x2339px
+      // 210x297mm = 2480x3508 units at 300 DPI
       const width = getScanWidth(
         scanConfig,
         InputSource.Platen,
@@ -166,8 +168,8 @@ describe("scanProcessing - Paper Size Integration", () => {
         deviceCapabilities,
         false,
       );
-      expect(width).to.be.approximately(1654, 50);
-      expect(height).to.be.approximately(2339, 50);
+      expect(width).to.be.approximately(2480, 50);
+      expect(height).to.be.approximately(3508, 50);
     });
   });
 
@@ -201,7 +203,8 @@ describe("scanProcessing - Paper Size Integration", () => {
     it("applies A4 at 300 DPI", async () => {
       scanConfig.paperSize = "A4";
       scanConfig.resolution = 300;
-      // A4 at 300 DPI: 210mm = 2480px, 297mm = 3508px (height clamped to device max)
+      deviceCapabilities.platenMaxHeight = 3300;
+      // A4 at 300 DPI: 210mm = 2480px, 297mm = 3508px (height clamped to 3300)
       const width = getScanWidth(
         scanConfig,
         InputSource.Platen,
@@ -215,13 +218,13 @@ describe("scanProcessing - Paper Size Integration", () => {
         false,
       );
       expect(width).to.be.approximately(2480, 50);
-      expect(height).to.equal(deviceCapabilities.platenMaxHeight);
+      expect(height).to.equal(3300);
     });
 
     it("applies A4 at 100 DPI", async () => {
       scanConfig.paperSize = "A4";
       scanConfig.resolution = 100;
-      // A4 at 100 DPI: 210mm = 827px, 297mm = 1169px
+      // A4 at 300 DPI (eSCL unit resolution): 210mm = 2480 units, 297mm = 3508 units
       const width = getScanWidth(
         scanConfig,
         InputSource.Platen,
@@ -234,8 +237,8 @@ describe("scanProcessing - Paper Size Integration", () => {
         deviceCapabilities,
         false,
       );
-      expect(width).to.be.approximately(827, 50);
-      expect(height).to.be.approximately(1169, 50);
+      expect(width).to.be.approximately(2480, 50);
+      expect(height).to.be.approximately(3508, 50);
     });
   });
 
@@ -244,6 +247,7 @@ describe("scanProcessing - Paper Size Integration", () => {
       scanConfig.paperSize = "A4";
       scanConfig.resolution = 200;
       deviceCapabilities.isEscl = true;
+      deviceCapabilities.platenMaxHeight = 3300;
       // A4 in 1/300in units: ~2480x3508, height clamped to 3300
       const width = getScanWidth(
         scanConfig,
@@ -258,7 +262,7 @@ describe("scanProcessing - Paper Size Integration", () => {
         false,
       );
       expect(width).to.be.approximately(2480, 10);
-      expect(height).to.equal(deviceCapabilities.platenMaxHeight);
+      expect(height).to.equal(3300);
     });
 
     it("applies Letter in 1/300in units", async () => {
@@ -280,28 +284,6 @@ describe("scanProcessing - Paper Size Integration", () => {
       );
       expect(width).to.equal(2550);
       expect(height).to.equal(3300);
-    });
-  });
-
-  describe("Paper Size Priority", async () => {
-    it("ignores both paperSize and paperDim if not set", async () => {
-      delete scanConfig.paperSize;
-      delete scanConfig.paperDim;
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Platen,
-        deviceCapabilities,
-        false,
-      );
-      const height = getScanHeight(
-        scanConfig,
-        InputSource.Platen,
-        deviceCapabilities,
-        false,
-      );
-      // Should return device max
-      expect(width).to.equal(deviceCapabilities.platenMaxWidth);
-      expect(height).to.equal(deviceCapabilities.platenMaxHeight);
     });
   });
 

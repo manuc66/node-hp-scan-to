@@ -46,4 +46,3 @@ describe("FileConfig - Paper Size Validation with Zod", () => {
     });
   });
 });
-

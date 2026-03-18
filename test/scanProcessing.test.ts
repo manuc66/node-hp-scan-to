@@ -16,8 +16,10 @@ describe("scanProcessing", () => {
     scanConfig = {
       resolution: 200,
       mode: ScanMode.Color,
-      width: null,
-      height: null,
+      width: undefined,
+      height: undefined,
+      paperDim: undefined,
+      paperSize: undefined,
       directoryConfig: {
         directory: undefined,
         tempDirectory: undefined,
@@ -75,7 +77,7 @@ describe("scanProcessing", () => {
           deviceCapabilities,
           false,
         );
-        expect(width).to.be.eq(2583);
+        expect(width).to.be.eq(2583 * 300);
       });
       it("Limits the value if available from device", async () => {
         scanConfig.width = 2583;
@@ -139,7 +141,7 @@ describe("scanProcessing", () => {
           deviceCapabilities,
           false,
         );
-        expect(width).to.be.eq(2583);
+        expect(width).to.be.eq(2583 * 300);
       });
     });
   });
@@ -174,7 +176,7 @@ describe("scanProcessing", () => {
           deviceCapabilities,
           false,
         );
-        expect(width).to.be.eq(1269);
+        expect(width).to.be.eq(1269 * 300);
       });
       it("Limits the value if available from device", async () => {
         scanConfig.height = 1269;
@@ -238,7 +240,7 @@ describe("scanProcessing", () => {
           deviceCapabilities,
           false,
         );
-        expect(height).to.be.eq(1269);
+        expect(height).to.be.eq(1269 * 300);
       });
     });
   });

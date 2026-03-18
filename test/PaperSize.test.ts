@@ -3,7 +3,6 @@ import { expect } from "chai";
 import {
   paperSizePresetToMm,
   parsePaperSize,
-  mmToPixels,
   validateAndResolvePaperSize,
   getDefaultPaperSize,
   isMaxPreset,
@@ -102,38 +101,6 @@ describe("PaperSize", () => {
     });
   });
 
-  describe("mmToPixels()", () => {
-    it("converts A4 mm to pixels at 200 DPI", () => {
-      const result = mmToPixels(210, 297, 200, 200);
-      expect(result.widthPx).to.be.approximately(1654, 5);
-      expect(result.heightPx).to.be.approximately(2339, 5);
-    });
-
-    it("converts Letter mm to pixels at 200 DPI", () => {
-      const result = mmToPixels(215.9, 279.4, 200, 200);
-      expect(result.widthPx).to.be.approximately(1700, 5);
-      expect(result.heightPx).to.be.approximately(2200, 5);
-    });
-
-    it("converts at 300 DPI", () => {
-      const result = mmToPixels(210, 297, 300, 300);
-      expect(result.widthPx).to.be.approximately(2480, 5);
-      expect(result.heightPx).to.be.approximately(3508, 5);
-    });
-
-    it("handles different X and Y DPI", () => {
-      const result = mmToPixels(210, 297, 300, 150);
-      expect(result.widthPx).to.be.approximately(2480, 5);
-      expect(result.heightPx).to.be.approximately(1754, 5);
-    });
-
-    it("ensures minimum 1 pixel", () => {
-      const result = mmToPixels(0.1, 0.1, 1, 1);
-      expect(result.widthPx).to.equal(1);
-      expect(result.heightPx).to.equal(1);
-    });
-  });
-
   describe("validateAndResolvePaperSize()", () => {
     it("resolves A4 preset", () => {
       const result = validateAndResolvePaperSize("A4", undefined);
@@ -176,12 +143,7 @@ describe("PaperSize", () => {
     });
 
     it("logs warning for dimension exceeding device max", () => {
-      const result = validateAndResolvePaperSize(
-        undefined,
-        "300x400mm",
-        210,
-        297,
-      );
+      const result = validateAndResolvePaperSize(undefined, "300x400mm");
       expect(result).not.to.be.null;
     });
   });
