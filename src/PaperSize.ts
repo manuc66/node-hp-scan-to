@@ -1,26 +1,3 @@
-/**
- * Paper size configuration and conversion utilities.
- * Handles preset paper sizes (A4, Letter, etc.) and custom dimensions.
- *
- * Responsibilities:
- *   - Parse paper size strings (presets and custom "WxH<unit>" formats)
- *   - Resolve paper size to millimeters
- *   - Convert mm → scan region units given an arbitrary unit resolution
- *
- * This module is intentionally unaware of device capabilities (max dimensions,
- * eSCL vs non-eSCL). Clamping to device limits is the caller's responsibility.
- */
-
-export enum PaperSizePreset {
-  A4 = "A4",
-  Letter = "Letter",
-  Legal = "Legal",
-  A5 = "A5",
-  A6 = "A6",
-  B5 = "B5",
-  Tabloid = "Tabloid",
-  Max = "Max",
-}
 
 /**
  * eSCL ScanRegion unit resolution (1/300 inch), per eSCL specification.
