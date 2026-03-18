@@ -458,12 +458,12 @@ function getScanConfiguration(
 
   const configWidth = getOptConfiguredValue(
     options.width,
-    fileConfig.width?.toString()
+    fileConfig.width?.toString(),
   );
 
   const configHeight = getOptConfiguredValue(
     options.height,
-    fileConfig.height?.toString()
+    fileConfig.height?.toString(),
   );
 
   if (

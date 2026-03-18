@@ -1,4 +1,3 @@
-
 /**
  * eSCL ScanRegion unit resolution (1/300 inch), per eSCL specification.
  * ContentRegionUnits is always "ThreeHundredthsOfInches".
