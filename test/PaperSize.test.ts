@@ -146,6 +146,36 @@ describe("PaperSize", () => {
       const result = validateAndResolvePaperSize(undefined, "300x400mm");
       expect(result).not.to.be.null;
     });
+
+    it("handles landscape orientation for portrait presets", () => {
+      const result = validateAndResolvePaperSize("A4", undefined, "landscape");
+      expect(result?.resolvedMm.widthMm).to.equal(297);
+      expect(result?.resolvedMm.heightMm).to.equal(210);
+    });
+
+    it("handles portrait orientation for landscape presets", () => {
+      const result = validateAndResolvePaperSize(
+        "ledger",
+        undefined,
+        "portrait",
+      );
+      expect(result?.resolvedMm.widthMm).to.be.approximately(279.4, 0.1);
+      expect(result?.resolvedMm.heightMm).to.be.approximately(431.8, 0.1);
+    });
+
+    it("preserves orientation if it matches the preset", () => {
+      const portrait = validateAndResolvePaperSize("A4", undefined, "portrait");
+      expect(portrait?.resolvedMm.widthMm).to.equal(210);
+      expect(portrait?.resolvedMm.heightMm).to.equal(297);
+
+      const landscape = validateAndResolvePaperSize(
+        "ledger",
+        undefined,
+        "landscape",
+      );
+      expect(landscape?.resolvedMm.widthMm).to.be.approximately(431.8, 0.1);
+      expect(landscape?.resolvedMm.heightMm).to.be.approximately(279.4, 0.1);
+    });
   });
 
   describe("getDefaultPaperSize()", () => {

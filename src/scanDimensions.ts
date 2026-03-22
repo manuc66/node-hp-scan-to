@@ -14,8 +14,11 @@ import {
  * eSCL: always 1/300 inch (ContentRegionUnits = ThreeHundredthsOfInches, per spec).
  * Non-eSCL: pixels at the configured scan DPI.
  */
-export function getUnitResolution(): number {
-  return ESCL_UNIT_RESOLUTION;
+export function getUnitResolution(
+  isEscl: boolean,
+  resolution: number,
+): number {
+  return isEscl ? ESCL_UNIT_RESOLUTION : resolution;
 }
 
 /**
@@ -66,7 +69,7 @@ export function resolvePaperSizeToScanRegion(
     return null;
   }
 
-  const unitResolution = getUnitResolution();
+  const unitResolution = getUnitResolution(isEscl, scanConfig.resolution);
 
   // "Max" preset: use device capability limits directly — no mm round-trip needed.
   if (isMaxPreset(scanConfig.paperSize)) {
@@ -80,6 +83,7 @@ export function resolvePaperSizeToScanRegion(
   const resolved = validateAndResolvePaperSize(
     scanConfig.paperSize,
     scanConfig.paperDim,
+    scanConfig.paperOrientation,
   );
   if (!resolved) {
     return null;
@@ -151,7 +155,10 @@ export function getScanDimensions(
     caps.maxHeight,
     deviceCapabilities.isEscl,
   );
-  const unitResolution = getUnitResolution();
+  const unitResolution = getUnitResolution(
+    deviceCapabilities.isEscl,
+    scanConfig.resolution,
+  );
 
   return resolveDimensions(paperRegion, caps, scanConfig, unitResolution);
 }

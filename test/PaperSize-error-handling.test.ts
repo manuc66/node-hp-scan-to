@@ -28,7 +28,7 @@ describe("Paper Size Configuration - Error Handling", () => {
 
   describe("Invalid Preset Handling", () => {
     it("should throw for unknown preset", () => {
-      expect(() => validateAndResolvePaperSize("A3", null)).to.throw(
+      expect(() => validateAndResolvePaperSize("A0", null)).to.throw(
         /Unknown paper size preset/,
       );
     });

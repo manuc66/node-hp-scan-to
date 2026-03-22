@@ -50,8 +50,8 @@ describe("scanDimensions", () => {
           deviceCapabilities,
           false,
         );
-        expect(width).to.be.eq(2583 * 300);
-        expect(height).to.be.eq(1269 * 300);
+        expect(width).to.be.eq(2583 * scanConfig.resolution);
+        expect(height).to.be.eq(1269 * scanConfig.resolution);
       });
 
       it("Limits the value if available from device", () => {
@@ -145,8 +145,8 @@ describe("scanDimensions", () => {
           deviceCapabilities,
           false,
         );
-        expect(width).to.be.eq(2583 * 300);
-        expect(height).to.be.eq(1269 * 300);
+        expect(width).to.be.eq(2583 * scanConfig.resolution);
+        expect(height).to.be.eq(1269 * scanConfig.resolution);
       });
     });
   });

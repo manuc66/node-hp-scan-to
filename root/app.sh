@@ -50,6 +50,10 @@ if [ -n "$PAPER_SIZE" ]; then
     ARGS+=("--paper-size" "$PAPER_SIZE")
 fi
 
+if [ -n "$PAPER_ORIENTATION" ]; then
+    ARGS+=("--paper-orientation" "$PAPER_ORIENTATION")
+fi
+
 if [ -n "$PAPER_DIM" ]; then
     ARGS+=("--paper-dim" "$PAPER_DIM")
 fi

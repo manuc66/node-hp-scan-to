@@ -171,6 +171,7 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `-r`, `--resolution`                  | Scan resolution in DPI. Defaults to 200.                                                                         | `-r 200`                                                          |
 | `--mode <mode> `                      | Selects the scan mode (default: Color) (choices: "Gray", "Color").                                               | `--mode Gray`                                                     |
 | `--paper-size <size>`                 | Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive). Cannot be used with `--paper-dim`. | `--paper-size Letter`                                             |
+| `--paper-orientation <orientation>`   | Paper orientation: portrait (default) or landscape. Applied to `--paper-size` only.                              | `--paper-orientation landscape`                                   |
 | `--paper-dim <dimensions>`            | Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with `--paper-size`. | `--paper-dim 8.5x11in`                                            |
 | `-s`, `--paperless-post-document-url` | Paperless-ngx API URL for uploading documents.                                                             | `-s https://domain.tld/api/documents/post_document/` (no default) |
 | `-t`, `--temp-directory`              | Temporary directory for processing. Defaults to `/tmp/scan-to-pc<random value>` if not set.                      | `-t /tmp/scan-to-pc5678`                                          |
@@ -299,6 +300,7 @@ Scan Options:
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
   --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
+  --paper-orientation <orientation>                                Paper orientation: portrait (default) or landscape. Applied to --paper-size only. (choices: "portrait", "landscape")
   --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
   --prefer-eSCL                                                    Prefer eSCL protocol if available
@@ -366,6 +368,7 @@ Scan Options:
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
   --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
+  --paper-orientation <orientation>                                Paper orientation: portrait (default) or landscape. Applied to --paper-size only. (choices: "portrait", "landscape")
   --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
   --prefer-eSCL                                                    Prefer eSCL protocol if available
@@ -462,6 +465,7 @@ Scan Options:
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
   --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
+  --paper-orientation <orientation>                                Paper orientation: portrait (default) or landscape. Applied to --paper-size only. (choices: "portrait", "landscape")
   --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
   --prefer-eSCL                                                    Prefer eSCL protocol if available
@@ -541,6 +545,7 @@ List of supported environment variables and their meaning, or correspondence wit
 | `PUID`                        | ID of the user that will run the program                                                                      |                                                                               |
 | `RESOLUTION`                  | Resolution setting                                                                                            | `-r` / `--resolution`                                                         |
 | `MODE`                        | Scan mode setting                                                                                             | `--mode`                                                                      |
+| `PAPER_ORIENTATION`           | Paper orientation: portrait (default) or landscape. Applied to `PAPER_SIZE` only.                             | `--paper-orientation`                                                         |
 | `TEMP_DIR`                    | Temporary directory                                                                                           | `-t` / `--temp-directory`                                                     |
 
 **Additional Notes:**

@@ -110,6 +110,17 @@ function setupScanParameters(commandName: string) {
     )
     .addOption(
       new Option(
+        "--paper-orientation <orientation>",
+        "Paper orientation: portrait (default) or landscape. Applied to --paper-size only.",
+      )
+        .choices(["portrait", "landscape"])
+        .conflicts("paperDim")
+        .conflicts("width")
+        .conflicts("height")
+        .helpGroup(HelpGroupsHeadings.scan),
+    )
+    .addOption(
+      new Option(
         "--paper-dim <dimensions>",
         "Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.",
       )
@@ -454,6 +465,11 @@ function getScanConfiguration(
     fileConfig.paper_dim,
   );
 
+  const paperOrientation = getOptConfiguredValue(
+    options.paperOrientation,
+    fileConfig.paper_orientation,
+  );
+
   const hasPaperSizeConfig = paperSize !== undefined || paperDim !== undefined;
 
   const configWidth = getOptConfiguredValue(
@@ -495,6 +511,7 @@ function getScanConfiguration(
     height: providedHeight,
     paperSize,
     paperDim,
+    paperOrientation,
     directoryConfig,
     paperlessConfig,
     nextcloudConfig,
