@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from "mocha";
 import { expect } from "chai";
-import { getScanWidth, getScanHeight } from "../src/scanProcessing.js";
+import { getScanDimensions } from "../src/scanDimensions.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
 import type {
   ScanConfig,
@@ -39,8 +39,10 @@ describe("Command Integration - Paper Size Configuration", () => {
       const scanConfig: SingleScanConfig = {
         resolution: 200,
         mode: ScanMode.Color,
-        width: null,
-        height: null,
+        width: undefined,
+        height: undefined,
+        paperOrientation: undefined,
+        paperDim: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -54,13 +56,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         generatePdf: false,
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Platen,
-        baseDeviceCapabilities,
-        false,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Platen,
         baseDeviceCapabilities,
@@ -76,8 +72,10 @@ describe("Command Integration - Paper Size Configuration", () => {
       const scanConfig: SingleScanConfig = {
         resolution: 300,
         mode: ScanMode.Gray,
-        width: null,
-        height: null,
+        width: undefined,
+        height: undefined,
+        paperSize: undefined,
+        paperOrientation: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -91,13 +89,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         generatePdf: false,
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Platen,
-        baseDeviceCapabilities,
-        false,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Platen,
         baseDeviceCapabilities,
@@ -113,8 +105,11 @@ describe("Command Integration - Paper Size Configuration", () => {
       const scanConfig: SingleScanConfig = {
         resolution: 200,
         mode: ScanMode.Color,
-        width: null,
-        height: null,
+        width: undefined,
+        height: undefined,
+        paperSize: undefined,
+        paperOrientation: undefined,
+        paperDim: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -127,13 +122,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         generatePdf: false,
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Platen,
-        baseDeviceCapabilities,
-        false,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Platen,
         baseDeviceCapabilities,
@@ -150,8 +139,10 @@ describe("Command Integration - Paper Size Configuration", () => {
       const scanConfig: AdfAutoScanConfig = {
         resolution: 200,
         mode: ScanMode.Color,
-        width: null,
-        height: null,
+        width: undefined,
+        height: undefined,
+        paperOrientation: undefined,
+        paperDim: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -167,13 +158,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         startScanDelay: 0,
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Adf,
-        baseDeviceCapabilities,
-        false,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Adf,
         baseDeviceCapabilities,
@@ -189,8 +174,10 @@ describe("Command Integration - Paper Size Configuration", () => {
       const scanConfig: AdfAutoScanConfig = {
         resolution: 300,
         mode: ScanMode.Gray,
-        width: null,
-        height: null,
+        width: undefined,
+        height: undefined,
+        paperOrientation: undefined,
+        paperDim: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -206,13 +193,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         startScanDelay: 0,
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Adf,
-        baseDeviceCapabilities,
-        true,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Adf,
         baseDeviceCapabilities,
@@ -228,8 +209,11 @@ describe("Command Integration - Paper Size Configuration", () => {
       const scanConfig: AdfAutoScanConfig = {
         resolution: 200,
         mode: ScanMode.Color,
-        width: null,
-        height: null,
+        width: undefined,
+        height: undefined,
+        paperSize: undefined,
+        paperOrientation: undefined,
+        paperDim: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -244,13 +228,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         startScanDelay: 0,
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Adf,
-        baseDeviceCapabilities,
-        false,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Adf,
         baseDeviceCapabilities,
@@ -267,8 +245,10 @@ describe("Command Integration - Paper Size Configuration", () => {
       const scanConfig: ScanConfig = {
         resolution: 150,
         mode: ScanMode.Color,
-        width: null,
-        height: null,
+        width: undefined,
+        height: undefined,
+        paperOrientation: undefined,
+        paperDim: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -280,13 +260,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperSize: "Legal",
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Platen,
-        baseDeviceCapabilities,
-        false,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Platen,
         baseDeviceCapabilities,
@@ -302,8 +276,10 @@ describe("Command Integration - Paper Size Configuration", () => {
       const scanConfig: ScanConfig = {
         resolution: 200,
         mode: ScanMode.Gray,
-        width: null,
-        height: null,
+        width: undefined,
+        height: undefined,
+        paperOrientation: undefined,
+        paperDim: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -315,13 +291,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperSize: "B5",
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Platen,
-        baseDeviceCapabilities,
-        false,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Platen,
         baseDeviceCapabilities,
@@ -346,8 +316,10 @@ describe("Command Integration - Paper Size Configuration", () => {
       const scanConfig: ScanConfig = {
         resolution: 300,
         mode: ScanMode.Color,
-        width: null,
-        height: null,
+        width: undefined,
+        height: undefined,
+        paperOrientation: undefined,
+        paperDim: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -359,13 +331,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperSize: "A4",
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Platen,
-        smallDevice,
-        false,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Platen,
         smallDevice,
@@ -381,8 +347,10 @@ describe("Command Integration - Paper Size Configuration", () => {
       const scanConfig: ScanConfig = {
         resolution: 200,
         mode: ScanMode.Color,
-        width: null,
-        height: null,
+        width: undefined,
+        height: undefined,
+        paperOrientation: undefined,
+        paperDim: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -394,13 +362,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperSize: "Max",
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Platen,
-        baseDeviceCapabilities,
-        false,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Platen,
         baseDeviceCapabilities,
@@ -419,6 +381,8 @@ describe("Command Integration - Paper Size Configuration", () => {
         mode: ScanMode.Color,
         width: 1000, // Manual width
         height: 1000, // Manual height
+        paperOrientation: undefined,
+        paperDim: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -430,13 +394,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperSize: "A4",
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Platen,
-        baseDeviceCapabilities,
-        false,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Platen,
         baseDeviceCapabilities,
@@ -456,8 +414,10 @@ describe("Command Integration - Paper Size Configuration", () => {
       const scanConfig: ScanConfig = {
         resolution: 100,
         mode: ScanMode.Color,
-        width: null,
-        height: null,
+        width: undefined,
+        height: undefined,
+        paperOrientation: undefined,
+        paperDim: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -469,13 +429,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperSize: "Letter",
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Platen,
-        baseDeviceCapabilities,
-        false,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Platen,
         baseDeviceCapabilities,
@@ -491,8 +445,10 @@ describe("Command Integration - Paper Size Configuration", () => {
       const scanConfig: ScanConfig = {
         resolution: 600,
         mode: ScanMode.Color,
-        width: null,
-        height: null,
+        width: undefined,
+        height: undefined,
+        paperOrientation: undefined,
+        paperDim: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -504,13 +460,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperSize: "A4",
       };
 
-      const width = getScanWidth(
-        scanConfig,
-        InputSource.Platen,
-        baseDeviceCapabilities,
-        false,
-      );
-      const height = getScanHeight(
+      const { width, height } = getScanDimensions(
         scanConfig,
         InputSource.Platen,
         baseDeviceCapabilities,

@@ -12,6 +12,7 @@ describe("scanDimensions - Paper Size Integration", () => {
     it("applies A4 paper size dimensions (210x297mm)", () => {
       const scanConfig = createDefaultScanConfig();
       const deviceCapabilities = createDefaultDeviceCapabilities();
+      deviceCapabilities.isEscl = true;
       deviceCapabilities.platenMaxWidth = 2550;
       deviceCapabilities.platenMaxHeight = 4000;
 
@@ -33,6 +34,7 @@ describe("scanDimensions - Paper Size Integration", () => {
     it("applies Letter paper size dimensions (8.5x11 inches)", () => {
       const scanConfig = createDefaultScanConfig();
       const deviceCapabilities = createDefaultDeviceCapabilities();
+      deviceCapabilities.isEscl = true;
       deviceCapabilities.platenMaxWidth = 2550;
       deviceCapabilities.platenMaxHeight = 4000;
 
@@ -54,6 +56,7 @@ describe("scanDimensions - Paper Size Integration", () => {
     it("applies A5 paper size dimensions (148x210mm)", () => {
       const scanConfig = createDefaultScanConfig();
       const deviceCapabilities = createDefaultDeviceCapabilities();
+      deviceCapabilities.isEscl = true;
       deviceCapabilities.platenMaxWidth = 2550;
       deviceCapabilities.platenMaxHeight = 4000;
 
@@ -75,6 +78,7 @@ describe("scanDimensions - Paper Size Integration", () => {
     it("applies custom dimensions in cm (21x29.7cm)", () => {
       const scanConfig = createDefaultScanConfig();
       const deviceCapabilities = createDefaultDeviceCapabilities();
+      deviceCapabilities.isEscl = true;
       deviceCapabilities.platenMaxWidth = 2550;
       deviceCapabilities.platenMaxHeight = 4000;
 
@@ -94,6 +98,7 @@ describe("scanDimensions - Paper Size Integration", () => {
     it("applies custom dimensions in inches (8.5x11in)", () => {
       const scanConfig = createDefaultScanConfig();
       const deviceCapabilities = createDefaultDeviceCapabilities();
+      deviceCapabilities.isEscl = true;
       deviceCapabilities.platenMaxWidth = 2550;
       deviceCapabilities.platenMaxHeight = 4000;
 
@@ -112,6 +117,7 @@ describe("scanDimensions - Paper Size Integration", () => {
     it("applies custom dimensions in mm (210x297mm)", () => {
       const scanConfig = createDefaultScanConfig();
       const deviceCapabilities = createDefaultDeviceCapabilities();
+      deviceCapabilities.isEscl = true;
       deviceCapabilities.platenMaxWidth = 2550;
       deviceCapabilities.platenMaxHeight = 4000;
 
@@ -151,6 +157,7 @@ describe("scanDimensions - Paper Size Integration", () => {
     it("applies A4 at 300 DPI", () => {
       const scanConfig = createDefaultScanConfig();
       const deviceCapabilities = createDefaultDeviceCapabilities();
+      deviceCapabilities.isEscl = true;
       deviceCapabilities.platenMaxWidth = 2550;
       deviceCapabilities.platenMaxHeight = 3300;
 
@@ -170,6 +177,7 @@ describe("scanDimensions - Paper Size Integration", () => {
     it("applies A4 at 100 DPI", () => {
       const scanConfig = createDefaultScanConfig();
       const deviceCapabilities = createDefaultDeviceCapabilities();
+      deviceCapabilities.isEscl = true;
       deviceCapabilities.platenMaxWidth = 2550;
       deviceCapabilities.platenMaxHeight = 4000;
 

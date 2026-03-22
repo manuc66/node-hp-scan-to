@@ -44,6 +44,7 @@ export const configSchema = z
     resolution: z.number().int().positive().optional(), // DPI resolution
     mode: z.enum(["Gray", "Color"]).optional(), // The scan mode
     paper_size: z.string().optional(), // Paper size preset (A4, Letter, Legal, A5, B5, Max)
+    paper_orientation: z.enum(["portrait", "landscape"]).optional(), // Applied to paper_size only
     paper_dim: z.string().optional(), // Custom paper dimensions (e.g., "21x29.7cm", "8.5x11in")
 
     prefer_escl: z.boolean().optional(), // Always upload scans as PDF
@@ -144,6 +145,34 @@ export const configSchema = z
           message:
             "Config cannot specify width/height with paper_size or paper_dim. Choose one or the other.",
           path: ["height"],
+        });
+      }
+    }
+
+    if (value.paper_orientation !== undefined) {
+      if (value.paper_dim !== undefined) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "paper_orientation cannot be used with paper_dim. Orientation is implicit in custom dimensions.",
+          path: ["paper_orientation"],
+        });
+      }
+
+      if (hasManualSize) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "paper_orientation cannot be used with width/height. Orientation is implicit in pixel dimensions.",
+          path: ["paper_orientation"],
+        });
+      }
+
+      if (value.paper_size === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          message: "paper_orientation requires paper_size to be set.",
+          path: ["paper_orientation"],
         });
       }
     }

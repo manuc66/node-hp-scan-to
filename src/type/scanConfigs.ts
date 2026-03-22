@@ -14,6 +14,7 @@ export interface ScanConfig {
   preferEscl: boolean;
   paperSize: string | undefined; // e.g., "A4", "Letter", "Max", or preset name
   paperDim: string | undefined; // e.g., "21x29.7cm", "8.5x11in", "210x297mm"
+  paperOrientation: "portrait" | "landscape" | undefined;
 }
 export type AdfAutoScanConfig = ScanConfig & {
   isDuplex: boolean;
