@@ -65,7 +65,7 @@
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.4.0",
-    "mocha": "^7.2.0",
+    "mocha": "^11.7.5",
     "nock": "^14.0.11",
     "prettier": "^3.8.1",
     "tsx": "^4.21.0",
