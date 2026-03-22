@@ -4,7 +4,9 @@ import path from "node:path";
 import * as fs from "node:fs/promises";
 import EsclScanJobManifest from "../src/hpModels/EsclManifest.js";
 
-const __dirname = import.meta.dirname;
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("ScanJobManifest", () => {
   describe("Parsing EsclManifest1_ScanJet_Pro_4500.xml", async () => {

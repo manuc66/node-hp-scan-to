@@ -7,6 +7,7 @@ import type { ScanContent } from "./type/ScanContent.js";
 import { delay } from "./delay.js";
 import { InputSource } from "./type/InputSource.js";
 import { postProcessing } from "./postProcessing.js";
+import { getScanDimensions } from "./scanDimensions.js";
 import type { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers.js";
 import { KnownShortcut } from "./type/KnownShortcut.js";
@@ -75,54 +76,6 @@ export function isPdf(destination: WalkupDestination): boolean {
   }
 }
 
-export function getScanWidth(
-  scanConfig: ScanConfig,
-  inputSource: InputSource,
-  deviceCapabilities: DeviceCapabilities,
-  isDuplex: boolean,
-): number | null {
-  const maxWidth =
-    inputSource === InputSource.Adf
-      ? isDuplex
-        ? deviceCapabilities.adfDuplexMaxWidth
-        : deviceCapabilities.adfMaxWidth
-      : deviceCapabilities.platenMaxWidth;
-
-  if (scanConfig.width !== null && scanConfig.width > 0) {
-    if (maxWidth !== null && scanConfig.width > maxWidth) {
-      return maxWidth;
-    } else {
-      return scanConfig.width;
-    }
-  } else {
-    return maxWidth;
-  }
-}
-
-export function getScanHeight(
-  scanConfig: ScanConfig,
-  inputSource: InputSource,
-  deviceCapabilities: DeviceCapabilities,
-  isDuplex: boolean,
-): number | null {
-  const maxHeight =
-    inputSource === InputSource.Adf
-      ? isDuplex
-        ? deviceCapabilities.adfDuplexMaxHeight
-        : deviceCapabilities.adfMaxHeight
-      : deviceCapabilities.platenMaxHeight;
-
-  if (scanConfig.height !== null && scanConfig.height > 0) {
-    if (maxHeight !== null && scanConfig.height > maxHeight) {
-      return maxHeight;
-    } else {
-      return scanConfig.height;
-    }
-  } else {
-    return maxHeight;
-  }
-}
-
 export async function saveScanFromEvent(
   selectedScanTarget: SelectedScanTarget,
   folder: string,
@@ -158,13 +111,8 @@ export async function saveScanFromEvent(
   console.log("ADF status: " + scanStatus.adfState);
 
   const inputSource = scanStatus.getInputSource();
-  const scanWidth = getScanWidth(
-    scanConfig,
-    inputSource,
-    deviceCapabilities,
-    isDuplex,
-  );
-  const scanHeight = getScanHeight(
+
+  const { width: scanWidth, height: scanHeight } = getScanDimensions(
     scanConfig,
     inputSource,
     deviceCapabilities,
@@ -217,26 +165,21 @@ export async function scanFromAdf(
     destinationFolder = folder;
   }
 
-  const scanWidth = getScanWidth(
-    adfAutoScanConfig,
-    InputSource.Adf,
-    deviceCapabilities,
-    adfAutoScanConfig.isDuplex,
-  );
-  const scanHeight = getScanHeight(
-    adfAutoScanConfig,
-    InputSource.Adf,
-    deviceCapabilities,
-    adfAutoScanConfig.isDuplex,
-  );
+  const { width: effectiveScanWidth, height: effectiveScanHeight } =
+    getScanDimensions(
+      adfAutoScanConfig,
+      InputSource.Adf,
+      deviceCapabilities,
+      adfAutoScanConfig.isDuplex,
+    );
 
   const scanJobSettings = deviceCapabilities.createScanJobSettings(
     InputSource.Adf,
     contentType,
     adfAutoScanConfig.resolution,
     adfAutoScanConfig.mode,
-    scanWidth,
-    scanHeight,
+    effectiveScanWidth,
+    effectiveScanHeight,
     adfAutoScanConfig.isDuplex,
   );
 
@@ -297,13 +240,7 @@ export async function singleScan(
 
   const inputSource = scanStatus.getInputSource();
 
-  const scanWidth = getScanWidth(
-    scanConfig,
-    inputSource,
-    deviceCapabilities,
-    scanConfig.isDuplex,
-  );
-  const scanHeight = getScanHeight(
+  const { width: scanWidth, height: scanHeight } = getScanDimensions(
     scanConfig,
     inputSource,
     deviceCapabilities,

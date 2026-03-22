@@ -6,7 +6,9 @@ import * as fs from "node:fs/promises";
 import { InputSource } from "../src/type/InputSource.js";
 import { ScanMode } from "../src/type/scanMode.js";
 
-const __dirname = import.meta.dirname;
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("ScanJobSettings", () => {
   describe("toXML", () => {
