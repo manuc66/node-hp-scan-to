@@ -84,13 +84,50 @@ function setupScanParameters(commandName: string) {
       new Option(
         "-w, --width <width>",
         "Width in pixels of the scans (default: max)",
-      ).helpGroup(HelpGroupsHeadings.scan),
+      )
+        .conflicts("paperSize")
+        .conflicts("paperDim")
+        .helpGroup(HelpGroupsHeadings.scan),
     )
     .addOption(
       new Option(
         "-h, --height <height>",
         "Height in pixels of the scans (default: max)",
-      ).helpGroup(HelpGroupsHeadings.scan),
+      )
+        .conflicts("paperSize")
+        .conflicts("paperDim")
+        .helpGroup(HelpGroupsHeadings.scan),
+    )
+    .addOption(
+      new Option(
+        "--paper-size <size>",
+        "Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)",
+      )
+        .conflicts("paperDim")
+        .conflicts("width")
+        .conflicts("height")
+        .helpGroup(HelpGroupsHeadings.scan),
+    )
+    .addOption(
+      new Option(
+        "--paper-orientation <orientation>",
+        "Paper orientation: portrait (default) or landscape. Applied to --paper-size only.",
+      )
+        .choices(["portrait", "landscape"])
+        .conflicts("paperDim")
+        .conflicts("width")
+        .conflicts("height")
+        .helpGroup(HelpGroupsHeadings.scan),
+    )
+    .addOption(
+      new Option(
+        "--paper-dim <dimensions>",
+        "Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.",
+      )
+        .conflicts("paperSize")
+        .conflicts("width")
+        .conflicts("height")
+        .helpGroup(HelpGroupsHeadings.scan),
     )
     .addOption(
       new Option(
@@ -393,26 +430,6 @@ function getScanConfiguration(
     filePattern: getOptConfiguredValue(options.pattern, fileConfig.pattern),
   };
 
-  const configWidth = getConfiguredValue(
-    options.width,
-    fileConfig.width?.toString(),
-    "0",
-  );
-  const width =
-    configWidth.toLowerCase() === "max"
-      ? Number.MAX_SAFE_INTEGER
-      : parseInt(configWidth, 10);
-
-  const configHeight = getConfiguredValue(
-    options.height,
-    fileConfig.height?.toString(),
-    "0",
-  );
-  const height =
-    configHeight.toLowerCase() === "max"
-      ? Number.MAX_SAFE_INTEGER
-      : parseInt(configHeight, 10);
-
   const paperlessConfig = getPaperlessConfig(options, fileConfig);
   const nextcloudConfig = getNextcloudConfig(options, fileConfig);
 
@@ -437,11 +454,64 @@ function getScanConfiguration(
     false,
   );
 
+  // Paper size configuration with precedence: CLI > Config > default (A4)
+  const paperSize = getOptConfiguredValue(
+    options.paperSize,
+    fileConfig.paper_size,
+  );
+
+  const paperDim = getOptConfiguredValue(
+    options.paperDim,
+    fileConfig.paper_dim,
+  );
+
+  const paperOrientation = getOptConfiguredValue(
+    options.paperOrientation,
+    fileConfig.paper_orientation,
+  );
+
+  const hasPaperSizeConfig = paperSize !== undefined || paperDim !== undefined;
+
+  const configWidth = getOptConfiguredValue(
+    options.width,
+    fileConfig.width?.toString(),
+  );
+
+  const configHeight = getOptConfiguredValue(
+    options.height,
+    fileConfig.height?.toString(),
+  );
+
+  if (
+    hasPaperSizeConfig &&
+    (configWidth !== undefined || configHeight !== undefined)
+  ) {
+    throw new Error(
+      "Cannot specify both width/height and paper size (paper_size/paper_dim). Choose one or the other.",
+    );
+  }
+
+  const providedWidth: number | "max" | undefined =
+    configWidth === undefined
+      ? undefined
+      : configWidth.toLowerCase() === "max"
+        ? "max"
+        : parseInt(configWidth, 10);
+  const providedHeight: number | "max" | undefined =
+    configHeight === undefined
+      ? undefined
+      : configHeight.toLowerCase() === "max"
+        ? undefined
+        : parseInt(configHeight, 10);
+
   const scanConfig: ScanConfig = {
     resolution,
     mode,
-    width: width,
-    height: height,
+    width: providedWidth,
+    height: providedHeight,
+    paperSize,
+    paperDim,
+    paperOrientation,
     directoryConfig,
     paperlessConfig,
     nextcloudConfig,

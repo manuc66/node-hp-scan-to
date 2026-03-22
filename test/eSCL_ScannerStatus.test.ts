@@ -7,7 +7,9 @@ import { AdfState } from "../src/hpModels/AdfState.js";
 import { ScannerState } from "../src/hpModels/ScannerState.js";
 import { InputSource } from "../src/type/InputSource.js";
 
-const __dirname = import.meta.dirname;
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("EsclScanStatus", () => {
   describe("Parsing eSCL_ScannerStatus_empty.xml", async () => {

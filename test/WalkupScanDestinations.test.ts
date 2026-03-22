@@ -4,7 +4,9 @@ import path from "node:path";
 import * as fs from "node:fs/promises";
 import WalkupScanDestinations from "../src/hpModels/WalkupScanDestinations.js";
 
-const __dirname = import.meta.dirname;
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("WalkupScanDestinations", () => {
   describe("Parsing walkupScanDestinations.xml", async () => {

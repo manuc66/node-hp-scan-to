@@ -10,7 +10,9 @@ import { convertToPdf } from "../src/pdfProcessing.js";
 import fs from "node:fs";
 import nock from "nock";
 
-const __dirname = import.meta.dirname;
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("nextcloud", () => {
   // prepare test data
