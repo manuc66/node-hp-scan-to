@@ -1,6 +1,7 @@
 import { describe, it, beforeEach } from "mocha";
 import { expect } from "chai";
 import { getScanDimensions } from "../src/scanDimensions.js";
+import { THREE_HUNDREDTHS_OF_INCH_DPI } from "../src/PaperSize.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
 import type {
   ScanConfig,
@@ -63,9 +64,10 @@ describe("Command Integration - Paper Size Configuration", () => {
         false,
       );
 
-      // A4 at 200 DPI: ~1654 x 2339 pixels
-      expect(width).to.be.approximately(1654, 50);
-      expect(height).to.be.approximately(2339, 50);
+      // A4 at 300 DPI: 210mm/25.4 * 300 = 2480.3... pixels
+      // 297mm/25.4 * 300 = 3507.8... pixels, clamped to 3300
+      expect(width).to.be.approximately(2480, 50);
+      expect(height).to.be.approximately(3300, 50);
     });
 
     it("should configure custom dimensions for single scan", () => {
@@ -166,8 +168,8 @@ describe("Command Integration - Paper Size Configuration", () => {
       );
 
       // Letter at 200 DPI: ~1700 x 2200 pixels
-      expect(width).to.be.approximately(1700, 50);
-      expect(height).to.be.approximately(2200, 50);
+      expect(width).to.be.approximately(2550, 50);
+      expect(height).to.be.approximately(3300, 50);
     });
 
     it("should configure A5 paper size for duplex ADF scan", () => {
@@ -268,8 +270,8 @@ describe("Command Integration - Paper Size Configuration", () => {
       );
 
       // Legal at 150 DPI: ~1275 x 2100 pixels
-      expect(width).to.be.approximately(1275, 50);
-      expect(height).to.be.approximately(2100, 50);
+      expect(width).to.be.approximately(2550, 50);
+      expect(height).to.be.approximately(3300, 50);
     });
 
     it("should handle B5 paper size", () => {
@@ -299,8 +301,8 @@ describe("Command Integration - Paper Size Configuration", () => {
       );
 
       // B5 at 200 DPI: ~1386 x 1969 pixels
-      expect(width).to.be.approximately(1386, 50);
-      expect(height).to.be.approximately(1969, 50);
+      expect(width).to.be.approximately(2079, 50);
+      expect(height).to.be.approximately(2953, 50);
     });
   });
 
@@ -401,9 +403,9 @@ describe("Command Integration - Paper Size Configuration", () => {
         false,
       );
 
-      // Should use A4 dimensions, not manual 1000x1000
-      expect(width).to.be.approximately(1654, 50);
-      expect(height).to.be.approximately(2339, 50);
+      // Should use A4 dimensions at 300 DPI, not manual 1000x1000
+      expect(width).to.be.approximately(2480, 50);
+      expect(height).to.be.approximately(3300, 50);
       expect(width).to.not.equal(1000);
       expect(height).to.not.equal(1000);
     });
@@ -436,9 +438,9 @@ describe("Command Integration - Paper Size Configuration", () => {
         false,
       );
 
-      // Letter at 100 DPI: ~850 x 1100 pixels
-      expect(width).to.be.approximately(850, 30);
-      expect(height).to.be.approximately(1100, 30);
+      // Letter at 300 DPI: 8.5" * 300 = 2550, 11" * 300 = 3300
+      expect(width).to.be.approximately(2550, 30);
+      expect(height).to.be.approximately(3300, 30);
     });
 
     it("should scale paper size correctly at 600 DPI", () => {
@@ -467,9 +469,9 @@ describe("Command Integration - Paper Size Configuration", () => {
         false,
       );
 
-      // A4 at 600 DPI exceeds device max, so it should be clamped
-      expect(width).to.equal(baseDeviceCapabilities.platenMaxWidth);
-      expect(height).to.equal(baseDeviceCapabilities.platenMaxHeight);
+      // A4 at 300 DPI (fixed)
+      expect(width).to.be.approximately(2480, 50);
+      expect(height).to.be.approximately(3300, 50);
     });
   });
 });

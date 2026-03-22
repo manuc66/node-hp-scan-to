@@ -2,24 +2,11 @@ import { InputSource } from "./type/InputSource.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type { ScanConfig } from "./type/scanConfigs.js";
 import {
-  ESCL_UNIT_RESOLUTION,
   isMaxPreset,
   paperSizeMmToScanRegion,
-  validateAndResolvePaperSize,
+  THREE_HUNDREDTHS_OF_INCH_DPI,
+  validateAndResolvePaperSize
 } from "./PaperSize.js";
-
-/**
- * Returns the unit resolution for scan region dimensions.
- *
- * eSCL: always 1/300 inch (ContentRegionUnits = ThreeHundredthsOfInches, per spec).
- * Non-eSCL: pixels at the configured scan DPI.
- */
-export function getUnitResolution(
-  isEscl: boolean,
-  resolution: number,
-): number {
-  return isEscl ? ESCL_UNIT_RESOLUTION : resolution;
-}
 
 /**
  * Gets the maximum scan dimensions for a given input source and mode,
@@ -69,7 +56,7 @@ export function resolvePaperSizeToScanRegion(
     return null;
   }
 
-  const unitResolution = getUnitResolution(isEscl, scanConfig.resolution);
+  const unitResolution = THREE_HUNDREDTHS_OF_INCH_DPI;
 
   // "Max" preset: use device capability limits directly — no mm round-trip needed.
   if (isMaxPreset(scanConfig.paperSize)) {
@@ -155,10 +142,5 @@ export function getScanDimensions(
     caps.maxHeight,
     deviceCapabilities.isEscl,
   );
-  const unitResolution = getUnitResolution(
-    deviceCapabilities.isEscl,
-    scanConfig.resolution,
-  );
-
-  return resolveDimensions(paperRegion, caps, scanConfig, unitResolution);
+  return resolveDimensions(paperRegion, caps, scanConfig, THREE_HUNDREDTHS_OF_INCH_DPI);
 }

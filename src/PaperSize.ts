@@ -1,8 +1,8 @@
 /**
- * eSCL ScanRegion unit resolution (1/300 inch), per eSCL specification.
- * ContentRegionUnits is always "ThreeHundredthsOfInches".
+ * Standard unit resolution (1/300 inch) used for eSCL ScanRegion (ThreeHundredthsOfInches)
+ * and potentially for non-eSCL legacy device configurations.
  */
-export const ESCL_UNIT_RESOLUTION = 300;
+export const THREE_HUNDREDTHS_OF_INCH_DPI = 300;
 
 /**
  * Paper size in millimeters.
@@ -206,7 +206,7 @@ export function validateAndResolvePaperSize(
  * This is the final step before submitting a ScanRegion to the device.
  *
  * @param resolvedMm     - Paper size in millimeters (from validateAndResolvePaperSize)
- * @param unitResolution - Units per inch: use ESCL_UNIT_RESOLUTION (300) for eSCL,
+ * @param unitResolution - Units per inch: use THREE_HUNDREDTHS_OF_INCH_DPI (300) for eSCL,
  *                         or the scan DPI for non-eSCL devices
  * @param maxWidth       - Device max width in device units (null = unconstrained)
  * @param maxHeight      - Device max height in device units (null = unconstrained)
