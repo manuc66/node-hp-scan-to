@@ -20,9 +20,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20.18.1'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org/'
 
+      - run: npm install -g npm@latest
       - run: yarn install --frozen-lockfile
       - run: yarn test
       - run: yarn build
