@@ -1,7 +1,6 @@
 import { describe, it, beforeEach } from "mocha";
 import { expect } from "chai";
 import { getScanDimensions } from "../src/scanDimensions.js";
-import { THREE_HUNDREDTHS_OF_INCH_DPI } from "../src/PaperSize.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
 import type {
   ScanConfig,
