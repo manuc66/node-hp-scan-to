@@ -40,7 +40,7 @@ export default class PathHelper {
     filePattern: string | undefined,
   ): Promise<number> {
     if (filePattern !== undefined) {
-      return ++currentScanCount;
+      return currentScanCount + 1;
     }
     const files = await Fs.readdir(folder);
     for (let i = currentScanCount + 1; i < Number.MAX_SAFE_INTEGER; i++) {

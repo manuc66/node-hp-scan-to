@@ -5,7 +5,7 @@ import {
   isMaxPreset,
   paperSizeMmToScanRegion,
   THREE_HUNDREDTHS_OF_INCH_DPI,
-  validateAndResolvePaperSize
+  validateAndResolvePaperSize,
 } from "./PaperSize.js";
 
 /**
@@ -142,5 +142,10 @@ export function getScanDimensions(
     caps.maxHeight,
     deviceCapabilities.isEscl,
   );
-  return resolveDimensions(paperRegion, caps, scanConfig, THREE_HUNDREDTHS_OF_INCH_DPI);
+  return resolveDimensions(
+    paperRegion,
+    caps,
+    scanConfig,
+    THREE_HUNDREDTHS_OF_INCH_DPI,
+  );
 }

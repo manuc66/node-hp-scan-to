@@ -19,21 +19,19 @@ import type EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
 ): Promise<Job> {
-  let job = null;
-  let isReadyToUpload = false;
+  let job: null | Job;
+  let isReadyToUpload;
   do {
     job = await HPApi.getJob(jobUrl);
     if (job.jobState === JobState.Canceled) {
       return job;
-    } else if (
-      job.pageState === PageState.ReadyToUpload ||
-      job.jobState === JobState.Completed
-    ) {
-      isReadyToUpload = true;
-    } else {
-      isReadyToUpload = false;
     }
-    await delay(300);
+    isReadyToUpload =
+      job.pageState === PageState.ReadyToUpload ||
+      job.jobState === JobState.Completed;
+    if (!isReadyToUpload) {
+      await delay(300);
+    }
   } while (!isReadyToUpload);
   return job;
 }
@@ -258,8 +256,8 @@ async function eSCLScanJobHandling(
   scanCount: number,
   filePattern: string | undefined,
 ) {
-  let jobStateReason: JobStateReason | null = null;
-  let jobInfo: EsclJobInfo | undefined = undefined;
+  let jobStateReason: JobStateReason | null;
+  let jobInfo: EsclJobInfo | undefined;
   do {
     await delay(1000);
 

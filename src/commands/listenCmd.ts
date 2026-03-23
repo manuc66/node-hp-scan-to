@@ -277,8 +277,7 @@ function determineDuplexModes(
   } else if (selectedScanTarget.isDuplexSingleSide) {
     targetDuplexMode = TargetDuplexMode.EmulatedDuplex;
     if (
-      lastScanTarget !== undefined &&
-      selectedScanTarget.resourceURI === lastScanTarget.resourceURI &&
+      selectedScanTarget.resourceURI === lastScanTarget?.resourceURI &&
       previousDuplexMode !== DuplexMode.BackOfDoubleSided
     ) {
       duplexMode = DuplexMode.BackOfDoubleSided;
