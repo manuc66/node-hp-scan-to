@@ -38,9 +38,21 @@ describe("readDeviceCapabilities", () => {
       .reply(
         200,
         `<?xml version="1.0" encoding="UTF-8"?>
-<ledm:ScanJobManifest xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/scanjobmanifest/2009/04/30">
-  <ledm:ScanCapsURI>/Scan/ScanCaps.xml</ledm:ScanCapsURI>
-</ledm:ScanJobManifest>`,
+<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/04/30" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/04/30" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scanjobmanifest/2009/04/30">
+  <map:ResourceMap>
+    <map:ResourceLink>
+      <dd:ResourceURI>http://127.0.0.1</dd:ResourceURI>
+    </map:ResourceLink>
+    <map:ResourceNode>
+      <map:ResourceType>
+        <scan:ScanResourceType>ScanCaps</scan:ScanResourceType>
+      </map:ResourceType>
+      <map:ResourceLink>
+        <dd:ResourceURI>/Scan/ScanCaps.xml</dd:ResourceURI>
+      </map:ResourceLink>
+    </map:ResourceNode>
+  </map:ResourceMap>
+</man:Manifest>`,
       );
 
     nock("http://127.0.0.1")
@@ -48,12 +60,14 @@ describe("readDeviceCapabilities", () => {
       .reply(
         200,
         `<?xml version="1.0" encoding="UTF-8"?>
-<ledm:ScanCaps xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/scancaps/2009/03/23">
-  <ledm:Platen>
-    <ledm:MaxWidth>2550</ledm:MaxWidth>
-    <ledm:MaxHeight>3300</ledm:MaxHeight>
-  </ledm:Platen>
-</ledm:ScanCaps>`,
+<ScanCaps xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scancaps/2009/03/23">
+  <Platen>
+    <InputSourceCaps>
+      <MaxWidth>2550</MaxWidth>
+      <MaxHeight>3300</MaxHeight>
+    </InputSourceCaps>
+  </Platen>
+</ScanCaps>`,
       );
 
     const caps = await readDeviceCapabilities(false);
@@ -83,9 +97,21 @@ describe("readDeviceCapabilities", () => {
       .reply(
         200,
         `<?xml version="1.0" encoding="UTF-8"?>
-<scan:ScanJobManifest xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scanjobmanifest/2009/04/30">
-  <scan:scanCapsURI>/eSCL/ScannerCapabilities.xml</scan:scanCapsURI>
-</scan:ScanJobManifest>`,
+<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/04/30" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/04/30" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scanjobmanifest/2009/04/30">
+  <map:ResourceMap>
+    <map:ResourceLink>
+      <dd:ResourceURI>http://127.0.0.1</dd:ResourceURI>
+    </map:ResourceLink>
+    <map:ResourceNode>
+      <map:ResourceType>
+        <scan:ScanResourceType>ScannerCapabilities</scan:ScanResourceType>
+      </map:ResourceType>
+      <map:ResourceLink>
+        <dd:ResourceURI>/eSCL/ScannerCapabilities.xml</dd:ResourceURI>
+      </map:ResourceLink>
+    </map:ResourceNode>
+  </map:ResourceMap>
+</man:Manifest>`,
       );
 
     nock("http://127.0.0.1")
@@ -108,6 +134,16 @@ describe("readDeviceCapabilities", () => {
     expect(caps.isEscl).to.be.true;
     expect(caps.platenMaxWidth).to.equal(2550);
     expect(caps.platenMaxHeight).to.equal(3508);
+
+    nock("http://127.0.0.1")
+      .get("/eSCL/ScannerStatus")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<scan:ScannerStatus xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <pwg:State>Idle</pwg:State>
+</scan:ScannerStatus>`,
+      );
 
     const status = await caps.getScanStatus();
     expect(status).to.not.be.null;
@@ -150,9 +186,21 @@ describe("readDeviceCapabilities", () => {
       .reply(
         200,
         `<?xml version="1.0" encoding="UTF-8"?>
-<walkup:WalkupScanToCompManifest xmlns:walkup="http://www.hp.com/schemas/imaging/con/ledm/walkupscantocompmanifest/2009/03/12">
-  <walkup:WalkupScanToCompCapsURI>/WalkupScanToComp/WalkupScanToCompCaps.xml</walkup:WalkupScanToCompCapsURI>
-</walkup:WalkupScanToCompManifest>`,
+<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/04/30" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/04/30" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscantocompmanifest/2009/03/12">
+  <map:ResourceMap>
+    <map:ResourceLink>
+      <dd:ResourceURI>http://127.0.0.1</dd:ResourceURI>
+    </map:ResourceLink>
+    <map:ResourceNode>
+      <map:ResourceType>
+        <wus:WalkupScanToCompResourceType>WalkupScanToCompCaps</wus:WalkupScanToCompResourceType>
+      </map:ResourceType>
+      <map:ResourceLink>
+        <dd:ResourceURI>/WalkupScanToComp/WalkupScanToCompCaps.xml</dd:ResourceURI>
+      </map:ResourceLink>
+    </map:ResourceNode>
+  </map:ResourceMap>
+</man:Manifest>`,
       );
 
     nock("http://127.0.0.1")
@@ -160,9 +208,9 @@ describe("readDeviceCapabilities", () => {
       .reply(
         200,
         `<?xml version="1.0" encoding="UTF-8"?>
-<walkup:WalkupScanToCompCaps xmlns:walkup="http://www.hp.com/schemas/imaging/con/ledm/walkupscantocompcaps/2009/03/12">
-  <walkup:SupportsMultiItemScanFromPlaten>true</walkup:SupportsMultiItemScanFromPlaten>
-</walkup:WalkupScanToCompCaps>`,
+<wus:WalkupScanToCompCaps xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscantocompcaps/2009/03/12">
+  <wus:SupportsMultiItemScanFromPlaten>true</wus:SupportsMultiItemScanFromPlaten>
+</wus:WalkupScanToCompCaps>`,
       );
 
     const caps = await readDeviceCapabilities(false);
