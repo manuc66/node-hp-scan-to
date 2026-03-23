@@ -2,9 +2,9 @@ FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /app
 
 COPY . .
-COPY src/commitInfo.json /app/src/commitInfo.json
 
-RUN corepack enable \
+RUN apk add --no-cache git \
+    && corepack enable \
     && pnpm install --frozen-lockfile \
     && pnpm build \
     && rm dist/*.d.ts dist/*.js.map
