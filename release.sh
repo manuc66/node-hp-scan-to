@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to automate the release process for node-hp-scan-to
+# Script to automate the release process for node-hp-scan-to (GitHub-based releases)
 
 set -e
 
@@ -55,49 +55,8 @@ fi
 echo "Running tests..."
 npm test
 
-# Get last tag (if exists)
-LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-RANGE=${LAST_TAG:+$LAST_TAG..HEAD}
-
-if [ -z "$LAST_TAG" ]; then
-  echo "No previous tag found, generating full history."
-else
-  echo "Generating release notes since $LAST_TAG..."
-fi
-
-RELEASE_NOTES_FILE="RELEASE_NOTES.md"
-
-{
-  echo "## Release v$NEW_VERSION ($(date +%Y-%m-%d))"
-  echo ""
-
-  echo "### Features"
-  git log $RANGE --oneline --no-merges --grep="feat" -i | sed 's/^[0-9a-f]* /* /'
-  echo ""
-
-  echo "### Fixes"
-  git log $RANGE --oneline --no-merges --grep="fix" -i | sed 's/^[0-9a-f]* /* /'
-  echo ""
-
-  echo "### Refactor & Tests"
-  git log $RANGE --oneline --no-merges --grep="refactor\|test" -i | sed 's/^[0-9a-f]* /* /'
-  echo ""
-
-  echo "### Dependency Updates"
-  git log $RANGE --oneline --no-merges --grep="bump" -i | sed 's/^[0-9a-f]* /* /'
-  echo ""
-
-  echo "### Others"
-  git log $RANGE --oneline --no-merges \
-    --invert-grep --grep="feat" --grep="fix" --grep="refactor" --grep="test" --grep="bump" -i \
-    | sed 's/^[0-9a-f]* /* /'
-  echo ""
-} > "$RELEASE_NOTES_FILE"
-
-echo "Release notes generated in $RELEASE_NOTES_FILE"
-
-# Commit changes
-git add package.json package-lock.json RELEASE_NOTES.md
+# Commit version bump
+git add package.json package-lock.json
 git commit -m "chore: release v$NEW_VERSION"
 
 # Create tag
@@ -107,18 +66,23 @@ echo "----------------------------------------"
 echo "Release v$NEW_VERSION is ready locally."
 echo ""
 
-# Optional push
+# Push step
 read -p "Do you want to push changes and tags now? (y/n): " PUSH
 if [[ "$PUSH" == "y" ]]; then
   git push origin "$BRANCH" --tags
   echo "Changes pushed."
+
+  echo ""
+  echo "Next step:"
+  echo "→ Go to GitHub and create a release from tag v$NEW_VERSION"
+  echo "→ Use 'Generate release notes' button"
 else
   echo "You can push later with:"
   echo "git push origin $BRANCH --tags"
 fi
 
 echo ""
-echo "Next steps for AUR (https://aur.archlinux.org/packages/node-hp-scan-to):"
+echo "AUR steps (https://aur.archlinux.org/packages/node-hp-scan-to):"
 echo "- Update PKGBUILD with version $NEW_VERSION"
 echo "- Update checksum (makepkg -g)"
 echo "- Update .SRCINFO (makepkg --printsrcinfo > .SRCINFO)"
