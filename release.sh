@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to automate the release process for node-hp-scan-to (Yarn + GitHub releases)
+# Script to automate the release process for node-hp-scan-to (pnpm + GitHub releases)
 
 set -e
 
@@ -71,7 +71,7 @@ if ! git diff --cached --quiet; then
   git commit -m "chore: release v$NEW_VERSION"
 fi
 
-# Create tag (yarn version might have created one, let's check)
+# Create tag (pnpm version might have created one, let's check)
 if ! git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; then
   git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
 fi

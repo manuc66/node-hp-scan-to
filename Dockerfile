@@ -49,7 +49,7 @@ RUN export SYS_ARCH=$(uname -m); \
     echo "⬇️ Install shadow (for groupmod and usermod) and tzdata (for TZ env variable)" \
     && apk add --no-cache shadow tzdata curl bash
 
-# Copy built app and production dependencies without yarn
+# Copy built app and production dependencies
 WORKDIR /app
 COPY --from=build /app/dist/ ./
 COPY --from=build /app/package.json ./
