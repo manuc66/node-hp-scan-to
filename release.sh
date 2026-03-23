@@ -42,7 +42,7 @@ done
 
 # Compute new version (Yarn way)
 echo "Bumping version..."
-yarn version --$VERSION_TYPE --no-git-tag-version
+yarn version $VERSION_TYPE
 NEW_VERSION=$(node -p "require('./package.json').version")
 echo "New version: $NEW_VERSION"
 
@@ -55,22 +55,26 @@ fi
 # Install dependencies cleanly
 echo "Installing dependencies (clean)..."
 rm -rf node_modules
-yarn install --frozen-lockfile
+yarn install
 
 # Run tests
 echo "Running tests..."
 yarn test
 
-# Generate commit info BEFORE release commit
+# Generate commit info
 echo "Updating commitInfo.json..."
 node getCommitId.js
 
-# Commit version bump + commit info
+# Commit changes (if any files were modified by getCommitId or yarn version)
 git add package.json yarn.lock src/commitInfo.json
-git commit -m "chore: release v$NEW_VERSION"
+if ! git diff --cached --quiet; then
+  git commit -m "chore: release v$NEW_VERSION"
+fi
 
-# Create tag
-git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+# Create tag (yarn version might have created one, let's check)
+if ! git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; then
+  git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+fi
 
 echo "----------------------------------------"
 echo "Release v$NEW_VERSION is ready locally."
