@@ -20,6 +20,7 @@ export function createDefaultScanConfig(): ScanConfig {
     paperlessConfig: undefined,
     nextcloudConfig: undefined,
     preferEscl: false,
+    paperOrientation: "portrait",
   };
 }
 
