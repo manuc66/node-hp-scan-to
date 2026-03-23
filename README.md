@@ -665,8 +665,8 @@ How to build and run the project's source code:
 ```sh
 git clone https://github.com/manuc66/node-hp-scan-to.git
 cd node-hp-scan-to
-yarn install -d
-yarn build
+pnpm install
+pnpm build
 # Start the program with the printer's IP address:
 node dist/index.js -a 192.168.1.5 
 # Or start it with the name of the printer:

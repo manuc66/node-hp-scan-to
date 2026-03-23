@@ -40,9 +40,9 @@ select VERSION_TYPE in "patch" "minor" "major"; do
   esac
 done
 
-# Compute new version (Yarn way)
+# Compute new version (pnpm way)
 echo "Bumping version..."
-yarn version $VERSION_TYPE
+pnpm version $VERSION_TYPE
 NEW_VERSION=$(node -p "require('./package.json').version")
 echo "New version: $NEW_VERSION"
 
@@ -55,18 +55,18 @@ fi
 # Install dependencies cleanly
 echo "Installing dependencies (clean)..."
 rm -rf node_modules
-yarn install
+pnpm install
 
 # Run tests
 echo "Running tests..."
-yarn test
+pnpm test
 
 # Generate commit info
 echo "Updating commitInfo.json..."
 node getCommitId.js
 
-# Commit changes (if any files were modified by getCommitId or yarn version)
-git add package.json yarn.lock src/commitInfo.json
+# Commit changes (if any files were modified by getCommitId or pnpm version)
+git add package.json pnpm-lock.yaml src/commitInfo.json
 if ! git diff --cached --quiet; then
   git commit -m "chore: release v$NEW_VERSION"
 fi
