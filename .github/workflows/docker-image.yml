@@ -51,23 +51,25 @@ jobs:
           flavor: |
             latest=false
 
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.5.0
 
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
           node-version: '20.18.1'
-          cache: 'yarn'
+          cache: 'pnpm'
 
       - name: Install project dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Test
-        run: yarn test
+        run: pnpm test
 
       - name: Build
-        run: yarn build
+        run: pnpm build
 
       - name: cat build
         run: cat src/commitInfo.json
