@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to automate the release process for node-hp-scan-to (GitHub-based releases)
+# Script to automate the release process for node-hp-scan-to (Yarn + GitHub releases)
 
 set -e
 
@@ -40,9 +40,10 @@ select VERSION_TYPE in "patch" "minor" "major"; do
   esac
 done
 
-# Compute new version (without git tag)
-NEW_VERSION=$(npm version $VERSION_TYPE --no-git-tag-version)
-NEW_VERSION=${NEW_VERSION#v}
+# Compute new version (Yarn way)
+echo "Bumping version..."
+yarn version --$VERSION_TYPE --no-git-tag-version
+NEW_VERSION=$(node -p "require('./package.json').version")
 echo "New version: $NEW_VERSION"
 
 # Ensure tag does not already exist
@@ -51,16 +52,21 @@ if git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; then
   exit 1
 fi
 
-# Run tests before proceeding
+# Install dependencies cleanly
+echo "Installing dependencies (clean)..."
+rm -rf node_modules
+yarn install --frozen-lockfile
+
+# Run tests
 echo "Running tests..."
-npm test
+yarn test
 
 # Generate commit info BEFORE release commit
 echo "Updating commitInfo.json..."
 node getCommitId.js
 
 # Commit version bump + commit info
-git add package.json package-lock.json src/commitInfo.json
+git add package.json yarn.lock src/commitInfo.json
 git commit -m "chore: release v$NEW_VERSION"
 
 # Create tag
