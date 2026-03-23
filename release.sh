@@ -55,8 +55,12 @@ fi
 echo "Running tests..."
 npm test
 
-# Commit version bump
-git add package.json package-lock.json
+# Generate commit info BEFORE release commit
+echo "Updating commitInfo.json..."
+node getCommitId.js
+
+# Commit version bump + commit info
+git add package.json package-lock.json src/commitInfo.json
 git commit -m "chore: release v$NEW_VERSION"
 
 # Create tag
