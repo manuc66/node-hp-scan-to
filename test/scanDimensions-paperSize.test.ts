@@ -255,5 +255,72 @@ describe("scanDimensions - Paper Size Integration", () => {
       expect(width).to.equal(deviceCapabilities.platenMaxWidth);
       expect(height).to.equal(deviceCapabilities.platenMaxHeight);
     });
+
+    it("returns null when Max preset is specified but device capabilities are missing", () => {
+      const scanConfig = createDefaultScanConfig();
+      const deviceCapabilities = createDefaultDeviceCapabilities();
+      deviceCapabilities.platenMaxWidth = null;
+      deviceCapabilities.platenMaxHeight = null;
+
+      scanConfig.paperSize = "Max";
+      const { width, height } = getScanDimensions(
+        scanConfig,
+        InputSource.Platen,
+        deviceCapabilities,
+        false,
+      );
+      expect(width).to.be.null;
+      expect(height).to.be.null;
+    });
+  });
+
+  describe("Invalid Paper Size", () => {
+    it("throws when an unknown paper size preset is provided", () => {
+      const scanConfig = createDefaultScanConfig();
+      const deviceCapabilities = createDefaultDeviceCapabilities();
+      scanConfig.paperSize = "Invalid" as unknown as string;
+
+      expect(() =>
+        getScanDimensions(
+          scanConfig,
+          InputSource.Platen,
+          deviceCapabilities,
+          false,
+        ),
+      ).to.throw('Unknown paper size preset: "Invalid".');
+    });
+
+    it("throws when both paperSize and paperDim are provided", () => {
+      const scanConfig = createDefaultScanConfig();
+      const deviceCapabilities = createDefaultDeviceCapabilities();
+      scanConfig.paperSize = "A4";
+      scanConfig.paperDim = "21x29.7cm";
+
+      expect(() =>
+        getScanDimensions(
+          scanConfig,
+          InputSource.Platen,
+          deviceCapabilities,
+          false,
+        ),
+      ).to.throw(
+        "Cannot specify both --paper-size and --paper-dim. Choose one.",
+      );
+    });
+
+    it("throws when an invalid paper dimension format is provided", () => {
+      const scanConfig = createDefaultScanConfig();
+      const deviceCapabilities = createDefaultDeviceCapabilities();
+      scanConfig.paperDim = "invalid";
+
+      expect(() =>
+        getScanDimensions(
+          scanConfig,
+          InputSource.Platen,
+          deviceCapabilities,
+          false,
+        ),
+      ).to.throw('Invalid paper dimension format: "invalid".');
+    });
   });
 });

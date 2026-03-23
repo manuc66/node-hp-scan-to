@@ -227,4 +227,65 @@ describe("PathHelper", () => {
       await fs.promises.rmdir(readOnlyFolder);
     });
   });
+
+  describe("getNextScanNumber", () => {
+    it("returns scanCount + 1 if filePattern is defined", async () => {
+      const scanNumber = await PathHelper.getNextScanNumber(
+        "any",
+        5,
+        "pattern",
+      );
+      expect(scanNumber).to.equal(6);
+    });
+
+    it("finds the next available scan number", async () => {
+      const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "test-scan-"));
+      await fsp.writeFile(path.join(tempDir, "scan1_page1.jpg"), "");
+      await fsp.writeFile(path.join(tempDir, "scan2_page1.jpg"), "");
+
+      const scanNumber = await PathHelper.getNextScanNumber(
+        tempDir,
+        0,
+        undefined,
+      );
+      expect(scanNumber).to.equal(3);
+
+      await fsp.rm(tempDir, { recursive: true, force: true });
+    });
+
+    it("works with files having just the scan number prefix", async () => {
+      const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "test-scan-"));
+      await fsp.writeFile(path.join(tempDir, "scan1.pdf"), "");
+
+      const scanNumber = await PathHelper.getNextScanNumber(
+        tempDir,
+        0,
+        undefined,
+      );
+      expect(scanNumber).to.equal(2);
+
+      await fsp.rm(tempDir, { recursive: true, force: true });
+    });
+  });
+
+  describe("getPathFromHttpLocation", () => {
+    it("extracts path from http URL", () => {
+      const path = PathHelper.getPathFromHttpLocation(
+        "http://example.com/some/path",
+      );
+      expect(path).to.equal("/some/path");
+    });
+
+    it("extracts path from https URL", () => {
+      const path = PathHelper.getPathFromHttpLocation(
+        "https://example.com/another/path",
+      );
+      expect(path).to.equal("/another/path");
+    });
+
+    it("returns input as is if not a URL", () => {
+      const path = PathHelper.getPathFromHttpLocation("/local/path");
+      expect(path).to.equal("/local/path");
+    });
+  });
 });
