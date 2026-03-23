@@ -38,21 +38,30 @@ describe("scanProcessing", () => {
   describe("tryGetDestination", () => {
     beforeEach(() => {
       HPApi.setDeviceIP("127.0.0.1");
+      if (!nock.isActive()) {
+        nock.activate();
+      }
     });
 
     afterEach(() => {
       nock.cleanAll();
+      nock.restore();
     });
 
     it("returns destination when shortcut is available", async () => {
       nock("http://127.0.0.1")
+        .persist()
         .get("/WalkupScan/Destinations/1")
         .reply(
           200,
           `<?xml version="1.0" encoding="UTF-8"?>
-<walkup:WalkupScanDestination xmlns:walkup="http://www.hp.com/schemas/imaging/con/ledm/walkupscandestinations/2009/03/12">
-  <walkup:Shortcut>SavePDF</walkup:Shortcut>
-</walkup:WalkupScanDestination>`,
+<wus:WalkupScanDestinations xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscandestinations/2009/03/12">
+  <wus:WalkupScanDestination>
+    <wus:WalkupScanSettings>
+      <wus:Shortcut>SavePDF</wus:Shortcut>
+    </wus:WalkupScanSettings>
+  </wus:WalkupScanDestination>
+</wus:WalkupScanDestinations>`,
         );
 
       const event: IEvent = {
