@@ -8,6 +8,7 @@
     "strict": true,
 
     "outDir": "dist",
+    "rootDir": "src",
     "lib": ["ES2023"],
     "types": ["node"],
     "noImplicitAny": true,
@@ -35,7 +36,6 @@
     "strictPropertyInitialization": true,
     "useUnknownInCatchVariables": true,
     "noImplicitUseStrict": false,
-    "baseUrl": ".",
   },
   "exclude": [
     "node_modules",

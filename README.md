@@ -676,7 +676,7 @@ node dist/index.js -a 192.168.1.5
 
 ### Debugging
 
-I'm using Visual Studio Code to debug this application, so instead of running _ts-node_, just run `code .` and press F5 to start debugging.
+I'm using Visual Studio Code to debug this application, so instead of running `tsx`, just run `code .` and press F5 to start debugging.
 
 You may want to set your printers ip or name in `.vscode/launch.json`
 
