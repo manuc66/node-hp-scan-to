@@ -1,10 +1,14 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import ScanJobSettings from "../src/hpModels/ScanJobSettings";
-import path from "path";
-import * as fs from "fs/promises";
-import { InputSource } from "../src/type/InputSource";
-import { ScanMode } from "../src/type/scanMode";
+import ScanJobSettings from "../src/hpModels/ScanJobSettings.js";
+import path from "node:path";
+import * as fs from "node:fs/promises";
+import { InputSource } from "../src/type/InputSource.js";
+import { ScanMode } from "../src/type/scanMode.js";
+
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("ScanJobSettings", () => {
   describe("toXML", () => {

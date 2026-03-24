@@ -5,24 +5,24 @@
 
 import os from "os";
 import { Bonjour } from "bonjour-service";
-import HPApi from "./HPApi";
-import { PaperlessConfig } from "./paperless/PaperlessConfig";
-import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
-import { startHealthCheckServer } from "./healthcheck";
+import HPApi from "./HPApi.js";
+import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
+import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
+import { startHealthCheckServer } from "./healthcheck.js";
 import fs from "fs";
 import { Command, Option } from "@commander-js/extra-typings";
-import { RegistrationConfig } from "./type/scanTargetDefinitions";
-import { listenCmd } from "./commands/listenCmd";
-import { adfAutoscanCmd } from "./commands/adfAutoscanCmd";
-import { singleScanCmd } from "./commands/singleScanCmd";
-import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd";
-import { DirectoryConfig } from "./type/directoryConfig";
-import { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs";
-import { FileConfig } from "./type/FileConfig";
-import { HelpGroupsHeadings } from "./type/helpGroupsHeadings";
-import { Server as NetServer } from "net";
-import { ScanMode } from "./type/scanMode";
-import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode";
+import type { RegistrationConfig } from "./type/scanTargetDefinitions.js";
+import { listenCmd } from "./commands/listenCmd.js";
+import { adfAutoscanCmd } from "./commands/adfAutoscanCmd.js";
+import { singleScanCmd } from "./commands/singleScanCmd.js";
+import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd.js";
+import type { DirectoryConfig } from "./type/directoryConfig.js";
+import type { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs.js";
+import type { FileConfig } from "./type/FileConfig.js";
+import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
+import type { Server as NetServer } from "net";
+import { ScanMode } from "./type/scanMode.js";
+import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat } from "./type/scanFormat";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
@@ -39,7 +39,7 @@ function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
           service.name.startsWith(deviceNamePrefix) &&
           service.port === 80 &&
           service.type === "http" &&
-          service.addresses != null
+          service.addresses !== undefined
         ) {
           browser.stop();
           bonjour.destroy();
@@ -81,13 +81,50 @@ function setupScanParameters(commandName: string) {
       new Option(
         "-w, --width <width>",
         "Width in pixels of the scans (default: max)",
-      ).helpGroup(HelpGroupsHeadings.scan),
+      )
+        .conflicts("paperSize")
+        .conflicts("paperDim")
+        .helpGroup(HelpGroupsHeadings.scan),
     )
     .addOption(
       new Option(
         "-h, --height <height>",
         "Height in pixels of the scans (default: max)",
-      ).helpGroup(HelpGroupsHeadings.scan),
+      )
+        .conflicts("paperSize")
+        .conflicts("paperDim")
+        .helpGroup(HelpGroupsHeadings.scan),
+    )
+    .addOption(
+      new Option(
+        "--paper-size <size>",
+        "Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)",
+      )
+        .conflicts("paperDim")
+        .conflicts("width")
+        .conflicts("height")
+        .helpGroup(HelpGroupsHeadings.scan),
+    )
+    .addOption(
+      new Option(
+        "--paper-orientation <orientation>",
+        "Paper orientation: portrait (default) or landscape. Applied to --paper-size only.",
+      )
+        .choices(["portrait", "landscape"])
+        .conflicts("paperDim")
+        .conflicts("width")
+        .conflicts("height")
+        .helpGroup(HelpGroupsHeadings.scan),
+    )
+    .addOption(
+      new Option(
+        "--paper-dim <dimensions>",
+        "Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.",
+      )
+        .conflicts("paperSize")
+        .conflicts("width")
+        .conflicts("height")
+        .helpGroup(HelpGroupsHeadings.scan),
     )
     .addOption(
       new Option(
@@ -115,7 +152,13 @@ function setupScanParameters(commandName: string) {
     .addOption(
       new Option(
         "-o, --paperless-token <paperless_token>",
-        "The paperless token",
+        "The paperless token. Either this or paperless-token-file is required for paperless integration.",
+      ).helpGroup(HelpGroupsHeadings.paperless),
+    )
+    .addOption(
+      new Option(
+        "--paperless-token-file <paperless_token_file>",
+        "File name that contains the paperless token. Either this or paperless-token is required for paperless integration.",
       ).helpGroup(HelpGroupsHeadings.paperless),
     )
     .addOption(
@@ -151,13 +194,13 @@ function setupScanParameters(commandName: string) {
     .addOption(
       new Option(
         "--nextcloud-password <nextcloud_app_password>",
-        "The nextcloud app password for username. Either this or nextcloud-password-file is required",
+        "The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.",
       ).helpGroup(HelpGroupsHeadings.nextcloud),
     )
     .addOption(
       new Option(
         "--nextcloud-password-file <nextcloud_app_password_file>",
-        "File name that contains the nextcloud app password for username. Either this or nextcloud-password is required",
+        "File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.",
       ).helpGroup(HelpGroupsHeadings.nextcloud),
     )
     .addOption(
@@ -168,9 +211,12 @@ function setupScanParameters(commandName: string) {
     );
 }
 
-async function getDeviceIp(options: ProgramOption, configFile: FileConfig) {
+async function getDeviceIp(
+  options: ProgramOption,
+  configFile: FileConfig,
+): Promise<string> {
   let ip = getOptConfiguredValue(options.address, configFile.ip);
-  if (!ip) {
+  if (ip === undefined) {
     const name = getConfiguredValue(
       options.name,
       configFile.name,
@@ -178,7 +224,7 @@ async function getDeviceIp(options: ProgramOption, configFile: FileConfig) {
     );
     ip = await findOfficejetIp(name);
   }
-  console.log(`Using device ip: ${ip}`);
+  console.log(`Using device at IP: ${ip}`);
   return ip;
 }
 
@@ -204,7 +250,16 @@ function getPaperlessConfig(
     fileConfig.paperless_token,
   );
 
-  if (paperlessPostDocumentUrl && configPaperlessToken) {
+  const configPaperlessTokenFile = getOptConfiguredValue(
+    options.paperlessTokenFile,
+    fileConfig.paperless_token_file,
+  );
+
+  if (
+    paperlessPostDocumentUrl !== undefined &&
+    (configPaperlessToken !== undefined ||
+      configPaperlessTokenFile !== undefined)
+  ) {
     const configPaperlessKeepFiles = getConfiguredValue(
       options.keepFiles,
       fileConfig.keep_files,
@@ -221,12 +276,21 @@ function getPaperlessConfig(
       false,
     );
 
+    let paperlessToken: string;
+    if (configPaperlessTokenFile !== undefined) {
+      paperlessToken = fs
+        .readFileSync(configPaperlessTokenFile, "utf8")
+        .trimEnd();
+    } else {
+      paperlessToken = configPaperlessToken ?? "";
+    }
+
     console.log(
-      `Paperless configuration provided, post document url: ${paperlessPostDocumentUrl}, the token length: ${configPaperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
+      `Paperless configuration provided, post document url: ${paperlessPostDocumentUrl}, the token length: ${paperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
     );
     return {
       postDocumentUrl: paperlessPostDocumentUrl,
-      authToken: configPaperlessToken,
+      authToken: paperlessToken,
       keepFiles: configPaperlessKeepFiles,
       groupMultiPageScanIntoAPdf: groupMultiPageScanIntoAPdf,
       alwaysSendAsPdfFile: alwaysSendAsPdfFile,
@@ -258,9 +322,10 @@ function getNextcloudConfig(
   );
 
   if (
-    configNextcloudUrl &&
-    configNextcloudUsername &&
-    (configNextcloudPassword || configNextcloudPasswordFile)
+    configNextcloudUrl !== undefined &&
+    configNextcloudUsername !== undefined &&
+    (configNextcloudPassword !== undefined ||
+      configNextcloudPasswordFile !== undefined)
   ) {
     const configNextcloudUploadFolder = getConfiguredValue(
       options.nextcloudUploadFolder,
@@ -274,7 +339,7 @@ function getNextcloudConfig(
     );
 
     let nextcloudPassword: string;
-    if (configNextcloudPasswordFile) {
+    if (configNextcloudPasswordFile !== undefined) {
       nextcloudPassword = fs
         .readFileSync(configNextcloudPasswordFile, "utf8")
         .trimEnd();
@@ -362,26 +427,6 @@ function getScanConfiguration(
     filePattern: getOptConfiguredValue(options.pattern, fileConfig.pattern),
   };
 
-  const configWidth = getConfiguredValue(
-    options.width,
-    fileConfig.width?.toString(),
-    "0",
-  );
-  const width =
-    configWidth.toLowerCase() === "max"
-      ? Number.MAX_SAFE_INTEGER
-      : parseInt(configWidth, 10);
-
-  const configHeight = getConfiguredValue(
-    options.height,
-    fileConfig.height?.toString(),
-    "0",
-  );
-  const height =
-    configHeight.toLowerCase() === "max"
-      ? Number.MAX_SAFE_INTEGER
-      : parseInt(configHeight, 10);
-
   const paperlessConfig = getPaperlessConfig(options, fileConfig);
   const nextcloudConfig = getNextcloudConfig(options, fileConfig);
 
@@ -406,11 +451,64 @@ function getScanConfiguration(
     false,
   );
 
+  // Paper size configuration with precedence: CLI > Config > default (A4)
+  const paperSize = getOptConfiguredValue(
+    options.paperSize,
+    fileConfig.paper_size,
+  );
+
+  const paperDim = getOptConfiguredValue(
+    options.paperDim,
+    fileConfig.paper_dim,
+  );
+
+  const paperOrientation = getOptConfiguredValue(
+    options.paperOrientation,
+    fileConfig.paper_orientation,
+  );
+
+  const hasPaperSizeConfig = paperSize !== undefined || paperDim !== undefined;
+
+  const configWidth = getOptConfiguredValue(
+    options.width,
+    fileConfig.width?.toString(),
+  );
+
+  const configHeight = getOptConfiguredValue(
+    options.height,
+    fileConfig.height?.toString(),
+  );
+
+  if (
+    hasPaperSizeConfig &&
+    (configWidth !== undefined || configHeight !== undefined)
+  ) {
+    throw new Error(
+      "Cannot specify both width/height and paper size (paper_size/paper_dim). Choose one or the other.",
+    );
+  }
+
+  const providedWidth: number | "max" | undefined =
+    configWidth === undefined
+      ? undefined
+      : configWidth.toLowerCase() === "max"
+        ? "max"
+        : parseInt(configWidth, 10);
+  const providedHeight: number | "max" | undefined =
+    configHeight === undefined
+      ? undefined
+      : configHeight.toLowerCase() === "max"
+        ? undefined
+        : parseInt(configHeight, 10);
+
   const scanConfig: ScanConfig = {
     resolution,
     mode,
-    width: width,
-    height: height,
+    width: providedWidth,
+    height: providedHeight,
+    paperSize,
+    paperDim,
+    paperOrientation,
     format: ScanFormat.Raw,
     directoryConfig,
     paperlessConfig,
@@ -478,8 +576,8 @@ function createListenCliCmd(configFile: FileConfig) {
 
       if (
         getConfiguredValue(
-          options.addEmulatedDuplex == undefined ? undefined : true,
-          configFile.add_emulated_duplex ,
+          options.addEmulatedDuplex === undefined ? undefined : true,
+          configFile.add_emulated_duplex,
           false,
         )
       ) {
@@ -491,7 +589,9 @@ function createListenCliCmd(configFile: FileConfig) {
           ),
           isDuplexSingleSide: true,
           duplexAssemblyMode: getConfiguredValue(
-            options.addEmulatedDuplex == true ? DuplexAssemblyMode.DOCUMENT_WISE : options.addEmulatedDuplex,
+            options.addEmulatedDuplex === true
+              ? DuplexAssemblyMode.DOCUMENT_WISE
+              : options.addEmulatedDuplex,
             configFile.emulated_duplex_assembly_mode,
             DuplexAssemblyMode.DOCUMENT_WISE,
           ),
@@ -589,16 +689,16 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
           false,
         ),
         pollingInterval:
-          (options.pollingInterval
+          (options.pollingInterval !== undefined
             ? parseInt(options.pollingInterval, 10)
-            : undefined) ||
-          fileConfig.autoscan_pollingInterval ||
+            : undefined) ??
+          fileConfig.autoscan_pollingInterval ??
           1000,
         startScanDelay:
-          (options.startScanDelay
+          (options.startScanDelay !== undefined
             ? parseInt(options.startScanDelay, 10)
-            : undefined) ||
-          fileConfig.autoscan_startScanDelay ||
+            : undefined) ??
+          fileConfig.autoscan_startScanDelay ??
           5000,
       };
 

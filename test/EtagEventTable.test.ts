@@ -1,9 +1,13 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import path from "path";
-import * as fs from "fs/promises";
-import EventTable from "../src/hpModels/EventTable";
-import { EtagEventTable } from "../src/hpModels/EventTable";
+import path from "node:path";
+import * as fs from "node:fs/promises";
+import EventTable from "../src/hpModels/EventTable.js";
+import type { EtagEventTable } from "../src/hpModels/EventTable.js";
+
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("EtagEventTable", () => {
   describe("Parsing eventTable.xml", async () => {

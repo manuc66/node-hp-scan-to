@@ -1,6 +1,6 @@
 "use strict";
 
-export type EventData = {
+export interface EventData {
   "dd:UnqualifiedEventCategory": string[];
   "dd:AgingStamp": string[];
   "ev:Payload": {
@@ -11,9 +11,17 @@ export type EventData = {
       "0": string;
     };
   }[];
-};
+}
 
-export default class Event {
+export interface IEvent {
+  readonly unqualifiedEventCategory: string;
+  readonly agingStamp: string;
+  readonly destinationURI: string | undefined;
+  readonly compEventURI: string | undefined;
+  readonly isScanEvent: boolean;
+}
+
+export default class Event implements IEvent {
   private readonly data: EventData;
   constructor(data: EventData) {
     this.data = data;

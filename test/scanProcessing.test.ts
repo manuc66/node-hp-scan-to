@@ -1,245 +1,80 @@
-import { describe } from "mocha";
+import { describe, it } from "mocha";
 import { expect } from "chai";
-import { getScanWidth, getScanHeight } from "../src/scanProcessing";
-import { DeviceCapabilities } from "../src/type/DeviceCapabilities";
-import { InputSource } from "../src/type/InputSource";
-import { ScanConfig } from "../src/type/scanConfigs";
-import { IScanJobSettings } from "../src/hpModels/IScanJobSettings";
-import { IScanStatus } from "../src/hpModels/IScanStatus";
-import { ScanMode } from "../src/type/scanMode";
+import nock from "nock";
+import { isPdf, tryGetDestination } from "../src/scanProcessing.js";
+import { KnownShortcut } from "../src/type/KnownShortcut.js";
+import HPApi from "../src/HPApi.js";
+import type { IEvent } from "../src/hpModels/Event.js";
 
 describe("scanProcessing", () => {
-  let scanConfig: ScanConfig;
-  let deviceCapabilities: DeviceCapabilities;
-
-  beforeEach(async () => {
-    scanConfig = {
-      resolution: 200,
-      mode: ScanMode.Color,
-      width: null,
-      height: null,
-      directoryConfig: {
-        directory: undefined,
-        tempDirectory: undefined,
-        filePattern: undefined,
-      },
-      paperlessConfig: undefined,
-      nextcloudConfig: undefined,
-      preferEscl: false,
-    };
-    deviceCapabilities = {
-      supportsMultiItemScanFromPlaten: false,
-      useWalkupScanToComp: false,
-      platenMaxWidth: null,
-      platenMaxHeight: null,
-      adfMaxWidth: null,
-      adfMaxHeight: null,
-      adfDuplexMaxWidth: null,
-      adfDuplexMaxHeight: null,
-      hasAdfDetectPaperLoaded: false,
-      hasAdfDuplex: false,
-      isEscl: false,
-      getScanStatus: () => Promise.resolve({} as IScanStatus),
-      createScanJobSettings: (_) => ({}) as IScanJobSettings,
-      submitScanJob: () => Promise.resolve("fake-value"),
-    };
-  });
-
-  describe("getScanWidth", async () => {
-    const inputSource = InputSource.Adf;
-    describe("Adf", async () => {
-      it("Does not define a value if nothing provided", async () => {
-        const width = getScanWidth(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(width).to.be.eq(null);
-      });
-      it("Does not define a value if negative provided", async () => {
-        scanConfig.width = -1;
-        const width = getScanWidth(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(width).to.be.eq(null);
-      });
-      it("Define the value if no max available from device", async () => {
-        scanConfig.width = 2583;
-        const width = getScanWidth(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(width).to.be.eq(2583);
-      });
-      it("Limits the value if available from device", async () => {
-        scanConfig.width = 2583;
-        deviceCapabilities.adfMaxWidth = 1000;
-        const width = getScanWidth(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(width).to.be.eq(1000);
-      });
-      it("Uses the max value if available from device", async () => {
-        deviceCapabilities.adfMaxWidth = 1000;
-        const width = getScanWidth(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(width).to.be.eq(1000);
-      });
-      it("Uses the duplexer value if available from device", async () => {
-        deviceCapabilities.adfMaxWidth = 1000;
-        deviceCapabilities.adfDuplexMaxWidth = 2000;
-        const width = getScanWidth(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          true,
-        );
-        expect(width).to.be.eq(2000);
-      });
+  describe("isPdf", () => {
+    it("returns true for PDF shortcuts", () => {
+      expect(isPdf({ shortcut: KnownShortcut.SavePDF, scanPlexMode: null })).to
+        .be.true;
+      expect(isPdf({ shortcut: KnownShortcut.EmailPDF, scanPlexMode: null })).to
+        .be.true;
+      expect(
+        isPdf({ shortcut: KnownShortcut.SaveDocument1, scanPlexMode: null }),
+      ).to.be.true;
     });
-    describe("Platen", async () => {
-      const inputSource = InputSource.Platen;
-      it("Does not define a value if nothing provided", async () => {
-        const width = getScanWidth(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(width).to.be.eq(null);
-      });
-      it("Does not define a value if negative provided", async () => {
-        scanConfig.width = -1;
-        const width = getScanWidth(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(width).to.be.eq(null);
-      });
-      it("Define the value if no max available from device", async () => {
-        scanConfig.width = 2583;
-        const width = getScanWidth(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(width).to.be.eq(2583);
-      });
+
+    it("returns false for JPEG/Photo shortcuts", () => {
+      expect(isPdf({ shortcut: KnownShortcut.SaveJPEG, scanPlexMode: null })).to
+        .be.false;
+      expect(isPdf({ shortcut: KnownShortcut.SavePhoto1, scanPlexMode: null }))
+        .to.be.false;
+    });
+
+    it("returns false for unknown shortcuts", () => {
+      expect(
+        isPdf({
+          shortcut: "Unknown" as unknown as KnownShortcut,
+          scanPlexMode: null,
+        }),
+      ).to.be.false;
     });
   });
 
-  describe("getScanHeight", async () => {
-    const inputSource = InputSource.Adf;
-    describe("Adf", async () => {
-      it("Does not define a value if nothing provided", async () => {
-        const height = getScanHeight(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(height).to.be.eq(null);
-      });
-      it("Does not define a value if negative provided", async () => {
-        scanConfig.height = -1;
-        const height = getScanHeight(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(height).to.be.eq(null);
-      });
-      it("Define the value if no max available from device", async () => {
-        scanConfig.height = 1269;
-        const width = getScanHeight(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(width).to.be.eq(1269);
-      });
-      it("Limits the value if available from device", async () => {
-        scanConfig.height = 1269;
-        deviceCapabilities.adfMaxHeight = 1000;
-        const width = getScanHeight(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(width).to.be.eq(1000);
-      });
-      it("Uses the max value if available from device", async () => {
-        deviceCapabilities.adfMaxHeight = 1000;
-        const width = getScanHeight(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(width).to.be.eq(1000);
-      });
-      it("Uses the duplexer value if available from device", async () => {
-        deviceCapabilities.adfMaxHeight = 1000;
-        deviceCapabilities.adfDuplexMaxHeight = 2000;
-        const width = getScanHeight(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          true,
-        );
-        expect(width).to.be.eq(2000);
-      });
+  describe("tryGetDestination", () => {
+    beforeEach(() => {
+      HPApi.setDeviceIP("127.0.0.1");
+      if (!nock.isActive()) {
+        nock.activate();
+      }
     });
-    describe("Platen", async () => {
-      const inputSource = InputSource.Platen;
-      it("Does not define a value if nothing provided", async () => {
-        const height = getScanHeight(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
+
+    afterEach(() => {
+      nock.cleanAll();
+      nock.restore();
+    });
+
+    it("returns destination when shortcut is available", async () => {
+      nock("http://127.0.0.1")
+        .persist()
+        .get("/WalkupScan/Destinations/1")
+        .reply(
+          200,
+          `<?xml version="1.0" encoding="UTF-8"?>
+<wus:WalkupScanDestinations xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscandestinations/2009/03/12">
+  <wus:WalkupScanDestination>
+    <wus:WalkupScanSettings>
+      <wus:Shortcut>SavePDF</wus:Shortcut>
+    </wus:WalkupScanSettings>
+  </wus:WalkupScanDestination>
+</wus:WalkupScanDestinations>`,
         );
-        expect(height).to.be.eq(null);
-      });
-      it("Does not define a value if negative provided", async () => {
-        scanConfig.height = -1;
-        const height = getScanHeight(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(height).to.be.eq(null);
-      });
-      it("Define the value if no max available from device", async () => {
-        scanConfig.height = 1269;
-        const height = getScanHeight(
-          scanConfig,
-          inputSource,
-          deviceCapabilities,
-          false,
-        );
-        expect(height).to.be.eq(1269);
-      });
+
+      const event: IEvent = {
+        destinationURI: "/WalkupScan/Destinations/1",
+        unqualifiedEventCategory: "ScanEvent",
+        agingStamp: "1",
+        compEventURI: undefined,
+        isScanEvent: true,
+      };
+      const destination = await tryGetDestination(event);
+
+      expect(destination).to.not.be.null;
+      expect(destination?.shortcut).to.equal(KnownShortcut.SavePDF);
     });
   });
 });

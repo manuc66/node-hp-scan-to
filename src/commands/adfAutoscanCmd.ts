@@ -1,9 +1,9 @@
-import HPApi from "../HPApi";
-import { readDeviceCapabilities } from "../readDeviceCapabilities";
-import { scanFromAdf, waitAdfLoaded } from "../scanProcessing";
-import { delay } from "../delay";
-import { AdfAutoScanConfig } from "../type/scanConfigs";
-import PathHelper from "../PathHelper";
+import HPApi from "../HPApi.js";
+import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
+import { scanFromAdf, waitAdfLoaded } from "../scanProcessing.js";
+import { delay } from "../delay.js";
+import type { AdfAutoScanConfig } from "../type/scanConfigs.js";
+import PathHelper from "../PathHelper.js";
 
 let iteration = 0;
 export async function adfAutoscanCmd(
@@ -42,7 +42,7 @@ export async function adfAutoscanCmd(
   let errorCount = 0;
   while (keepActive) {
     iteration++;
-    console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
+    console.log(`Iteration ${iteration} (Errors so far: ${errorCount})`);
     try {
       await waitAdfLoaded(
         adfAutoScanConfig.pollingInterval,

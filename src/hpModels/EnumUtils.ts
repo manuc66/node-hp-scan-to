@@ -7,7 +7,7 @@ export class EnumUtils {
     if (
       !Object.values(stateEnum as Record<string, T>).includes(stateStr as T)
     ) {
-      console.error(
+      throw new Error(
         `"${stateStr}" is not a known ${stateType} value, you would be kind as a reader of this message to fill an issue to help at better state handling.`,
       );
     }

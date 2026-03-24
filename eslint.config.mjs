@@ -1,78 +1,79 @@
-import eslint from '@eslint/js';
+import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
-import prettierConfig from 'eslint-config-prettier';
+import prettier from 'eslint-config-prettier';
+import globals from 'globals';
 
 export default tseslint.config(
-  // Base ESLint recommended rules
-  eslint.configs.recommended,
-
-  // TypeScript ESLint recommended rules
-  ...tseslint.configs.recommended,
+  {
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**', '*.js', "eslint.config.mjs"]
+  },
+  js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
-
-  // Prettier config to disable conflicting rules
-  prettierConfig,
-
+  ...tseslint.configs.stylisticTypeChecked,
+  prettier,
   {
     languageOptions: {
-      ecmaVersion: 2021,
+      ecmaVersion: 2023,
       sourceType: 'module',
-      parserOptions: {
-        project: './tsconfig.json',
-        tsconfigRootDir: import.meta.dirname,
-      },
       globals: {
-        // Node.js globals
-        console: 'readonly',
-        process: 'readonly',
-        Buffer: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        global: 'readonly',
-        module: 'readonly',
-        require: 'readonly',
-        exports: 'readonly',
+        ...globals.node,
+        ...globals.es2023
       },
+      parserOptions: {
+        project: ['./tsconfig.typecheck.json'],
+        tsconfigRootDir: import.meta.dirname
+      }
     },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_'
+        }
+      ],
 
-    files: ['src/**/*.ts'],
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-return': 'error',
 
-    plugins: {
-      '@typescript-eslint': tseslint.plugin,
-    },
+      '@typescript-eslint/prefer-nullish-coalescing': 'error',
+      '@typescript-eslint/prefer-optional-chain': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'error',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+      '@typescript-eslint/prefer-as-const': 'error',
+      '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
 
-  //   rules: {
-  //     // TypeScript specific rules
-  //     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-  //     '@typescript-eslint/explicit-function-return-type': 'warn',
-  //     '@typescript-eslint/no-explicit-any': 'warn',
-  //     //'@typescript-eslint/prefer-const': 'error',
-  //     '@typescript-eslint/no-var-requires': 'error',
-  //
-  //     // General ESLint rules
-  //     'no-console': 'warn',
-  //     'no-debugger': 'error',
-  //     //'prefer-const': 'error',
-  //     'no-var': 'error',
-  //
-  //     // Import rules
-  //     'sort-imports': ['error', {
-  //       'ignoreCase': false,
-  //       'ignoreDeclarationSort': true,
-  //       'ignoreMemberSort': false,
-  //       'memberSyntaxSortOrder': ['none', 'all', 'multiple', 'single'],
-  //     }],
-  //   },
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', fixStyle: 'inline-type-imports' }
+      ],
+      '@typescript-eslint/no-unnecessary-condition': 'error',
+      '@typescript-eslint/strict-boolean-expressions': 'error',
+      '@typescript-eslint/no-import-type-side-effects': 'error',
+      '@typescript-eslint/switch-exhaustiveness-check': 'error',
+      'prefer-const': 'error',
+      'no-var': 'error',
+      'eqeqeq': ['error', 'always'],
+      'curly': ['error', 'all'],
+      'no-debugger': 'error',
+
+      // 'no-console': 'warn',
+      // '@typescript-eslint/explicit-function-return-type': 'error',
+      // '@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
+      //  '@typescript-eslint/explicit-module-boundary-types': 'error',
+    }
   },
-
-  // Ignore patterns
   {
-    ignores: [
-      'dist/**/*',
-      'test/**/*',
-      'node_modules/**/*',
-      '*.js',
-      '*.mjs',
-    ],
+    files: ['test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-misused-promises': 'off',
+      '@typescript-eslint/no-unused-expressions': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/unbound-method': 'off'
+    }
   }
 );

@@ -1,4 +1,7 @@
 {
   "ip": "192.168.1.53",
-  "debug": false
+  "debug": false,
+  "directory": "~/hp-scan",
+  "paper_size": "A4",
+  "paper_dim": null
 }

@@ -1,15 +1,16 @@
 # node-hp-scan-to
 
 ![build](https://github.com/manuc66/node-hp-scan-to/actions/workflows/docker-image.yml/badge.svg)
-[![Build Status](https://app.travis-ci.com/manuc66/node-hp-scan-to.svg?branch=master)](https://app.travis-ci.com/manuc66/node-hp-scan-to)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=node-hp-scan-to&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=node-hp-scan-to)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=node-hp-scan-to&metric=coverage)](https://sonarcloud.io/summary/new_code?id=node-hp-scan-to)
 ![npm](https://img.shields.io/npm/v/node-hp-scan-to)
 [![npm](https://img.shields.io/npm/dt/node-hp-scan-to)](https://www.npmjs.com/package/node-hp-scan-to)
 [![Docker Pulls](https://img.shields.io/docker/pulls/manuc66/node-hp-scan-to)](https://hub.docker.com/repository/docker/manuc66/node-hp-scan-to)
-[![Gitter](https://badges.gitter.im/node-hp-scan-to/community.svg)](https://gitter.im/node-hp-scan-to/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![CodeFactor](https://www.codefactor.io/repository/github/manuc66/node-hp-scan-to/badge)](https://www.codefactor.io/repository/github/manuc66/node-hp-scan-to)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmanuc66%2Fnode-hp-scan-to.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmanuc66%2Fnode-hp-scan-to?ref=badge_shield)
 
-**`node-hp-scan-to`** is a Node.js application that replicates HP's "_Scan to Computer_" functionality by [reverse engineering](protocol_doc/HP%20Officejet%206500%20E710n-z.md) the original protocol, allowing you to scan documents directly from your HP printer's scanner to your Linux, Windows, or macOS computer.
+**`node-hp-scan-to`** is a Node.js application that replicates HP's "_Scan to Computer_" functionality by [reverse engineering HP's proprietary protocols](protocol_doc/HP%20Officejet%206500%20E710n-z.md) and supporting the standardized [eSCL protocol](protocol_doc/HP%20PageWide%20Pro%20477dw%20MFP.md), allowing you to scan documents directly from your HP printer's scanner to your Linux, Windows, or macOS computer.
+
 
 Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be run on a bare-metal desktop or server, or in a container on Docker or Kubernetes. It can also be integrated with third-party document management solutions such as [Paperless-ngx](https://docs.paperless-ngx.com/) and [Nextcloud](https://Nextcloud.com/).
 
@@ -22,6 +23,8 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
   - [Supported Devices](#supported-devices)
   - [Supported Functions](#supported-functions)
   - [App Features](#app-features)
+  - [Protocol Support](#protocol-support)
+  - [Emulated Duplex Scanning Feature](#emulated-duplex-scanning-feature)
 - [Installation](#installation)
   - [Using NodeJS](#using-nodejs)
   - [Using Docker](#using-docker)
@@ -83,6 +86,14 @@ There is a good chance it also works on other unlisted HP All-in-One Printer.
   - Local folders
   - [Paperless-ngx API](https://docs.paperless-ngx.com/api/) upload
   - [Nextcloud WebDAV](https://docs.Nextcloud.com/server/latest/user_manual/en/files/access_webdav.html) upload
+
+### Protocol Support
+
+Supports both HP proprietary protocols (WalkupScanToComp, WalkupScan, ScanJob) and the standardized eSCL protocol.
+
+- **eSCL-only devices** (e.g., HP ScanJet Pro 4500 fn1): Automatically detected and supported ([#1307](https://github.com/manuc66/node-hp-scan-to/issues/1307))
+- **Dual-protocol devices**: Uses HP protocols by default; add `--prefer-eSCL` flag to use eSCL instead
+- See [eSCL protocol documentation](protocol_doc/HP%20PageWide%20Pro%20477dw%20MFP.md) for technical details
  
 ### Emulated Duplex Scanning Feature
 
@@ -155,10 +166,14 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `-k`, `--keep-files`                  | Retain scanned files after uploading to Paperless-ngx or Nextcloud (disabled by default).                        | `-k` (disabled by default)                                        |
 | `-l`, `--label`                       | The name of the computer running this app. Defaults to the hostname.                                             | `-l <hostname>` (default: system hostname)                        |
 | `-n`, `--name`                        | Printer name (quote if it contains spaces).                                                                      | `-n "Officejet 6500 E710n-z"` (no default)                        |
-| `-o`, `--paperless-token`             | Paperless-ngx API token.                                                                                         | `-o xxxxxxxxxxxx` (no default)                                    |
+| `-o`, `--paperless-token`             | The paperless token. Required unless `----paperless-token-file` is used. Overrides if both are provided.                   | `-o xxxxxxxxxxxx` (no default)                                    |
+| `--paperless-token-file`              | File name that contains the paperless token. Required unless `---paperless-token` is used. Takes precedence if both are provided.| `--paperless-token-file some/path/to/file` (no default)          |
 | `-p`, `--pattern`                     | Filename pattern (no extension). Use quotes for static text, supports date/time masks (see [dateformat docs](https://www.npmjs.com/package/dateformat#mask-options)). Defaults to `scan<increasing number>_page<page number>`. | `-p scan1_page1`                                                  |
 | `-r`, `--resolution`                  | Scan resolution in DPI. Defaults to 200.                                                                         | `-r 200`                                                          |
 | `--mode <mode> `                      | Selects the scan mode (default: Color) (choices: "Gray", "Color").                                               | `--mode Gray`                                                     |
+| `--paper-size <size>`                 | Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive). Cannot be used with `--paper-dim`. | `--paper-size Letter`                                             |
+| `--paper-orientation <orientation>`   | Paper orientation: portrait (default) or landscape. Applied to `--paper-size` only.                              | `--paper-orientation landscape`                                   |
+| `--paper-dim <dimensions>`            | Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with `--paper-size`. | `--paper-dim 8.5x11in`                                            |
 | `-s`, `--paperless-post-document-url` | Paperless-ngx API URL for uploading documents.                                                             | `-s https://domain.tld/api/documents/post_document/` (no default) |
 | `-t`, `--temp-directory`              | Temporary directory for processing. Defaults to `/tmp/scan-to-pc<random value>` if not set.                      | `-t /tmp/scan-to-pc5678`                                          |
 | `-w`, `--width`                       | Scan width in pixels. Defaults to 2481.                                                                          | `-w 2481`                                                         |
@@ -171,11 +186,97 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 
 **Notes:**
 
-- Date/time patterns for `--pattern` follow the [dateformat](https://www.npmjs.com/package/dateformat) library’s “Mask options” section.
+- Date/time patterns for `--pattern` follow the [dateformat](https://www.npmjs.com/package/dateformat) library's "Mask options" section.
 
 - Defaults like `/tmp/scan-to-pc<random value>` include a random suffix in practice (e.g., `/tmp/scan-to-pc1234`).
 
-#### CLI Commands
+#### Paper Size Configuration
+
+By default, scans use **A4 paper size** (210×297 mm). You can specify a different paper size or custom dimensions via CLI flags, environment variables, or the config file.
+
+##### Preset Paper Sizes
+
+The following preset sizes are available (case-insensitive):
+
+| Preset | Dimensions | Use Case |
+|--------|-----------|----------|
+| **A4** (default) | 210×297 mm | Standard European paper size |
+| **Letter** | 215.9×279.4 mm | Standard US letter size |
+| **Legal** | 215.9×355.6 mm | Standard US legal size |
+| **A5** | 148×210 mm | Half of A4 size |
+| **B5** | 176×250 mm | Between A4 and A5 |
+| **Max** | Device maximum | Uses the device's maximum scannable area (not auto-detect) |
+
+##### Custom Sizes
+
+You can specify custom paper dimensions with explicit units using the `--paper-dim` option:
+
+```bash
+# Centimeters
+npx node-hp-scan-to single-scan --paper-dim 21x29.7cm
+
+# Inches
+npx node-hp-scan-to single-scan --paper-dim 8.5x11in
+
+# Millimeters
+npx node-hp-scan-to single-scan --paper-dim 210x297mm
+```
+
+**Supported units:** `cm`, `mm`, `in` (inches). Units are **required** and **case-insensitive**.
+
+##### Configuration Precedence
+
+Paper size is resolved in the following order (highest to lowest priority):
+
+1. **CLI flags**: `--paper-size` or `--paper-dim`
+2. **Environment variables**: `PAPER_SIZE` or `PAPER_DIM`
+3. **Config file**: `paper_size` or `paper_dim` in `config/default.json`
+4. **Default**: A4 (210×297 mm)
+
+##### Important Rules
+
+- **Cannot specify both `--paper-size` and `--paper-dim` simultaneously.** You must choose one; attempting to use both will result in an error.
+- **Resolution (DPI) is independent** of paper size. You can specify both independently:
+  ```bash
+  npx node-hp-scan-to single-scan --paper-size Letter --resolution 300
+  ```
+- **Device maximum is respected.** If your custom size exceeds the device's maximum scannable area, the scan will be clamped to the device's limits.
+- **"Max" uses device capabilities, not auto-detection.** The `Max` preset uses the device's reported maximum scan area; it does **not** automatically detect the actual paper size in the scanner.
+
+##### Examples
+
+```bash
+# Use Letter size
+npx node-hp-scan-to single-scan --paper-size Letter
+
+# Use A5 (smaller) size
+npx node-hp-scan-to single-scan --paper-size A5
+
+# Use maximum scannable area
+npx node-hp-scan-to single-scan --paper-size Max
+
+# Use custom size in centimeters
+npx node-hp-scan-to single-scan --paper-dim 21x29.7cm
+
+# Use custom size in inches (8.5" × 11")
+npx node-hp-scan-to single-scan --paper-dim 8.5x11in
+
+# With Docker (environment variable)
+docker run -e PAPER_SIZE=Letter manuc66/node-hp-scan-to
+
+# With Docker Compose
+environment:
+  PAPER_SIZE: "Letter"
+  PAPER_DIM: null  # Must be null if not using custom dimensions
+
+# In config file (config/default.json)
+{
+  "paper_size": "A4",
+  "paper_dim": null
+}
+```
+
+
 
 ##### `listen`
 
@@ -199,6 +300,9 @@ Scan Options:
   --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
+  --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
+  --paper-orientation <orientation>                                Paper orientation: portrait (default) or landscape. Applied to --paper-size only. (choices: "portrait", "landscape")
+  --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
   --prefer-eSCL                                                    Prefer eSCL protocol if available
 
@@ -208,15 +312,16 @@ Options:
 
 Paperless Options:
   -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
-  -o, --paperless-token <paperless_token>                          The paperless token
+  -o, --paperless-token <paperless_token>                          The paperless token. Either this or paperless-token-file is required for paperless integration.
+  --paperless-token-file <paperless_token_file>                    File name that contains the paperless token. Either this or paperless-token is required for paperless integration.
   --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
   --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
 
 Nextcloud Options:
   --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
   --nextcloud-username <nextcloud_username>                        The nextcloud username
-  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required
-  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required
+  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.
+  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
   --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
 
 Device Control Screen Options:
@@ -263,6 +368,9 @@ Scan Options:
   --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
+  --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
+  --paper-orientation <orientation>                                Paper orientation: portrait (default) or landscape. Applied to --paper-size only. (choices: "portrait", "landscape")
+  --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
   --prefer-eSCL                                                    Prefer eSCL protocol if available
   --duplex                                                         If specified, all the scans will be in duplex if the device support it
@@ -273,15 +381,16 @@ Options:
 
 Paperless Options:
   -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
-  -o, --paperless-token <paperless_token>                          The paperless token
+  -o, --paperless-token <paperless_token>                          The paperless token. Either this or paperless-token-file is required for paperless integration.
+  --paperless-token-file <paperless_token_file>                    File name that contains the paperless token. Either this or paperless-token is required for paperless integration.
   --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
   --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
 
 Nextcloud Options:
   --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
   --nextcloud-username <nextcloud_username>                        The nextcloud username
-  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required
-  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required
+  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.
+  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
   --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
 
 Auto-scan Options:
@@ -356,6 +465,9 @@ Scan Options:
   --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
   -w, --width <width>                                              Width in pixels of the scans (default: max)
   -h, --height <height>                                            Height in pixels of the scans (default: max)
+  --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
+  --paper-orientation <orientation>                                Paper orientation: portrait (default) or landscape. Applied to --paper-size only. (choices: "portrait", "landscape")
+  --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
   -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
   --prefer-eSCL                                                    Prefer eSCL protocol if available
   --duplex                                                         If specified, all the scans will be in duplex if the device support it
@@ -366,15 +478,16 @@ Options:
 
 Paperless Options:
   -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
-  -o, --paperless-token <paperless_token>                          The paperless token
+  -o, --paperless-token <paperless_token>                          The paperless token. Either this or paperless-token-file is required for paperless integration.
+  --paperless-token-file <paperless_token_file>                    File name that contains the paperless token. Either this or paperless-token is required for paperless integration.
   --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
   --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
 
 Nextcloud Options:
   --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
   --nextcloud-username <nextcloud_username>                        The nextcloud username
-  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required
-  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required
+  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.
+  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
   --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
 
 Global Options:
@@ -411,28 +524,30 @@ All scanned files are written to the volume `/scan`, the filename can be changed
 
 List of supported environment variables and their meaning, or correspondence with [command-line flags](#cli-options):
 
-| Environment Variable          | Description                                                                                                 | Corresponding CLI Flag or Notes                                               |
-|-------------------------------|-------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
-| `CMDLINE`                     | Additional command-line flags added at the end of the command                                               | Set to `-D` to enable debug logs                                              |
-| `DIR`                         | Directory to use                                                                                            | `-d` / `--directory`                                                          |
-| `IP`                          | IP address for the program                                                                                  | `-a` / `--address`                                                            |
-| `KEEP_FILES`                  | If set, scanned files are not deleted after uploading to Paperless-ngx or Nextcloud                         |                                                                               |
-| `LABEL`                       | Label to set on the device's display as a scan target                                                       | `-l` / `--label`                                                              |
-| `NAME`                        | Name of the device to lookup for on the network                                                             | `-n` / `--name`                                                               |
-| `ADD_EMULATED_DUPLEX`         | Enable emulated duplex scanning, with optional assembly mode (default: document-wise)                       | `--add-emulated-duplex [mode]`                                                |
-| `NEXTCLOUD_PASSWORD`          | Password of Nextcloud user (either this or `NEXTCLOUD_PASSWORD_FILE` is required; file takes precedence)    |                                                                               |
-| `NEXTCLOUD_PASSWORD_FILE`     | File containing Nextcloud user password (either this or `NEXTCLOUD_PASSWORD` is required; takes precedence) | Example: `./nextcloud_password.secret` (preferred for Docker Compose secrets) |
-| `NEXTCLOUD_UPLOAD_FOLDER`     | Upload folder for documents or images (user must have write permission; defaults to `scan` if not set)      |                                                                               |
-| `NEXTCLOUD_URL`               | Nextcloud URL                                                                                               | Example: `https://nextcloud.example.tld`                                      |
-| `NEXTCLOUD_USERNAME`          | Nextcloud username                                                                                          |                                                                               |
-| `PAPERLESS_POST_DOCUMENT_URL` | Paperless-ngx post document URL (if provided with token, a PDF is uploaded)                                 | Example: `http://<paperless-host>:<port>/api/documents/post_document/`        |
-| `PAPERLESS_TOKEN`             | Paperless-ngx API token                                                                                     | Example: `xxxxxxxxxxxx...`                                                    |
-| `PATTERN`                     | Pattern to use                                                                                              | `-p` / `--pattern`                                                            |
-| `PGID`                        | ID of the group that will run the program                                                                   |                                                                               |
-| `PUID`                        | ID of the user that will run the program                                                                    |                                                                               |
-| `RESOLUTION`                  | Resolution setting                                                                                          | `-r` / `--resolution`                                                         |
-| `MODE`                        | Scan mode setting                                                                                           | `--mode`                                                                      |
-| `TEMP_DIR`                    | Temporary directory                                                                                         | `-t` / `--temp-directory`                                                     |
+| Environment Variable          | Description                                                                                                   | Corresponding CLI Flag or Notes                                               |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `CMDLINE`                     | Additional command-line flags added at the end of the command                                                 | Set to `-D` to enable debug logs                                              |
+| `DIR`                         | Directory to use                                                                                              | `-d` / `--directory`                                                          |
+| `IP`                          | IP address for the program                                                                                    | `-a` / `--address`                                                            |
+| `KEEP_FILES`                  | If set, scanned files are not deleted after uploading to Paperless-ngx or Nextcloud                           |                                                                               |
+| `LABEL`                       | Label to set on the device's display as a scan target                                                         | `-l` / `--label`                                                              |
+| `NAME`                        | Name of the device to lookup for on the network                                                               | `-n` / `--name`                                                               |
+| `ADD_EMULATED_DUPLEX`         | Enable emulated duplex scanning, with optional assembly mode (default: document-wise)                         | `--add-emulated-duplex [mode]`                                                |
+| `NEXTCLOUD_PASSWORD`          | Password of Nextcloud user (either this or `NEXTCLOUD_PASSWORD_FILE` is required; file takes precedence)      |                                                                               |
+| `NEXTCLOUD_PASSWORD_FILE`     | File containing Nextcloud user password (either this or `NEXTCLOUD_PASSWORD` is required; takes precedence)   | Example: `./nextcloud_password.secret` (preferred for Docker Compose secrets) |
+| `NEXTCLOUD_UPLOAD_FOLDER`     | Upload folder for documents or images (user must have write permission; defaults to `scan` if not set)        |                                                                               |
+| `NEXTCLOUD_URL`               | Nextcloud URL                                                                                                 | Example: `https://nextcloud.example.tld`                                      |
+| `NEXTCLOUD_USERNAME`          | Nextcloud username                                                                                            |                                                                               |
+| `PAPERLESS_POST_DOCUMENT_URL` | Paperless-ngx post document URL (if provided with token, a PDF is uploaded)                                   | Example: `http://<paperless-host>:<port>/api/documents/post_document/`        |
+| `PAPERLESS_TOKEN`             | Paperless-ngx API token (either this or `NEXTCLOUD_PASSWORD_FILE` is required; file takes precedence)         | Example: `xxxxxxxxxxxx...`                                                    |
+| `PAPERLESS_TOKEN_FILE`        | File containing paperless-ngx API token (either this or `PAPERLESS_TOKEN_FILE` is required; takes precedence) | Example: `./paperless_token.secret` (preferred for Docker Compose secrets)    |
+| `PATTERN`                     | Pattern to use                                                                                                | `-p` / `--pattern`                                                            |
+| `PGID`                        | ID of the group that will run the program                                                                     |                                                                               |
+| `PUID`                        | ID of the user that will run the program                                                                      |                                                                               |
+| `RESOLUTION`                  | Resolution setting                                                                                            | `-r` / `--resolution`                                                         |
+| `MODE`                        | Scan mode setting                                                                                             | `--mode`                                                                      |
+| `PAPER_ORIENTATION`           | Paper orientation: portrait (default) or landscape. Applied to `PAPER_SIZE` only.                             | `--paper-orientation`                                                         |
+| `TEMP_DIR`                    | Temporary directory                                                                                           | `-t` / `--temp-directory`                                                     |
 
 **Additional Notes:**
 
@@ -551,8 +666,8 @@ How to build and run the project's source code:
 ```sh
 git clone https://github.com/manuc66/node-hp-scan-to.git
 cd node-hp-scan-to
-yarn install -d
-yarn build
+pnpm install
+pnpm build
 # Start the program with the printer's IP address:
 node dist/index.js -a 192.168.1.5 
 # Or start it with the name of the printer:
@@ -561,7 +676,7 @@ node dist/index.js -a 192.168.1.5
 
 ### Debugging
 
-I'm using Visual Studio Code to debug this application, so instead of running _ts-node_, just run `code .` and press F5 to start debugging.
+I'm using Visual Studio Code to debug this application, so instead of running `tsx`, just run `code .` and press F5 to start debugging.
 
 You may want to set your printers ip or name in `.vscode/launch.json`
 

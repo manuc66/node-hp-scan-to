@@ -1,6 +1,6 @@
 "use strict";
 
-import { parseXmlString } from "./ParseXmlString";
+import { parseXmlString } from "./ParseXmlString.js";
 
 export interface WalkupScanToCompCapsData {
   "wus:WalkupScanToCompCaps": {

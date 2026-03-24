@@ -1,9 +1,9 @@
 "use strict";
 
 import WalkupScanToCompDestination, {
-  WalkupScanToCompDestinationData,
-} from "./WalkupScanToCompDestination";
-import { parseXmlString } from "./ParseXmlString";
+  type WalkupScanToCompDestinationData,
+} from "./WalkupScanToCompDestination.js";
+import { parseXmlString } from "./ParseXmlString.js";
 
 export interface WalkupScanToCompDestinationsData {
   "wus:WalkupScanToCompDestinations": {

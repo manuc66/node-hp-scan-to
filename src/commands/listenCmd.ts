@@ -1,27 +1,27 @@
-import {
+import type {
   RegistrationConfig,
   SelectedScanTarget,
-} from "../type/scanTargetDefinitions";
-import HPApi from "../HPApi";
-import { readDeviceCapabilities } from "../readDeviceCapabilities";
-import { ScanContent } from "../type/ScanContent";
-import { waitScanEvent, waitScanRequest } from "../listening";
+} from "../type/scanTargetDefinitions.js";
+import HPApi from "../HPApi.js";
+import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
+import type { ScanContent } from "../type/ScanContent.js";
+import { waitScanEvent, waitScanRequest } from "../listening.js";
 import {
   isPdf,
   saveScanFromEvent,
   tryGetDestination,
-  WalkupDestination,
-} from "../scanProcessing";
-import { postProcessing } from "../postProcessing";
-import PathHelper from "../PathHelper";
-import { delay } from "../delay";
-import { DuplexMode } from "../type/duplexMode";
-import { TargetDuplexMode } from "../type/targetDuplexMode";
-import { ScanConfig } from "../type/scanConfigs";
-import { PageCountingStrategy } from "../type/pageCountingStrategy";
-import { ScanPlexMode } from "../hpModels/ScanPlexMode";
-import { DeviceCapabilities } from "../type/DeviceCapabilities";
-import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode";
+  type WalkupDestination,
+} from "../scanProcessing.js";
+import { postProcessing } from "../postProcessing.js";
+import PathHelper from "../PathHelper.js";
+import { delay } from "../delay.js";
+import { DuplexMode } from "../type/duplexMode.js";
+import { TargetDuplexMode } from "../type/targetDuplexMode.js";
+import type { ScanConfig } from "../type/scanConfigs.js";
+import { PageCountingStrategy } from "../type/pageCountingStrategy.js";
+import { ScanPlexMode } from "../hpModels/ScanPlexMode.js";
+import type { DeviceCapabilities } from "../type/DeviceCapabilities.js";
+import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode.js";
 
 let iteration = 0;
 
@@ -57,15 +57,15 @@ export async function listenCmd(
     null;
   while (keepActive) {
     iteration++;
-    console.log(`Running iteration: ${iteration} - errorCount: ${errorCount}`);
+    console.log(`Iteration ${iteration} (Errors so far: ${errorCount})`);
     try {
-      const selectedScanTarget: SelectedScanTarget = await waitScanEvent(
+      const selectedScanTarget: SelectedScanTarget | null = await waitScanEvent(
         deviceCapabilities,
         registrationConfigs,
       );
 
       let proceedToScan = true;
-      if (selectedScanTarget.event.compEventURI) {
+      if (selectedScanTarget?.event.compEventURI !== undefined) {
         proceedToScan = await waitScanRequest(
           selectedScanTarget.event.compEventURI,
         );
@@ -73,10 +73,10 @@ export async function listenCmd(
 
       let destination: WalkupDestination | null = null;
 
-      if (proceedToScan) {
+      if (proceedToScan && selectedScanTarget !== null) {
         destination = await tryGetDestination(selectedScanTarget.event);
       }
-      if (!destination) {
+      if (!destination || selectedScanTarget === null) {
         console.log(
           "No shortcut selected - Impossible to proceed with scan, skipping.",
         );
@@ -146,11 +146,11 @@ async function processScanWithDestination(
     lastScanTarget,
   );
   if (
-    lastScanTarget != null &&
-    frontOfDoubleSidedScanContext != null &&
+    lastScanTarget !== undefined &&
+    frontOfDoubleSidedScanContext !== null &&
     lastScanTarget.isDuplexSingleSide &&
-    lastDuplexMode == DuplexMode.FrontOfDoubleSided &&
-    (duplexMode == DuplexMode.Simplex || duplexMode == DuplexMode.Duplex)
+    lastDuplexMode === DuplexMode.FrontOfDoubleSided &&
+    (duplexMode === DuplexMode.Simplex || duplexMode === DuplexMode.Duplex)
   ) {
     await processFinishedPartialDuplexScan(
       lastScanTarget,
@@ -185,7 +185,7 @@ async function processScanWithDestination(
     scanCount,
     deviceCapabilities,
     scanConfig,
-    targetDuplexMode == TargetDuplexMode.Duplex,
+    targetDuplexMode === TargetDuplexMode.Duplex,
     scanToPdf,
     pageCountingStrategy,
   );
@@ -217,7 +217,7 @@ async function handleScanResult(
   scanToPdf: boolean,
   duplexAssemblyMode: DuplexAssemblyMode,
 ) {
-  if (duplexMode == DuplexMode.FrontOfDoubleSided) {
+  if (duplexMode === DuplexMode.FrontOfDoubleSided) {
     frontOfDoubleSidedScanContext = {
       scanConfig,
       folder,
@@ -229,7 +229,7 @@ async function handleScanResult(
     };
   } else {
     let finalScanJobContent: ScanContent;
-    if (duplexMode == DuplexMode.BackOfDoubleSided) {
+    if (duplexMode === DuplexMode.BackOfDoubleSided) {
       console.log(
         "Emulated duplex scan completed; front and back pages are being assembled",
       );
@@ -265,8 +265,8 @@ function determineDuplexModes(
   lastScanTarget: SelectedScanTarget | undefined,
 ) {
   const isDuplex =
-    destination.scanPlexMode != null &&
-    destination.scanPlexMode != ScanPlexMode.Simplex;
+    destination.scanPlexMode !== null &&
+    destination.scanPlexMode !== ScanPlexMode.Simplex;
 
   let duplexMode: DuplexMode;
 
@@ -277,8 +277,7 @@ function determineDuplexModes(
   } else if (selectedScanTarget.isDuplexSingleSide) {
     targetDuplexMode = TargetDuplexMode.EmulatedDuplex;
     if (
-      lastScanTarget != null &&
-      selectedScanTarget.resourceURI === lastScanTarget.resourceURI &&
+      selectedScanTarget.resourceURI === lastScanTarget?.resourceURI &&
       previousDuplexMode !== DuplexMode.BackOfDoubleSided
     ) {
       duplexMode = DuplexMode.BackOfDoubleSided;
@@ -340,12 +339,12 @@ export function assembleDuplexScan(
   return duplexScan;
 }
 
-type ScanParameters = {
+interface ScanParameters {
   pageCountingStrategy: PageCountingStrategy;
   scanToPdf: boolean;
   scanDate: Date;
   scanCount: number;
-};
+}
 
 async function setupScanParameters(
   duplexMode: DuplexMode,
@@ -359,8 +358,8 @@ async function setupScanParameters(
   let pageCountingStrategy: PageCountingStrategy;
   let scanToPdf: boolean;
   let scanDate: Date;
-  if (duplexMode == DuplexMode.Duplex) {
-    console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
+  console.log(`Scan mode: ${targetDuplexMode}`);
+  if (duplexMode === DuplexMode.Duplex) {
     pageCountingStrategy = PageCountingStrategy.Normal;
     scanToPdf = isPdf(destination);
     scanDate = new Date();
@@ -370,9 +369,8 @@ async function setupScanParameters(
       scanConfig.directoryConfig.filePattern,
     );
     console.log(`Scan event captured, saving scan #${scanCount}`);
-  } else if (targetDuplexMode == TargetDuplexMode.EmulatedDuplex) {
-    if (duplexMode == DuplexMode.FrontOfDoubleSided) {
-      console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
+  } else if (targetDuplexMode === TargetDuplexMode.EmulatedDuplex) {
+    if (duplexMode === DuplexMode.FrontOfDoubleSided) {
       pageCountingStrategy = PageCountingStrategy.OddOnly;
       scanToPdf = isPdf(destination);
       scanDate = new Date();
@@ -386,7 +384,6 @@ async function setupScanParameters(
         `Scan event captured, saving front sides of scan #${scanCount}`,
       );
     } else {
-      console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
       pageCountingStrategy = PageCountingStrategy.EvenOnly;
       scanToPdf =
         frontOfDoubleSidedScanContext?.scanToPdf ?? isPdf(destination);
@@ -397,7 +394,6 @@ async function setupScanParameters(
       );
     }
   } else {
-    console.log(`Destination ScanPlexMode is : ${targetDuplexMode}`);
     pageCountingStrategy = PageCountingStrategy.Normal;
     scanToPdf = isPdf(destination);
     scanDate = new Date();
@@ -433,7 +429,7 @@ async function processFinishedPartialDuplexScan(
   );
 }
 
-type FrontOfDoubleSidedScanContext = {
+interface FrontOfDoubleSidedScanContext {
   scanConfig: ScanConfig;
   folder: string;
   tempFolder: string;
@@ -441,4 +437,4 @@ type FrontOfDoubleSidedScanContext = {
   scanJobContent: ScanContent;
   scanDate: Date;
   scanToPdf: boolean;
-};
+}

@@ -3,18 +3,17 @@
 
 "use strict";
 
-import config, { IConfig } from "config";
-import * as commitInfo from "./commitInfo.json";
-import { configSchema, FileConfig } from "./type/FileConfig";
-import { setupProgram } from "./program";
+import config, { type Config } from "config";
+import z from "zod";
+import commitInfo from "./commitInfo.json" with { type: "json" };
+import { configSchema, type FileConfig } from "./type/FileConfig.js";
+import { setupProgram } from "./program.js";
 
-const validateConfig = (config: IConfig) => {
-  const result = configSchema.safeParse(config);
+const validateConfig = (config: Config) => {
+  const result = configSchema.safeParse(config.util.toObject());
   if (!result.success) {
-    const errors = result.error.format();
-    throw new Error(
-      `Configuration validation error: ${JSON.stringify(errors)}`,
-    );
+    const errors = z.prettifyError(result.error);
+    throw new Error(`Configuration validation error: ${errors}`);
   }
   return result.data;
 };
@@ -27,5 +26,5 @@ async function main() {
   await program.parseAsync(process.argv);
 }
 
-console.log(`Current commit ID: ${commitInfo.commitId}`);
+console.log(`Running with Git commit ID: ${commitInfo.commitId}`);
 main().catch((err) => console.log(err));

@@ -1,8 +1,11 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import path from "path";
-import * as fs from "fs/promises";
-import DiscoveryTree from "../src/type/DiscoveryTree";
+import path from "node:path";
+import * as fs from "node:fs/promises";
+import DiscoveryTree from "../src/type/DiscoveryTree.js";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("DiscoveryTree", () => {
   describe("Parsing discoveryTree.xml", async () => {

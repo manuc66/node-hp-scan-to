@@ -1,6 +1,6 @@
 "use strict";
 
-import { parseXmlString } from "../hpModels/ParseXmlString";
+import { parseXmlString } from "../hpModels/ParseXmlString.js";
 
 export interface DiscoveryTreeData {
   "ledm:DiscoveryTree": {
