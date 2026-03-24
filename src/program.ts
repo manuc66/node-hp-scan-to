@@ -23,7 +23,7 @@ import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
 import type { Server as NetServer } from "net";
 import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
-import { ScanFormat } from "./type/scanFormat";
+import { ScanFormat } from "./type/scanFormat.js";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
