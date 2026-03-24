@@ -87,8 +87,12 @@ describe("BMP Conversion", () => {
     try {
       await convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Color);
       expect.fail("Should have thrown an error");
-    } catch (e: any) {
-      expect(e.message).to.match(/Invalid input size/);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        expect(e.message).to.match(/Input size mismatch/);
+      } else {
+        throw e;
+      }
     }
   });
 
