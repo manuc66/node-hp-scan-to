@@ -11,6 +11,7 @@ import { InputSource } from "../src/type/InputSource.js";
 import type { IScanJobSettings } from "../src/hpModels/IScanJobSettings.js";
 import type { IScanStatus } from "../src/hpModels/IScanStatus.js";
 import { ScanMode } from "../src/type/scanMode.js";
+import { ScanFormat } from "../src/type/scanFormat.js";
 
 describe("Command Integration - Paper Size Configuration", () => {
   let baseDeviceCapabilities: DeviceCapabilities;
@@ -51,6 +52,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         paperSize: "A4",
         isDuplex: false,
         generatePdf: false,
@@ -85,6 +87,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         paperDim: "6x4in",
         isDuplex: false,
         generatePdf: false,
@@ -119,6 +122,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         isDuplex: false,
         generatePdf: false,
       };
@@ -152,6 +156,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         paperSize: "Letter",
         isDuplex: false,
         generatePdf: false,
@@ -187,6 +192,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         paperSize: "A5",
         isDuplex: true,
         generatePdf: false,
@@ -223,6 +229,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         isDuplex: false,
         generatePdf: false,
         pollingInterval: 1000,
@@ -258,6 +265,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         paperSize: "Legal",
       };
 
@@ -289,6 +297,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         paperSize: "B5",
       };
 
@@ -329,6 +338,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         paperSize: "A4",
       };
 
@@ -360,6 +370,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         paperSize: "Max",
       };
 
@@ -392,6 +403,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         paperSize: "A4",
       };
 
@@ -427,6 +439,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         paperSize: "Letter",
       };
 
@@ -458,6 +471,7 @@ describe("Command Integration - Paper Size Configuration", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         preferEscl: false,
+        format: ScanFormat.Jpeg,
         paperSize: "A4",
       };
 
