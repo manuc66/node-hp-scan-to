@@ -3,7 +3,7 @@ import { InputSource } from "../type/InputSource.js";
 import { parseXmlString } from "./ParseXmlString.js";
 import type { IScanJobSettings } from "./IScanJobSettings.js";
 import { ScanMode } from "../type/scanMode.js";
-import { ScanFormat } from "../type/scanFormat";
+import { ScanFormat } from "../type/scanFormat.js";
 
 export default class EsclScanJobSettings implements IScanJobSettings {
   private readonly inputSource: InputSource;

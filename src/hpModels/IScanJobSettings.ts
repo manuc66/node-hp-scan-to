@@ -1,5 +1,5 @@
-import { ScanFormat } from "../type/scanFormat";
-import { ScanMode } from "../type/scanMode";
+import type { ScanFormat } from "../type/scanFormat.js";
+import type { ScanMode } from "../type/scanMode.js";
 
 export interface IScanJobSettings {
   toXML(): Promise<string>;
