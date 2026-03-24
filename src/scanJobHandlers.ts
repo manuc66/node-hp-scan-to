@@ -15,8 +15,8 @@ import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
 import { EventType } from "./hpModels/WalkupScanToCompEvent.js";
 import { type EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus.js";
 import type EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
-import { ScanFormat } from "./type/scanFormat";
-import { convertToBmp } from "./imageFormats/bmp";
+import { ScanFormat } from "./type/scanFormat.js";
+import { convertToBmp } from "./imageFormats/bmp.js";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -67,7 +67,7 @@ function createScanPage(
   };
 }
 
-async function handleScanProcessingState(
+export async function handleScanProcessingState(
   job: Job,
   scanJobSettings: IScanJobSettings,
   inputSource: InputSource,
@@ -84,12 +84,9 @@ async function handleScanProcessingState(
     job.currentPageNumber !== null
   ) {
 
-    console.log(
-      `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`,
-    );
-
+    let destinationFilePath: string;
     if (scanJobSettings.format === ScanFormat.Jpeg) {
-      const destinationFilePath = PathHelper.getFileForPage(
+      destinationFilePath = await PathHelper.getFileForPage(
         folder,
         scanCount,
         currentPageNumber,
@@ -97,6 +94,11 @@ async function handleScanProcessingState(
         "jpg",
         date,
       );
+
+      console.log(
+        `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`,
+      );
+
       await HPApi.downloadPage(
         job.binaryURL,
         destinationFilePath,
@@ -108,9 +110,8 @@ async function handleScanProcessingState(
         job.imageHeight,
       );
       return createScanPage(job, currentPageNumber, destinationFilePath, adfHeight);
-    }
-    else if (scanJobSettings.format === ScanFormat.Pdf) {
-      const destinationFilePath = PathHelper.getFileForPage(
+    } else if (scanJobSettings.format === ScanFormat.Pdf) {
+      destinationFilePath = await PathHelper.getFileForPage(
         folder,
         scanCount,
         currentPageNumber,
@@ -119,15 +120,18 @@ async function handleScanProcessingState(
         date,
       );
 
+      console.log(
+        `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`,
+      );
+
       await HPApi.downloadPage(
         job.binaryURL,
         destinationFilePath,
       );
 
       return createScanPage(job, currentPageNumber, destinationFilePath, null);
-    }
-    else if (scanJobSettings.format === ScanFormat.Raw) {
-      const tempDestinationFilePath = PathHelper.getFileForPage(
+    } else {
+      const tempDestinationFilePath = await PathHelper.getFileForPage(
         tempFolder,
         scanCount,
         currentPageNumber,
@@ -135,12 +139,17 @@ async function handleScanProcessingState(
         "raw",
         date,
       );
+
+      console.log(
+        `Downloading page ${job.currentPageNumber} → ${tempDestinationFilePath}`,
+      );
+
       const rawImagePath = await HPApi.downloadPage(
         job.binaryURL,
         tempDestinationFilePath,
       );
 
-      const destinationFilePath = PathHelper.getFileForPage(
+      destinationFilePath = await PathHelper.getFileForPage(
         folder,
         scanCount,
         currentPageNumber,
@@ -149,12 +158,24 @@ async function handleScanProcessingState(
         date,
       );
 
-      convertToBmp(job.imageWidth!,job.imageHeight!, job.xResolution!, rawImagePath,destinationFilePath, scanJobSettings.mode);
+      if (
+        job.imageWidth !== null &&
+        job.imageHeight !== null &&
+        job.xResolution !== null
+      ) {
+        convertToBmp(
+          job.imageWidth,
+          job.imageHeight,
+          job.xResolution,
+          rawImagePath,
+          destinationFilePath,
+          scanJobSettings.mode,
+        );
+      }
 
       console.log("Page downloaded to:", destinationFilePath);
       return createScanPage(job, currentPageNumber, destinationFilePath, null);
     }
-    return null;
   } else {
     console.log(`Unknown pageState: ${job.pageState}`);
     await delay(200);

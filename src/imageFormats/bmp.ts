@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { ScanMode } from "../type/scanMode";
+import { ScanMode } from "../type/scanMode.js";
 
 
 
@@ -107,7 +107,7 @@ export function convertToBmp(
       const dstOffset = y * rowSize;
       rawData.copy(bmpData, dstOffset, srcOffset, srcOffset + width);
       // Padding bytes are zero-initialized
-    } else if (pixelFormat === ScanMode.Lineart) {
+    } else {
       // Each byte in BMP = 8 pixels. Each pixel in input rawData = 0 (black) or nonzero (white)
       // BMP expects leftmost pixel in MSB
       const srcOffset = (height - 1 - y) * width;
@@ -116,10 +116,10 @@ export function convertToBmp(
         let byte = 0;
         for (let bit = 0; bit < 8; bit++) {
           const pixelIdx = byteIdx * 8 + bit;
-          if (pixelIdx >= width) break;
+          if (pixelIdx >= width) {break;}
           const value = rawData[srcOffset + pixelIdx];
           // 0 = black, nonzero = white
-          if (value) byte |= (1 << (7 - bit));
+          if (value) {byte |= (1 << (7 - bit));}
         }
         bmpData[dstOffset + byteIdx] = byte;
       }

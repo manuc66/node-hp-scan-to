@@ -9,7 +9,7 @@ import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
 import EsclScanJobSettings from "./hpModels/EsclScanJobSettings.js";
 import ScanJobSettings from "./hpModels/ScanJobSettings.js";
 import type { ScanMode } from "./type/scanMode.js";
-import { ScanFormat } from "./type/scanFormat";
+import { ScanFormat } from "./type/scanFormat.js";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,
