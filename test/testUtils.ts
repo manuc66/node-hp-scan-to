@@ -41,7 +41,7 @@ export function createDefaultDeviceCapabilities(): DeviceCapabilities {
     hasAdfDuplex: false,
     isEscl: false,
     getScanStatus: () => Promise.resolve({} as IScanStatus),
-    createScanJobSettings: (_) => ({}) as IScanJobSettings,
+    createScanJobSettings: (..._args: unknown[]) => ({}) as IScanJobSettings,
     submitScanJob: () => Promise.resolve("fake-value"),
   };
 }

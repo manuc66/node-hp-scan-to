@@ -103,33 +103,12 @@ export async function handleScanProcessingState(
         job.binaryURL,
         destinationFilePath,
       );
-
       const adfHeight = await getAndFixHeightWHenAdf(
         inputSource,
         destinationFilePath,
         job.imageHeight,
       );
       return createScanPage(job, currentPageNumber, destinationFilePath, adfHeight);
-    } else if (scanJobSettings.format === ScanFormat.Pdf) {
-      destinationFilePath = await PathHelper.getFileForPage(
-        folder,
-        scanCount,
-        currentPageNumber,
-        filePattern,
-        "pdf",
-        date,
-      );
-
-      console.log(
-        `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`,
-      );
-
-      await HPApi.downloadPage(
-        job.binaryURL,
-        destinationFilePath,
-      );
-
-      return createScanPage(job, currentPageNumber, destinationFilePath, null);
     } else {
       const tempDestinationFilePath = await PathHelper.getFileForPage(
         tempFolder,

@@ -5,6 +5,7 @@ import { readDeviceCapabilities } from "../src/readDeviceCapabilities.js";
 import HPApi from "../src/HPApi.js";
 import { InputSource } from "../src/type/InputSource.js";
 import { ScanMode } from "../src/type/scanMode.js";
+import { ScanFormat } from "../src/type/scanFormat.js";
 
 describe("readDeviceCapabilities", () => {
   beforeEach(() => {
@@ -151,6 +152,7 @@ describe("readDeviceCapabilities", () => {
     const jobSettings = caps.createScanJobSettings(
       InputSource.Adf,
       "Document",
+      ScanFormat.Bmp,
       300,
       ScanMode.Gray,
       1000,

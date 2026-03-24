@@ -23,7 +23,7 @@ import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
 import type { Server as NetServer } from "net";
 import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
-import { ScanFormat } from "./type/scanFormat.js";
+import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
 
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
@@ -125,6 +125,22 @@ function setupScanParameters(commandName: string) {
         .conflicts("width")
         .conflicts("height")
         .helpGroup(HelpGroupsHeadings.scan),
+    )
+    .addOption(
+      new Option(
+        "-f, --image-format <format>",
+        "Image format for scans (when not PDF): Jpeg (default) or Bmp",
+      )
+        .argParser((val) => {
+          const parsed = parseScanFormat(val);
+          if (parsed === undefined) {
+            throw new Error(
+              `Invalid format: ${val}. Expected "Jpeg" or "Bmp" (case-insensitive).`,
+            );
+          }
+          return parsed;
+        })
+        .helpGroup(HelpGroupsHeadings.ouput),
     )
     .addOption(
       new Option(
@@ -501,6 +517,12 @@ function getScanConfiguration(
         ? undefined
         : parseInt(configHeight, 10);
 
+  const format = getConfiguredValue(
+    options.imageFormat,
+    fileConfig.image_format,
+    ScanFormat.Jpeg,
+  );
+
   const scanConfig: ScanConfig = {
     resolution,
     mode,
@@ -509,7 +531,7 @@ function getScanConfiguration(
     paperSize,
     paperDim,
     paperOrientation,
-    format: ScanFormat.Raw,
+    format,
     directoryConfig,
     paperlessConfig,
     nextcloudConfig,

@@ -4,7 +4,7 @@ import { parseXmlString } from "./ParseXmlString.js";
 import type { IScanJobSettings } from "./IScanJobSettings.js";
 import { ScanMode } from "../type/scanMode.js";
 import type ScanCaps from "./ScanCaps.js";
-import type { ScanFormat } from "../type/scanFormat.js";
+import { ScanFormat } from "../type/scanFormat.js";
 
 export default class ScanJobSettings implements IScanJobSettings {
   private readonly inputSource: InputSource;
@@ -120,7 +120,11 @@ export default class ScanJobSettings implements IScanJobSettings {
       parsed.ScanSettings.Format = this.scanCaps.getSupportedFormats(colorType)[0];
     }
     else {
-      parsed.ScanSettings.Format = this.format;
+      if (this.format === ScanFormat.Bmp) {
+        parsed.ScanSettings.Format = "Raw";
+      } else {
+        parsed.ScanSettings.Format = this.format;
+      }
     }
 
 
