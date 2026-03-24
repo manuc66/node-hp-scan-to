@@ -162,6 +162,7 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `-a`, `--address`                     | Printer IP address.                                                                                              | `-a 192.168.0.5` (no default)                                     |
 | `-d`, `--directory`                   | Directory to save scanned documents. Defaults to `/tmp/scan-to-pc<random value>` if not set.                     | `-d /tmp/scan-to-pc1234`                                          |
 | `-D`, `--debug`                       | Enable debug logging.                                                                                            | `-D` (disabled by default)                                        |
+| `-f`, `--image-format`            | Image format for scans (when not PDF).                                                                           | `-f Jpeg` (choices: Jpeg, Bmp)                                    |
 | `-h`, `--height`                      | Scan height in pixels. Defaults to 3507.                                                                         | `-h 3507`                                                         |
 | `-k`, `--keep-files`                  | Retain scanned files after uploading to Paperless-ngx or Nextcloud (disabled by default).                        | `-k` (disabled by default)                                        |
 | `-l`, `--label`                       | The name of the computer running this app. Defaults to the hostname.                                             | `-l <hostname>` (default: system hostname)                        |
@@ -293,6 +294,7 @@ Listen the device for new scan job to save to this target
 Output Options:
   -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
   -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
+  -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
 
 Scan Options:
@@ -360,6 +362,7 @@ the automatic document feeder (adf)
 Output Options:
   -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
   -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
+  -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
 
@@ -457,6 +460,7 @@ Trigger a new scan job
 Output Options:
   -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
   -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
+  -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
 
@@ -545,6 +549,7 @@ List of supported environment variables and their meaning, or correspondence wit
 | `PGID`                        | ID of the group that will run the program                                                                     |                                                                               |
 | `PUID`                        | ID of the user that will run the program                                                                      |                                                                               |
 | `RESOLUTION`                  | Resolution setting                                                                                            | `-r` / `--resolution`                                                         |
+| `FORMAT`                      | Image format setting                                                                                         | `-f` / `--image-format`                                                       |
 | `MODE`                        | Scan mode setting                                                                                             | `--mode`                                                                      |
 | `PAPER_ORIENTATION`           | Paper orientation: portrait (default) or landscape. Applied to `PAPER_SIZE` only.                             | `--paper-orientation`                                                         |
 | `TEMP_DIR`                    | Temporary directory                                                                                           | `-t` / `--temp-directory`                                                     |

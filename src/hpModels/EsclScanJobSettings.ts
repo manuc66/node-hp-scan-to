@@ -13,10 +13,12 @@ export default class EsclScanJobSettings implements IScanJobSettings {
   private readonly width: number | null;
   private readonly height: number | null;
   private readonly isDuplex: boolean;
+  private readonly _format: ScanFormat;
 
   constructor(
     inputSource: InputSource,
     contentType: "Document" | "Photo",
+    format: ScanFormat,
     resolution: number,
     mode: ScanMode,
     width: number | null,
@@ -25,6 +27,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
   ) {
     this.inputSource = inputSource;
     this.contentType = contentType;
+    this._format = format;
     this.resolution = resolution;
     this._mode = mode;
     this.width = width;
@@ -120,6 +123,12 @@ export default class EsclScanJobSettings implements IScanJobSettings {
       parsed.ScanSettings.ScanRegions[0].ScanRegion[0].Height = this.height;
     }
 
+    if (this.format === ScanFormat.Jpeg) {
+      parsed.ScanSettings.DocumentFormatExt = "image/jpeg";
+    } else {
+      parsed.ScanSettings.DocumentFormatExt = "application/octet-stream";
+    }
+
     if (this.inputSource === InputSource.Adf) {
       parsed.ScanSettings.InputSource = {
         _: "Feeder", // The text content
@@ -151,7 +160,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
   }
 
   get format() {
-    return ScanFormat.Jpeg;
+    return this._format;
   }
   get mode(): ScanMode {
     return this._mode;

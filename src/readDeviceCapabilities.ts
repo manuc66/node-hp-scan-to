@@ -9,7 +9,7 @@ import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
 import EsclScanJobSettings from "./hpModels/EsclScanJobSettings.js";
 import ScanJobSettings from "./hpModels/ScanJobSettings.js";
 import type { ScanMode } from "./type/scanMode.js";
-import { ScanFormat } from "./type/scanFormat.js";
+import type { ScanFormat } from "./type/scanFormat.js";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,
@@ -105,6 +105,7 @@ export async function readDeviceCapabilities(
   const createScanJobSettings = (
     inputSource: InputSource,
     contentType: "Document" | "Photo",
+    format: ScanFormat,
     resolution: number,
     mode: ScanMode,
     width: number | null,
@@ -116,6 +117,7 @@ export async function readDeviceCapabilities(
       scanJobSettings = new EsclScanJobSettings(
         inputSource,
         contentType,
+        format,
         resolution,
         mode,
         width,
@@ -126,7 +128,7 @@ export async function readDeviceCapabilities(
       scanJobSettings = new ScanJobSettings(
         inputSource,
         contentType,
-        ScanFormat.Raw,
+        format,
         resolution,
         mode,
         width,

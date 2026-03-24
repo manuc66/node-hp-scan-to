@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DuplexAssemblyMode } from "./DuplexAssemblyMode.js";
+import { ScanFormat, parseScanFormat } from "./scanFormat.js";
 
 // Configuration schema for the config file
 export const configSchema = z
@@ -80,6 +81,13 @@ export const configSchema = z
     paperless_token_file: z.string().optional(), // Paperless API token
     paperless_group_multi_page_scan_into_a_pdf: z.boolean().optional(), // Group multi-page scans into a single PDF
     paperless_always_send_as_pdf_file: z.boolean().optional(), // Always upload scans as PDF
+
+    ///
+    /// Output Format
+    ///
+    image_format: z
+      .preprocess((val) => (typeof val === "string" ? parseScanFormat(val) : val), z.nativeEnum(ScanFormat))
+      .optional(),
 
     ///
     /// Nextcloud Integration

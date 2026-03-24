@@ -16,6 +16,7 @@ import type {
   ScanConfig,
   SingleScanConfig,
 } from "./type/scanConfigs.js";
+import { ScanFormat } from "./type/scanFormat.js";
 import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
 import type { IScanStatus } from "./hpModels/IScanStatus.js";
 import { ScannerState } from "./hpModels/ScannerState.js";
@@ -91,11 +92,15 @@ export async function saveScanFromEvent(
   let contentType: "Document" | "Photo";
 
   let filePattern: string | undefined;
+  let effectiveFormat = scanConfig.format;
   if (isPdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
     filePattern = undefined;
     console.log(`Converting scan to PDF…`);
+    if (effectiveFormat === ScanFormat.Bmp) {
+      effectiveFormat = ScanFormat.Jpeg;
+    }
   } else {
     contentType = "Photo";
     destinationFolder = folder;
@@ -122,6 +127,7 @@ export async function saveScanFromEvent(
   const scanJobSettings = deviceCapabilities.createScanJobSettings(
     inputSource,
     contentType,
+    effectiveFormat,
     scanConfig.resolution,
     scanConfig.mode,
     scanWidth,
@@ -157,10 +163,14 @@ export async function scanFromAdf(
 ): Promise<void> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
+  let effectiveFormat = adfAutoScanConfig.format;
   if (adfAutoScanConfig.generatePdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
     console.log(`Converting scan to PDF...`);
+    if (effectiveFormat === ScanFormat.Bmp) {
+      effectiveFormat = ScanFormat.Jpeg;
+    }
   } else {
     contentType = "Photo";
     destinationFolder = folder;
@@ -177,6 +187,7 @@ export async function scanFromAdf(
   const scanJobSettings = deviceCapabilities.createScanJobSettings(
     InputSource.Adf,
     contentType,
+    effectiveFormat,
     adfAutoScanConfig.resolution,
     adfAutoScanConfig.mode,
     effectiveScanWidth,
@@ -223,10 +234,14 @@ export async function singleScan(
 ): Promise<void> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
+  let effectiveFormat = scanConfig.format;
   if (scanConfig.generatePdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
     console.log(`Converting scan to PDF...`);
+    if (effectiveFormat === ScanFormat.Bmp) {
+      effectiveFormat = ScanFormat.Jpeg;
+    }
   } else {
     contentType = "Photo";
     destinationFolder = folder;
@@ -252,6 +267,7 @@ export async function singleScan(
   const scanJobSettings = deviceCapabilities.createScanJobSettings(
     inputSource,
     contentType,
+    effectiveFormat,
     scanConfig.resolution,
     scanConfig.mode,
     scanWidth,
