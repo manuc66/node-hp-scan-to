@@ -43,39 +43,39 @@ describe("BMP Conversion", () => {
     const dibHeaderSize = bmpData.readUInt32LE(14);
     expect(dibHeaderSize).to.equal(40);
     expect(bmpData.readInt32LE(18)).to.equal(width);
-    expect(bmpData.readInt32LE(22)).to.equal(height);
+    expect(bmpData.readInt32LE(22)).to.equal(-height);
     expect(bmpData.readUInt16LE(28)).to.equal(24); // 24 bits
 
-    // BMP is bottom-up:
-    // Bottom row (Row 1 of input): Blue (0, 0, 255), White (255, 255, 255)
+    // BMP is top-down (since we changed height to -height):
+    // Row 0 of BMP (Row 0 of input): Red (255, 0, 0), Green (0, 255, 0)
     // BMP order is BGR:
-    // Blue pixel -> (255, 0, 0)
-    // White pixel -> (255, 255, 255)
+    // Red pixel -> (0, 0, 255)
+    // Green pixel -> (0, 255, 0)
     // Padding to 4 bytes: row is 2*3 = 6 bytes, needs 2 bytes padding
 
     const rowSize = 8; // (3 bytes * 2 pixels) = 6, padded to 8
     let offset = pixelOffset;
 
-    // Row 0 of BMP (Row 1 of input: 0, 0, 255, 255, 255, 255)
-    expect(bmpData[offset]).to.equal(255); // B (from Blue)
-    expect(bmpData[offset + 1]).to.equal(0); // G
-    expect(bmpData[offset + 2]).to.equal(0); // R
-    expect(bmpData[offset + 3]).to.equal(255); // B (from White)
-    expect(bmpData[offset + 4]).to.equal(255); // G
-    expect(bmpData[offset + 5]).to.equal(255); // R
-    // Padding: bmpData[offset + 6], [offset + 7] should be 0
-
-    // Row 1 of BMP (Row 0 of input: 255, 0, 0, 0, 255, 0)
-    offset += rowSize;
+    // Row 0 of BMP (Row 0 of input: 255, 0, 0, 0, 255, 0)
     expect(bmpData[offset]).to.equal(0); // B (from Red)
     expect(bmpData[offset + 1]).to.equal(0); // G
     expect(bmpData[offset + 2]).to.equal(255); // R
     expect(bmpData[offset + 3]).to.equal(0); // B (from Green)
     expect(bmpData[offset + 4]).to.equal(255); // G
     expect(bmpData[offset + 5]).to.equal(0); // R
+    // Padding: bmpData[offset + 6], [offset + 7] should be 0
+
+    // Row 1 of BMP (Row 1 of input: 0, 0, 255, 255, 255, 255)
+    offset += rowSize;
+    expect(bmpData[offset]).to.equal(255); // B (from Blue)
+    expect(bmpData[offset + 1]).to.equal(0); // G
+    expect(bmpData[offset + 2]).to.equal(0); // R
+    expect(bmpData[offset + 3]).to.equal(255); // B (from White)
+    expect(bmpData[offset + 4]).to.equal(255); // G
+    expect(bmpData[offset + 5]).to.equal(255); // R
   });
 
-  it("throws error if input file is too small", () => {
+  it("throws error if input file size is invalid", () => {
     const width = 10;
     const height = 10;
     const dpi = 200;
@@ -86,7 +86,7 @@ describe("BMP Conversion", () => {
 
     expect(() =>
       convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Color),
-    ).to.throw(/Input file too small/);
+    ).to.throw(/Invalid input size/);
   });
 
   it("converts 8-bit gray to BMP with palette", () => {
@@ -147,12 +147,34 @@ describe("BMP Conversion", () => {
     // Row size for 9 bits: ceil(9/8) = 2 bytes, padded to 4 bytes
     const rowSize = 4;
 
-    // Row 0 of BMP (Row 1 of input): B, B, B, B, B, B, B, B (first byte: 00000000), W (second byte: 10000000)
-    expect(bmpData[pixelOffset]).to.equal(0x00);
+    // Row 0 of BMP (Row 0 of input): W, B, W, B, W, B, W, B (first byte: 10101010 = 0xAA), W (second byte: 10000000 = 0x80)
+    expect(bmpData[pixelOffset]).to.equal(0xAA);
     expect(bmpData[pixelOffset + 1]).to.equal(0x80);
 
-    // Row 1 of BMP (Row 0 of input): W, B, W, B, W, B, W, B (first byte: 10101010 = 0xAA), W (second byte: 10000000 = 0x80)
-    expect(bmpData[pixelOffset + rowSize]).to.equal(0xAA);
+    // Row 1 of BMP (Row 1 of input): B, B, B, B, B, B, B, B (first byte: 00000000), W (second byte: 10000000 = 0x80)
+    expect(bmpData[pixelOffset + rowSize]).to.equal(0x00);
     expect(bmpData[pixelOffset + rowSize + 1]).to.equal(0x80);
+  });
+
+  it("supports inverting colors in lineart mode", () => {
+    const width = 8;
+    const height = 1;
+    const dpi = 300;
+    const inputFile = path.resolve(tmpDir, "input_invert.raw");
+    const outputFile = path.resolve(tmpDir, "output_invert.bmp");
+
+    // 1 0 1 0 1 0 1 0
+    const rawData = Buffer.from([1, 0, 1, 0, 1, 0, 1, 0]);
+    fs.writeFileSync(inputFile, rawData);
+
+    // With invert: true
+    // 1 -> 0, 0 -> 1 => 0 1 0 1 0 1 0 1 = 0x55
+    convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Lineart, {
+      invert: true,
+    });
+
+    const bmpData = fs.readFileSync(outputFile);
+    const pixelOffset = bmpData.readUInt32LE(10);
+    expect(bmpData[pixelOffset]).to.equal(0x55);
   });
 });
