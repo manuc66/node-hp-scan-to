@@ -1,5 +1,5 @@
-import { ScanContent, ScanPage } from "./type/ScanContent";
-import PathHelper from "./PathHelper";
+import type { ScanContent, ScanPage } from "./type/ScanContent.js";
+import PathHelper from "./PathHelper.js";
 import fs from "fs/promises";
 import path from "path";
 import { jsPDF } from "jspdf";
@@ -13,7 +13,7 @@ export async function mergeToPdf(
   deleteFiles: boolean,
 ): Promise<string | null> {
   if (scanJobContent.elements.length > 0) {
-    const pdfFilePath: string = PathHelper.getFileForScan(
+    const pdfFilePath: string = await PathHelper.getFileForScan(
       folder,
       scanCount,
       filePattern,
@@ -54,7 +54,7 @@ export async function createPdfFrom(
     const heightInInches = element.height / element.yResolution;
     const format = [widthInInches, heightInInches];
 
-    if (doc == null) {
+    if (doc === null) {
       doc = new jsPDF({ unit: "in", floatPrecision: 3, format });
     } else {
       doc.addPage(format);

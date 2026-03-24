@@ -1,20 +1,20 @@
-import { ScanContent } from "./type/ScanContent";
-import { mergeToPdf } from "./pdfProcessing";
+import type { ScanContent } from "./type/ScanContent.js";
+import { mergeToPdf } from "./pdfProcessing.js";
 import {
   convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless,
   mergeToPdfAndUploadAsSingleDocumentToPaperless,
   uploadImagesAsSeparateDocumentsToPaperless,
   uploadPdfToPaperless,
-} from "./paperless/paperless";
+} from "./paperless/paperless.js";
 import {
   uploadPdfToNextcloud,
   uploadImagesToNextcloud,
-} from "./nextcloud/nextcloud";
+} from "./nextcloud/nextcloud.js";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { PaperlessConfig } from "./paperless/PaperlessConfig";
-import { NextcloudConfig } from "./nextcloud/NextcloudConfig";
-import { ScanConfig } from "./type/scanConfigs";
+import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
+import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
+import type { ScanConfig } from "./type/scanConfigs.js";
 
 export async function postProcessing(
   scanConfig: ScanConfig,
@@ -64,7 +64,7 @@ async function handlePdfPostProcessing(
     scanDate,
     true,
   );
-  if (pdfFilePath != null) {
+  if (pdfFilePath !== null) {
     displayPdfScan(pdfFilePath, scanJobContent, scanCount);
     if (paperlessConfig) {
       await uploadPdfToPaperless(pdfFilePath, paperlessConfig);
@@ -129,24 +129,24 @@ function displayPdfScan(
   }
 
   console.log(
-    `The following page(s) have been rendered inside '${pdfFilePath}' as part of scan #${scanCount}: `,
+    `Scan #${scanCount} saved as PDF: ${pdfFilePath} with the following pages:`,
   );
   scanJobContent.elements.forEach((e) =>
     console.log(
-      `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
+      `\t- page ${e.pageNumber.toString().padStart(3, " ")} | ${e.width}x${
         e.height
-      }`,
+      } | (temp file deleted ${e.path})`,
     ),
   );
 }
 
 function displayJpegScan(scanJobContent: ScanContent, scanCount: number) {
-  console.log(`The following page(s) are part of scan #${scanCount}: `);
+  console.log(`Scan #${scanCount} completed with the following pages:`);
   scanJobContent.elements.forEach((e) =>
     console.log(
-      `\t- page ${e.pageNumber.toString().padStart(3, " ")} - ${e.width}x${
+      `\t- page ${e.pageNumber.toString().padStart(3, " ")} | ${e.width}x${
         e.height
-      } - ${e.path}`,
+      } | ${e.path}`,
     ),
   );
 }

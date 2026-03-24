@@ -1,6 +1,6 @@
 "use strict";
 
-import { parseXmlString } from "./ParseXmlString";
+import { parseXmlString } from "./ParseXmlString.js";
 //     this.data["scan:ScannerCapabilities"]["scan:Adf"]["0"]["scan:AdfSimplexInputCaps"]["0"]["scan:MaxWidth"]["0"]
 export interface EsclScanCapsData {
   "scan:ScannerCapabilities": {
@@ -194,7 +194,5 @@ export default class EsclScanCaps {
     return false;
   }
 
-  get isEscl(): boolean {
-    return true;
-  }
+  readonly isEscl: boolean = true;
 }

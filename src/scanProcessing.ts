@@ -1,24 +1,25 @@
-import Event from "./hpModels/Event";
-import WalkupScanDestination from "./hpModels/WalkupScanDestination";
-import WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination";
-import HPApi from "./HPApi";
-import { DeviceCapabilities } from "./type/DeviceCapabilities";
-import { ScanContent } from "./type/ScanContent";
-import { delay } from "./delay";
-import { InputSource } from "./type/InputSource";
-import { postProcessing } from "./postProcessing";
-import { SelectedScanTarget } from "./type/scanTargetDefinitions";
-import { executeScanJob, executeScanJobs } from "./scanJobHandlers";
-import { KnownShortcut } from "./type/KnownShortcut";
-import {
+import type { IEvent } from "./hpModels/Event.js";
+import type WalkupScanDestination from "./hpModels/WalkupScanDestination.js";
+import type WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination.js";
+import HPApi from "./HPApi.js";
+import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
+import type { ScanContent } from "./type/ScanContent.js";
+import { delay } from "./delay.js";
+import { InputSource } from "./type/InputSource.js";
+import { postProcessing } from "./postProcessing.js";
+import { getScanDimensions } from "./scanDimensions.js";
+import type { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
+import { executeScanJob, executeScanJobs } from "./scanJobHandlers.js";
+import { KnownShortcut } from "./type/KnownShortcut.js";
+import type {
   AdfAutoScanConfig,
   ScanConfig,
   SingleScanConfig,
-} from "./type/scanConfigs";
-import { PageCountingStrategy } from "./type/pageCountingStrategy";
-import { IScanStatus } from "./hpModels/IScanStatus";
-import { ScannerState } from "./hpModels/ScannerState";
-import { ScanPlexMode } from "./hpModels/ScanPlexMode";
+} from "./type/scanConfigs.js";
+import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
+import type { IScanStatus } from "./hpModels/IScanStatus.js";
+import { ScannerState } from "./hpModels/ScannerState.js";
+import type { ScanPlexMode } from "./hpModels/ScanPlexMode.js";
 
 export interface WalkupDestination {
   get shortcut(): null | KnownShortcut;
@@ -26,20 +27,20 @@ export interface WalkupDestination {
 }
 
 export async function tryGetDestination(
-  event: Event,
+  event: IEvent,
 ): Promise<WalkupDestination | null> {
-  // this code can in some cases be executed before the user actually chooses between Document or Photo
+  // this code can in some cases be executed before the user actually chooses between Document or Photo,
   // so, let's fetch the contentType (Document or Photo) until we get a value
   let destination: WalkupScanDestination | WalkupScanToCompDestination | null =
     null;
 
   for (let i = 0; i < 20; i++) {
     const destinationURI = event.destinationURI;
-    if (destinationURI) {
+    if (destinationURI !== undefined) {
       destination = await HPApi.getDestination(destinationURI);
 
       const shortcut = destination.shortcut;
-      if (shortcut != null) {
+      if (shortcut !== null) {
         return destination;
       }
     } else {
@@ -55,11 +56,11 @@ export async function tryGetDestination(
   return null;
 }
 
-export function isPdf(destination: WalkupDestination) {
+export function isPdf(destination: WalkupDestination): boolean {
   if (
     destination.shortcut === KnownShortcut.SavePDF ||
     destination.shortcut === KnownShortcut.EmailPDF ||
-    destination.shortcut == KnownShortcut.SaveDocument1
+    destination.shortcut === KnownShortcut.SaveDocument1
   ) {
     return true;
   } else if (
@@ -72,54 +73,6 @@ export function isPdf(destination: WalkupDestination) {
       `Unexpected shortcut received: ${destination.shortcut}, considering it as non pdf target!`,
     );
     return false;
-  }
-}
-
-export function getScanWidth(
-  scanConfig: ScanConfig,
-  inputSource: InputSource,
-  deviceCapabilities: DeviceCapabilities,
-  isDuplex: boolean,
-): number | null {
-  const maxWidth =
-    inputSource === InputSource.Adf
-      ? isDuplex
-        ? deviceCapabilities.adfDuplexMaxWidth
-        : deviceCapabilities.adfMaxWidth
-      : deviceCapabilities.platenMaxWidth;
-
-  if (scanConfig.width && scanConfig.width > 0) {
-    if (maxWidth && scanConfig.width > maxWidth) {
-      return maxWidth;
-    } else {
-      return scanConfig.width;
-    }
-  } else {
-    return maxWidth;
-  }
-}
-
-export function getScanHeight(
-  scanConfig: ScanConfig,
-  inputSource: InputSource,
-  deviceCapabilities: DeviceCapabilities,
-  isDuplex: boolean,
-): number | null {
-  const maxHeight =
-    inputSource === InputSource.Adf
-      ? isDuplex
-        ? deviceCapabilities.adfDuplexMaxHeight
-        : deviceCapabilities.adfMaxHeight
-      : deviceCapabilities.platenMaxHeight;
-
-  if (scanConfig.height && scanConfig.height > 0) {
-    if (maxHeight && scanConfig.height > maxHeight) {
-      return maxHeight;
-    } else {
-      return scanConfig.height;
-    }
-  } else {
-    return maxHeight;
   }
 }
 
@@ -136,15 +89,17 @@ export async function saveScanFromEvent(
 ): Promise<ScanContent> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
+
+  let filePattern: string | undefined;
   if (isPdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
-    console.log(
-      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`,
-    );
+    filePattern = undefined;
+    console.log(`Converting scan to PDF…`);
   } else {
     contentType = "Photo";
     destinationFolder = folder;
+    filePattern = scanConfig.directoryConfig.filePattern;
   }
 
   const scanStatus = await deviceCapabilities.getScanStatus();
@@ -153,16 +108,11 @@ export async function saveScanFromEvent(
     console.log("Scanner state is not Idle, aborting scan attempt...!");
   }
 
-  console.log("Afd is : " + scanStatus.adfState);
+  console.log("ADF status: " + scanStatus.adfState);
 
   const inputSource = scanStatus.getInputSource();
-  const scanWidth = getScanWidth(
-    scanConfig,
-    inputSource,
-    deviceCapabilities,
-    isDuplex,
-  );
-  const scanHeight = getScanHeight(
+
+  const { width: scanWidth, height: scanHeight } = getScanDimensions(
     scanConfig,
     inputSource,
     deviceCapabilities,
@@ -190,12 +140,8 @@ export async function saveScanFromEvent(
     scanJobContent,
     selectedScanTarget,
     deviceCapabilities,
-    scanConfig.directoryConfig.filePattern,
+    filePattern,
     pageCountingStrategy,
-  );
-
-  console.log(
-    `Scan of page(s) completed totalPages: ${scanJobContent.elements.length}:`,
   );
 
   return scanJobContent;
@@ -208,40 +154,33 @@ export async function scanFromAdf(
   adfAutoScanConfig: AdfAutoScanConfig,
   deviceCapabilities: DeviceCapabilities,
   date: Date,
-) {
+): Promise<void> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
   if (adfAutoScanConfig.generatePdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
-    console.log(
-      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`,
-    );
+    console.log(`Converting scan to PDF...`);
   } else {
     contentType = "Photo";
     destinationFolder = folder;
   }
 
-  const scanWidth = getScanWidth(
-    adfAutoScanConfig,
-    InputSource.Adf,
-    deviceCapabilities,
-    adfAutoScanConfig.isDuplex,
-  );
-  const scanHeight = getScanHeight(
-    adfAutoScanConfig,
-    InputSource.Adf,
-    deviceCapabilities,
-    adfAutoScanConfig.isDuplex,
-  );
+  const { width: effectiveScanWidth, height: effectiveScanHeight } =
+    getScanDimensions(
+      adfAutoScanConfig,
+      InputSource.Adf,
+      deviceCapabilities,
+      adfAutoScanConfig.isDuplex,
+    );
 
   const scanJobSettings = deviceCapabilities.createScanJobSettings(
     InputSource.Adf,
     contentType,
     adfAutoScanConfig.resolution,
     adfAutoScanConfig.mode,
-    scanWidth,
-    scanHeight,
+    effectiveScanWidth,
+    effectiveScanHeight,
     adfAutoScanConfig.isDuplex,
   );
 
@@ -281,15 +220,13 @@ export async function singleScan(
   scanConfig: SingleScanConfig,
   deviceCapabilities: DeviceCapabilities,
   date: Date,
-) {
+): Promise<void> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
   if (scanConfig.generatePdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
-    console.log(
-      `Scan will be converted to pdf, using ${destinationFolder} as temp scan output directory for individual pages`,
-    );
+    console.log(`Converting scan to PDF...`);
   } else {
     contentType = "Photo";
     destinationFolder = folder;
@@ -301,17 +238,11 @@ export async function singleScan(
     console.log("Scanner state is not Idle, aborting scan attempt...!");
   }
 
-  console.log("Afd is : " + scanStatus.adfState);
+  console.log("ADF is: " + scanStatus.adfState);
 
   const inputSource = scanStatus.getInputSource();
 
-  const scanWidth = getScanWidth(
-    scanConfig,
-    inputSource,
-    deviceCapabilities,
-    scanConfig.isDuplex,
-  );
-  const scanHeight = getScanHeight(
+  const { width: scanWidth, height: scanHeight } = getScanDimensions(
     scanConfig,
     inputSource,
     deviceCapabilities,
@@ -361,7 +292,7 @@ export async function waitAdfLoaded(
   pollingInterval: number,
   startScanDelay: number,
   getScanStatus: () => Promise<IScanStatus>,
-) {
+): Promise<void> {
   let ready = false;
   while (!ready) {
     let scanStatus: IScanStatus = await getScanStatus();

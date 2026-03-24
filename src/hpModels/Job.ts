@@ -1,7 +1,7 @@
 "use strict";
 
-import { parseXmlString } from "./ParseXmlString";
-import { EnumUtils } from "./EnumUtils";
+import { parseXmlString } from "./ParseXmlString.js";
+import { EnumUtils } from "./EnumUtils.js";
 
 export interface JobData {
   "j:Job": {
@@ -33,6 +33,7 @@ export enum JobState {
   Completed = "Completed",
   Processing = "Processing",
   Canceled = "Canceled",
+  Blocked = "Blocked",
 }
 
 export enum PageState {
@@ -122,7 +123,7 @@ export default class Job {
   get xResolution(): number | null {
     if (this.data["j:Job"].ScanJob[0].PreScanPage) {
       return parseInt(
-        this.data["j:Job"].ScanJob[0].PreScanPage?.[0]?.BufferInfo?.[0]
+        this.data["j:Job"].ScanJob[0].PreScanPage[0]?.BufferInfo?.[0]
           ?.ScanSettings?.[0]?.XResolution[0] ?? "",
       );
     }

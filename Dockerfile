@@ -1,12 +1,20 @@
-FROM node:22-alpine AS build
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /app
 
 COPY . .
-COPY src/commitInfo.json /app/src/commitInfo.json
 
-RUN yarn install --frozen-lockfile --dev \
- && yarn build:docker \
- && rm dist/*.d.ts dist/*.js.map
+RUN apk add --no-cache git \
+    && corepack enable \
+    && pnpm install --frozen-lockfile \
+    && pnpm build \
+    && rm dist/*.d.ts dist/*.js.map
+
+# New stage to install only production dependencies
+FROM --platform=$BUILDPLATFORM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable \
+    && pnpm install --frozen-lockfile --prod
 
 FROM node:22-alpine AS app
 ENV NODE_ENV=production
@@ -41,11 +49,11 @@ RUN export SYS_ARCH=$(uname -m); \
     echo "⬇️ Install shadow (for groupmod and usermod) and tzdata (for TZ env variable)" \
     && apk add --no-cache shadow tzdata curl bash
 
-# add builded app
+# Copy built app and production dependencies
 WORKDIR /app
-COPY --from=build /app/dist/ /app/package.json ./
-RUN yarn install --frozen-lockfile --production \
- && yarn cache clean --force
+COPY --from=build /app/dist/ ./
+COPY --from=build /app/package.json ./
+COPY --from=deps /app/node_modules/ ./node_modules/
 
 VOLUME ["/scan"]
 ENTRYPOINT ["/init"]

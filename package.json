@@ -1,6 +1,6 @@
 {
   "name": "node-hp-scan-to",
-  "version": "1.8.0",
+  "version": "1.10.0",
   "description": "Scan document to Computer for HP All-in-One Printers",
   "keywords": [
     "Officejet",
@@ -8,34 +8,37 @@
     "cli",
     "computer"
   ],
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": {
-    "node-hp-scan-to": "dist/index.js"
-  },
+  "bin": "dist/index.js",
   "scripts": {
     "prestart": "node getCommitId.js",
-    "start": "ts-node src/index.ts",
-    "start:single-scan": "ts-node src/index.ts single-scan",
-    "start:adf-autoscan": "ts-node src/index.ts adf-autoscan",
-    "start-debug": "ts-node src/index.ts -D",
+    "start": "tsx src/index.ts",
+    "start:single-scan": "tsx src/index.ts single-scan",
+    "start:clear-registrations": "tsx src/index.ts clear-registrations",
+    "start:adf-autoscan": "tsx src/index.ts adf-autoscan",
+    "start-debug": "tsx src/index.ts -D",
     "prebuild": "node getCommitId.js",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc -p ./tsconfig.typecheck.json --noEmit",
     "build": "tsc -p .",
-    "build:docker": "tsc -p .",
     "built-start": "tsc -p . && node --trace-warnings ./dist/index.js",
-    "start-dev": "nodemon",
+    "start-dev": "tsx watch src/index.ts",
     "prepublishOnly": "npm run prebuild && tsc -p ./ --outDir dist/",
-    "prettier": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "test": "npx mocha --require ts-node/register ./test/**/*.test.ts",
-    "test-ci": "npx nyc --reporter=lcov mocha -r ts-node/register ./test/**/*.test.ts && codecov"
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "test": "mocha",
+    "test:watch": "mocha --watch",
+    "test:coverage": "c8 --reporter=lcov --reporter=text --exclude=\"test/\" mocha"
   },
   "files": [
     "dist",
     "README.md"
   ],
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=20.11.0"
   },
   "author": {
     "email": "manuc66@gmail.com",
@@ -50,44 +53,37 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@eslint/js": "^9.28.0",
-    "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@types/chai": "^5.2.0",
-    "@types/chai-string": "^1.4.2",
-    "@types/config": "^3.3.0",
-    "@types/dateformat": "^5.0.0",
-    "@types/mocha": "^10.0.0",
-    "@types/node": "^24.0.0",
-    "@types/xml2js": "^0.4.11",
-    "@typescript-eslint/eslint-plugin": "^8.29.0",
-    "@typescript-eslint/parser": "^8.29.0",
-    "chai": "^5.2.0",
-    "codecov": "^3.8.3",
-    "eslint": "^9.28.0",
-    "eslint-config-prettier": "^10.1.5",
-    "eslint-plugin-prettier": "^5.4.1",
-    "globals": "^16.0.0",
-    "mocha": "^11.1.0",
-    "nock": "^14.0.0",
-    "nodemon": "^3.0.1",
-    "nyc": "^17.0.0",
-    "prettier": "^3.5.3",
-    "ts-mockito": "^2.6.1",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.2",
-    "typescript-eslint": "^8.33.1",
-    "yarn": "^1.22.19"
+    "@eslint/js": "^10.0.1",
+    "@types/chai": "^5.2.3",
+    "@types/config": "^4.4.0",
+    "@types/dateformat": "^5.0.3",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.5.0",
+    "@types/xml2js": "^0.4.14",
+    "c8": "^11.0.0",
+    "chai": "^6.2.2",
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.4.0",
+    "mocha": "^11.7.5",
+    "nock": "^14.0.11",
+    "prettier": "^3.8.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.57.1"
   },
   "dependencies": {
     "@commander-js/extra-typings": "^14.0.0",
-    "axios": "^1.8.3",
+    "axios": "^1.13.6",
     "bonjour-service": "^1.3.0",
-    "commander": "^14.0.0",
-    "config": "^4.0.0",
+    "commander": "^14.0.3",
+    "config": "^4.4.1",
     "dateformat": "^5.0.3",
-    "jspdf": "^3.0.0",
+    "form-data": "^4.0.5",
+    "jspdf": "^4.2.1",
+    "nanoid": "^5.1.7",
     "xml2js": "^0.6.2",
-    "zod": "^4.0.5"
+    "zod": "^4.3.6"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "pnpm@9.5.0"
 }

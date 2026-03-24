@@ -1,15 +1,16 @@
 import { describe } from "mocha";
 import fs from "node:fs";
 import path from "node:path";
-
-import { setupProgram } from "../src/program";
+import { setupProgram } from "../src/program.js";
 import { Help } from "@commander-js/extra-typings";
 import { expect } from "chai";
 
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 describe("README", () => {
   describe("command usage documentation", async () => {
-    before(async () => {});
-
     it("have up-to-date listen usage", async () => {
       expectComandUsageIsUpdated("listen");
     });
