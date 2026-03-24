@@ -142,7 +142,7 @@ export async function handleScanProcessingState(
         job.imageHeight !== null &&
         job.xResolution !== null
       ) {
-        convertToBmp(
+        await convertToBmp(
           job.imageWidth,
           job.imageHeight,
           job.xResolution,

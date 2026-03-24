@@ -1,9 +1,11 @@
 import fs from "node:fs";
+import * as stream from "node:stream";
+import { promisify } from "node:util";
 import { ScanMode } from "../type/scanMode.js";
 
+const finished = promisify(stream.finished);
 
-
-export function convertToBmp(
+export async function convertToBmp(
   width: number,
   height: number,
   dpi: number,
@@ -58,17 +60,6 @@ export function convertToBmp(
 
   const ppm = Math.round(dpi * 39.3701);
 
-  // Read raw image data
-  const rawData = fs.readFileSync(inputFile);
-
-  // Strict size check
-  const expectedSize = width * height * inputBytesPerPixel;
-  if (rawData.length !== expectedSize) {
-    throw new Error(
-      `Invalid input size. Expected ${expectedSize}, got ${rawData.length}`,
-    );
-  }
-
   // Prepare BMP header
   const header = Buffer.alloc(headerSize);
 
@@ -93,52 +84,72 @@ export function convertToBmp(
   header.writeUInt32LE(colorsInPalette, 46); // Number of colors in palette
   header.writeUInt32LE(0, 50); // Important colors
 
-  // Prepare BMP pixel data (top-down, with row padding)
-  const bmpData = Buffer.alloc(imageSize);
+  const outputStream = fs.createWriteStream(outputFile);
+  outputStream.write(header);
+  if (palette) {
+    outputStream.write(palette);
+  }
 
-  for (let y = 0; y < height; y++) {
-    const srcOffset = y * width * inputBytesPerPixel;
-    const dstOffset = y * rowSize;
+  const inputStream = fs.createReadStream(inputFile);
+  let bytesRead = 0;
+  const expectedSize = width * height * inputBytesPerPixel;
 
-    if (pixelFormat === ScanMode.Color) {
-      for (let x = 0; x < width; x++) {
-        const iSrc = srcOffset + x * inputBytesPerPixel;
-        const iDst = dstOffset + x * 3;
-        bmpData[iDst] = rawData[iSrc + 2]; // B
-        bmpData[iDst + 1] = rawData[iSrc + 1]; // G
-        bmpData[iDst + 2] = rawData[iSrc]; // R
-      }
-    } else if (pixelFormat === ScanMode.Gray) {
-      rawData.copy(bmpData, dstOffset, srcOffset, srcOffset + width);
-    } else {
-      // Lineart: Each byte in BMP = 8 pixels. Each pixel in input rawData = 0 (black) or nonzero (white)
-      for (let byteIdx = 0; byteIdx < Math.ceil(width / 8); byteIdx++) {
-        let byte = 0;
-        for (let bit = 0; bit < 8; bit++) {
-          const pixelIdx = byteIdx * 8 + bit;
-          if (pixelIdx >= width) {
-            break;
-          }
-          let value = rawData[srcOffset + pixelIdx];
-          if (options.invert) {
-            value = value ? 0 : 1;
-          }
-          // 0 = black, nonzero = white
-          if (value) {
-            byte |= 1 << (7 - bit);
-          }
+  const inputRowSize = width * inputBytesPerPixel;
+  const bmpRow = Buffer.alloc(rowSize);
+  let currentInputBuffer = Buffer.alloc(0);
+
+  for await (const chunk of inputStream) {
+    currentInputBuffer = Buffer.concat([currentInputBuffer, chunk as Buffer]);
+    bytesRead += (chunk as Buffer).length;
+
+    while (currentInputBuffer.length >= inputRowSize) {
+      const rowData = currentInputBuffer.subarray(0, inputRowSize);
+      currentInputBuffer = currentInputBuffer.subarray(inputRowSize);
+
+      bmpRow.fill(0);
+
+      if (pixelFormat === ScanMode.Color) {
+        for (let x = 0; x < width; x++) {
+          const iSrc = x * 3;
+          const iDst = x * 3;
+          bmpRow[iDst] = rowData[iSrc + 2]; // B
+          bmpRow[iDst + 1] = rowData[iSrc + 1]; // G
+          bmpRow[iDst + 2] = rowData[iSrc]; // R
         }
-        bmpData[dstOffset + byteIdx] = byte;
+      } else if (pixelFormat === ScanMode.Gray) {
+        rowData.copy(bmpRow, 0, 0, width);
+      } else {
+        // Lineart
+        for (let byteIdx = 0; byteIdx < Math.ceil(width / 8); byteIdx++) {
+          let byte = 0;
+          for (let bit = 0; bit < 8; bit++) {
+            const pixelIdx = byteIdx * 8 + bit;
+            if (pixelIdx >= width) {
+              break;
+            }
+            let value = rowData[pixelIdx];
+            if (options.invert === true) {
+              value = value ? 0 : 1;
+            }
+            if (value) {
+              byte |= 1 << (7 - bit);
+            }
+          }
+          bmpRow[byteIdx] = byte;
+        }
       }
+      outputStream.write(Buffer.from(bmpRow));
     }
   }
 
-  // Write BMP to disk
-  if (palette) {
-    fs.writeFileSync(outputFile, Buffer.concat([header, palette, bmpData]));
-  } else {
-    fs.writeFileSync(outputFile, Buffer.concat([header, bmpData]));
+  if (bytesRead !== expectedSize) {
+    throw new Error(
+      `Invalid input size. Expected ${expectedSize}, got ${bytesRead}`,
+    );
   }
+
+  outputStream.end();
+  await finished(outputStream);
 }
 
 function createGrayPalette(): Buffer {

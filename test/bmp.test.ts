@@ -15,7 +15,7 @@ describe("BMP Conversion", () => {
     fs.mkdirSync(tmpDir);
   }
 
-  it("converts 24-bit color (RGB) to BMP (BGR, bottom-up)", () => {
+  it("converts 24-bit color (RGB) to BMP (BGR, bottom-up)", async () => {
     const width = 2;
     const height = 2;
     const dpi = 200;
@@ -31,7 +31,7 @@ describe("BMP Conversion", () => {
     ]);
     fs.writeFileSync(inputFile, rawData);
 
-    convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Color);
+    await convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Color);
 
     const bmpData = fs.readFileSync(outputFile);
 
@@ -75,7 +75,7 @@ describe("BMP Conversion", () => {
     expect(bmpData[offset + 5]).to.equal(255); // R
   });
 
-  it("throws error if input file size is invalid", () => {
+  it("throws error if input file size is invalid", async () => {
     const width = 10;
     const height = 10;
     const dpi = 200;
@@ -84,12 +84,15 @@ describe("BMP Conversion", () => {
 
     fs.writeFileSync(inputFile, Buffer.alloc(10)); // Should be 300 for 10x10 Color
 
-    expect(() =>
-      convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Color),
-    ).to.throw(/Invalid input size/);
+    try {
+      await convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Color);
+      expect.fail("Should have thrown an error");
+    } catch (e: any) {
+      expect(e.message).to.match(/Invalid input size/);
+    }
   });
 
-  it("converts 8-bit gray to BMP with palette", () => {
+  it("converts 8-bit gray to BMP with palette", async () => {
     const width = 3;
     const height = 1;
     const dpi = 72;
@@ -100,7 +103,7 @@ describe("BMP Conversion", () => {
     const rawData = Buffer.from([0, 128, 255]);
     fs.writeFileSync(inputFile, rawData);
 
-    convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Gray);
+    await convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Gray);
 
     const bmpData = fs.readFileSync(outputFile);
     const pixelOffset = bmpData.readUInt32LE(10);
@@ -119,7 +122,7 @@ describe("BMP Conversion", () => {
     expect(bmpData[pixelOffset + 2]).to.equal(255);
   });
 
-  it("converts 1-bit lineart to BMP with palette and bit packing", () => {
+  it("converts 1-bit lineart to BMP with palette and bit packing", async () => {
     const width = 9;
     const height = 2;
     const dpi = 300;
@@ -137,7 +140,7 @@ describe("BMP Conversion", () => {
 
     fs.writeFileSync(inputFile, rawData);
 
-    convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Lineart);
+    await convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Lineart);
 
     const bmpData = fs.readFileSync(outputFile);
     const pixelOffset = bmpData.readUInt32LE(10);
@@ -156,7 +159,7 @@ describe("BMP Conversion", () => {
     expect(bmpData[pixelOffset + rowSize + 1]).to.equal(0x80);
   });
 
-  it("supports inverting colors in lineart mode", () => {
+  it("supports inverting colors in lineart mode", async () => {
     const width = 8;
     const height = 1;
     const dpi = 300;
@@ -169,7 +172,7 @@ describe("BMP Conversion", () => {
 
     // With invert: true
     // 1 -> 0, 0 -> 1 => 0 1 0 1 0 1 0 1 = 0x55
-    convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Lineart, {
+    await convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Lineart, {
       invert: true,
     });
 
