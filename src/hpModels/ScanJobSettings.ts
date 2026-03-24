@@ -3,8 +3,8 @@ import { InputSource } from "../type/InputSource.js";
 import { parseXmlString } from "./ParseXmlString.js";
 import type { IScanJobSettings } from "./IScanJobSettings.js";
 import { ScanMode } from "../type/scanMode.js";
-import ScanCaps from "./ScanCaps";
-import { ScanFormat } from "../type/scanFormat";
+import type ScanCaps from "./ScanCaps.js";
+import type { ScanFormat } from "../type/scanFormat.js";
 
 export default class ScanJobSettings implements IScanJobSettings {
   private readonly inputSource: InputSource;
