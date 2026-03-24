@@ -65,6 +65,13 @@ export function convertToBmp(
   // Read raw image data
   const rawData = fs.readFileSync(inputFile);
 
+  // Header checks (54 bytes)
+  if (rawData.length < width * height * bytesPerPixel) {
+    throw new Error(
+      `Input file too small: expected at least ${width * height * bytesPerPixel} bytes, got ${rawData.length}`,
+    );
+  }
+
   // Prepare BMP header
   const header = Buffer.alloc(headerSize);
 
@@ -82,8 +89,10 @@ export function convertToBmp(
   header.writeUInt16LE(bitsPerPixel, 28); // Bits per pixel
   header.writeUInt32LE(0, 30); // Compression (0 = none)
   header.writeUInt32LE(imageSize, 34); // Image size
-  header.writeInt32LE(ppm, 38); // Horizontal resolution
-  header.writeInt32LE(ppm, 42); // Vertical resolution
+  // Horizontal resolution
+  header.writeInt32LE(ppm, 38);
+  // Vertical resolution
+  header.writeInt32LE(ppm, 42);
   header.writeUInt32LE(colorsInPalette, 46); // Number of colors in palette
   header.writeUInt32LE(0, 50); // Important colors
 
