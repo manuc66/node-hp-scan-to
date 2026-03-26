@@ -15,8 +15,7 @@ import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
 import { EventType } from "./hpModels/WalkupScanToCompEvent.js";
 import { type EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus.js";
 import type EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
-import { ScanFormat } from "./type/scanFormat.js";
-import { convertToBmp } from "./imageFormats/bmp.js";
+import type { ImageFormat, JobDesc } from "./imageFormats/index.js";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   jobUrl: string,
@@ -50,20 +49,85 @@ async function fixJpegHeight(filePath: string): Promise<number | null> {
   return null;
 }
 
-function createScanPage(
-  job: Job,
-  currentPageNumber: number,
-  filePath: string,
-  sizeFixed: number | null,
-): ScanPage {
-  const height = sizeFixed ?? job.imageHeight;
+
+
+async function handleNativeJpegFlow(folder: string, scanCount: number, currentPageNumber: number, filePattern: string | undefined, date: Date, job: JobDesc, inputSource: InputSource) {
+  // don't use a temp file write directly to target
+  const destinationFilePath: string = await PathHelper.getFileForPage(
+    folder,
+    scanCount,
+    currentPageNumber,
+    filePattern,
+    "jpg",
+    date
+  );
+  console.log(
+    `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`
+  );
+
+  await HPApi.downloadPage(job.binaryURL, destinationFilePath);
+  const adfHeight = await getAndFixHeightWHenAdf(
+    inputSource,
+    destinationFilePath,
+    job.imageHeight
+  );
+  const height = adfHeight ?? job.imageHeight;
   return {
-    path: filePath,
+    path: destinationFilePath,
     pageNumber: currentPageNumber,
-    width: job.imageWidth ?? 0,
-    height: height ?? 0,
-    xResolution: job.xResolution ?? 200,
-    yResolution: job.yResolution ?? 200,
+    width: job.imageWidth,
+    height: height,
+    xResolution: job.xResolution,
+    yResolution: job.yResolution
+  };
+}
+
+async function handleOtherFormatFlow(tempFolder: string, scanCount: number, currentPageNumber: number, filePattern: string | undefined, date: Date, job: JobDesc, folder: string, targetImageFormat: ImageFormat, scanJobSettings: IScanJobSettings) {
+  // download to temp
+  const tempDestinationFilePath = await PathHelper.getFileForPage(
+    tempFolder,
+    scanCount,
+    currentPageNumber,
+    filePattern,
+    "raw",
+    date
+  );
+
+  console.log(
+    `Downloading page ${job.currentPageNumber} → ${tempDestinationFilePath}`
+  );
+
+  const downloadMeta = await HPApi.downloadPageWithMeta(
+    job.binaryURL,
+    tempDestinationFilePath
+  );
+
+  const destinationFilePath = await PathHelper.getFileForPage(
+    folder,
+    scanCount,
+    currentPageNumber,
+    filePattern,
+    targetImageFormat.getExtension(),
+    date
+  );
+
+  const savedImage = await targetImageFormat.save(
+    downloadMeta,
+    job.imageWidth,
+    job.imageHeight,
+    job.xResolution,
+    scanJobSettings.mode,
+    destinationFilePath
+  );
+
+  console.log("Page downloaded to:", destinationFilePath);
+  return {
+    path: destinationFilePath,
+    pageNumber: currentPageNumber,
+    width: savedImage.width,
+    height: savedImage.height,
+    xResolution: savedImage.xResolution,
+    yResolution: savedImage.yResolution
   };
 }
 
@@ -78,82 +142,43 @@ export async function handleScanProcessingState(
   filePattern: string | undefined,
   date: Date,
 ): Promise<ScanPage | null> {
+  const targetImageFormat = scanJobSettings.format;
   if (
     job.pageState === PageState.ReadyToUpload &&
     job.binaryURL !== null &&
     job.currentPageNumber !== null
   ) {
+    const jobDesc: JobDesc = {
+      yResolution : job.yResolution ?? 200,
+      xResolution : job.xResolution ?? 200,
+      imageWidth : job.imageWidth ?? 0,
+      imageHeight : job.imageHeight ?? 0,
+      binaryURL : job.binaryURL,
+      currentPageNumber : job.currentPageNumber
+    };
 
-    let destinationFilePath: string;
-    if (scanJobSettings.format === ScanFormat.Jpeg) {
-      destinationFilePath = await PathHelper.getFileForPage(
+    if (targetImageFormat.isJpeg()) {
+      return await handleNativeJpegFlow(
         folder,
         scanCount,
         currentPageNumber,
         filePattern,
-        "jpg",
         date,
-      );
-
-      console.log(
-        `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`,
-      );
-
-      await HPApi.downloadPage(
-        job.binaryURL,
-        destinationFilePath,
-      );
-      const adfHeight = await getAndFixHeightWHenAdf(
+        jobDesc,
         inputSource,
-        destinationFilePath,
-        job.imageHeight,
       );
-      return createScanPage(job, currentPageNumber, destinationFilePath, adfHeight);
     } else {
-      const tempDestinationFilePath = await PathHelper.getFileForPage(
+      return await handleOtherFormatFlow(
         tempFolder,
         scanCount,
         currentPageNumber,
         filePattern,
-        "raw",
         date,
-      );
-
-      console.log(
-        `Downloading page ${job.currentPageNumber} → ${tempDestinationFilePath}`,
-      );
-
-      const rawImagePath = await HPApi.downloadPage(
-        job.binaryURL,
-        tempDestinationFilePath,
-      );
-
-      destinationFilePath = await PathHelper.getFileForPage(
+        jobDesc,
         folder,
-        scanCount,
-        currentPageNumber,
-        filePattern,
-        "bmp",
-        date,
+        targetImageFormat,
+        scanJobSettings,
       );
-
-      if (
-        job.imageWidth !== null &&
-        job.imageHeight !== null &&
-        job.xResolution !== null
-      ) {
-        await convertToBmp(
-          job.imageWidth,
-          job.imageHeight,
-          job.xResolution,
-          rawImagePath,
-          destinationFilePath,
-          scanJobSettings.mode,
-        );
-      }
-
-      console.log("Page downloaded to:", destinationFilePath);
-      return createScanPage(job, currentPageNumber, destinationFilePath, null);
     }
   } else {
     console.log(`Unknown pageState: ${job.pageState}`);

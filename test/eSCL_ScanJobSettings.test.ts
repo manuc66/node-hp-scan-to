@@ -8,6 +8,7 @@ import { ScanMode } from "../src/type/scanMode.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
 
 import { fileURLToPath } from "url";
+import { createImageFormat } from "../src/imageFormats/index.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -17,7 +18,7 @@ describe("ScanJobSettings", () => {
       const scanJobSettings = new EsclScanJobSettings(
         InputSource.Adf,
         "Document",
-        ScanFormat.Jpeg,
+        createImageFormat(ScanFormat.Jpeg),
         200,
         ScanMode.Color,
         null,
@@ -37,7 +38,7 @@ describe("ScanJobSettings", () => {
       const scanJobSettings = new EsclScanJobSettings(
         InputSource.Platen,
         "Document",
-        ScanFormat.Jpeg,
+        createImageFormat(ScanFormat.Jpeg),
         600,
         ScanMode.Color,
         2481,

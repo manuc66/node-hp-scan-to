@@ -3,7 +3,13 @@ import { InputSource } from "../type/InputSource.js";
 import { parseXmlString } from "./ParseXmlString.js";
 import type { IScanJobSettings } from "./IScanJobSettings.js";
 import { ScanMode } from "../type/scanMode.js";
-import { ScanFormat } from "../type/scanFormat.js";
+import type { ImageFormat } from "../imageFormats/index.js";
+
+export enum DocumentFormatExt {
+  Jpeg = "image/jpeg",
+  Raw = "application/octet-stream",
+  Pdf = "application/pdf",
+}
 
 export default class EsclScanJobSettings implements IScanJobSettings {
   private readonly inputSource: InputSource;
@@ -13,12 +19,12 @@ export default class EsclScanJobSettings implements IScanJobSettings {
   private readonly width: number | null;
   private readonly height: number | null;
   private readonly isDuplex: boolean;
-  private readonly _format: ScanFormat;
+  private readonly _format: ImageFormat;
 
   constructor(
     inputSource: InputSource,
     contentType: "Document" | "Photo",
-    format: ScanFormat,
+    format: ImageFormat,
     resolution: number,
     mode: ScanMode,
     width: number | null,
@@ -123,10 +129,10 @@ export default class EsclScanJobSettings implements IScanJobSettings {
       parsed.ScanSettings.ScanRegions[0].ScanRegion[0].Height = this.height;
     }
 
-    if (this.format === ScanFormat.Jpeg) {
-      parsed.ScanSettings.DocumentFormatExt = "image/jpeg";
+    if (this.format.isJpeg()) {
+      parsed.ScanSettings.DocumentFormatExt = this.format.getDocumentFormatExt();
     } else {
-      parsed.ScanSettings.DocumentFormatExt = "application/octet-stream";
+      parsed.ScanSettings.DocumentFormatExt = DocumentFormatExt.Raw;
     }
 
     if (this.inputSource === InputSource.Adf) {

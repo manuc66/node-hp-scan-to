@@ -4,7 +4,12 @@ import { parseXmlString } from "./ParseXmlString.js";
 import type { IScanJobSettings } from "./IScanJobSettings.js";
 import { ScanMode } from "../type/scanMode.js";
 import type ScanCaps from "./ScanCaps.js";
-import { ScanFormat } from "../type/scanFormat.js";
+import type { ImageFormat } from "../imageFormats/index.js";
+
+export enum DeviceFormat {
+  Jpeg = "Jpeg",
+  Raw = "Raw",
+}
 
 export default class ScanJobSettings implements IScanJobSettings {
   private readonly inputSource: InputSource;
@@ -14,19 +19,19 @@ export default class ScanJobSettings implements IScanJobSettings {
   private readonly width: number | null;
   private readonly height: number | null;
   private readonly isDuplex: boolean;
-  private readonly _format: ScanFormat;
+  private readonly _format: ImageFormat;
   private readonly scanCaps: ScanCaps;
 
   constructor(
     inputSource: InputSource,
     contentType: "Document" | "Photo",
-    format: ScanFormat,
+    format: ImageFormat,
     resolution: number,
     mode: ScanMode,
     width: number | null,
     height: number | null,
     isDuplex: boolean,
-    scanCaps: ScanCaps
+    scanCaps: ScanCaps,
   ) {
     this.inputSource = inputSource;
     this.contentType = contentType;
@@ -92,6 +97,7 @@ export default class ScanJobSettings implements IScanJobSettings {
         YResolution: number[];
         ColorSpace: string[];
         BitDepth: number[];
+        ToneMap: [{ Threshold: number[] }];
         AdfOptions?: [{ AdfOption: ["Duplex"] }];
         ContentType: string[];
       };
@@ -109,24 +115,20 @@ export default class ScanJobSettings implements IScanJobSettings {
       parsed.ScanSettings.ColorSpace = ["Color"];
       parsed.ScanSettings.BitDepth = [8];
       colorType = "Color8";
-    }
-    else {
+    } else {
       parsed.ScanSettings.ColorSpace = ["K"];
       parsed.ScanSettings.BitDepth = [1];
+      parsed.ScanSettings.ToneMap[0].Threshold[0] = 128;
       colorType = "K1";
     }
 
-    if (!this.scanCaps.getSupportedFormats(colorType).includes(this.format)) {
-      parsed.ScanSettings.Format = this.scanCaps.getSupportedFormats(colorType)[0];
+    const deviceFormat = this.format.getDeviceFormat();
+    if (!this.scanCaps.getSupportedFormats(colorType).includes(deviceFormat)) {
+      parsed.ScanSettings.Format =
+        this.scanCaps.getSupportedFormats(colorType)[0];
+    } else {
+        parsed.ScanSettings.Format = deviceFormat;
     }
-    else {
-      if (this.format === ScanFormat.Bmp) {
-        parsed.ScanSettings.Format = "Raw";
-      } else {
-        parsed.ScanSettings.Format = this.format;
-      }
-    }
-
 
     if (this.width !== null) {
       parsed.ScanSettings.Width = this.width;
