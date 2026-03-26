@@ -2,12 +2,14 @@ import type { DirectoryConfig } from "./directoryConfig.js";
 import type { PaperlessConfig } from "../paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "../nextcloud/NextcloudConfig.js";
 import type { ScanMode } from "./scanMode.js";
+import type { ScanFormat } from "./scanFormat.js";
 
 export interface ScanConfig {
   resolution: number;
   mode: ScanMode;
   width: number | "max" | undefined;
   height: number | "max" | undefined;
+  format: ScanFormat;
   directoryConfig: DirectoryConfig;
   paperlessConfig: PaperlessConfig | undefined;
   nextcloudConfig: NextcloudConfig | undefined;

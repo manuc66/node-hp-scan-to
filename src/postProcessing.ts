@@ -86,7 +86,7 @@ async function handleImagePostProcessing(
   const paperlessConfig = scanConfig.paperlessConfig;
   const nextcloudConfig = scanConfig.nextcloudConfig;
 
-  displayJpegScan(scanJobContent, scanCount);
+  displayImageScan(scanJobContent, scanCount);
   if (paperlessConfig) {
     if (paperlessConfig.groupMultiPageScanIntoAPdf) {
       await mergeToPdfAndUploadAsSingleDocumentToPaperless(
@@ -140,7 +140,7 @@ function displayPdfScan(
   );
 }
 
-function displayJpegScan(scanJobContent: ScanContent, scanCount: number) {
+function displayImageScan(scanJobContent: ScanContent, scanCount: number) {
   console.log(`Scan #${scanCount} completed with the following pages:`);
   scanJobContent.elements.forEach((e) =>
     console.log(

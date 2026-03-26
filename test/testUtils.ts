@@ -4,6 +4,8 @@ import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
 import type { IScanStatus } from "../src/hpModels/IScanStatus.js";
 import type { IScanJobSettings } from "../src/hpModels/IScanJobSettings.js";
 
+import { ScanFormat } from "../src/type/scanFormat.js";
+
 export function createDefaultScanConfig(): ScanConfig {
   return {
     resolution: 200,
@@ -21,6 +23,7 @@ export function createDefaultScanConfig(): ScanConfig {
     nextcloudConfig: undefined,
     preferEscl: false,
     paperOrientation: "portrait",
+    format: ScanFormat.Jpeg,
   };
 }
 
@@ -38,7 +41,7 @@ export function createDefaultDeviceCapabilities(): DeviceCapabilities {
     hasAdfDuplex: false,
     isEscl: false,
     getScanStatus: () => Promise.resolve({} as IScanStatus),
-    createScanJobSettings: (_) => ({}) as IScanJobSettings,
+    createScanJobSettings: (..._args: unknown[]) => ({}) as IScanJobSettings,
     submitScanJob: () => Promise.resolve("fake-value"),
   };
 }
