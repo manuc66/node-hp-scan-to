@@ -2,6 +2,14 @@ import fs from "node:fs";
 import { pipeline, Transform, type TransformCallback } from "node:stream";
 import { promisify } from "node:util";
 import { ScanMode } from "../type/scanMode.js";
+import {
+  buildSavedImage,
+  type DownloadMeta,
+  type ImageFormat,
+  type SavedImage,
+} from "./index.js";
+import { DeviceFormat } from "../hpModels/ScanJobSettings.js";
+import { DocumentFormatExt } from "../hpModels/EsclScanJobSettings.js";
 
 const pipelineAsync = promisify(pipeline);
 
@@ -16,12 +24,53 @@ const BMP_HEADER_SIZE = BMP_FILE_HEADER_SIZE + BMP_INFO_HEADER_SIZE; // 54
 
 interface PixelFormatInfo {
   bitsPerPixel: number;
-  /** Bytes per pixel in the raw input stream (1 for lineart = 1 byte per pixel, unpacked) */
-  inputBytesPerPixel: number;
   palette?: Buffer;
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
+
+export class BmpFormat implements ImageFormat {
+  getExtension() {
+    return "bmp";
+  }
+
+  getDeviceFormat(): DeviceFormat {
+    return DeviceFormat.Raw;
+  }
+
+  getDocumentFormatExt(): DocumentFormatExt {
+    return DocumentFormatExt.Raw;
+  }
+
+  isJpeg() {
+    return false;
+  }
+
+  async save(
+    downloadMeta: DownloadMeta,
+    imageWidth: number,
+    imageHeight: number,
+    xResolution: number,
+    mode: ScanMode,
+    destinationFilePath: string,
+  ): Promise<SavedImage> {
+    await convertToBmp(
+      imageWidth,
+      imageHeight,
+      xResolution,
+      downloadMeta.path,
+      destinationFilePath,
+      mode,
+    );
+
+    return buildSavedImage(
+      destinationFilePath,
+      imageWidth,
+      imageHeight,
+      xResolution,
+    );
+  }
+}
 
 export async function convertToBmp(
   width: number,
@@ -36,16 +85,16 @@ export async function convertToBmp(
 
   const formatInfo = getPixelFormatInfo(pixelFormat);
   const geometry = computeGeometry(width, height, dpi, formatInfo);
-
   const header = buildBmpHeader(width, height, geometry, formatInfo);
+  //
+  // // ── Debug: preserve raw device output alongside the converted file ──
+  // const debugRawPath = outputFile.replace(/\.[^.]+$/, ".raw");
+  // await fs.promises.copyFile(inputFile, debugRawPath);
+  // // ───────────────────────────────────────────────────────────────────
 
   const inputStream = fs.createReadStream(inputFile);
   const outputStream = fs.createWriteStream(outputFile);
 
-  // Write BMP header + optional palette before piping pixel data.
-  // We prepend them via a PassThrough-style first chunk in the Transform,
-  // so the whole write path goes through pipeline() and back-pressure is
-  // fully managed end-to-end.
   const transformer = new BmpRowTransformer(
     width,
     height,
@@ -75,23 +124,14 @@ function validateDimensions(width: number, height: number, dpi: number): void {
 function getPixelFormatInfo(pixelFormat: ScanMode): PixelFormatInfo {
   switch (pixelFormat) {
     case ScanMode.Color:
-      return { bitsPerPixel: 24, inputBytesPerPixel: 3 };
+      return { bitsPerPixel: 24 };
 
     case ScanMode.Gray:
-      return {
-        bitsPerPixel: 8,
-        inputBytesPerPixel: 1,
-        palette: createGrayPalette(),
-      };
+      return { bitsPerPixel: 8, palette: createGrayPalette() };
 
     case ScanMode.Lineart:
-      // Contract: producer sends 1 unpacked byte per pixel (0 or 1).
-      // This Transform packs them to 1 bit per pixel in BMP output.
-      return {
-        bitsPerPixel: 1,
-        inputBytesPerPixel: 1,
-        palette: createMonoPalette(),
-      };
+      // Device sends packed bits, MSB-first, 1 bit per pixel.
+      return { bitsPerPixel: 1, palette: createMonoPalette() };
 
     default:
       throw new Error(`Unsupported pixel format: ${String(pixelFormat)}`);
@@ -101,9 +141,9 @@ function getPixelFormatInfo(pixelFormat: ScanMode): PixelFormatInfo {
 // ── Geometry ─────────────────────────────────────────────────────────────────
 
 interface BmpGeometry {
-  /** Bytes per BMP row (padded to 4-byte boundary) */
+  /** Bytes per BMP output row (padded to 4-byte boundary) */
   bmpRowSize: number;
-  /** Bytes per raw input row */
+  /** Bytes per raw input row as sent by the device */
   inputRowSize: number;
   paletteSize: number;
   colorsInPalette: number;
@@ -117,17 +157,22 @@ function computeGeometry(
   dpi: number,
   formatInfo: PixelFormatInfo,
 ): BmpGeometry {
-  const { bitsPerPixel, inputBytesPerPixel, palette } = formatInfo;
+  const { bitsPerPixel, palette } = formatInfo;
 
   let bmpRowSize: number;
+  let inputRowSize: number;
+
   if (bitsPerPixel === 1) {
-    // Pack to bits, then pad to 4-byte boundary
+    // Packed bits, padded to 4-byte boundary for BMP output
     bmpRowSize = ((width + 31) & ~31) >> 3;
+    // Device also sends packed: ⌈width / 8⌉ bytes per row
+    inputRowSize = Math.ceil(width / 8);
   } else {
-    bmpRowSize = ((bitsPerPixel / 8) * width + 3) & ~3;
+    const bytesPerPixel = bitsPerPixel / 8;
+    bmpRowSize = (bytesPerPixel * width + 3) & ~3;
+    inputRowSize = bytesPerPixel * width;
   }
 
-  const inputRowSize = width * inputBytesPerPixel;
   const paletteSize = palette?.length ?? 0;
   const colorsInPalette = paletteSize / 4;
   const imageSize = bmpRowSize * height;
@@ -185,21 +230,10 @@ function buildBmpHeader(
 
 // ── Stream Transform ─────────────────────────────────────────────────────────
 
-/**
- * Transforms a raw pixel stream into a BMP byte stream.
- *
- * Back-pressure is handled automatically by Node's stream pipeline:
- * - `this.push()` returns false when the downstream is full → Transform pauses.
- * - No manual drain handling needed; pipeline() wires everything correctly.
- *
- * Buffer strategy: we maintain a single carry buffer (`remainder`) that holds
- * partial row bytes between chunks. Its size is bounded to < inputRowSize,
- * so memory usage is O(scanWidth) rather than O(fileSize).
- */
 class BmpRowTransformer extends Transform {
   private readonly bmpRow: Buffer;
   private remainder: Buffer;
-  private totalInputBytesExpected: number;
+  private readonly totalInputBytesExpected: number;
   private totalInputBytesReceived = 0;
   private headerWritten = false;
 
@@ -215,7 +249,7 @@ class BmpRowTransformer extends Transform {
     super();
     this.bmpRow = Buffer.alloc(geo.bmpRowSize);
     this.remainder = Buffer.alloc(0);
-    this.totalInputBytesExpected = width * height * geo.inputRowSize / width;
+    this.totalInputBytesExpected = geo.inputRowSize * height;
   }
 
   override _transform(
@@ -223,18 +257,14 @@ class BmpRowTransformer extends Transform {
     _encoding: string,
     callback: TransformCallback,
   ): void {
-    // Prepend header + palette on first chunk
     if (!this.headerWritten) {
       this.push(this.bmpHeader);
-      if (this.palette) {
-        this.push(this.palette);
-      }
+      if (this.palette) {this.push(this.palette);}
       this.headerWritten = true;
     }
 
     this.totalInputBytesReceived += chunk.length;
 
-    // Prepend any leftover bytes from the previous chunk
     const data =
       this.remainder.length > 0
         ? Buffer.concat([this.remainder, chunk])
@@ -247,11 +277,9 @@ class BmpRowTransformer extends Transform {
       const rowData = data.subarray(offset, offset + inputRowSize);
       offset += inputRowSize;
       this.encodeRow(rowData);
-      // push() respects back-pressure; pipeline() will pause us if needed
-      this.push(Buffer.from(this.bmpRow)); // copy: bmpRow is reused
+      this.push(Buffer.from(this.bmpRow));
     }
 
-    // Keep leftover bytes (< one row) for the next chunk
     this.remainder =
       data.length > offset ? data.subarray(offset) : Buffer.alloc(0);
 
@@ -284,6 +312,7 @@ class BmpRowTransformer extends Transform {
 
     switch (this.pixelFormat) {
       case ScanMode.Color:
+        // Device: R,G,B — BMP expects B,G,R
         for (let x = 0; x < this.width; x++) {
           const src = x * 3;
           const dst = x * 3;
@@ -298,20 +327,17 @@ class BmpRowTransformer extends Transform {
         break;
 
       case ScanMode.Lineart:
+        // Device sends packed bits, MSB-first, 1 = black ink.
+        // BMP 1bpp palette: index 0 = black, index 1 = white.
+        // So device bit 1 (ink) → BMP bit 1, no remapping needed unless invert.
         for (let byteIdx = 0; byteIdx < Math.ceil(this.width / 8); byteIdx++) {
-          let byte = 0;
-          for (let bit = 0; bit < 8; bit++) {
-            const pixelIdx = byteIdx * 8 + bit;
-            if (pixelIdx >= this.width) {
-              break;
-            }
-            let value = rowData[pixelIdx];
-            if (this.options.invert === true) {
-              value = value ? 0 : 1;
-            }
-            if (value) {
-              byte |= 1 << (7 - bit);
-            }
+          let byte = rowData[byteIdx];
+          if (this.options.invert === true) {byte ^= 0xff;}
+          // Zero-pad the last byte's trailing bits beyond image width
+          const bitsInByte = Math.min(8, this.width - byteIdx * 8);
+          if (bitsInByte < 8) {
+            const mask = (0xff << (8 - bitsInByte)) & 0xff;
+            byte &= mask;
           }
           this.bmpRow[byteIdx] = byte;
         }
@@ -325,7 +351,7 @@ class BmpRowTransformer extends Transform {
 function createGrayPalette(): Buffer {
   const palette = Buffer.alloc(256 * 4);
   for (let i = 0; i < 256; i++) {
-    palette[i * 4 + 0] = i; // B
+    palette[i * 4] = i; // B
     palette[i * 4 + 1] = i; // G
     palette[i * 4 + 2] = i; // R
     palette[i * 4 + 3] = 0; // reserved

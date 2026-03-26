@@ -16,6 +16,7 @@ import type { IScanJobSettings } from "../src/hpModels/IScanJobSettings.js";
 import type { ScanMode } from "../src/type/scanMode.js";
 
 import type { IEvent } from "../src/hpModels/Event.js";
+import type { ImageFormat } from "../src/imageFormats/index.js";
 
 describe("scanProcessing Format Selection", () => {
   const folder = "/tmp/folder";
@@ -47,7 +48,7 @@ describe("scanProcessing Format Selection", () => {
       isDuplex: false,
     };
 
-    let capturedFormat: ScanFormat | undefined;
+    let capturedFormat: ImageFormat | undefined;
     const deviceCapabilities: DeviceCapabilities = {
       ...createDefaultDeviceCapabilities(),
       getScanStatus: async () => {
@@ -61,7 +62,7 @@ describe("scanProcessing Format Selection", () => {
       createScanJobSettings: (
         _inputSource: InputSource,
         _contentType: "Document" | "Photo",
-        format: ScanFormat,
+        format: ImageFormat,
         _resolution: number,
         _mode: ScanMode,
         _width: number | null,
@@ -87,7 +88,7 @@ describe("scanProcessing Format Selection", () => {
       // ignore
     }
 
-    expect(capturedFormat).to.equal(ScanFormat.Jpeg);
+    expect(capturedFormat?.getDeviceFormat()).to.equal(ScanFormat.Jpeg);
   });
 
   it("scanFromAdf forces Jpeg when PDF is requested and format is Bmp", async () => {
@@ -100,7 +101,7 @@ describe("scanProcessing Format Selection", () => {
       startScanDelay: 0,
     };
 
-    let capturedFormat: ScanFormat | undefined;
+    let capturedFormat: ImageFormat | undefined;
     const deviceCapabilities: DeviceCapabilities = {
       ...createDefaultDeviceCapabilities(),
       getScanStatus: async () => {
@@ -114,7 +115,7 @@ describe("scanProcessing Format Selection", () => {
       createScanJobSettings: (
         _inputSource: InputSource,
         _contentType: "Document" | "Photo",
-        format: ScanFormat,
+        format: ImageFormat,
         _resolution: number,
         _mode: ScanMode,
         _width: number | null,
@@ -138,7 +139,7 @@ describe("scanProcessing Format Selection", () => {
       // ignore
     }
 
-    expect(capturedFormat).to.equal(ScanFormat.Jpeg);
+    expect(capturedFormat?.getDeviceFormat()).to.equal(ScanFormat.Jpeg);
   });
 
   it("saveScanFromEvent forces Jpeg when isPdf is true and format is Bmp", async () => {
@@ -147,7 +148,7 @@ describe("scanProcessing Format Selection", () => {
       format: ScanFormat.Bmp,
     };
 
-    let capturedFormat: ScanFormat | undefined;
+    let capturedFormat: ImageFormat | undefined;
     const deviceCapabilities: DeviceCapabilities = {
       ...createDefaultDeviceCapabilities(),
       getScanStatus: async () => {
@@ -161,7 +162,7 @@ describe("scanProcessing Format Selection", () => {
       createScanJobSettings: (
         _inputSource: InputSource,
         _contentType: "Document" | "Photo",
-        format: ScanFormat,
+        format: ImageFormat,
         _resolution: number,
         _mode: ScanMode,
         _width: number | null,
@@ -200,6 +201,6 @@ describe("scanProcessing Format Selection", () => {
       // ignore
     }
 
-    expect(capturedFormat).to.equal(ScanFormat.Jpeg);
+    expect(capturedFormat?.getDeviceFormat()).to.equal(ScanFormat.Jpeg);
   });
 });

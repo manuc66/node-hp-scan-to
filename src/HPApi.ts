@@ -602,6 +602,31 @@ export default class HPApi {
     return destination;
   }
 
+  static async downloadPageWithMeta(
+    binaryURL: string,
+    destination: string,
+    timeout?: number,
+  ): Promise<{ path: string; contentType: string | undefined }> {
+    const { data, headers }: AxiosResponse<Stream> = await axios.request<Stream>({
+      baseURL: `http://${printerIP}:8080`,
+      url: binaryURL,
+      method: "GET",
+      responseType: "stream",
+      ...(timeout !== undefined && { timeout }),
+    });
+
+    const destinationFileStream = fs.createWriteStream(destination);
+    data.pipe(destinationFileStream);
+
+    await promisify(stream.finished)(destinationFileStream);
+
+    const contentType = typeof headers["content-type"] === "string"
+      ? headers["content-type"]
+      : undefined;
+
+    return { path: destination, contentType };
+  }
+
   static async esclWaitDeviceBusy<T>(fn: () => Promise<T>): Promise<T> {
     let i = 0;
     do {
