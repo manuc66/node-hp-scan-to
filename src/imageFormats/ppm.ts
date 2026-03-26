@@ -229,13 +229,19 @@ class PpmRowTransformer extends Transform {
         const packedWidth = Math.ceil(this.width / 8);
         const out = Buffer.alloc(packedWidth, 0);
 
-        for (let x = 0; x < this.width; x++) {
-          const isInk = this.options.invert === true
-            ? rowData[x] !== 0 // inverted: non-zero device byte = black
-            : rowData[x] === 0; // normal:   zero device byte    = black ink
+        const invert = this.options.invert === true;
 
-          if (isInk) {
-            out[x >> 3] |= 0x80 >> (x & 7);
+        if (!invert) {
+          for (let x = 0; x < this.width; x++) {
+            if (rowData[x] === 0) {
+              out[x >> 3] |= 0x80 >> (x & 7);
+            }
+          }
+        } else {
+          for (let x = 0; x < this.width; x++) {
+            if (rowData[x] !== 0) {
+              out[x >> 3] |= 0x80 >> (x & 7);
+            }
           }
         }
 
