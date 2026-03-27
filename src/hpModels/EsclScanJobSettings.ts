@@ -130,7 +130,8 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     }
 
     if (this.format.isJpeg()) {
-      parsed.ScanSettings.DocumentFormatExt = this.format.getDocumentFormatExt();
+      parsed.ScanSettings.DocumentFormatExt =
+        this.format.getDocumentFormatExt();
     } else {
       parsed.ScanSettings.DocumentFormatExt = DocumentFormatExt.Raw;
     }

@@ -607,22 +607,24 @@ export default class HPApi {
     destination: string,
     timeout?: number,
   ): Promise<{ path: string; contentType: string | undefined }> {
-    const { data, headers }: AxiosResponse<Stream> = await axios.request<Stream>({
-      baseURL: `http://${printerIP}:8080`,
-      url: binaryURL,
-      method: "GET",
-      responseType: "stream",
-      ...(timeout !== undefined && { timeout }),
-    });
+    const { data, headers }: AxiosResponse<Stream> =
+      await axios.request<Stream>({
+        baseURL: `http://${printerIP}:8080`,
+        url: binaryURL,
+        method: "GET",
+        responseType: "stream",
+        ...(timeout !== undefined && { timeout }),
+      });
 
     const destinationFileStream = fs.createWriteStream(destination);
     data.pipe(destinationFileStream);
 
     await promisify(stream.finished)(destinationFileStream);
 
-    const contentType = typeof headers["content-type"] === "string"
-      ? headers["content-type"]
-      : undefined;
+    const contentType =
+      typeof headers["content-type"] === "string"
+        ? headers["content-type"]
+        : undefined;
 
     return { path: destination, contentType };
   }

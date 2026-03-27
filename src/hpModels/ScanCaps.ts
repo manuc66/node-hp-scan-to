@@ -9,13 +9,13 @@ export interface ScanCapsData {
       ColorEntry: {
         ColorType: string[];
         Formats: {
-          Format: string[]
-        }[],
+          Format: string[];
+        }[];
         ImageTransforms: {
-          ImageTransform: string[]
-        }
-      }[]
-    }[]
+          ImageTransform: string[];
+        };
+      }[];
+    }[];
     Platen?: {
       InputSourceCaps: {
         MaxWidth: string[];
@@ -51,48 +51,40 @@ export default class ScanCaps {
   }
 
   get platenMaxWidth(): number | null {
-    const maxWidth = this.data.ScanCaps.Platen?.[0]?.InputSourceCaps?.[0]?.MaxWidth?.[0];
+    const maxWidth =
+      this.data.ScanCaps.Platen?.[0]?.InputSourceCaps?.[0]?.MaxWidth?.[0];
     if (maxWidth !== undefined && maxWidth !== "") {
-      return Number.parseInt(
-        maxWidth,
-        10,
-      );
+      return Number.parseInt(maxWidth, 10);
     } else {
       return null;
     }
   }
 
   get platenMaxHeight(): number | null {
-    const maxHeight = this.data.ScanCaps.Platen?.[0]?.InputSourceCaps?.[0]?.MaxHeight?.[0];
+    const maxHeight =
+      this.data.ScanCaps.Platen?.[0]?.InputSourceCaps?.[0]?.MaxHeight?.[0];
     if (maxHeight !== undefined && maxHeight !== "") {
-      return Number.parseInt(
-        maxHeight,
-        10,
-      );
+      return Number.parseInt(maxHeight, 10);
     } else {
       return null;
     }
   }
 
   get adfMaxWidth(): number | null {
-    const maxWidth = this.data.ScanCaps.Adf?.[0]?.InputSourceCaps?.[0]?.MaxWidth?.[0];
+    const maxWidth =
+      this.data.ScanCaps.Adf?.[0]?.InputSourceCaps?.[0]?.MaxWidth?.[0];
     if (maxWidth !== undefined && maxWidth !== "") {
-      return Number.parseInt(
-        maxWidth,
-        10,
-      );
+      return Number.parseInt(maxWidth, 10);
     } else {
       return null;
     }
   }
 
   get adfMaxHeight(): number | null {
-    const maxHeight = this.data.ScanCaps.Adf?.[0]?.InputSourceCaps?.[0]?.MaxHeight?.[0];
+    const maxHeight =
+      this.data.ScanCaps.Adf?.[0]?.InputSourceCaps?.[0]?.MaxHeight?.[0];
     if (maxHeight !== undefined && maxHeight !== "") {
-      return Number.parseInt(
-        maxHeight,
-        10,
-      );
+      return Number.parseInt(maxHeight, 10);
     } else {
       return null;
     }
@@ -137,37 +129,27 @@ export default class ScanCaps {
   }
 
   get adfDuplexMaxWidth(): number | null {
-    const maxWidth = this.data.ScanCaps.Adf?.[0]?.AdfDuplexer?.[0]?.AdfDuplexMaxWidth?.[0];
-    if (
-      maxWidth !== undefined && maxWidth !== ""
-    ) {
-      return Number.parseInt(
-        maxWidth,
-        10,
-      );
+    const maxWidth =
+      this.data.ScanCaps.Adf?.[0]?.AdfDuplexer?.[0]?.AdfDuplexMaxWidth?.[0];
+    if (maxWidth !== undefined && maxWidth !== "") {
+      return Number.parseInt(maxWidth, 10);
     } else {
       return this.adfMaxWidth;
     }
   }
 
   get adfDuplexMaxHeight(): number | null {
-    const maxHeight = this.data.ScanCaps.Adf?.[0]?.AdfDuplexer?.[0]?.AdfDuplexMaxHeight?.[0];
-    if (
-      maxHeight !== undefined && maxHeight !== ""
-    ) {
-      return Number.parseInt(
-        maxHeight,
-        10,
-      );
+    const maxHeight =
+      this.data.ScanCaps.Adf?.[0]?.AdfDuplexer?.[0]?.AdfDuplexMaxHeight?.[0];
+    if (maxHeight !== undefined && maxHeight !== "") {
+      return Number.parseInt(maxHeight, 10);
     } else {
       return this.adfMaxHeight;
     }
   }
 
   get hasAdfDetectPaperLoaded(): boolean {
-    if (
-      this.data.ScanCaps.Adf?.[0]?.AdfOptions?.[0]?.AdfOption
-    ) {
+    if (this.data.ScanCaps.Adf?.[0]?.AdfOptions?.[0]?.AdfOption) {
       const options = this.data.ScanCaps.Adf[0].AdfOptions[0].AdfOption;
       return options.includes("DetectPaperLoaded");
     }
@@ -175,9 +157,7 @@ export default class ScanCaps {
   }
 
   get hasAdfDuplex(): boolean {
-    if (
-      this.data.ScanCaps.Adf?.[0]?.AdfOptions?.[0]?.AdfOption
-    ) {
+    if (this.data.ScanCaps.Adf?.[0]?.AdfOptions?.[0]?.AdfOption) {
       const options = this.data.ScanCaps.Adf[0].AdfOptions[0].AdfOption;
       return options.includes("Duplex");
     }

@@ -259,7 +259,9 @@ class BmpRowTransformer extends Transform {
   ): void {
     if (!this.headerWritten) {
       this.push(this.bmpHeader);
-      if (this.palette) {this.push(this.palette);}
+      if (this.palette) {
+        this.push(this.palette);
+      }
       this.headerWritten = true;
     }
 
@@ -332,7 +334,9 @@ class BmpRowTransformer extends Transform {
         // So device bit 1 (ink) → BMP bit 1, no remapping needed unless invert.
         for (let byteIdx = 0; byteIdx < Math.ceil(this.width / 8); byteIdx++) {
           let byte = rowData[byteIdx];
-          if (this.options.invert === true) {byte ^= 0xff;}
+          if (this.options.invert === true) {
+            byte ^= 0xff;
+          }
           // Zero-pad the last byte's trailing bits beyond image width
           const bitsInByte = Math.min(8, this.width - byteIdx * 8);
           if (bitsInByte < 8) {

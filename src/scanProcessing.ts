@@ -11,7 +11,11 @@ import { getScanDimensions } from "./scanDimensions.js";
 import type { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers.js";
 import { KnownShortcut } from "./type/KnownShortcut.js";
-import type { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs.js";
+import type {
+  AdfAutoScanConfig,
+  ScanConfig,
+  SingleScanConfig,
+} from "./type/scanConfigs.js";
 import { ScanFormat } from "./type/scanFormat.js";
 import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
 import type { IScanStatus } from "./hpModels/IScanStatus.js";
@@ -26,7 +30,7 @@ export interface WalkupDestination {
 }
 
 export async function tryGetDestination(
-  event: IEvent
+  event: IEvent,
 ): Promise<WalkupDestination | null> {
   // this code can in some cases be executed before the user actually chooses between Document or Photo,
   // so, let's fetch the contentType (Document or Photo) until we get a value
@@ -69,13 +73,11 @@ export function isPdf(destination: WalkupDestination): boolean {
     return false;
   } else {
     console.log(
-      `Unexpected shortcut received: ${destination.shortcut}, considering it as non pdf target!`
+      `Unexpected shortcut received: ${destination.shortcut}, considering it as non pdf target!`,
     );
     return false;
   }
 }
-
-
 
 export async function saveScanFromEvent(
   selectedScanTarget: SelectedScanTarget,
@@ -86,7 +88,7 @@ export async function saveScanFromEvent(
   scanConfig: ScanConfig,
   isDuplex: boolean,
   isPdf: boolean,
-  pageCountingStrategy: PageCountingStrategy
+  pageCountingStrategy: PageCountingStrategy,
 ): Promise<ScanContent> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
@@ -98,9 +100,7 @@ export async function saveScanFromEvent(
     destinationFolder = tempFolder;
     filePattern = undefined;
     console.log(`Converting scan to PDF…`);
-    if (effectiveFormat === ScanFormat.Bmp) {
-      effectiveFormat = ScanFormat.Jpeg;
-    }
+    effectiveFormat = ScanFormat.Jpeg;
   } else {
     contentType = "Photo";
     destinationFolder = folder;
@@ -121,7 +121,7 @@ export async function saveScanFromEvent(
     scanConfig,
     inputSource,
     deviceCapabilities,
-    isDuplex
+    isDuplex,
   );
 
   const imageFormat: ImageFormat = createImageFormat(effectiveFormat);
@@ -149,7 +149,7 @@ export async function saveScanFromEvent(
     selectedScanTarget,
     deviceCapabilities,
     filePattern,
-    pageCountingStrategy
+    pageCountingStrategy,
   );
 
   return scanJobContent;
@@ -161,7 +161,7 @@ export async function scanFromAdf(
   tempFolder: string,
   adfAutoScanConfig: AdfAutoScanConfig,
   deviceCapabilities: DeviceCapabilities,
-  date: Date
+  date: Date,
 ): Promise<void> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
@@ -170,9 +170,7 @@ export async function scanFromAdf(
     contentType = "Document";
     destinationFolder = tempFolder;
     console.log(`Converting scan to PDF...`);
-    if (effectiveFormat === ScanFormat.Bmp) {
-      effectiveFormat = ScanFormat.Jpeg;
-    }
+    effectiveFormat = ScanFormat.Jpeg;
   } else {
     contentType = "Photo";
     destinationFolder = folder;
@@ -183,7 +181,7 @@ export async function scanFromAdf(
       adfAutoScanConfig,
       InputSource.Adf,
       deviceCapabilities,
-      adfAutoScanConfig.isDuplex
+      adfAutoScanConfig.isDuplex,
     );
 
   const imageFormat: ImageFormat = createImageFormat(effectiveFormat);
@@ -210,11 +208,11 @@ export async function scanFromAdf(
     scanJobContent,
     adfAutoScanConfig.directoryConfig.filePattern,
     PageCountingStrategy.Normal,
-    deviceCapabilities
+    deviceCapabilities,
   );
 
   console.log(
-    `Scan of page(s) completed, total pages: ${scanJobContent.elements.length}:`
+    `Scan of page(s) completed, total pages: ${scanJobContent.elements.length}:`,
   );
 
   await postProcessing(
@@ -224,7 +222,7 @@ export async function scanFromAdf(
     scanCount,
     scanJobContent,
     date,
-    adfAutoScanConfig.generatePdf
+    adfAutoScanConfig.generatePdf,
   );
 }
 
@@ -234,7 +232,7 @@ export async function singleScan(
   tempFolder: string,
   scanConfig: SingleScanConfig,
   deviceCapabilities: DeviceCapabilities,
-  date: Date
+  date: Date,
 ): Promise<void> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
@@ -243,9 +241,7 @@ export async function singleScan(
     contentType = "Document";
     destinationFolder = tempFolder;
     console.log(`Converting scan to PDF...`);
-    if (effectiveFormat === ScanFormat.Bmp) {
-      effectiveFormat = ScanFormat.Jpeg;
-    }
+    effectiveFormat = ScanFormat.Jpeg;
   } else {
     contentType = "Photo";
     destinationFolder = folder;
@@ -265,7 +261,7 @@ export async function singleScan(
     scanConfig,
     inputSource,
     deviceCapabilities,
-    scanConfig.isDuplex
+    scanConfig.isDuplex,
   );
 
   const imageFormat: ImageFormat = createImageFormat(effectiveFormat);
@@ -292,11 +288,11 @@ export async function singleScan(
     scanJobContent,
     scanConfig.directoryConfig.filePattern,
     PageCountingStrategy.Normal,
-    deviceCapabilities
+    deviceCapabilities,
   );
 
   console.log(
-    `Scan of page(s) completed, total pages: ${scanJobContent.elements.length}:`
+    `Scan of page(s) completed, total pages: ${scanJobContent.elements.length}:`,
   );
 
   await postProcessing(
@@ -306,14 +302,14 @@ export async function singleScan(
     scanCount,
     scanJobContent,
     date,
-    scanConfig.generatePdf
+    scanConfig.generatePdf,
   );
 }
 
 export async function waitAdfLoaded(
   pollingInterval: number,
   startScanDelay: number,
-  getScanStatus: () => Promise<IScanStatus>
+  getScanStatus: () => Promise<IScanStatus>,
 ): Promise<void> {
   let ready = false;
   while (!ready) {

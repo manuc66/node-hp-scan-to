@@ -1,9 +1,19 @@
 import { describe, it, beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
-import { singleScan, scanFromAdf, saveScanFromEvent } from "../src/scanProcessing.js";
+import {
+  singleScan,
+  scanFromAdf,
+  saveScanFromEvent,
+} from "../src/scanProcessing.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
-import { createDefaultScanConfig, createDefaultDeviceCapabilities } from "./testUtils.js";
-import type { AdfAutoScanConfig, SingleScanConfig } from "../src/type/scanConfigs.js";
+import {
+  createDefaultScanConfig,
+  createDefaultDeviceCapabilities,
+} from "./testUtils.js";
+import type {
+  AdfAutoScanConfig,
+  SingleScanConfig,
+} from "../src/type/scanConfigs.js";
 import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
 import nock from "nock";
 import HPApi from "../src/HPApi.js";
@@ -83,7 +93,14 @@ describe("scanProcessing Format Selection", () => {
     // We expect an error later in executeScanJob because we didn't mock everything,
     // but we only care about capturedFormat.
     try {
-      await singleScan(scanCount, folder, tempFolder, scanConfig, deviceCapabilities, date);
+      await singleScan(
+        scanCount,
+        folder,
+        tempFolder,
+        scanConfig,
+        deviceCapabilities,
+        date,
+      );
     } catch {
       // ignore
     }
@@ -134,7 +151,14 @@ describe("scanProcessing Format Selection", () => {
     };
 
     try {
-      await scanFromAdf(scanCount, folder, tempFolder, scanConfig, deviceCapabilities, date);
+      await scanFromAdf(
+        scanCount,
+        folder,
+        tempFolder,
+        scanConfig,
+        deviceCapabilities,
+        date,
+      );
     } catch {
       // ignore
     }

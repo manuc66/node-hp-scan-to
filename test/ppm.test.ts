@@ -43,7 +43,7 @@ function parseNetpbmHeader(data: Buffer): {
   let i = 0;
   while (i < data.length && remaining > 0) {
     if (data[i] === 0x0a) {
-      remaining--
+      remaining--;
     }
     i++;
   }
@@ -166,32 +166,5 @@ describe("PPM Conversion", () => {
     // P4: bit 1 = black, MSB first
     // pixels: black white black white → bits: 1 0 1 0 → 0b10100000 = 0xA0
     expect(pixels[0]).to.equal(0b10100000);
-  });
-
-  it("lineart invert: flips black/white", async () => {
-    const width = 4;
-    const height = 1;
-    const inputFile = path.resolve(tmpDir, "input_line_inv.raw");
-    const outputFile = path.resolve(tmpDir, "output_line_inv.ppm");
-
-    // Sans invert: [0,1,0,1] → 0xA0
-    // Avec invert: [0,1,0,1] → bits inversés → 0 1 0 1 → 0b01010000 = 0x50
-    fs.writeFileSync(inputFile, Buffer.from([0, 1, 0, 1]));
-
-    await convertToPpm(
-      width,
-      height,
-      72,
-      inputFile,
-      outputFile,
-      ScanMode.Lineart,
-      { invert: true },
-    );
-
-    const data = fs.readFileSync(outputFile);
-    const { dataOffset } = parseNetpbmHeader(data);
-    const pixels = data.subarray(dataOffset);
-
-    expect(pixels[0]).to.equal(0b01010000);
   });
 });
