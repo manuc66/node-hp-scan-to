@@ -68,12 +68,9 @@ export async function convertToPpm(
   _dpi: number, // not used by Netpbm format; kept for API compatibility
   inputFile: string,
   outputFile: string,
-  pixelFormat: ScanMode,
-  options: { lineartAsGray?: boolean } = {},
+  pixelFormat: ScanMode
 ): Promise<void> {
   validateDimensions(width, height);
-
-  const inputBytesPerPixel = getInputBytesPerPixel(pixelFormat);
 
   const inputStream = fs.createReadStream(inputFile);
   const outputStream = fs.createWriteStream(outputFile);
@@ -81,9 +78,7 @@ export async function convertToPpm(
   const transformer = new PpmRowTransformer(
     width,
     height,
-    pixelFormat,
-    inputBytesPerPixel,
-    options,
+    pixelFormat
   );
 
   await pipelineAsync(inputStream, transformer, outputStream);
@@ -100,18 +95,21 @@ function validateDimensions(width: number, height: number): void {
 // ── Format helpers ───────────────────────────────────────────────────────────
 
 /**
- * Returns the number of bytes per pixel as sent by the device.
- * Note: for Lineart the device sends 1 unpacked byte per pixel (0 or 1);
- * packing to P4 bit-rows is handled in encodeRow().
+ * Returns the number of bytes per row as sent by the device.
+ *
+ * - Color:   3 bytes/pixel, unpacked
+ * - Gray:    1 byte/pixel, unpacked
+ * - Lineart: K1 bit-packed, MSB-first, ceil(width/8) bytes/row
+ *            (NOT 1 byte/pixel — the device sends packed bits)
  */
-function getInputBytesPerPixel(pixelFormat: ScanMode): number {
+function getInputRowSize(width: number, pixelFormat: ScanMode): number {
   switch (pixelFormat) {
     case ScanMode.Color:
-      return 3; // R, G, B
+      return width * 3;
     case ScanMode.Gray:
-      return 1;
+      return width;
     case ScanMode.Lineart:
-      return 1; // unpacked: 0 = black ink, 1 = white paper
+      return Math.ceil(width / 8); // K1 packed: 8 pixels per byte, MSB-first
     default:
       throw new Error(`Unsupported pixel format: ${String(pixelFormat)}`);
   }
@@ -122,12 +120,12 @@ function getInputBytesPerPixel(pixelFormat: ScanMode): number {
  *   Color   → P6 (PPM)
  *   Gray    → P5 (PGM)
  *   Lineart → P4 (PBM) — no maxval token
+ *          or P5 (PGM) — when lineartAsGray is true
  */
 function buildHeader(
   width: number,
   height: number,
   pixelFormat: ScanMode,
-  options?: { lineartAsGray?: boolean },
 ): Buffer {
   switch (pixelFormat) {
     case ScanMode.Color:
@@ -135,12 +133,6 @@ function buildHeader(
     case ScanMode.Gray:
       return Buffer.from(`P5\n${width} ${height} 255\n`);
     case ScanMode.Lineart:
-      // When requested, encode Lineart as a grayscale PGM (P5) with
-      // one byte per pixel (0 = black, 255 = white). This is simpler
-      // than the packed PBM (P4) because it avoids bit-packing.
-      if (options?.lineartAsGray === true) {
-        return Buffer.from(`P5\n${width} ${height} 255\n`);
-      }
       return Buffer.from(`P4\n${width} ${height}\n`);
   }
 }
@@ -158,12 +150,10 @@ class PpmRowTransformer extends Transform {
     private readonly width: number,
     private readonly height: number,
     private readonly pixelFormat: ScanMode,
-    inputBytesPerPixel: number,
-    private readonly options: { lineartAsGray?: boolean },
   ) {
     super();
     this.remainder = Buffer.alloc(0);
-    this.inputRowSize = width * inputBytesPerPixel;
+    this.inputRowSize = getInputRowSize(width, pixelFormat);
     this.totalInputBytesExpected = this.inputRowSize * height;
   }
 
@@ -174,7 +164,7 @@ class PpmRowTransformer extends Transform {
   ): void {
     if (!this.headerWritten) {
       this.push(
-        buildHeader(this.width, this.height, this.pixelFormat, this.options),
+        buildHeader(this.width, this.height, this.pixelFormat),
       );
       this.headerWritten = true;
     }
@@ -221,7 +211,7 @@ class PpmRowTransformer extends Transform {
     callback();
   }
 
-  private encodeRow(rowData: Buffer): Buffer {
+  private encodeRow(rowData: Buffer): Uint8Array<ArrayBuffer> {
     switch (this.pixelFormat) {
       case ScanMode.Color:
         // Device sends R,G,B — P6 expects R,G,B: direct copy
@@ -232,27 +222,7 @@ class PpmRowTransformer extends Transform {
         return Buffer.from(rowData);
 
       case ScanMode.Lineart: {
-        // Device sends 1 unpacked byte/pixel: 0 = black ink, 1 = white paper.
-        // Two options for output:
-        // - If lineartAsGray is true, emit a P5 (PGM) row with one byte per pixel
-        //   where 0 = black and 255 = white (invert flips this mapping).
-        // - Otherwise emit packed PBM (P4) bits MSB-first where 1 = black.
-        if (this.options.lineartAsGray !== false) {
-          return Buffer.from(rowData.map((px) => (px === 0 ? 0 : 255)));
-        }
-
-        const packedWidth = Math.ceil(this.width / 8);
-        const out = Buffer.alloc(packedWidth, 0);
-
-        for (let x = 0; x < this.width; x++) {
-          const byteIndex = x >> 3; // x / 8 : 8 pixels per byte
-          const bitIndex = 7 - (x & 7); // bit position within byte, MSB-first
-          const isBlack = rowData[x] === 0 ? 1 : 0;
-
-          out[byteIndex] |= isBlack << bitIndex;
-        }
-
-        return out;
+        return rowData.map((b) => ~b & 0xff);
       }
     }
   }
