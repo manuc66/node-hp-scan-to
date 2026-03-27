@@ -222,6 +222,10 @@ class PpmRowTransformer extends Transform {
         return Buffer.from(rowData);
 
       case ScanMode.Lineart: {
+        // Device sends K1 bit-packed, MSB-first, ceil(width/8) bytes/row.
+        // K1 polarity: 1=white, 0=black. P4 polarity: 1=black, 0=white.
+        // → invert every bit to match P4 convention.
+
         return rowData.map((b) => ~b & 0xff);
       }
     }
