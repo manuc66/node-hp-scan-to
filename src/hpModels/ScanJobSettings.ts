@@ -127,7 +127,7 @@ export default class ScanJobSettings implements IScanJobSettings {
       parsed.ScanSettings.Format =
         this.scanCaps.getSupportedFormats(colorType)[0];
     } else {
-        parsed.ScanSettings.Format = deviceFormat;
+      parsed.ScanSettings.Format = deviceFormat;
     }
 
     if (this.width !== null) {

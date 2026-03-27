@@ -49,9 +49,15 @@ async function fixJpegHeight(filePath: string): Promise<number | null> {
   return null;
 }
 
-
-
-async function handleNativeJpegFlow(folder: string, scanCount: number, currentPageNumber: number, filePattern: string | undefined, date: Date, job: JobDesc, inputSource: InputSource) {
+async function handleNativeJpegFlow(
+  folder: string,
+  scanCount: number,
+  currentPageNumber: number,
+  filePattern: string | undefined,
+  date: Date,
+  job: JobDesc,
+  inputSource: InputSource,
+) {
   // don't use a temp file write directly to target
   const destinationFilePath: string = await PathHelper.getFileForPage(
     folder,
@@ -59,17 +65,17 @@ async function handleNativeJpegFlow(folder: string, scanCount: number, currentPa
     currentPageNumber,
     filePattern,
     "jpg",
-    date
+    date,
   );
   console.log(
-    `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`
+    `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`,
   );
 
   await HPApi.downloadPage(job.binaryURL, destinationFilePath);
   const adfHeight = await getAndFixHeightWHenAdf(
     inputSource,
     destinationFilePath,
-    job.imageHeight
+    job.imageHeight,
   );
   const height = adfHeight ?? job.imageHeight;
   return {
@@ -78,11 +84,21 @@ async function handleNativeJpegFlow(folder: string, scanCount: number, currentPa
     width: job.imageWidth,
     height: height,
     xResolution: job.xResolution,
-    yResolution: job.yResolution
+    yResolution: job.yResolution,
   };
 }
 
-async function handleOtherFormatFlow(tempFolder: string, scanCount: number, currentPageNumber: number, filePattern: string | undefined, date: Date, job: JobDesc, folder: string, targetImageFormat: ImageFormat, scanJobSettings: IScanJobSettings) {
+async function handleOtherFormatFlow(
+  tempFolder: string,
+  scanCount: number,
+  currentPageNumber: number,
+  filePattern: string | undefined,
+  date: Date,
+  job: JobDesc,
+  folder: string,
+  targetImageFormat: ImageFormat,
+  scanJobSettings: IScanJobSettings,
+) {
   // download to temp
   const tempDestinationFilePath = await PathHelper.getFileForPage(
     tempFolder,
@@ -90,16 +106,16 @@ async function handleOtherFormatFlow(tempFolder: string, scanCount: number, curr
     currentPageNumber,
     filePattern,
     "raw",
-    date
+    date,
   );
 
   console.log(
-    `Downloading page ${job.currentPageNumber} → ${tempDestinationFilePath}`
+    `Downloading page ${job.currentPageNumber} → ${tempDestinationFilePath}`,
   );
 
   const downloadMeta = await HPApi.downloadPageWithMeta(
     job.binaryURL,
-    tempDestinationFilePath
+    tempDestinationFilePath,
   );
 
   const destinationFilePath = await PathHelper.getFileForPage(
@@ -108,7 +124,7 @@ async function handleOtherFormatFlow(tempFolder: string, scanCount: number, curr
     currentPageNumber,
     filePattern,
     targetImageFormat.getExtension(),
-    date
+    date,
   );
 
   const savedImage = await targetImageFormat.save(
@@ -117,7 +133,7 @@ async function handleOtherFormatFlow(tempFolder: string, scanCount: number, curr
     job.imageHeight,
     job.xResolution,
     scanJobSettings.mode,
-    destinationFilePath
+    destinationFilePath,
   );
 
   console.log("Page downloaded to:", destinationFilePath);
@@ -127,7 +143,7 @@ async function handleOtherFormatFlow(tempFolder: string, scanCount: number, curr
     width: savedImage.width,
     height: savedImage.height,
     xResolution: savedImage.xResolution,
-    yResolution: savedImage.yResolution
+    yResolution: savedImage.yResolution,
   };
 }
 
@@ -149,12 +165,12 @@ export async function handleScanProcessingState(
     job.currentPageNumber !== null
   ) {
     const jobDesc: JobDesc = {
-      yResolution : job.yResolution ?? 200,
-      xResolution : job.xResolution ?? 200,
-      imageWidth : job.imageWidth ?? 0,
-      imageHeight : job.imageHeight ?? 0,
-      binaryURL : job.binaryURL,
-      currentPageNumber : job.currentPageNumber
+      yResolution: job.yResolution ?? 200,
+      xResolution: job.xResolution ?? 200,
+      imageWidth: job.imageWidth ?? 0,
+      imageHeight: job.imageHeight ?? 0,
+      binaryURL: job.binaryURL,
+      currentPageNumber: job.currentPageNumber,
     };
 
     if (targetImageFormat.isJpeg()) {

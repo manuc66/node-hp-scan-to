@@ -17,7 +17,11 @@ import { adfAutoscanCmd } from "./commands/adfAutoscanCmd.js";
 import { singleScanCmd } from "./commands/singleScanCmd.js";
 import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd.js";
 import type { DirectoryConfig } from "./type/directoryConfig.js";
-import type { AdfAutoScanConfig, ScanConfig, SingleScanConfig } from "./type/scanConfigs.js";
+import type {
+  AdfAutoScanConfig,
+  ScanConfig,
+  SingleScanConfig,
+} from "./type/scanConfigs.js";
 import type { FileConfig } from "./type/FileConfig.js";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
 import type { Server as NetServer } from "net";

@@ -23,12 +23,29 @@ describe("BMP Conversion", () => {
     const outputFile = path.resolve(tmpDir, "output_color.bmp");
 
     const rawData = Buffer.from([
-      255, 0, 0, 0, 255, 0, // Row 0
-      0, 0, 255, 255, 255, 255 // Row 1
+      255,
+      0,
+      0,
+      0,
+      255,
+      0, // Row 0
+      0,
+      0,
+      255,
+      255,
+      255,
+      255, // Row 1
     ]);
     fs.writeFileSync(inputFile, rawData);
 
-    await convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Color);
+    await convertToBmp(
+      width,
+      height,
+      dpi,
+      inputFile,
+      outputFile,
+      ScanMode.Color,
+    );
 
     const bmpData = fs.readFileSync(outputFile);
 
@@ -72,7 +89,14 @@ describe("BMP Conversion", () => {
     fs.writeFileSync(inputFile, Buffer.alloc(10));
 
     try {
-      await convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Color);
+      await convertToBmp(
+        width,
+        height,
+        dpi,
+        inputFile,
+        outputFile,
+        ScanMode.Color,
+      );
       expect.fail("Should have thrown an error");
     } catch (e: unknown) {
       if (e instanceof Error) {
@@ -93,7 +117,14 @@ describe("BMP Conversion", () => {
     const rawData = Buffer.from([0, 128, 255]);
     fs.writeFileSync(inputFile, rawData);
 
-    await convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Gray);
+    await convertToBmp(
+      width,
+      height,
+      dpi,
+      inputFile,
+      outputFile,
+      ScanMode.Gray,
+    );
 
     const bmpData = fs.readFileSync(outputFile);
     const pixelOffset = bmpData.readUInt32LE(10);
@@ -121,14 +152,18 @@ describe("BMP Conversion", () => {
     // Packed input:
     // Row 0: 10101010 10000000 → 0xAA, 0x80
     // Row 1: 00000000 10000000 → 0x00, 0x80
-    const rawData = Buffer.from([
-      0xAA, 0x80,
-      0x00, 0x80
-    ]);
+    const rawData = Buffer.from([0xaa, 0x80, 0x00, 0x80]);
 
     fs.writeFileSync(inputFile, rawData);
 
-    await convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Lineart);
+    await convertToBmp(
+      width,
+      height,
+      dpi,
+      inputFile,
+      outputFile,
+      ScanMode.Lineart,
+    );
 
     const bmpData = fs.readFileSync(outputFile);
     const pixelOffset = bmpData.readUInt32LE(10);
@@ -138,7 +173,7 @@ describe("BMP Conversion", () => {
 
     const rowSize = 4;
 
-    expect(bmpData[pixelOffset]).to.equal(0xAA);
+    expect(bmpData[pixelOffset]).to.equal(0xaa);
     expect(bmpData[pixelOffset + 1]).to.equal(0x80);
 
     expect(bmpData[pixelOffset + rowSize]).to.equal(0x00);
@@ -153,12 +188,20 @@ describe("BMP Conversion", () => {
     const outputFile = path.resolve(tmpDir, "output_invert.bmp");
 
     // 10101010 → invert → 01010101
-    const rawData = Buffer.from([0xAA]);
+    const rawData = Buffer.from([0xaa]);
     fs.writeFileSync(inputFile, rawData);
 
-    await convertToBmp(width, height, dpi, inputFile, outputFile, ScanMode.Lineart, {
-      invert: true,
-    });
+    await convertToBmp(
+      width,
+      height,
+      dpi,
+      inputFile,
+      outputFile,
+      ScanMode.Lineart,
+      {
+        invert: true,
+      },
+    );
 
     const bmpData = fs.readFileSync(outputFile);
     const pixelOffset = bmpData.readUInt32LE(10);

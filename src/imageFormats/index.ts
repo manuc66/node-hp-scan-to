@@ -8,11 +8,11 @@ import { PpmFormat } from "./ppm.js";
 import { RawFormat } from "./raw.js";
 
 export interface SavedImage {
-    path: string;
-    width: number;
-    height: number;
-    xResolution: number;
-    yResolution: number;
+  path: string;
+  width: number;
+  height: number;
+  xResolution: number;
+  yResolution: number;
 }
 
 export interface DownloadMeta {
@@ -44,7 +44,6 @@ export interface JobDesc {
   currentPageNumber: string;
 }
 
-
 export function buildSavedImage(
   path: string,
   width: number,
@@ -59,7 +58,6 @@ export function buildSavedImage(
     yResolution: dpi,
   };
 }
-
 
 export function createImageFormat(effectiveFormat: ScanFormat): ImageFormat {
   switch (effectiveFormat) {

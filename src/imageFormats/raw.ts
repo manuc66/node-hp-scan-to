@@ -1,5 +1,10 @@
 import { copyFile } from "node:fs/promises";
-import { buildSavedImage, type DownloadMeta, type ImageFormat, type SavedImage } from "./index.js";
+import {
+  buildSavedImage,
+  type DownloadMeta,
+  type ImageFormat,
+  type SavedImage,
+} from "./index.js";
 import type { ScanMode } from "../type/scanMode.js";
 import { DeviceFormat } from "../hpModels/ScanJobSettings.js";
 import { DocumentFormatExt } from "../hpModels/EsclScanJobSettings.js";
@@ -39,4 +44,3 @@ export class RawFormat implements ImageFormat {
     );
   }
 }
-
