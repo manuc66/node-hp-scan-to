@@ -69,7 +69,7 @@ export async function convertToPpm(
   inputFile: string,
   outputFile: string,
   pixelFormat: ScanMode,
-  options: { invert?: boolean } = {},
+  options: { lineartAsGray?: boolean } = {},
 ): Promise<void> {
   validateDimensions(width, height);
 
@@ -127,6 +127,7 @@ function buildHeader(
   width: number,
   height: number,
   pixelFormat: ScanMode,
+  options?: { lineartAsGray?: boolean },
 ): Buffer {
   switch (pixelFormat) {
     case ScanMode.Color:
@@ -134,6 +135,12 @@ function buildHeader(
     case ScanMode.Gray:
       return Buffer.from(`P5\n${width} ${height} 255\n`);
     case ScanMode.Lineart:
+      // When requested, encode Lineart as a grayscale PGM (P5) with
+      // one byte per pixel (0 = black, 255 = white). This is simpler
+      // than the packed PBM (P4) because it avoids bit-packing.
+      if (options?.lineartAsGray === true) {
+        return Buffer.from(`P5\n${width} ${height} 255\n`);
+      }
       return Buffer.from(`P4\n${width} ${height}\n`);
   }
 }
@@ -152,7 +159,7 @@ class PpmRowTransformer extends Transform {
     private readonly height: number,
     private readonly pixelFormat: ScanMode,
     inputBytesPerPixel: number,
-    private readonly options: { invert?: boolean },
+    private readonly options: { lineartAsGray?: boolean },
   ) {
     super();
     this.remainder = Buffer.alloc(0);
@@ -166,7 +173,9 @@ class PpmRowTransformer extends Transform {
     callback: TransformCallback,
   ): void {
     if (!this.headerWritten) {
-      this.push(buildHeader(this.width, this.height, this.pixelFormat));
+      this.push(
+        buildHeader(this.width, this.height, this.pixelFormat, this.options),
+      );
       this.headerWritten = true;
     }
 
@@ -224,25 +233,23 @@ class PpmRowTransformer extends Transform {
 
       case ScanMode.Lineart: {
         // Device sends 1 unpacked byte/pixel: 0 = black ink, 1 = white paper.
-        // P4 expects MSB-first packed bits where 1 = black, last byte zero-padded.
-        // invert: true flips the interpretation (e.g. for inverted scan sources).
+        // Two options for output:
+        // - If lineartAsGray is true, emit a P5 (PGM) row with one byte per pixel
+        //   where 0 = black and 255 = white (invert flips this mapping).
+        // - Otherwise emit packed PBM (P4) bits MSB-first where 1 = black.
+        if (this.options.lineartAsGray !== false) {
+          return Buffer.from(rowData.map((px) => (px === 0 ? 0 : 255)));
+        }
+
         const packedWidth = Math.ceil(this.width / 8);
         const out = Buffer.alloc(packedWidth, 0);
 
-        const invert = this.options.invert === true;
+        for (let x = 0; x < this.width; x++) {
+          const byteIndex = x >> 3; // x / 8 : 8 pixels per byte
+          const bitIndex = 7 - (x & 7); // bit position within byte, MSB-first
+          const isBlack = rowData[x] === 0 ? 1 : 0;
 
-        if (!invert) {
-          for (let x = 0; x < this.width; x++) {
-            if (rowData[x] === 0) {
-              out[x >> 3] |= 0x80 >> (x & 7);
-            }
-          }
-        } else {
-          for (let x = 0; x < this.width; x++) {
-            if (rowData[x] !== 0) {
-              out[x >> 3] |= 0x80 >> (x & 7);
-            }
-          }
+          out[byteIndex] |= isBlack << bitIndex;
         }
 
         return out;
