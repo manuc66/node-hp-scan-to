@@ -108,6 +108,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
         Highlight: number;
         Shadow: number;
         Overscan: boolean;
+        Threshold?: number;
       };
     }>(rawJob);
 
@@ -115,7 +116,11 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     parsed.ScanSettings.YResolution = this.resolution;
     parsed.ScanSettings.Intent = this.contentType;
 
-    if (this.mode === ScanMode.Gray) {
+    if (this.mode === ScanMode.Lineart) {
+      parsed.ScanSettings.ColorMode = "BlackAndWhite1";
+      parsed.ScanSettings.Threshold = 128;
+    }
+    else if (this.mode === ScanMode.Gray) {
       parsed.ScanSettings.ColorMode = "Grayscale8";
     } else {
       parsed.ScanSettings.ColorMode = "RGB24";

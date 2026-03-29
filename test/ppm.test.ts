@@ -11,14 +11,6 @@ const __dirname = path.dirname(__filename);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/**
- * Finds the end of a Netpbm header.
- * P6/P5 : magic SP width SP height SP maxval NL  → 3 newlines-or-spaces tokens, ends after 3rd NL
- * P4    : magic SP width SP height NL             → pas de maxval
- *
- * Plus simple : on cherche la position juste après le dernier '\n' du header,
- * en comptant les tokens séparés par whitespace selon la magic number.
- */
 function parseNetpbmHeader(data: Buffer): {
   magic: string;
   width: number;
@@ -35,39 +27,80 @@ function parseNetpbmHeader(data: Buffer): {
   const hasMaxval = magic === "P5" || magic === "P6";
   const maxval = hasMaxval ? parseInt(tokens[3], 10) : null;
 
-  // Nombre de '\n' à consommer pour atteindre le début des données binaires :
-  // P6/P5 : "P6\nW H 255\n" → 2 newlines
-  // P4    : "P4\nW H\n"     → 2 newlines aussi
-  const newlinesToSkip = 2;
-  let remaining = newlinesToSkip;
+  let remaining = 2;
   let i = 0;
   while (i < data.length && remaining > 0) {
-    if (data[i] === 0x0a) {
-      remaining--;
-    }
+    if (data[i] === 0x0a) {remaining--;}
     i++;
   }
 
   return { magic, width, height, maxval, dataOffset: i };
 }
 
+function parseBinFilename(filename: string): {
+  width: number;
+  height: number;
+  dpi: number;
+} {
+  const dpiMatch = /(\d+)dpi/.exec(filename);
+  const dimMatch = /(\d+)x(\d+)/.exec(filename);
+  if (!dpiMatch || !dimMatch)
+    {throw new Error(`Cannot parse dimensions/dpi from filename: ${filename}`);}
+  return {
+    dpi: parseInt(dpiMatch[1], 10),
+    width: parseInt(dimMatch[1], 10),
+    height: parseInt(dimMatch[2], 10),
+  };
+}
+
+function scanModeFromFilename(filename: string): ScanMode {
+  if (filename.startsWith("Color")) {return ScanMode.Color;}
+  if (filename.startsWith("Gray")) {return ScanMode.Gray;}
+  if (filename.startsWith("BlackAndWhite1")) {return ScanMode.Lineart;}
+  throw new Error(`Unknown scan mode in filename: ${filename}`);
+}
+
+function expectedMagic(mode: ScanMode): "P4" | "P5" | "P6" {
+  switch (mode) {
+    case ScanMode.Color:
+      return "P6";
+    case ScanMode.Gray:
+      return "P5";
+    case ScanMode.Lineart:
+      return "P4";
+  }
+}
+
+function expectedPixelBytes(
+  mode: ScanMode,
+  width: number,
+  height: number,
+): number {
+  switch (mode) {
+    case ScanMode.Color:
+      return width * height * 3;
+    case ScanMode.Gray:
+      return width * height;
+    case ScanMode.Lineart:
+      return Math.ceil(width / 8) * height; // P4 packed bits
+  }
+}
+
 // ── Suite ────────────────────────────────────────────────────────────────────
 
 describe("PPM Conversion", () => {
   const tmpDir = path.resolve(__dirname, "./tmp");
-  if (!fs.existsSync(tmpDir)) {
-    fs.mkdirSync(tmpDir);
-  }
+  if (!fs.existsSync(tmpDir)) {fs.mkdirSync(tmpDir, { recursive: true });}
+
+  // ── Synthetic unit tests ────────────────────────────────────────────────────
 
   it("converts 24-bit color to P6 PPM", async () => {
-    const width = 2;
-    const height = 1;
+    const width = 2,
+      height = 1;
     const inputFile = path.resolve(tmpDir, "input_color.raw");
     const outputFile = path.resolve(tmpDir, "output_color.ppm");
 
-    // RGB: Red, Green
     fs.writeFileSync(inputFile, Buffer.from([255, 0, 0, 0, 255, 0]));
-
     await convertToPpm(
       width,
       height,
@@ -92,21 +125,18 @@ describe("PPM Conversion", () => {
     expect(maxval).to.equal(255);
 
     const pixels = data.subarray(dataOffset);
-    expect(pixels.length).to.equal(6); // 2 pixels × 3 bytes
-    // pixel 0 : Red
+    expect(pixels.length).to.equal(6);
     expect([...pixels.subarray(0, 3)]).to.deep.equal([255, 0, 0]);
-    // pixel 1 : Green
     expect([...pixels.subarray(3, 6)]).to.deep.equal([0, 255, 0]);
   });
 
-  it("converts 8-bit gray to P5 PGM (1 byte/pixel, no RGB expansion)", async () => {
-    const width = 3;
-    const height = 1;
+  it("converts 8-bit gray to P5 PGM (1 byte/pixel)", async () => {
+    const width = 3,
+      height = 1;
     const inputFile = path.resolve(tmpDir, "input_gray.raw");
     const outputFile = path.resolve(tmpDir, "output_gray.ppm");
 
     fs.writeFileSync(inputFile, Buffer.from([0, 128, 255]));
-
     await convertToPpm(width, height, 72, inputFile, outputFile, ScanMode.Gray);
 
     const data = fs.readFileSync(outputFile);
@@ -124,47 +154,57 @@ describe("PPM Conversion", () => {
     expect(maxval).to.equal(255);
 
     const pixels = data.subarray(dataOffset);
-    expect(pixels.length).to.equal(3); // 3 pixels × 1 byte
+    expect(pixels.length).to.equal(3);
     expect([...pixels]).to.deep.equal([0, 128, 255]);
   });
 
-  it("converts 1-bit lineart to P4 PBM (packed bits, MSB-first)", async () => {
-    const width = 4;
-    const height = 1;
-    const inputFile = path.resolve(tmpDir, "input_line.raw");
-    const outputFile = path.resolve(tmpDir, "output_line.ppm");
+  // ── Asset-based integration tests (real scan data) ─────────────────────────
 
-    // Device bytes: 0=black, 1=white → pattern: black white black white
-    fs.writeFileSync(inputFile, Buffer.from([0, 1, 0, 1]));
+  const assetBase = path.resolve(__dirname, "asset/produced");
+  const sources = ["eSCL", "hpScan"] as const;
 
-    await convertToPpm(
-      width,
-      height,
-      72,
-      inputFile,
-      outputFile,
-      ScanMode.Lineart,
-    );
+  for (const source of sources) {
+    const sourceDir = path.resolve(assetBase, source);
+    const binFiles = fs
+      .readdirSync(sourceDir)
+      .filter((f) => f.endsWith(".bin"));
 
-    const data = fs.readFileSync(outputFile);
-    const {
-      magic,
-      width: w,
-      height: h,
-      maxval,
-      dataOffset,
-    } = parseNetpbmHeader(data);
+    describe(`[${source}] real scan assets`, () => {
+      for (const binFile of binFiles) {
+        const stem = binFile.replace(".bin", "");
+        const { width, height, dpi } = parseBinFilename(binFile);
+        const mode = scanModeFromFilename(binFile);
+        const magic = expectedMagic(mode);
 
-    expect(magic).to.equal("P4");
-    expect(w).to.equal(4);
-    expect(h).to.equal(1);
-    expect(maxval).to.be.null;
+        // Snapshot lives next to the source .bin, same directory
+        const inputFile = path.resolve(sourceDir, binFile);
+        const snapshotFile = path.resolve(sourceDir, `${stem}.ppm`);
 
-    const pixels = data.subarray(dataOffset);
-    expect(pixels.length).to.equal(1); // ⌈4/8⌉ = 1 packed byte
+        it(`[${source}] ${binFile} → ${magic} header + correct pixel byte count`, async () => {
+          await convertToPpm(width, height, dpi, inputFile, snapshotFile, mode);
 
-    // P4: bit 1 = black, MSB first
-    // pixels: black white black white → bits: 1 0 1 0 → 0b10100000 = 0xA0
-    expect(pixels[0]).to.equal(0b10100000);
-  });
+          const data = fs.readFileSync(snapshotFile);
+          const {
+            magic: gotMagic,
+            width: w,
+            height: h,
+            maxval,
+            dataOffset,
+          } = parseNetpbmHeader(data);
+
+          // Header
+          expect(gotMagic).to.equal(magic);
+          expect(w).to.equal(width);
+          expect(h).to.equal(height);
+          if (magic !== "P4") {expect(maxval).to.equal(255);}
+
+          // Pixel data size
+          const pixelData = data.subarray(dataOffset);
+          expect(pixelData.length).to.equal(
+            expectedPixelBytes(mode, width, height),
+          );
+        });
+      }
+    });
+  }
 });

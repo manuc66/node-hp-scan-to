@@ -650,10 +650,15 @@ export default class HPApi {
   static async downloadEsclPage(
     jobUri: string,
     destination: string,
-  ): Promise<string> {
+  ): Promise<{ path: string; contentType: string | undefined }> {
     return await HPApi.esclWaitDeviceBusy(
-      async () =>
-        await HPApi.downloadPage(jobUri + "/NextDocument", destination, 60_000),
+      async () => {
+        return await HPApi.downloadPageWithMeta(
+          jobUri + "/NextDocument",
+          destination,
+          60_000,
+        );
+      },
     );
   }
 
