@@ -351,60 +351,134 @@ async function eSCLScanJobHandling(
   scanJobContent: ScanContent,
   inputSource: InputSource,
   folder: string,
+  tempFolder: string,
   scanCount: number,
   filePattern: string | undefined,
 ) {
+  const targetImageFormat = scanJobSettings.format;
+
   let jobStateReason: JobStateReason | null;
   let jobInfo: EsclJobInfo | undefined;
   do {
     await delay(1000);
 
-    const pageNumber = getPageNumber(pageCountingStrategy, scanJobContent);
-
-    const destinationFilePath = await PathHelper.getFileForPage(
-      folder,
-      scanCount,
-      pageNumber,
-      filePattern,
-      "jpg",
-      new Date(),
+    const currentPageNumber = getPageNumber(
+      pageCountingStrategy,
+      scanJobContent,
     );
 
     const jobLocation = PathHelper.getPathFromHttpLocation(jobUrl);
+    if (targetImageFormat.isJpeg()) {
+      const destinationFilePath = await PathHelper.getFileForPage(
+        folder,
+        scanCount,
+        currentPageNumber,
+        filePattern,
+        "jpg",
+        new Date(),
+      );
 
-    const filePath = await HPApi.downloadEsclPage(jobUrl, destinationFilePath);
+      const jobLocation = PathHelper.getPathFromHttpLocation(jobUrl);
 
-    const scanImageInfo = await HPApi.getEsclScanImageInfo(jobLocation);
-    console.log("scanImageInfo:", scanImageInfo.jobURI);
+      const filePath = await HPApi.downloadEsclPage(
+        jobUrl,
+        destinationFilePath,
+      );
 
-    const actualHeight = scanImageInfo.actualHeight;
+      const scanImageInfo = await HPApi.getEsclScanImageInfo(jobLocation);
+      console.log("scanImageInfo:", scanImageInfo.jobURI);
 
-    const adfHeight = await getAndFixHeightWHenAdf(
-      inputSource,
-      filePath,
-      actualHeight,
-    );
+      const actualHeight = scanImageInfo.actualHeight;
 
+      const adfHeight = await getAndFixHeightWHenAdf(
+        inputSource,
+        filePath.path,
+        actualHeight,
+      );
+
+
+      console.log("Page downloaded to:", filePath);
+
+      const page: ScanPage = {
+        path: filePath.path,
+        pageNumber: currentPageNumber,
+        width: scanImageInfo.actualWidth,
+        height: adfHeight ?? scanImageInfo.actualHeight,
+        xResolution: scanJobSettings.xResolution,
+        yResolution: scanJobSettings.yResolution,
+      };
+
+      scanJobContent.elements.push(page);
+
+      if (HPApi.isDebug()) {
+        logJobInfo(jobUrl, scanImageInfo, jobInfo);
+      }
+    } else {
+      // download to temp
+      const tempDestinationFilePath = await PathHelper.getFileForPage(
+        tempFolder,
+        scanCount,
+        currentPageNumber,
+        filePattern,
+        "raw",
+        new Date(),
+      );
+
+      console.log(
+        `Downloading page ${currentPageNumber} → ${tempDestinationFilePath}`,
+      );
+
+      const downloadMeta = await HPApi.downloadEsclPage(
+        jobUrl,
+        tempDestinationFilePath,
+      );
+
+      console.log("Page downloaded content-type:", downloadMeta.contentType);
+
+      const scanImageInfo = await HPApi.getEsclScanImageInfo(jobLocation);
+
+      const width = scanImageInfo.actualWidth;
+      const height = scanImageInfo.actualHeight;
+
+      const destinationFilePath = await PathHelper.getFileForPage(
+        folder,
+        scanCount,
+        currentPageNumber,
+        filePattern,
+        targetImageFormat.getExtension(),
+        new Date(),
+      );
+
+      const savedImage = await targetImageFormat.save(
+        downloadMeta,
+        width,
+        height,
+        scanJobSettings.xResolution,
+        scanJobSettings.mode,
+        destinationFilePath
+      );
+
+      console.log("Page downloaded to:", destinationFilePath);
+
+      const page: ScanPage = {
+        path: destinationFilePath,
+        pageNumber: currentPageNumber,
+        width: savedImage.width,
+        height: savedImage.height,
+        xResolution: savedImage.xResolution,
+        yResolution: savedImage.yResolution,
+      };
+
+      scanJobContent.elements.push(page);
+
+      if (HPApi.isDebug()) {
+        logJobInfo(jobUrl, scanImageInfo, jobInfo);
+      }
+
+    }
     const scannerStatus = await HPApi.getEsclScanStatus();
 
-    console.log("Page downloaded to:", filePath);
-
-    const page: ScanPage = {
-      path: filePath,
-      pageNumber,
-      width: scanImageInfo.actualWidth,
-      height: adfHeight ?? scanImageInfo.actualHeight,
-      xResolution: scanJobSettings.xResolution,
-      yResolution: scanJobSettings.yResolution,
-    };
-
-    scanJobContent.elements.push(page);
-
     jobInfo = scannerStatus.findJobByUri(jobLocation);
-
-    if (HPApi.isDebug()) {
-      logJobInfo(jobUrl, scanImageInfo, jobInfo);
-    }
 
     jobStateReason = jobInfo?.getJobStateReason() ?? null;
   } while (
@@ -451,6 +525,7 @@ export async function executeScanJob(
       scanJobContent,
       inputSource,
       folder,
+      tempFolder,
       scanCount,
       filePattern,
     );
