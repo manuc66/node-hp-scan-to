@@ -1,6 +1,6 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import JpegUtil from "../src/JpegUtil.js";
+import JpegUtil from "../src/imageFormats/JpegUtil.js";
 import fs0 from "node:fs";
 import fs01 from "node:fs/promises";
 import path from "node:path";

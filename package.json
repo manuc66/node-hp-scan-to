@@ -29,7 +29,7 @@
     "prepublishOnly": "npm run prebuild && tsc -p ./ --outDir dist/",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
-    "test": "mocha",
+    "test": "npm run typecheck && mocha",
     "test:watch": "mocha --watch",
     "test:coverage": "c8 --reporter=lcov --reporter=text --exclude=\"test/\" mocha"
   },

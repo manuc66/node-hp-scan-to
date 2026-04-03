@@ -3,19 +3,28 @@ import { InputSource } from "../type/InputSource.js";
 import { parseXmlString } from "./ParseXmlString.js";
 import type { IScanJobSettings } from "./IScanJobSettings.js";
 import { ScanMode } from "../type/scanMode.js";
+import type { ImageFormat } from "../imageFormats/index.js";
+
+export enum DocumentFormatExt {
+  Jpeg = "image/jpeg",
+  Raw = "application/octet-stream",
+  Pdf = "application/pdf",
+}
 
 export default class EsclScanJobSettings implements IScanJobSettings {
   private readonly inputSource: InputSource;
   private readonly contentType: "Document" | "Photo";
   private readonly resolution: number;
-  private readonly mode: ScanMode;
+  private readonly _mode: ScanMode;
   private readonly width: number | null;
   private readonly height: number | null;
   private readonly isDuplex: boolean;
+  private readonly _format: ImageFormat;
 
   constructor(
     inputSource: InputSource,
     contentType: "Document" | "Photo",
+    format: ImageFormat,
     resolution: number,
     mode: ScanMode,
     width: number | null,
@@ -24,8 +33,9 @@ export default class EsclScanJobSettings implements IScanJobSettings {
   ) {
     this.inputSource = inputSource;
     this.contentType = contentType;
+    this._format = format;
     this.resolution = resolution;
-    this.mode = mode;
+    this._mode = mode;
     this.width = width;
     this.height = height;
     this.isDuplex = isDuplex;
@@ -98,6 +108,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
         Highlight: number;
         Shadow: number;
         Overscan: boolean;
+        Threshold?: number;
       };
     }>(rawJob);
 
@@ -105,7 +116,10 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     parsed.ScanSettings.YResolution = this.resolution;
     parsed.ScanSettings.Intent = this.contentType;
 
-    if (this.mode === ScanMode.Gray) {
+    if (this.mode === ScanMode.Lineart) {
+      parsed.ScanSettings.ColorMode = "BlackAndWhite1";
+      parsed.ScanSettings.Threshold = 128;
+    } else if (this.mode === ScanMode.Gray) {
       parsed.ScanSettings.ColorMode = "Grayscale8";
     } else {
       parsed.ScanSettings.ColorMode = "RGB24";
@@ -117,6 +131,13 @@ export default class EsclScanJobSettings implements IScanJobSettings {
 
     if (this.height !== null) {
       parsed.ScanSettings.ScanRegions[0].ScanRegion[0].Height = this.height;
+    }
+
+    if (this.format.isJpeg()) {
+      parsed.ScanSettings.DocumentFormatExt =
+        this.format.getDocumentFormatExt();
+    } else {
+      parsed.ScanSettings.DocumentFormatExt = DocumentFormatExt.Raw;
     }
 
     if (this.inputSource === InputSource.Adf) {
@@ -141,11 +162,27 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     return builder.buildObject(parsed);
   }
 
+  toJSON() {
+    const plain: Record<string, unknown> = Object.assign(
+      {},
+      this as Record<string, unknown>,
+    );
+    delete plain["scanCaps"];
+    return plain;
+  }
+
   get xResolution(): number {
     return this.resolution;
   }
 
   get yResolution(): number {
     return this.resolution;
+  }
+
+  get format() {
+    return this._format;
+  }
+  get mode(): ScanMode {
+    return this._mode;
   }
 }
