@@ -1,7 +1,7 @@
 "use strict";
 
 import { parseXmlString } from "./ParseXmlString.js";
-import { InputSource } from "../type/InputSource.js";
+import type { IScanCaps } from "../IScanCaps.js";
 
 export interface ScanCapsData {
   ScanCaps: {
@@ -38,7 +38,7 @@ export interface ScanCapsData {
   };
 }
 
-export default class ScanCaps {
+export default class ScanCaps implements IScanCaps {
   private readonly data: ScanCapsData;
 
   constructor(data: ScanCapsData) {
@@ -87,22 +87,6 @@ export default class ScanCaps {
       return Number.parseInt(maxHeight, 10);
     } else {
       return null;
-    }
-  }
-
-  getMaxHeight(source: InputSource): number | null {
-    if (source === InputSource.Platen) {
-      return this.platenMaxHeight;
-    } else {
-      return this.adfMaxHeight;
-    }
-  }
-
-  getMaxWidth(source: InputSource): number | null {
-    if (source === InputSource.Platen) {
-      return this.platenMaxWidth;
-    } else {
-      return this.adfMaxWidth;
     }
   }
 

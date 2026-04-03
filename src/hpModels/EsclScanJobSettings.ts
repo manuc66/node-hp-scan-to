@@ -119,8 +119,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     if (this.mode === ScanMode.Lineart) {
       parsed.ScanSettings.ColorMode = "BlackAndWhite1";
       parsed.ScanSettings.Threshold = 128;
-    }
-    else if (this.mode === ScanMode.Gray) {
+    } else if (this.mode === ScanMode.Gray) {
       parsed.ScanSettings.ColorMode = "Grayscale8";
     } else {
       parsed.ScanSettings.ColorMode = "RGB24";
@@ -161,6 +160,15 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     });
 
     return builder.buildObject(parsed);
+  }
+
+  toJSON() {
+    const plain: Record<string, unknown> = Object.assign(
+      {},
+      this as Record<string, unknown>,
+    );
+    delete plain["scanCaps"];
+    return plain;
   }
 
   get xResolution(): number {

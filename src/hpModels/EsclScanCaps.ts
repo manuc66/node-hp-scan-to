@@ -1,6 +1,8 @@
 "use strict";
 
 import { parseXmlString } from "./ParseXmlString.js";
+
+import type { IScanCaps } from "../IScanCaps.js";
 //     this.data["scan:ScannerCapabilities"]["scan:Adf"]["0"]["scan:AdfSimplexInputCaps"]["0"]["scan:MaxWidth"]["0"]
 export interface EsclScanCapsData {
   "scan:ScannerCapabilities": {
@@ -26,7 +28,7 @@ export interface EsclScanCapsData {
   };
 }
 
-export default class EsclScanCaps {
+export default class EsclScanCaps implements IScanCaps {
   private readonly data: EsclScanCapsData;
 
   constructor(data: EsclScanCapsData) {
