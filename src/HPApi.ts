@@ -651,15 +651,13 @@ export default class HPApi {
     jobUri: string,
     destination: string,
   ): Promise<{ path: string; contentType: string | undefined }> {
-    return await HPApi.esclWaitDeviceBusy(
-      async () => {
-        return await HPApi.downloadPageWithMeta(
-          jobUri + "/NextDocument",
-          destination,
-          60_000,
-        );
-      },
-    );
+    return await HPApi.esclWaitDeviceBusy(async () => {
+      return await HPApi.downloadPageWithMeta(
+        jobUri + "/NextDocument",
+        destination,
+        60_000,
+      );
+    });
   }
 
   static async getEsclScanImageInfo(
