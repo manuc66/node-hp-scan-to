@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { DuplexAssemblyMode } from "./DuplexAssemblyMode.js";
+import { ScanFormat, parseScanFormat } from "./scanFormat.js";
+import { parseScanMode, ScanMode } from "./scanMode.js";
 
 // Configuration schema for the config file
 export const configSchema = z
@@ -42,7 +44,28 @@ export const configSchema = z
       ])
       .optional(), // Scan height in pixels
     resolution: z.number().int().positive().optional(), // DPI resolution
-    mode: z.enum(["Gray", "Color"]).optional(), // The scan mode
+    mode: z
+      .preprocess(
+        (val) => {
+          if (typeof val !== "string") {
+            return val;
+          }
+          return parseScanMode(val.toLowerCase());
+        },
+        z.enum(Object.values(ScanMode) as [ScanMode, ...ScanFormat[]]),
+      )
+      .optional(), // The scan mode
+    image_format: z
+      .preprocess(
+        (val) => {
+          if (typeof val !== "string") {
+            return val;
+          }
+          return parseScanFormat(val.toLowerCase());
+        },
+        z.enum(Object.values(ScanFormat) as [ScanFormat, ...ScanFormat[]]),
+      )
+      .optional(),
     paper_size: z.string().optional(), // Paper size preset (A4, Letter, Legal, A5, B5, Max)
     paper_orientation: z.enum(["portrait", "landscape"]).optional(), // Applied to paper_size only
     paper_dim: z.string().optional(), // Custom paper dimensions (e.g., "21x29.7cm", "8.5x11in")

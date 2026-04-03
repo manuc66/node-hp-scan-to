@@ -1,32 +1,44 @@
 "use strict";
 
 import { parseXmlString } from "./ParseXmlString.js";
+import type { IScanCaps } from "../IScanCaps.js";
 
 export interface ScanCapsData {
   ScanCaps: {
-    Platen: {
+    ColorEntries?: {
+      ColorEntry: {
+        ColorType: string[];
+        Formats: {
+          Format: string[];
+        }[];
+        ImageTransforms: {
+          ImageTransform: string[];
+        };
+      }[];
+    }[];
+    Platen?: {
       InputSourceCaps: {
         MaxWidth: string[];
         MaxHeight: string[];
       }[];
     }[];
-    Adf: {
+    Adf?: {
       InputSourceCaps: {
         MaxWidth: string[];
         MaxHeight: string[];
       }[];
-      AdfDuplexer: {
+      AdfDuplexer?: {
         AdfDuplexMaxWidth: string[];
         AdfDuplexMaxHeight: string[];
       }[];
-      AdfOptions: {
+      AdfOptions?: {
         AdfOption: string[];
       }[];
     }[];
   };
 }
 
-export default class ScanCaps {
+export default class ScanCaps implements IScanCaps {
   private readonly data: ScanCapsData;
 
   constructor(data: ScanCapsData) {
@@ -39,91 +51,89 @@ export default class ScanCaps {
   }
 
   get platenMaxWidth(): number | null {
-    if (Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Platen")) {
-      return Number.parseInt(
-        this.data.ScanCaps.Platen[0].InputSourceCaps[0].MaxWidth[0],
-        10,
-      );
+    const maxWidth =
+      this.data.ScanCaps.Platen?.[0]?.InputSourceCaps?.[0]?.MaxWidth?.[0];
+    if (maxWidth !== undefined && maxWidth !== "") {
+      return Number.parseInt(maxWidth, 10);
     } else {
       return null;
     }
   }
 
   get platenMaxHeight(): number | null {
-    if (Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Platen")) {
-      return Number.parseInt(
-        this.data.ScanCaps.Platen[0].InputSourceCaps[0].MaxHeight[0],
-        10,
-      );
+    const maxHeight =
+      this.data.ScanCaps.Platen?.[0]?.InputSourceCaps?.[0]?.MaxHeight?.[0];
+    if (maxHeight !== undefined && maxHeight !== "") {
+      return Number.parseInt(maxHeight, 10);
     } else {
       return null;
     }
   }
 
   get adfMaxWidth(): number | null {
-    if (Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Adf")) {
-      return Number.parseInt(
-        this.data.ScanCaps.Adf[0].InputSourceCaps[0].MaxWidth[0],
-        10,
-      );
+    const maxWidth =
+      this.data.ScanCaps.Adf?.[0]?.InputSourceCaps?.[0]?.MaxWidth?.[0];
+    if (maxWidth !== undefined && maxWidth !== "") {
+      return Number.parseInt(maxWidth, 10);
     } else {
       return null;
     }
   }
 
   get adfMaxHeight(): number | null {
-    if (Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Adf")) {
-      return Number.parseInt(
-        this.data.ScanCaps.Adf[0].InputSourceCaps[0].MaxHeight[0],
-        10,
-      );
+    const maxHeight =
+      this.data.ScanCaps.Adf?.[0]?.InputSourceCaps?.[0]?.MaxHeight?.[0];
+    if (maxHeight !== undefined && maxHeight !== "") {
+      return Number.parseInt(maxHeight, 10);
     } else {
       return null;
     }
   }
 
-  get adfDuplexMaxWidth(): number | null {
-    if (
-      Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Adf") &&
-      Object.prototype.hasOwnProperty.call(
-        this.data.ScanCaps.Adf[0],
-        "AdfDuplexer",
-      )
-    ) {
-      return Number.parseInt(
-        this.data.ScanCaps.Adf[0].AdfDuplexer[0].AdfDuplexMaxWidth[0],
-        10,
+  getSupportedColorTypes(): string[] {
+    if (this.data.ScanCaps.ColorEntries?.[0]?.ColorEntry) {
+      return this.data.ScanCaps.ColorEntries[0].ColorEntry.map(
+        (x) => x.ColorType[0],
       );
+    } else {
+      return [];
+    }
+  }
+
+  getSupportedFormats(colorType: string): string[] {
+    if (this.data.ScanCaps.ColorEntries?.[0]?.ColorEntry) {
+      const entry = this.data.ScanCaps.ColorEntries[0].ColorEntry.find(
+        (x) => x.ColorType[0] === colorType,
+      );
+      if (entry?.Formats[0]?.Format) {
+        return entry.Formats[0].Format;
+      }
+    }
+    return [];
+  }
+
+  get adfDuplexMaxWidth(): number | null {
+    const maxWidth =
+      this.data.ScanCaps.Adf?.[0]?.AdfDuplexer?.[0]?.AdfDuplexMaxWidth?.[0];
+    if (maxWidth !== undefined && maxWidth !== "") {
+      return Number.parseInt(maxWidth, 10);
     } else {
       return this.adfMaxWidth;
     }
   }
 
   get adfDuplexMaxHeight(): number | null {
-    if (
-      Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Adf") &&
-      Object.prototype.hasOwnProperty.call(
-        this.data.ScanCaps.Adf[0],
-        "AdfDuplexer",
-      )
-    ) {
-      return Number.parseInt(
-        this.data.ScanCaps.Adf[0].AdfDuplexer[0].AdfDuplexMaxHeight[0],
-        10,
-      );
+    const maxHeight =
+      this.data.ScanCaps.Adf?.[0]?.AdfDuplexer?.[0]?.AdfDuplexMaxHeight?.[0];
+    if (maxHeight !== undefined && maxHeight !== "") {
+      return Number.parseInt(maxHeight, 10);
     } else {
       return this.adfMaxHeight;
     }
   }
 
   get hasAdfDetectPaperLoaded(): boolean {
-    if (
-      Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Adf") &&
-      Object.prototype.hasOwnProperty.call(
-        this.data.ScanCaps.Adf[0],
-        "AdfOptions",
-      )
-    ) {
+    if (this.data.ScanCaps.Adf?.[0]?.AdfOptions?.[0]?.AdfOption) {
       const options = this.data.ScanCaps.Adf[0].AdfOptions[0].AdfOption;
       return options.includes("DetectPaperLoaded");
     }
@@ -131,13 +141,7 @@ export default class ScanCaps {
   }
 
   get hasAdfDuplex(): boolean {
-    if (
-      Object.prototype.hasOwnProperty.call(this.data.ScanCaps, "Adf") &&
-      Object.prototype.hasOwnProperty.call(
-        this.data.ScanCaps.Adf[0],
-        "AdfOptions",
-      )
-    ) {
+    if (this.data.ScanCaps.Adf?.[0]?.AdfOptions?.[0]?.AdfOption) {
       const options = this.data.ScanCaps.Adf[0].AdfOptions[0].AdfOption;
       return options.includes("Duplex");
     }
