@@ -10,11 +10,12 @@ import EsclScanJobSettings from "./hpModels/EsclScanJobSettings.js";
 import ScanJobSettings from "./hpModels/ScanJobSettings.js";
 import type { ScanMode } from "./type/scanMode.js";
 import type { ImageFormat } from "./imageFormats/index.js";
+import type { IScanCaps } from "./IScanCaps.js";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,
   preferEscl: boolean,
-): Promise<ScanCaps | EsclScanCaps | null> {
+): Promise<IScanCaps | null> {
   let scanCaps: ScanCaps | null = null;
   if (discoveryTree.ScanJobManifestURI !== null) {
     const scanJobManifest = await HPApi.getScanJobManifest(

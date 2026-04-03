@@ -44,6 +44,15 @@ export default class ScanJobSettings implements IScanJobSettings {
     this.scanCaps = scanCaps;
   }
 
+  toJSON() {
+    const plain: Record<string, unknown> = Object.assign(
+      {},
+      this as Record<string, unknown>,
+    );
+    delete plain["scanCaps"];
+    return plain;
+  }
+
   get xResolution(): number {
     return this.resolution;
   }
