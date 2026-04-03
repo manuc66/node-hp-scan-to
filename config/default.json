@@ -3,7 +3,7 @@
   "debug": false,
   "directory": "~/hp-scan",
   "paper_size": "A4",
-  "image_format": "ppm",
+  "image_format": "jpeg",
   "resolution": 200,
-  "mode": "lineart"
+  "mode": "Color"
 }
