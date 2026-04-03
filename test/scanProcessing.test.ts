@@ -1,10 +1,23 @@
 import { describe, it } from "mocha";
 import { expect } from "chai";
 import nock from "nock";
-import { isPdf, tryGetDestination } from "../src/scanProcessing.js";
+import {
+  isPdf,
+  saveScanFromEvent,
+  singleScan,
+  tryGetDestination,
+} from "../src/scanProcessing.js";
 import { KnownShortcut } from "../src/type/KnownShortcut.js";
 import HPApi from "../src/HPApi.js";
 import type { IEvent } from "../src/hpModels/Event.js";
+import { ScannerState } from "../src/hpModels/ScannerState.js";
+import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
+import type { ScanConfig, SingleScanConfig } from "../src/type/scanConfigs.js";
+import { ScanMode } from "../src/type/scanMode.js";
+import { ScanFormat } from "../src/type/scanFormat.js";
+import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
+import { AdfState } from "../src/hpModels/AdfState.js";
+import { InputSource } from "../src/type/InputSource.js";
 
 describe("scanProcessing", () => {
   describe("isPdf", () => {
@@ -75,6 +88,63 @@ describe("scanProcessing", () => {
 
       expect(destination).to.not.be.null;
       expect(destination?.shortcut).to.equal(KnownShortcut.SavePDF);
+    });
+  });
+
+  describe("scanner state check", () => {
+    const mockDeviceCapabilities = (state: ScannerState): DeviceCapabilities =>
+      ({
+        getScanStatus: async () => ({
+          scannerState: state,
+          adfState: AdfState.Empty,
+          getInputSource: () => InputSource.Platen,
+          isLoaded: () => false,
+        }),
+      } as unknown as DeviceCapabilities);
+
+    const scanConfig: ScanConfig = {
+      resolution: 200,
+      mode: ScanMode.Color,
+      format: ScanFormat.Jpeg,
+      directoryConfig: {
+        directory: "dir",
+        tempDirectory: "temp",
+      },
+      preferEscl: true,
+    } as ScanConfig;
+
+    it("saveScanFromEvent aborts if scanner is BusyWithScanJob", async () => {
+      const deviceCapabilities = mockDeviceCapabilities(
+        ScannerState.BusyWithScanJob,
+      );
+      const result = await saveScanFromEvent(
+        {} as any,
+        "folder",
+        "temp",
+        1,
+        deviceCapabilities,
+        scanConfig,
+        false,
+        false,
+        PageCountingStrategy.Normal,
+      );
+      expect(result.elements).to.be.empty;
+    });
+
+    it("singleScan aborts if scanner is BusyWithScanJob", async () => {
+      const deviceCapabilities = mockDeviceCapabilities(
+        ScannerState.BusyWithScanJob,
+      );
+      // If it doesn't abort, it would call other methods on deviceCapabilities and fail (since they are missing from mock)
+      // or at least we check it returns without throwing further errors if we mock just enough.
+      await singleScan(
+        1,
+        "folder",
+        "temp",
+        { ...scanConfig, generatePdf: false } as SingleScanConfig,
+        deviceCapabilities,
+        new Date(),
+      );
     });
   });
 });
