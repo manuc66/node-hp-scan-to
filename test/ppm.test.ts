@@ -30,7 +30,9 @@ function parseNetpbmHeader(data: Buffer): {
   let remaining = 2;
   let i = 0;
   while (i < data.length && remaining > 0) {
-    if (data[i] === 0x0a) {remaining--;}
+    if (data[i] === 0x0a) {
+      remaining--;
+    }
     i++;
   }
 
@@ -44,8 +46,9 @@ function parseBinFilename(filename: string): {
 } {
   const dpiMatch = /(\d+)dpi/.exec(filename);
   const dimMatch = /(\d+)x(\d+)/.exec(filename);
-  if (!dpiMatch || !dimMatch)
-    {throw new Error(`Cannot parse dimensions/dpi from filename: ${filename}`);}
+  if (!dpiMatch || !dimMatch) {
+    throw new Error(`Cannot parse dimensions/dpi from filename: ${filename}`);
+  }
   return {
     dpi: parseInt(dpiMatch[1], 10),
     width: parseInt(dimMatch[1], 10),
@@ -54,9 +57,15 @@ function parseBinFilename(filename: string): {
 }
 
 function scanModeFromFilename(filename: string): ScanMode {
-  if (filename.startsWith("Color")) {return ScanMode.Color;}
-  if (filename.startsWith("Gray")) {return ScanMode.Gray;}
-  if (filename.startsWith("BlackAndWhite1")) {return ScanMode.Lineart;}
+  if (filename.startsWith("Color")) {
+    return ScanMode.Color;
+  }
+  if (filename.startsWith("Gray")) {
+    return ScanMode.Gray;
+  }
+  if (filename.startsWith("BlackAndWhite1")) {
+    return ScanMode.Lineart;
+  }
   throw new Error(`Unknown scan mode in filename: ${filename}`);
 }
 
@@ -90,7 +99,9 @@ function expectedPixelBytes(
 
 describe("PPM Conversion", () => {
   const tmpDir = path.resolve(__dirname, "./tmp");
-  if (!fs.existsSync(tmpDir)) {fs.mkdirSync(tmpDir, { recursive: true });}
+  if (!fs.existsSync(tmpDir)) {
+    fs.mkdirSync(tmpDir, { recursive: true });
+  }
 
   // ── Synthetic unit tests ────────────────────────────────────────────────────
 
@@ -196,7 +207,9 @@ describe("PPM Conversion", () => {
           expect(gotMagic).to.equal(magic);
           expect(w).to.equal(width);
           expect(h).to.equal(height);
-          if (magic !== "P4") {expect(maxval).to.equal(255);}
+          if (magic !== "P4") {
+            expect(maxval).to.equal(255);
+          }
 
           // Pixel data size
           const pixelData = data.subarray(dataOffset);

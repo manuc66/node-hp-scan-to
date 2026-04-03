@@ -396,7 +396,6 @@ async function eSCLScanJobHandling(
         actualHeight,
       );
 
-
       console.log("Page downloaded to:", filePath);
 
       const page: ScanPage = {
@@ -455,7 +454,7 @@ async function eSCLScanJobHandling(
         height,
         scanJobSettings.xResolution,
         scanJobSettings.mode,
-        destinationFilePath
+        destinationFilePath,
       );
 
       console.log("Page downloaded to:", destinationFilePath);
@@ -474,7 +473,6 @@ async function eSCLScanJobHandling(
       if (HPApi.isDebug()) {
         logJobInfo(jobUrl, scanImageInfo, jobInfo);
       }
-
     }
     const scannerStatus = await HPApi.getEsclScanStatus();
 

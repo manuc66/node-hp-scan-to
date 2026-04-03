@@ -68,18 +68,14 @@ export async function convertToPpm(
   _dpi: number, // not used by Netpbm format; kept for API compatibility
   inputFile: string,
   outputFile: string,
-  pixelFormat: ScanMode
+  pixelFormat: ScanMode,
 ): Promise<void> {
   validateDimensions(width, height);
 
   const inputStream = fs.createReadStream(inputFile);
   const outputStream = fs.createWriteStream(outputFile);
 
-  const transformer = new PpmRowTransformer(
-    width,
-    height,
-    pixelFormat
-  );
+  const transformer = new PpmRowTransformer(width, height, pixelFormat);
 
   await pipelineAsync(inputStream, transformer, outputStream);
 }
@@ -163,9 +159,7 @@ class PpmRowTransformer extends Transform {
     callback: TransformCallback,
   ): void {
     if (!this.headerWritten) {
-      this.push(
-        buildHeader(this.width, this.height, this.pixelFormat),
-      );
+      this.push(buildHeader(this.width, this.height, this.pixelFormat));
       this.headerWritten = true;
     }
 
