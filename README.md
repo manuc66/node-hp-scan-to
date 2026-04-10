@@ -97,13 +97,17 @@ Supports both HP proprietary protocols (WalkupScanToComp, WalkupScan, ScanJob) a
  
 ### Emulated Duplex Scanning Feature
 
-The emulated duplex scanning feature allows users to efficiently scan both sides of a document, even on devices that do not natively support duplex scanning.
+The emulated duplex scanning feature allows users to efficiently scan both sides of a document, even on devices that do 
+not natively support duplex scanning. However, please note that this feature is only available in listen mode and is not supported with ADF-autoscan.
 
-When enabled (as an opt-in feature), it adds an extra entry in the list of scan destinations, labeled with the "duplex" suffix. When you select this option for the first time, the device scans the front side of the document.
+When enabled (as an opt-in feature), it adds an extra entry in the list of scan destinations, labeled with the "duplex" 
+suffix. When you select this option for the first time, the device scans the front side of the document.
 
-After the front side is scanned, if you choose the duplex option again, the device will trigger a second scan and produce an assembled output.
+After the front side is scanned, if you choose the duplex option again, the device will trigger a second scan and 
+produce an assembled output.
 
-If you decide not to scan the back side immediately, the front side scan will be saved in the system and will remain there until you either scan the back side or perform a single side scan instead.
+If you decide not to scan the back side immediately, the front side scan will be saved in the system and will remain 
+there until you either scan the back side or perform a single side scan instead.
 
 ## Installation
 
