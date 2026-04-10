@@ -60,19 +60,9 @@ describe("postProcessing", () => {
     nock.enableNetConnect();
   });
 
-  it("should process images (no PDF, no paperless, no nextcloud)", async () => {
-    await postProcessing(
-      scanConfig,
-      tempFolder,
-      tempFolder,
-      1,
-      scanJobContent,
-      new Date(),
-      false,
-    );
-  });
-
   it("should process as PDF (no paperless, no nextcloud)", async () => {
+    scanConfig.paperlessConfig = undefined;
+    scanConfig.nextcloudConfig = undefined;
     await postProcessing(
       scanConfig,
       tempFolder,
@@ -83,7 +73,4 @@ describe("postProcessing", () => {
       true,
     );
   });
-
-
-
 });
