@@ -110,7 +110,10 @@ export async function saveScanFromEvent(
   const scanStatus = await deviceCapabilities.getScanStatus();
 
   if (scanStatus.scannerState !== ScannerState.Idle) {
-    console.log("Scanner state is not Idle, aborting scan attempt...!");
+    console.log(
+      `Scanner state is not Idle: ${scanStatus.scannerState}, aborting scan attempt...!`,
+    );
+    return { elements: [] };
   }
 
   console.log("ADF status: " + scanStatus.adfState);
@@ -250,7 +253,10 @@ export async function singleScan(
   const scanStatus = await deviceCapabilities.getScanStatus();
 
   if (scanStatus.scannerState !== ScannerState.Idle) {
-    console.log("Scanner state is not Idle, aborting scan attempt...!");
+    console.log(
+      `Scanner state is not Idle: ${scanStatus.scannerState}, aborting scan attempt...!`,
+    );
+    return;
   }
 
   console.log("ADF is: " + scanStatus.adfState);
