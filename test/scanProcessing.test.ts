@@ -18,6 +18,7 @@ import { ScanFormat } from "../src/type/scanFormat.js";
 import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
 import { AdfState } from "../src/hpModels/AdfState.js";
 import { InputSource } from "../src/type/InputSource.js";
+import type { SelectedScanTarget } from "../src/type/scanTargetDefinitions.js";
 
 describe("scanProcessing", () => {
   describe("isPdf", () => {
@@ -118,7 +119,7 @@ describe("scanProcessing", () => {
         ScannerState.BusyWithScanJob,
       );
       const result = await saveScanFromEvent(
-        {} as any,
+        {} as SelectedScanTarget,
         "folder",
         "temp",
         1,
