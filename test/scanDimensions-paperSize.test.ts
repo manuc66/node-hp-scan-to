@@ -278,7 +278,7 @@ describe("scanDimensions - Paper Size Integration", () => {
     it("throws when an unknown paper size preset is provided", () => {
       const scanConfig = createDefaultScanConfig();
       const deviceCapabilities = createDefaultDeviceCapabilities();
-      scanConfig.paperSize = "Invalid" as unknown as string;
+      scanConfig.paperSize = "Invalid";
 
       expect(() =>
         getScanDimensions(

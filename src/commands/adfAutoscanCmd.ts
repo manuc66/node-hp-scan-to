@@ -1,7 +1,7 @@
 import HPApi from "../HPApi.js";
 import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
 import { scanFromAdf, waitAdfLoaded } from "../scanProcessing.js";
-import { delay } from "../delay.js";
+
 import type { AdfAutoScanConfig } from "../type/scanConfigs.js";
 import PathHelper from "../PathHelper.js";
 
@@ -63,7 +63,11 @@ export async function adfAutoscanCmd(
         new Date(),
       );
     } catch (e) {
-      console.log(e);
+      if (e instanceof Error) {
+        console.log(e.message);
+      } else {
+        console.log(e);
+      }
       if (await HPApi.isAlive()) {
         errorCount++;
       } else {
@@ -78,7 +82,7 @@ export async function adfAutoscanCmd(
     if (!deviceUp) {
       await HPApi.waitDeviceUp(deviceUpPollingInterval);
     } else {
-      await delay(1000);
+      await HPApi.delay(1000);
     }
   }
 }

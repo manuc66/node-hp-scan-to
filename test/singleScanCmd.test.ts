@@ -65,19 +65,24 @@ describe("singleScanCmd", () => {
 
     // Mock HPApi.getDiscoveryTree
     nock("http://127.0.0.1")
-        .get("/DevMgmt/DiscoveryTree.xml")
-        .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+      .get("/DevMgmt/DiscoveryTree.xml")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
 <ledm:DiscoveryTree xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/2007/09/21" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
   <ledm:SupportedIfc>
     <ledm:ManifestURI>/Scan/ScanJobManifest</ledm:ManifestURI>
     <dd:ResourceType>ledm:hpLedmScanJobManifest</dd:ResourceType>
   </ledm:SupportedIfc>
-</ledm:DiscoveryTree>`);
+</ledm:DiscoveryTree>`,
+      );
 
     // Mock HPApi.getScanJobManifest
     nock("http://127.0.0.1")
-        .get("/Scan/ScanJobManifest")
-        .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+      .get("/Scan/ScanJobManifest")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
 <man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/map/2009/03/24" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scan/2008/11/17">
     <map:ResourceMap>
         <map:ResourceLink>
@@ -100,30 +105,37 @@ describe("singleScanCmd", () => {
             </map:ResourceType>
         </map:ResourceNode>
     </map:ResourceMap>
-</man:Manifest>`);
+</man:Manifest>`,
+      );
 
     // Mock HPApi.getScanCaps
     nock("http://127.0.0.1")
-        .get("/Scan/ScanCaps")
-        .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+      .get("/Scan/ScanCaps")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
 <ScanCaps xmlns="http://www.hp.com/schemas/imaging/con/ledm/scancaps/2008/11/17">
     <PlatenMaxWidth>2550</PlatenMaxWidth>
     <PlatenMaxHeight>3300</PlatenMaxHeight>
-</ScanCaps>`);
+</ScanCaps>`,
+      );
 
     // Mock HPApi.getScanStatus
     nock("http://127.0.0.1")
-        .get("/Scan/Status")
-        .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+      .get("/Scan/Status")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
 <ScanStatus xmlns="http://www.hp.com/schemas/imaging/con/ledm/scanstatus/2008/11/17">
     <ScannerState>Idle</ScannerState>
     <AdfState>Empty</AdfState>
-</ScanStatus>`);
+</ScanStatus>`,
+      );
 
     // Mock HPApi.postJob
     nock("http://127.0.0.1:8080")
-        .post("/Scan/Jobs")
-        .reply(201, "", { Location: "http://127.0.0.1/Scan/Jobs/123" });
+      .post("/Scan/Jobs")
+      .reply(201, "", { Location: "http://127.0.0.1/Scan/Jobs/123" });
 
     // Mock HPApi.getJob (Processing)
     nock("http://127.0.0.1")
@@ -166,8 +178,10 @@ describe("singleScanCmd", () => {
 
     // Mock HPApi.getJob (Completed)
     nock("http://127.0.0.1")
-        .get("/Scan/Jobs/123")
-        .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+      .get("/Scan/Jobs/123")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
 <j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/jobs/2009/04/30">
     <ScanJob>
         <PostScanPage>
@@ -175,18 +189,19 @@ describe("singleScanCmd", () => {
         </PostScanPage>
     </ScanJob>
     <j:JobState>Completed</j:JobState>
-</j:Job>`);
+</j:Job>`,
+      );
 
     // Mock HPApi.downloadPage
     nock("http://127.0.0.1:8080")
-        .get("/Scan/Jobs/123/Pages/1")
-        .reply(200, "fake-image-data");
+      .get("/Scan/Jobs/123/Pages/1")
+      .reply(200, "fake-image-data");
 
     await singleScanCmd(config, 1);
-    
+
     // Check if file was created in tempDir
     const files = fs.readdirSync(tempDir);
     console.log("Files in tempDir:", files);
-    expect(files.some(f => f.includes("scan0"))).to.be.true;
+    expect(files.some((f) => f.includes("scan0"))).to.be.true;
   });
 });
