@@ -329,6 +329,9 @@ describe("listenCmd", () => {
   let originalWaitDeviceUp: typeof HPApi.waitDeviceUp;
 
   beforeEach(() => {
+    if (!nock.isActive()) {
+      nock.activate();
+    }
     nock.disableNetConnect();
     HPApi.setDeviceIP("127.0.0.1");
     // Mock HPApi.isAlive to return true instantly
@@ -368,20 +371,27 @@ describe("listenCmd", () => {
     };
 
     // Mock HPApi.getDiscoveryTree
-    nock("http://127.0.0.1")
+    nock("http://127.0.0.1:80")
+      .persist()
       .get("/DevMgmt/DiscoveryTree.xml")
-      .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
 <ledm:DiscoveryTree xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/2007/09/21" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
   <ledm:SupportedIfc>
     <ledm:ManifestURI>/Scan/ScanJobManifest</ledm:ManifestURI>
     <dd:ResourceType>ledm:hpLedmScanJobManifest</dd:ResourceType>
   </ledm:SupportedIfc>
-</ledm:DiscoveryTree>`);
+</ledm:DiscoveryTree>`,
+      );
 
     // Mock HPApi.getScanJobManifest
-    nock("http://127.0.0.1")
+    nock("http://127.0.0.1:80")
+      .persist()
       .get("/Scan/ScanJobManifest")
-      .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
 <man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/map/2009/03/24" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scan/2008/11/17">
     <map:ResourceMap>
         <map:ResourceLink>
@@ -404,43 +414,62 @@ describe("listenCmd", () => {
             </map:ResourceType>
         </map:ResourceNode>
     </map:ResourceMap>
-</man:Manifest>`);
+</man:Manifest>`,
+      );
 
     // Mock HPApi.getScanCaps
-    nock("http://127.0.0.1")
+    nock("http://127.0.0.1:80")
+      .persist()
       .get("/Scan/ScanCaps")
-      .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
 <ScanCaps xmlns="http://www.hp.com/schemas/imaging/con/ledm/scancaps/2008/11/17">
     <PlatenMaxWidth>2550</PlatenMaxWidth>
     <PlatenMaxHeight>3300</PlatenMaxHeight>
-</ScanCaps>`);
+</ScanCaps>`,
+      );
 
     // Mock getWalkupScanDestinations
-    nock("http://127.0.0.1")
+    nock("http://127.0.0.1:80")
+      .persist()
       .get("/WalkupScan/WalkupScanDestinations")
-      .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
 <wus:WalkupScanDestinations xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscandestinations/2009/03/12">
-</wus:WalkupScanDestinations>`);
+</wus:WalkupScanDestinations>`,
+      );
 
     // Mock registerWalkupScanDestination
-    nock("http://127.0.0.1")
+    nock("http://127.0.0.1:80")
+      .persist()
       .post("/WalkupScan/WalkupScanDestinations")
-      .reply(201, "", { Location: "http://127.0.0.1/WalkupScan/Destinations/1" });
+      .reply(201, "", {
+        Location: "http://127.0.0.1/WalkupScan/Destinations/1",
+      });
 
     // Mock waitForScanEvent -> HPApi.getEvents to fail
-    nock("http://127.0.0.1")
-      .get("/EventMgmt/Events")
+    nock("http://127.0.0.1:80")
+      .persist()
+      .get("/EventMgmt/EventTable")
       .reply(500);
 
-    // Mock isAlive to return false after the first error to exit the loop
-    HPApi.isAlive = async () => false;
-    // Mock waitDeviceUp to return instantly even when down
+    // Mock isAlive to return true so errors increment and loop exits after 50
+    HPApi.isAlive = async () => true;
+    // Mock HPApi.delay to return instantly
+    HPApi.delay = async () => {
+      /* no-op */
+    };
+    // Mock waitDeviceUp to return instantly
     HPApi.waitDeviceUp = async () => {
-      throw new Error("Test exit condition: waitDeviceUp called");
+      /* no-op */
     };
 
-    await expect(
-      listenCmd([{ label: "host", isDuplexSingleSide: false }], scanConfig, 1),
-    ).to.be.fulfilled;
+    await listenCmd(
+      [{ label: "host", isDuplexSingleSide: false }],
+      scanConfig,
+      1,
+    );
   });
 });

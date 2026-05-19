@@ -47,7 +47,7 @@ describe("commands", () => {
           </wus:WalkupScanToCompDestinations>`,
         );
 
-      await expect(clearRegistrationsCmd()).to.be.fulfilled;
+      await clearRegistrationsCmd();
     });
   });
 

@@ -18,7 +18,6 @@ import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
 import nock from "nock";
 import HPApi from "../src/HPApi.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
-import type { IScanStatus } from "../src/hpModels/IScanStatus.js";
 import { ScannerState } from "../src/hpModels/ScannerState.js";
 import { AdfState } from "../src/hpModels/AdfState.js";
 import { InputSource } from "../src/type/InputSource.js";
@@ -67,7 +66,7 @@ describe("scanProcessing Format Selection", () => {
           adfState: AdfState.Empty,
           getInputSource: () => InputSource.Platen,
           isLoaded: () => false,
-        } as IScanStatus;
+        };
       },
       createScanJobSettings: (
         _inputSource: InputSource,
@@ -127,7 +126,7 @@ describe("scanProcessing Format Selection", () => {
           adfState: AdfState.Empty,
           getInputSource: () => InputSource.Platen,
           isLoaded: () => false,
-        } as IScanStatus;
+        };
       },
       createScanJobSettings: (
         _inputSource: InputSource,
@@ -181,7 +180,7 @@ describe("scanProcessing Format Selection", () => {
           adfState: AdfState.Empty,
           getInputSource: () => InputSource.Platen,
           isLoaded: () => false,
-        } as IScanStatus;
+        };
       },
       createScanJobSettings: (
         _inputSource: InputSource,

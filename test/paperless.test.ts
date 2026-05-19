@@ -15,7 +15,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 describe("paperless", () => {
-  const paperlessUrl = "http://paperless.example.test/api/documents/post_document/";
+  const paperlessUrl =
+    "http://paperless.example.test/api/documents/post_document/";
   const authToken = "test-token";
   const fileName = "paperless_sample.jpg";
   const assetDir = path.resolve(__dirname, "./asset");
@@ -59,9 +60,6 @@ describe("paperless", () => {
     nock.cleanAll();
     nock.enableNetConnect();
   });
-
-
-
 
   describe("uploadPdfToPaperless", () => {
     it("should not upload if path is null", async () => {

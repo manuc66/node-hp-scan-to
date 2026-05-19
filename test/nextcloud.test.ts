@@ -39,7 +39,6 @@ describe("nextcloud", () => {
       await fsPromises.writeFile(filePath, "fake-jpg-content");
     }
 
-
     scanJobContent = { elements: [] };
     scanPage = {
       pageNumber: 1,

@@ -14,7 +14,7 @@ import {
 } from "../scanProcessing.js";
 import { postProcessing } from "../postProcessing.js";
 import PathHelper from "../PathHelper.js";
-import { delay } from "../delay.js";
+
 import { DuplexMode } from "../type/duplexMode.js";
 import { TargetDuplexMode } from "../type/targetDuplexMode.js";
 import type { ScanConfig } from "../type/scanConfigs.js";
@@ -104,11 +104,19 @@ export async function listenCmd(
       lastDuplexMode = r.duplexMode;
     } catch (e) {
       if (await HPApi.isAlive()) {
-        console.log(e);
+        if (e instanceof Error) {
+          console.log(e.message);
+        } else {
+          console.log(e);
+        }
         errorCount++;
       } else {
         if (HPApi.isDebug()) {
-          console.log(e);
+          if (e instanceof Error) {
+            console.log(e.message);
+          } else {
+            console.log(e);
+          }
         }
         deviceUp = false;
       }
@@ -121,7 +129,7 @@ export async function listenCmd(
     if (!deviceUp) {
       await HPApi.waitDeviceUp(deviceUpPollingInterval);
     } else {
-      await delay(1000);
+      await HPApi.delay(1000);
     }
   }
 }
