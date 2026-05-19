@@ -253,7 +253,7 @@ export async function singleScan(
   const scanStatus = await deviceCapabilities.getScanStatus();
 
   if (scanStatus.scannerState !== ScannerState.Idle) {
-    console.log(
+console.log(
       `Scanner state is not Idle: ${scanStatus.scannerState}, aborting scan attempt...!`,
     );
     return;

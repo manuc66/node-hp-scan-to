@@ -2,8 +2,8 @@ import { describe, it, afterEach } from "mocha";
 import { expect } from "chai";
 import { waitForScanEvent, waitScanRequest } from "../src/listening.js";
 import HPApi from "../src/HPApi.js";
-import type WalkupScanToCompEvent from "../src/hpModels/WalkupScanToCompEvent.js";
 import { EventType } from "../src/hpModels/WalkupScanToCompEvent.js";
+import type WalkupScanToCompEvent from "../src/hpModels/WalkupScanToCompEvent.js";
 import type { EtagEventTable } from "../src/hpModels/EventTable.js";
 import type { IEvent } from "../src/hpModels/Event.js";
 
@@ -84,19 +84,35 @@ describe("waitForScanEvent (includes(...) !== undefined bug guard)", () => {
 
 describe("waitScanRequest", () => {
   const originalGetWalkupScanToCompEvent = HPApi.getWalkupScanToCompEvent;
+  const originalSetTimeout = globalThis.setTimeout;
+
+  beforeEach(() => {
+    globalThis.setTimeout = ((
+      cb: (...args: unknown[]) => void,
+      _ms?: number,
+      ...args: unknown[]
+    ) => {
+      cb(...args);
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout;
+  });
 
   afterEach(() => {
     HPApi.getWalkupScanToCompEvent = originalGetWalkupScanToCompEvent;
+    globalThis.setTimeout = originalSetTimeout;
   });
 
   it("should wait until ScanRequested event is received", async () => {
     let callCount = 0;
+    const mockEvent = (
+      eventType: EventType,
+    ): Partial<WalkupScanToCompEvent> => ({ eventType });
     HPApi.getWalkupScanToCompEvent = async () => {
       callCount++;
       if (callCount < 3) {
-        return { eventType: EventType.HostSelected } as unknown as WalkupScanToCompEvent;
+        return mockEvent(EventType.HostSelected) as WalkupScanToCompEvent;
       }
-      return { eventType: EventType.ScanRequested } as unknown as WalkupScanToCompEvent;
+      return mockEvent(EventType.ScanRequested) as WalkupScanToCompEvent;
     };
 
     const result = await waitScanRequest("uri", 5);
@@ -108,7 +124,7 @@ describe("waitScanRequest", () => {
     let callCount = 0;
     HPApi.getWalkupScanToCompEvent = async () => {
       callCount++;
-      return { eventType: EventType.HostSelected } as unknown as WalkupScanToCompEvent;
+      return { eventType: EventType.HostSelected } as WalkupScanToCompEvent;
     };
 
     const result = await waitScanRequest("uri", 3);

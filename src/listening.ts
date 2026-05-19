@@ -32,7 +32,7 @@ export async function waitScanRequest(
     console.log(`Waiting for user input (attempt ${i + 1} of ${waitMax})`);
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
   }
-  console.log("Timeout waiting for user input");
+console.log("Timeout waiting for user input");
   return false;
 }
 
