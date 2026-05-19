@@ -26,6 +26,10 @@ describe("WalkupScanToCompCaps", () => {
         true,
       );
     });
+
+    it("Parse userActionTimeout", async () => {
+      expect(walkupScanToCompCaps.userActionTimeout).to.be.eq(60);
+    });
   });
   describe("Parsing walkupScanToCompCaps2.xml", async () => {
     let walkupScanToCompCaps: WalkupScanToCompCaps;
@@ -44,6 +48,10 @@ describe("WalkupScanToCompCaps", () => {
         false,
       );
     });
+
+    it("Parse userActionTimeout", async () => {
+      expect(walkupScanToCompCaps.userActionTimeout).to.be.eq(60);
+    });
   });
   describe("Parsing walkupScanToCompCaps3.xml", async () => {
     let walkupScanToCompCaps: WalkupScanToCompCaps;
@@ -61,6 +69,10 @@ describe("WalkupScanToCompCaps", () => {
       expect(walkupScanToCompCaps.supportsMultiItemScanFromPlaten).to.be.eq(
         true,
       );
+    });
+
+    it("Parse userActionTimeout", async () => {
+      expect(walkupScanToCompCaps.userActionTimeout).to.be.eq(130);
     });
   });
 });
