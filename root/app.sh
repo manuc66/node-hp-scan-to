@@ -46,6 +46,18 @@ if [ -n "$MODE" ]; then
     ARGS+=("--mode" "$MODE")
 fi
 
+if [ -n "$PAPER_SIZE" ]; then
+    ARGS+=("--paper-size" "$PAPER_SIZE")
+fi
+
+if [ -n "$PAPER_ORIENTATION" ]; then
+    ARGS+=("--paper-orientation" "$PAPER_ORIENTATION")
+fi
+
+if [ -n "$PAPER_DIM" ]; then
+    ARGS+=("--paper-dim" "$PAPER_DIM")
+fi
+
 # Check if the variable exists (defined)
 if [ -v ADD_EMULATED_DUPLEX ]; then
     # Add the emulated duplex scanning option

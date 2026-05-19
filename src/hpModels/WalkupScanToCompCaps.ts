@@ -6,6 +6,10 @@ export interface WalkupScanToCompCapsData {
   "wus:WalkupScanToCompCaps": {
     "wus:MaxNetworkDestinations": string[];
     "wus:SupportsMultiItemScanFromPlaten": string[];
+    "wus:UserActionTimeout"?: {
+      "dd:ValueFloat": string[];
+      "dd:Unit": string[];
+    }[];
   };
 }
 
@@ -29,5 +33,14 @@ export default class WalkupScanToCompCaps {
         "wus:SupportsMultiItemScanFromPlaten"
       ]["0"] === "true"
     );
+  }
+
+  get userActionTimeout(): number | null {
+    const timeout =
+      this.data["wus:WalkupScanToCompCaps"]["wus:UserActionTimeout"];
+    if (timeout !== undefined) {
+      return Number.parseInt(timeout[0]["dd:ValueFloat"][0], 10);
+    }
+    return null;
   }
 }

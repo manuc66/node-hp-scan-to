@@ -4,7 +4,9 @@ import path from "node:path";
 import * as fs from "node:fs/promises";
 import WalkupScanToCompCaps from "../src/hpModels/WalkupScanToCompCaps.js";
 
-const __dirname = import.meta.dirname;
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("WalkupScanToCompCaps", () => {
   describe("Parsing walkupScanToCompCaps.xml", async () => {
@@ -24,6 +26,10 @@ describe("WalkupScanToCompCaps", () => {
         true,
       );
     });
+
+    it("Parse userActionTimeout", async () => {
+      expect(walkupScanToCompCaps.userActionTimeout).to.be.eq(60);
+    });
   });
   describe("Parsing walkupScanToCompCaps2.xml", async () => {
     let walkupScanToCompCaps: WalkupScanToCompCaps;
@@ -42,6 +48,10 @@ describe("WalkupScanToCompCaps", () => {
         false,
       );
     });
+
+    it("Parse userActionTimeout", async () => {
+      expect(walkupScanToCompCaps.userActionTimeout).to.be.eq(60);
+    });
   });
   describe("Parsing walkupScanToCompCaps3.xml", async () => {
     let walkupScanToCompCaps: WalkupScanToCompCaps;
@@ -59,6 +69,10 @@ describe("WalkupScanToCompCaps", () => {
       expect(walkupScanToCompCaps.supportsMultiItemScanFromPlaten).to.be.eq(
         true,
       );
+    });
+
+    it("Parse userActionTimeout", async () => {
+      expect(walkupScanToCompCaps.userActionTimeout).to.be.eq(130);
     });
   });
 });

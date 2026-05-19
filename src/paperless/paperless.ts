@@ -102,6 +102,7 @@ async function uploadToPaperless(
     console.log("Document successfully uploaded to paperless:", response.data);
   } catch (error) {
     console.error("Fail to upload document:", error);
+    throw error;
   }
   fileStream.close();
 }

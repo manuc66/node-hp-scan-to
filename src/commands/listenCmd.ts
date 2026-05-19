@@ -68,6 +68,7 @@ export async function listenCmd(
       if (selectedScanTarget?.event.compEventURI !== undefined) {
         proceedToScan = await waitScanRequest(
           selectedScanTarget.event.compEventURI,
+          deviceCapabilities.userActionTimeout,
         );
       }
 
@@ -277,8 +278,7 @@ function determineDuplexModes(
   } else if (selectedScanTarget.isDuplexSingleSide) {
     targetDuplexMode = TargetDuplexMode.EmulatedDuplex;
     if (
-      lastScanTarget !== undefined &&
-      selectedScanTarget.resourceURI === lastScanTarget.resourceURI &&
+      selectedScanTarget.resourceURI === lastScanTarget?.resourceURI &&
       previousDuplexMode !== DuplexMode.BackOfDoubleSided
     ) {
       duplexMode = DuplexMode.BackOfDoubleSided;

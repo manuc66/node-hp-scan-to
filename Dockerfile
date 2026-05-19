@@ -2,20 +2,19 @@ FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /app
 
 COPY . .
-COPY src/commitInfo.json /app/src/commitInfo.json
 
-RUN corepack enable \
-    && yarn install --frozen-lockfile \
-    && yarn build \
+RUN apk add --no-cache git \
+    && corepack enable \
+    && pnpm install --frozen-lockfile \
+    && pnpm build \
     && rm dist/*.d.ts dist/*.js.map
 
 # New stage to install only production dependencies
 FROM --platform=$BUILDPLATFORM node:22-alpine AS deps
 WORKDIR /app
-COPY package.json yarn.lock .yarnrc.yml ./
+COPY package.json pnpm-lock.yaml ./
 RUN corepack enable \
-    && yarn install --immutable \
-    && yarn workspaces focus --production --all
+    && pnpm install --frozen-lockfile --prod
 
 FROM node:22-alpine AS app
 ENV NODE_ENV=production
@@ -50,7 +49,7 @@ RUN export SYS_ARCH=$(uname -m); \
     echo "⬇️ Install shadow (for groupmod and usermod) and tzdata (for TZ env variable)" \
     && apk add --no-cache shadow tzdata curl bash
 
-# Copy built app and production dependencies without yarn
+# Copy built app and production dependencies
 WORKDIR /app
 COPY --from=build /app/dist/ ./
 COPY --from=build /app/package.json ./
