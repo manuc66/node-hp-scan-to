@@ -17,7 +17,10 @@ const __dirname = path.dirname(__filename);
 describe("pdfProcessing", () => {
   const assetDir = path.resolve(__dirname, "./asset");
   const tempDir = path.resolve(__dirname, "./tmp");
-  const pdfProcessingSampleJpg = path.join(assetDir, "pdf_processing_sample.jpg");
+  const pdfProcessingSampleJpg = path.join(
+    assetDir,
+    "pdf_processing_sample.jpg",
+  );
 
   beforeEach(async () => {
     if (!existsSync(tempDir)) {

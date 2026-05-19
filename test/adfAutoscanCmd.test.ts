@@ -1,5 +1,4 @@
 import { describe, it, beforeEach, afterEach } from "mocha";
-import { expect } from "chai";
 import nock from "nock";
 import HPApi from "../src/HPApi.js";
 import { adfAutoscanCmd } from "../src/commands/adfAutoscanCmd.js";
@@ -62,20 +61,25 @@ describe("adfAutoscanCmd", () => {
     };
 
     // Mock HPApi.getDiscoveryTree
-    nock("http://127.0.0.1")
-        .get("/DevMgmt/DiscoveryTree.xml")
-        .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+    nock("http://127.0.0.1:80")
+      .get("/DevMgmt/DiscoveryTree.xml")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
 <ledm:DiscoveryTree xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/2007/09/21" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
   <ledm:SupportedIfc>
     <ledm:ManifestURI>/Scan/ScanJobManifest</ledm:ManifestURI>
     <dd:ResourceType>ledm:hpLedmScanJobManifest</dd:ResourceType>
   </ledm:SupportedIfc>
-</ledm:DiscoveryTree>`);
+</ledm:DiscoveryTree>`,
+      );
 
     // Mock HPApi.getScanJobManifest
-    nock("http://127.0.0.1")
-        .get("/Scan/ScanJobManifest")
-        .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+    nock("http://127.0.0.1:80")
+      .get("/Scan/ScanJobManifest")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
 <man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/map/2009/03/24" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scan/2008/11/17">
     <map:ResourceMap>
         <map:ResourceLink>
@@ -98,29 +102,34 @@ describe("adfAutoscanCmd", () => {
             </map:ResourceType>
         </map:ResourceNode>
     </map:ResourceMap>
-</man:Manifest>`);
+</man:Manifest>`,
+      );
 
     // Mock HPApi.getScanCaps (No ADF detection advertised)
-    nock("http://127.0.0.1")
-        .get("/Scan/ScanCaps")
-        .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+    nock("http://127.0.0.1:80")
+      .get("/Scan/ScanCaps")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
 <ScanCaps xmlns="http://www.hp.com/schemas/imaging/con/ledm/scancaps/2008/11/17">
     <PlatenMaxWidth>2550</PlatenMaxWidth>
     <PlatenMaxHeight>3300</PlatenMaxHeight>
-</ScanCaps>`);
+</ScanCaps>`,
+      );
 
-    // Mock getScanStatus to fail 50 times to exit the loop quickly
-    // We mock HPApi.isAlive() to return false after 1 error to exit the loop
-    nock("http://127.0.0.1")
-        .get("/Scan/Status")
-        .reply(500);
-    
-    HPApi.isAlive = async () => false;
-    // Mock HPApi.waitDeviceUp to return instantly even when "down"
+    // Mock getScanStatus to fail
+    nock("http://127.0.0.1:80").persist().get("/Scan/Status").reply(500);
+
+    HPApi.isAlive = async () => true;
+    // Mock HPApi.delay to return instantly
+    HPApi.delay = async () => {
+      /* no-op */
+    };
+    // Mock HPApi.waitDeviceUp to return instantly
     HPApi.waitDeviceUp = async () => {
-        throw new Error("Test exit condition: waitDeviceUp called");
+      /* no-op */
     };
 
-    await expect(adfAutoscanCmd(config, 1)).to.be.fulfilled;
+    await adfAutoscanCmd(config, 1);
   });
 });
