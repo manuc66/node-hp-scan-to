@@ -48,6 +48,7 @@ describe("commands", () => {
         );
 
       await clearRegistrationsCmd();
+      expect(nock.isDone()).to.be.true;
     });
   });
 
