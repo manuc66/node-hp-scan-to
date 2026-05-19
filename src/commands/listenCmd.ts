@@ -68,6 +68,7 @@ export async function listenCmd(
       if (selectedScanTarget?.event.compEventURI !== undefined) {
         proceedToScan = await waitScanRequest(
           selectedScanTarget.event.compEventURI,
+          deviceCapabilities.userActionTimeout,
         );
       }
 

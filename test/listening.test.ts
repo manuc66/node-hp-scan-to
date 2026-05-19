@@ -1,7 +1,9 @@
 import { describe, it, afterEach } from "mocha";
 import { expect } from "chai";
-import { waitForScanEvent } from "../src/listening.js";
+import { waitForScanEvent, waitScanRequest } from "../src/listening.js";
 import HPApi from "../src/HPApi.js";
+import type WalkupScanToCompEvent from "../src/hpModels/WalkupScanToCompEvent.js";
+import { EventType } from "../src/hpModels/WalkupScanToCompEvent.js";
 import type { EtagEventTable } from "../src/hpModels/EventTable.js";
 import type { IEvent } from "../src/hpModels/Event.js";
 
@@ -77,5 +79,40 @@ describe("waitForScanEvent (includes(...) !== undefined bug guard)", () => {
       targetUri,
       "Bug detected: function returned an event whose destinationURI does not include the expected resourceURI (likely due to using includes(...) !== undefined).",
     );
+  });
+});
+
+describe("waitScanRequest", () => {
+  const originalGetWalkupScanToCompEvent = HPApi.getWalkupScanToCompEvent;
+
+  afterEach(() => {
+    HPApi.getWalkupScanToCompEvent = originalGetWalkupScanToCompEvent;
+  });
+
+  it("should wait until ScanRequested event is received", async () => {
+    let callCount = 0;
+    HPApi.getWalkupScanToCompEvent = async () => {
+      callCount++;
+      if (callCount < 3) {
+        return { eventType: EventType.HostSelected } as unknown as WalkupScanToCompEvent;
+      }
+      return { eventType: EventType.ScanRequested } as unknown as WalkupScanToCompEvent;
+    };
+
+    const result = await waitScanRequest("uri", 5);
+    expect(result).to.be.true;
+    expect(callCount).to.be.eq(3);
+  });
+
+  it("should return false after userActionTimeout attempts", async () => {
+    let callCount = 0;
+    HPApi.getWalkupScanToCompEvent = async () => {
+      callCount++;
+      return { eventType: EventType.HostSelected } as unknown as WalkupScanToCompEvent;
+    };
+
+    const result = await waitScanRequest("uri", 3);
+    expect(result).to.be.false;
+    expect(callCount).to.be.eq(3);
   });
 });
