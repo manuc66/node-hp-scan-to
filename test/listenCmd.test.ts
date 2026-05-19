@@ -439,14 +439,8 @@ describe("listenCmd", () => {
       throw new Error("Test exit condition: waitDeviceUp called");
     };
 
-    try {
-      await listenCmd([{ label: "host", isDuplexSingleSide: false }], scanConfig, 1);
-    } catch (e: unknown) {
-      if (e instanceof Error && e.message !== "Test exit condition: waitDeviceUp called") {
-        throw e;
-      }
-    }
-
-    expect(true).to.be.true;
+    await expect(
+      listenCmd([{ label: "host", isDuplexSingleSide: false }], scanConfig, 1),
+    ).to.not.be.rejected;
   });
 });
