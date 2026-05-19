@@ -441,6 +441,6 @@ describe("listenCmd", () => {
 
     await expect(
       listenCmd([{ label: "host", isDuplexSingleSide: false }], scanConfig, 1),
-    ).to.not.be.rejected;
+    ).to.be.fulfilled;
   });
 });
