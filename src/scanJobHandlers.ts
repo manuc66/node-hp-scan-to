@@ -543,10 +543,16 @@ export async function executeScanJob(
   return jobState;
 }
 
-async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
+async function waitScanNewPageRequest(
+  compEventURI: string,
+  userActionTimeout: number | null = null,
+): Promise<boolean> {
   let startNewScanJob = false;
   let wait = true;
-  while (wait) {
+  const waitMax = userActionTimeout ?? 50;
+  let i = 0;
+  while (wait && i < waitMax) {
+    i++;
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
 
     const walkupScanToCompEvent =
@@ -560,6 +566,7 @@ async function waitScanNewPageRequest(compEventURI: string): Promise<boolean> {
       wait = false;
     } else if (eventType === EventType.ScanRequested) {
       // continue waiting
+      console.log(`Waiting for user input (attempt ${i} of ${waitMax})`);
     } else {
       wait = false;
       console.log(`Unknown eventType: ${eventTypeStr}`);
@@ -615,7 +622,10 @@ export async function executeScanJobs(
     if (lastEvent.compEventURI === undefined) {
       return;
     }
-    let startNewScanJob = await waitScanNewPageRequest(lastEvent.compEventURI);
+    let startNewScanJob = await waitScanNewPageRequest(
+      lastEvent.compEventURI,
+      deviceCapabilities.userActionTimeout,
+    );
     while (startNewScanJob) {
       jobState = await executeScanJob(
         scanJobSettings,
@@ -645,7 +655,10 @@ export async function executeScanJobs(
       if (lastEvent.compEventURI === undefined) {
         return;
       }
-      startNewScanJob = await waitScanNewPageRequest(lastEvent.compEventURI);
+      startNewScanJob = await waitScanNewPageRequest(
+        lastEvent.compEventURI,
+        deviceCapabilities.userActionTimeout,
+      );
     }
   }
 }

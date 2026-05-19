@@ -39,6 +39,7 @@ export function createDefaultDeviceCapabilities(): DeviceCapabilities {
     adfDuplexMaxHeight: null,
     hasAdfDetectPaperLoaded: false,
     hasAdfDuplex: false,
+    userActionTimeout: null,
     isEscl: false,
     getScanStatus: () => Promise.resolve({} as IScanStatus),
     createScanJobSettings: (..._args: unknown[]) => ({}) as IScanJobSettings,

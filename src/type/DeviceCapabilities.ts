@@ -15,6 +15,7 @@ export interface DeviceCapabilities {
   adfDuplexMaxHeight: number | null;
   hasAdfDuplex: boolean;
   hasAdfDetectPaperLoaded: boolean;
+  userActionTimeout: number | null;
   isEscl: boolean;
   getScanStatus: () => Promise<IScanStatus>;
   createScanJobSettings: (

@@ -51,6 +51,7 @@ export async function readDeviceCapabilities(
 ): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
   let useWalkupScanToComp = false;
+  let userActionTimeout: number | null = null;
 
   const discoveryTree = await HPApi.getDiscoveryTree();
 
@@ -65,6 +66,7 @@ export async function readDeviceCapabilities(
       );
       supportsMultiItemScanFromPlaten =
         walkupScanToCompCaps.supportsMultiItemScanFromPlaten;
+      userActionTimeout = walkupScanToCompCaps.userActionTimeout;
     }
   } else if (discoveryTree.WalkupScanManifestURI !== null) {
     // No caps to load here but check we can load the specified manifest
@@ -164,6 +166,7 @@ export async function readDeviceCapabilities(
     adfDuplexMaxHeight: scanCaps?.adfDuplexMaxHeight ?? null,
     hasAdfDuplex: scanCaps?.hasAdfDuplex ?? false,
     hasAdfDetectPaperLoaded: scanCaps?.hasAdfDetectPaperLoaded ?? false,
+    userActionTimeout,
     isEscl: scanCaps?.isEscl ?? false,
     getScanStatus,
     createScanJobSettings,
