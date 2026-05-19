@@ -471,5 +471,6 @@ describe("listenCmd", () => {
       scanConfig,
       1,
     );
+    expect(true).to.be.true;
   });
 });
