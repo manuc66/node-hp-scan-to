@@ -101,7 +101,7 @@ describe("scanProcessing", () => {
           getInputSource: () => InputSource.Platen,
           isLoaded: () => false,
         }),
-      } as unknown as DeviceCapabilities);
+      }) as unknown as DeviceCapabilities;
 
     const scanConfig: ScanConfig = {
       resolution: 200,

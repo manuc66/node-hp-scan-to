@@ -76,7 +76,10 @@ export default class HPApi {
     }
     HPApi.logDebug(callCount, true, request);
     try {
-      const response = await axios(request);
+      const response = await axios({
+        ...request,
+        adapter: "http",
+      });
       HPApi.logDebug(callCount, false, {
         status: response.status,
         data: response.data as unknown,

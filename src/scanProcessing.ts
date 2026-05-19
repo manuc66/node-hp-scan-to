@@ -4,7 +4,6 @@ import type WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestina
 import HPApi from "./HPApi.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type { ScanContent } from "./type/ScanContent.js";
-import { delay } from "./delay.js";
 import { InputSource } from "./type/InputSource.js";
 import { postProcessing } from "./postProcessing.js";
 import { getScanDimensions } from "./scanDimensions.js";
@@ -253,7 +252,7 @@ export async function singleScan(
   const scanStatus = await deviceCapabilities.getScanStatus();
 
   if (scanStatus.scannerState !== ScannerState.Idle) {
-console.log(
+    console.log(
       `Scanner state is not Idle: ${scanStatus.scannerState}, aborting scan attempt...!`,
     );
     return;
@@ -321,7 +320,7 @@ export async function waitAdfLoaded(
   while (!ready) {
     let scanStatus: IScanStatus = await getScanStatus();
     while (!scanStatus.isLoaded()) {
-      await delay(pollingInterval);
+      await HPApi.delay(pollingInterval);
       scanStatus = await getScanStatus();
     }
     console.log(`ADF load detected`);
@@ -330,7 +329,7 @@ export async function waitAdfLoaded(
     let counter = 0;
     const shortPollingInterval = 500;
     while (loaded && counter < startScanDelay) {
-      await delay(shortPollingInterval);
+      await HPApi.delay(shortPollingInterval);
       scanStatus = await getScanStatus();
       loaded = scanStatus.isLoaded();
       counter += shortPollingInterval;
