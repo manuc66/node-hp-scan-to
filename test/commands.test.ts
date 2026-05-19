@@ -1,4 +1,5 @@
 import { describe, it, beforeEach, afterEach } from "mocha";
+import { expect } from "chai";
 import { clearRegistrationsCmd } from "../src/commands/clearRegistrationsCmd.js";
 import HPApi from "../src/HPApi.js";
 import nock from "nock";
@@ -34,11 +35,24 @@ describe("commands", () => {
 
       await clearRegistrationsCmd();
     });
+
+    it("should handle empty destinations", async () => {
+      nock("http://127.0.0.1")
+        .get("/WalkupScanToComp/WalkupScanToCompDestinations")
+        .reply(
+          200,
+          `<?xml version="1.0" encoding="UTF-8"?>
+          <wus:WalkupScanToCompDestinations xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscantocomp/2009/01/13">
+          </wus:WalkupScanToCompDestinations>`,
+        );
+
+      await clearRegistrationsCmd();
+    });
   });
 
   describe("singleScanCmd", () => {
-    it("should skip for now as it depends on TCP port 80 being open", async () => {
-      // Skip for now
+    it("is tested in singleScanCmd.test.ts", () => {
+      expect(true).to.be.true;
     });
   });
 });
