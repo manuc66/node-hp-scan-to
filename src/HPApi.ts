@@ -43,6 +43,10 @@ export default class HPApi {
     printerIP = ip;
   }
 
+  static getDeviceIP(): string {
+    return printerIP;
+  }
+
   static setDebug(dbg: boolean): void {
     debug = dbg;
   }
@@ -62,10 +66,11 @@ export default class HPApi {
     }
   }
 
-  private static async callAxios(
+  private static async callAxios<T = string>(
     request: AxiosRequestConfig,
-  ): Promise<AxiosResponse<string>> {
+  ): Promise<AxiosResponse<T>> {
     callCount++;
+
     if (request.timeout === 0) {
       request.timeout = 100_000;
     }
@@ -586,13 +591,15 @@ export default class HPApi {
     destination: string,
     timeout?: number,
   ): Promise<string> {
-    const { data }: AxiosResponse<Stream> = await axios.request<Stream>({
+    const response = await HPApi.callAxios<Stream>({
       baseURL: `http://${printerIP}:8080`,
       url: binaryURL,
       method: "GET",
       responseType: "stream",
       ...(timeout !== undefined && { timeout }),
     });
+
+    const data = response.data;
 
     const destinationFileStream = fs.createWriteStream(destination);
     data.pipe(destinationFileStream);
