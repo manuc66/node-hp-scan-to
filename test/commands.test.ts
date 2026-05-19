@@ -1,6 +1,7 @@
 import { describe, it, beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
 import { clearRegistrationsCmd } from "../src/commands/clearRegistrationsCmd.js";
+import { singleScanCmd } from "../src/commands/singleScanCmd.js";
 import HPApi from "../src/HPApi.js";
 import nock from "nock";
 
@@ -46,13 +47,13 @@ describe("commands", () => {
           </wus:WalkupScanToCompDestinations>`,
         );
 
-      await clearRegistrationsCmd();
+      await expect(clearRegistrationsCmd()).to.not.be.rejected;
     });
   });
 
   describe("singleScanCmd", () => {
-    it("is tested in singleScanCmd.test.ts", () => {
-      expect(true).to.be.true;
+    it("should be a function", () => {
+      expect(singleScanCmd).to.be.a("function");
     });
   });
 });
