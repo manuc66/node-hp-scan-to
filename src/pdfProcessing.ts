@@ -60,6 +60,11 @@ export async function createPdfFrom(
       doc.addPage(format);
     }
 
+    if (element.path.toLowerCase().endsWith(".bmp")) {
+      throw new Error(
+        "PDF encapsulation of BMP (Raw) images is not supported directly without conversion. Please use Jpeg format for PDF or keep scans as individual BMP files.",
+      );
+    }
     const imageByteBuffer = await fs.readFile(element.path);
     doc.addImage(imageByteBuffer, "JPEG", 0, 0, widthInInches, heightInInches);
   }

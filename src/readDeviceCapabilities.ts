@@ -9,11 +9,13 @@ import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
 import EsclScanJobSettings from "./hpModels/EsclScanJobSettings.js";
 import ScanJobSettings from "./hpModels/ScanJobSettings.js";
 import type { ScanMode } from "./type/scanMode.js";
+import type { ImageFormat } from "./imageFormats/index.js";
+import type { IScanCaps } from "./IScanCaps.js";
 
 async function getScanCaps(
   discoveryTree: DiscoveryTree,
   preferEscl: boolean,
-): Promise<ScanCaps | EsclScanCaps | null> {
+): Promise<IScanCaps | null> {
   let scanCaps: ScanCaps | null = null;
   if (discoveryTree.ScanJobManifestURI !== null) {
     const scanJobManifest = await HPApi.getScanJobManifest(
@@ -49,6 +51,7 @@ export async function readDeviceCapabilities(
 ): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
   let useWalkupScanToComp = false;
+  let userActionTimeout: number | null = null;
 
   const discoveryTree = await HPApi.getDiscoveryTree();
 
@@ -63,6 +66,7 @@ export async function readDeviceCapabilities(
       );
       supportsMultiItemScanFromPlaten =
         walkupScanToCompCaps.supportsMultiItemScanFromPlaten;
+      userActionTimeout = walkupScanToCompCaps.userActionTimeout;
     }
   } else if (discoveryTree.WalkupScanManifestURI !== null) {
     // No caps to load here but check we can load the specified manifest
@@ -80,6 +84,17 @@ export async function readDeviceCapabilities(
     );
   }
 
+  if (scanCaps?.isEscl === true) {
+    console.log(
+      "eSCL detected: ScanRegions use 1/300in units; MaxWidth/MaxHeight are assumed in the same units.",
+    );
+    console.log(
+      `eSCL max (platen): ${scanCaps.platenMaxWidth}x${scanCaps.platenMaxHeight}, ` +
+        `ADF: ${scanCaps.adfMaxWidth}x${scanCaps.adfMaxHeight}, ` +
+        `ADF duplex: ${scanCaps.adfDuplexMaxWidth}x${scanCaps.adfDuplexMaxHeight}`,
+    );
+  }
+
   const getScanStatus = async (): Promise<IScanStatus> => {
     let scanStatus: IScanStatus;
     if (scanCaps?.isEscl === true) {
@@ -93,6 +108,7 @@ export async function readDeviceCapabilities(
   const createScanJobSettings = (
     inputSource: InputSource,
     contentType: "Document" | "Photo",
+    format: ImageFormat,
     resolution: number,
     mode: ScanMode,
     width: number | null,
@@ -104,6 +120,7 @@ export async function readDeviceCapabilities(
       scanJobSettings = new EsclScanJobSettings(
         inputSource,
         contentType,
+        format,
         resolution,
         mode,
         width,
@@ -114,11 +131,13 @@ export async function readDeviceCapabilities(
       scanJobSettings = new ScanJobSettings(
         inputSource,
         contentType,
+        format,
         resolution,
         mode,
         width,
         height,
         isDuplex,
+        scanCaps as ScanCaps,
       );
     }
     return scanJobSettings;
@@ -147,6 +166,7 @@ export async function readDeviceCapabilities(
     adfDuplexMaxHeight: scanCaps?.adfDuplexMaxHeight ?? null,
     hasAdfDuplex: scanCaps?.hasAdfDuplex ?? false,
     hasAdfDetectPaperLoaded: scanCaps?.hasAdfDetectPaperLoaded ?? false,
+    userActionTimeout,
     isEscl: scanCaps?.isEscl ?? false,
     getScanStatus,
     createScanJobSettings,

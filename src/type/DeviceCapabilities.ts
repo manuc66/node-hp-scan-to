@@ -2,6 +2,7 @@ import type { IScanStatus } from "../hpModels/IScanStatus.js";
 import type { IScanJobSettings } from "../hpModels/IScanJobSettings.js";
 import type { InputSource } from "./InputSource.js";
 import type { ScanMode } from "./scanMode.js";
+import type { ImageFormat } from "../imageFormats/index.js";
 
 export interface DeviceCapabilities {
   supportsMultiItemScanFromPlaten: boolean;
@@ -14,11 +15,13 @@ export interface DeviceCapabilities {
   adfDuplexMaxHeight: number | null;
   hasAdfDuplex: boolean;
   hasAdfDetectPaperLoaded: boolean;
+  userActionTimeout: number | null;
   isEscl: boolean;
   getScanStatus: () => Promise<IScanStatus>;
   createScanJobSettings: (
     inputSource: InputSource,
     contentType: "Document" | "Photo",
+    format: ImageFormat,
     resolution: number,
     mode: ScanMode,
     width: number | null,

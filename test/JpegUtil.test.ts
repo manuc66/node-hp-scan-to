@@ -1,11 +1,13 @@
 import { describe } from "mocha";
 import { expect } from "chai";
-import JpegUtil from "../src/JpegUtil.js";
+import JpegUtil from "../src/imageFormats/JpegUtil.js";
 import fs0 from "node:fs";
 import fs01 from "node:fs/promises";
 import path from "node:path";
 
-const __dirname = import.meta.dirname;
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const fs = { ...fs0, ...fs01 };
 describe("JpegUtil", () => {

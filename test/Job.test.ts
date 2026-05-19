@@ -4,7 +4,9 @@ import path from "node:path";
 import * as fs from "node:fs/promises";
 import Job from "../src/hpModels/Job.js";
 
-const __dirname = import.meta.dirname;
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("Job", () => {
   describe("Parsing job_processing.xml", async () => {

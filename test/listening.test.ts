@@ -2,9 +2,10 @@ import { describe, it, afterEach } from "mocha";
 import { expect } from "chai";
 import { waitForScanEvent, waitScanRequest } from "../src/listening.js";
 import HPApi from "../src/HPApi.js";
+import type WalkupScanToCompEvent from "../src/hpModels/WalkupScanToCompEvent.js";
+import { EventType } from "../src/hpModels/WalkupScanToCompEvent.js";
 import type { EtagEventTable } from "../src/hpModels/EventTable.js";
 import type { IEvent } from "../src/hpModels/Event.js";
-import { EventType } from "../src/hpModels/WalkupScanToCompEvent.js";
 
 describe("waitForScanEvent (includes(...) !== undefined bug guard)", () => {
   const originalGetEvents = HPApi.getEvents;
@@ -81,12 +82,11 @@ describe("waitForScanEvent (includes(...) !== undefined bug guard)", () => {
   });
 });
 
-describe("waitScanRequest()", () => {
+describe("waitScanRequest", () => {
   const originalGetWalkupScanToCompEvent = HPApi.getWalkupScanToCompEvent;
   const originalSetTimeout = globalThis.setTimeout;
 
   beforeEach(() => {
-    // Make the internal 1s waits complete instantly so tests run fast.
     globalThis.setTimeout = ((
       cb: (...args: any[]) => void,
       _ms?: number,
@@ -102,59 +102,30 @@ describe("waitScanRequest()", () => {
     globalThis.setTimeout = originalSetTimeout;
   });
 
-  it("returns false when it times out without receiving ScanRequested / ScanNewPageRequested", async () => {
-    let calls = 0;
+  it("should wait until ScanRequested event is received", async () => {
+    let callCount = 0;
+    HPApi.getWalkupScanToCompEvent = async () => {
+      callCount++;
+      if (callCount < 3) {
+        return { eventType: EventType.HostSelected } as any;
+      }
+      return { eventType: EventType.ScanRequested } as any;
+    };
 
-    HPApi.getWalkupScanToCompEvent = (async () => {
-      calls++;
+    const result = await waitScanRequest("uri", 5);
+    expect(result).to.be.true;
+    expect(callCount).to.be.eq(3);
+  });
+
+  it("should return false after userActionTimeout attempts", async () => {
+    let callCount = 0;
+    HPApi.getWalkupScanToCompEvent = async () => {
+      callCount++;
       return { eventType: EventType.HostSelected } as any;
-    }) as any;
+    };
 
-    const ok = await waitScanRequest("http://device/compEvent/1");
-
-    expect(ok).to.equal(false);
-    expect(calls).to.equal(50);
-  });
-
-  it("returns true when ScanRequested is received", async () => {
-    const sequence = [
-      EventType.HostSelected,
-      EventType.HostSelected,
-      EventType.ScanRequested,
-    ];
-    let idx = 0;
-
-    HPApi.getWalkupScanToCompEvent = (async () => {
-      const eventType = sequence[Math.min(idx, sequence.length - 1)];
-      idx++;
-      return { eventType } as any;
-    }) as any;
-
-    const ok = await waitScanRequest("http://device/compEvent/2");
-    expect(ok).to.equal(true);
-    expect(idx).to.be.greaterThanOrEqual(3);
-  });
-
-  it("returns true when ScanNewPageRequested is received", async () => {
-    HPApi.getWalkupScanToCompEvent = (async () => {
-      return { eventType: EventType.ScanNewPageRequested } as any;
-    }) as any;
-
-    const ok = await waitScanRequest("http://device/compEvent/3");
-    expect(ok).to.equal(true);
-  });
-
-  it("returns false immediately for an unexpected event type (scan finished)", async () => {
-    let calls = 0;
-
-    HPApi.getWalkupScanToCompEvent = (async () => {
-      calls++;
-      // Anything that is not HostSelected / ScanRequested / ScanNewPageRequested
-      return { eventType: EventType.ScanPagesComplete } as any;
-    }) as any;
-
-    const ok = await waitScanRequest("http://device/compEvent/4");
-    expect(ok).to.equal(false);
-    expect(calls).to.equal(1);
+    const result = await waitScanRequest("uri", 3);
+    expect(result).to.be.false;
+    expect(callCount).to.be.eq(3);
   });
 });

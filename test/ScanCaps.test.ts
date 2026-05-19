@@ -4,7 +4,9 @@ import path from "node:path";
 import * as fs from "node:fs/promises";
 import ScanCaps from "../src/hpModels/ScanCaps.js";
 
-const __dirname = import.meta.dirname;
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("ScanCaps", () => {
   describe("Parsing ScanCaps_with_adf.xml", async () => {
@@ -149,6 +151,37 @@ describe("ScanCaps", () => {
     });
     it("AdfDuplex", async () => {
       expect(scanCaps.hasAdfDuplex).to.be.eq(true);
+    });
+  });
+
+  describe("Parsing minimal ScanCaps.xml", async () => {
+    let scanCaps: ScanCaps;
+
+    before(async () => {
+      // Minimal XML with only required structure
+      const content = `<?xml version="1.0" encoding="UTF-8"?>
+<ScanCaps xmlns="http://www.hp.com/schemas/imaging/con/ledm/scancaps/2007/02/24">
+</ScanCaps>`;
+      scanCaps = await ScanCaps.createScanCaps(content);
+    });
+
+    it("should handle missing Platen", () => {
+      expect(scanCaps.platenMaxWidth).to.be.null;
+      expect(scanCaps.platenMaxHeight).to.be.null;
+    });
+
+    it("should handle missing Adf", () => {
+      expect(scanCaps.adfMaxWidth).to.be.null;
+      expect(scanCaps.adfMaxHeight).to.be.null;
+      expect(scanCaps.adfDuplexMaxWidth).to.be.null;
+      expect(scanCaps.adfDuplexMaxHeight).to.be.null;
+      expect(scanCaps.hasAdfDetectPaperLoaded).to.be.false;
+      expect(scanCaps.hasAdfDuplex).to.be.false;
+    });
+
+    it("should handle missing ColorEntries", () => {
+      expect(scanCaps.getSupportedColorTypes()).to.be.empty;
+      expect(scanCaps.getSupportedFormats("Color")).to.be.empty;
     });
   });
 });

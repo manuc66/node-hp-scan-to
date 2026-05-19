@@ -7,14 +7,17 @@ import {
 } from "../src/nextcloud/nextcloud.js";
 import type { NextcloudConfig } from "../src/nextcloud/NextcloudConfig.js";
 import { convertToPdf } from "../src/pdfProcessing.js";
-import fs from "node:fs";
 import nock from "nock";
+import fsPromises from "node:fs/promises";
+import fs, { existsSync } from "node:fs";
 
-const __dirname = import.meta.dirname;
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("nextcloud", () => {
   // prepare test data
-  const fileName = "sample.jpg";
+  const fileName = "nextcloud_sample.jpg";
   const filePath = path.resolve(__dirname, "./asset/" + fileName);
   const nextcloudUrl = "https://nextcloud.example.test";
   const username = "scanner";
@@ -26,12 +29,16 @@ describe("nextcloud", () => {
   let nextcloudConfig: NextcloudConfig;
 
   beforeEach(async () => {
+    nock.cleanAll();
     nock.disableNetConnect();
-    nock.enableNetConnect(nextcloudUrl);
 
-    nock(nextcloudUrl, { allowUnmocked: true })
-      .get(/.*/)
-      .reply(503, "Service Unavailable");
+    if (!existsSync(path.dirname(filePath))) {
+      await fsPromises.mkdir(path.dirname(filePath), { recursive: true });
+    }
+    if (!existsSync(filePath)) {
+      await fsPromises.writeFile(filePath, "fake-jpg-content");
+    }
+
 
     scanJobContent = { elements: [] };
     scanPage = {
@@ -50,6 +57,11 @@ describe("nextcloud", () => {
       uploadFolder: uploadFolder,
       keepFiles: false,
     };
+  });
+
+  afterEach(() => {
+    nock.cleanAll();
+    nock.enableNetConnect();
   });
 
   describe("upload images to Nextcloud", () => {
