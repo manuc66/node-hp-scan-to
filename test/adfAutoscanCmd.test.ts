@@ -121,6 +121,6 @@ describe("adfAutoscanCmd", () => {
         throw new Error("Test exit condition: waitDeviceUp called");
     };
 
-    await expect(adfAutoscanCmd(config, 1)).to.not.be.rejected;
+    await expect(adfAutoscanCmd(config, 1)).to.be.fulfilled;
   });
 });
