@@ -6,6 +6,7 @@ import { InputSource } from "../src/type/InputSource.js";
 import EsclScanJobSettings from "../src/hpModels/EsclScanJobSettings.js";
 import { ScanMode } from "../src/type/scanMode.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
+import { defaultEsclToneMapSettings } from "../src/type/ToneMap.js";
 
 import { fileURLToPath } from "url";
 import { createImageFormat } from "../src/imageFormats/index.js";
@@ -24,6 +25,7 @@ describe("ScanJobSettings", () => {
         null,
         null,
         true,
+        defaultEsclToneMapSettings,
       );
 
       const content: string = await fs.readFile(
@@ -44,6 +46,7 @@ describe("ScanJobSettings", () => {
         2481,
         3507,
         false,
+        defaultEsclToneMapSettings,
       );
 
       const content: string = await fs.readFile(

@@ -161,6 +161,7 @@ describe("readDeviceCapabilities", () => {
       1000,
       2000,
       false,
+      { gamma: 180, brightness: 996, contrast: 996, highlite: 1396, shadow: 70 },
     );
     expect(jobSettings).to.not.be.null;
 

@@ -3,6 +3,7 @@ import type { PaperlessConfig } from "../paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "../nextcloud/NextcloudConfig.js";
 import type { ScanMode } from "./scanMode.js";
 import type { ScanFormat } from "./scanFormat.js";
+import type { ToneMapConfig } from "./ToneMap.js";
 
 export interface ScanConfig {
   resolution: number;
@@ -17,6 +18,7 @@ export interface ScanConfig {
   paperSize: string | undefined; // e.g., "A4", "Letter", "Max", or preset name
   paperDim: string | undefined; // e.g., "21x29.7cm", "8.5x11in", "210x297mm"
   paperOrientation: "portrait" | "landscape" | undefined;
+  toneMapConfig?: ToneMapConfig | undefined;
 }
 export type AdfAutoScanConfig = ScanConfig & {
   isDuplex: boolean;

@@ -25,6 +25,46 @@ export interface EsclScanCapsData {
         "scan:AdfOption": string[];
       }[];
     }[];
+    "scan:BrightnessSupport"?: {
+      "scan:Min": string[];
+      "scan:Max": string[];
+      "scan:Normal": string[];
+    }[];
+    "scan:ContrastSupport"?: {
+      "scan:Min": string[];
+      "scan:Max": string[];
+      "scan:Normal": string[];
+    }[];
+    "scan:GammaSupport"?: {
+      "scan:Min": string[];
+      "scan:Max": string[];
+      "scan:Normal": string[];
+    }[];
+    "scan:HighlightSupport"?: {
+      "scan:Min": string[];
+      "scan:Max": string[];
+      "scan:Normal": string[];
+    }[];
+    "scan:ShadowSupport"?: {
+      "scan:Min": string[];
+      "scan:Max": string[];
+      "scan:Normal": string[];
+    }[];
+  };
+}
+
+function getToneMapSupport(
+  supportData:
+    | { "scan:Min"?: string[]; "scan:Max"?: string[]; "scan:Normal"?: string[] }
+    | undefined,
+): { min: number; max: number; defaultValue: number } | null {
+  if (!supportData) {
+    return null;
+  }
+  return {
+    min: Number.parseInt(supportData["scan:Min"]?.[0] ?? "0", 10),
+    max: Number.parseInt(supportData["scan:Max"]?.[0] ?? "0", 10),
+    defaultValue: Number.parseInt(supportData["scan:Normal"]?.[0] ?? "0", 10),
   };
 }
 
@@ -197,4 +237,41 @@ export default class EsclScanCaps implements IScanCaps {
   }
 
   readonly isEscl: boolean = true;
+
+  get brightnessSupport(): {
+    min: number;
+    max: number;
+    defaultValue: number;
+  } | null {
+    const caps = this.data["scan:ScannerCapabilities"];
+    return getToneMapSupport(caps["scan:BrightnessSupport"]?.[0]);
+  }
+
+  get contrastSupport(): {
+    min: number;
+    max: number;
+    defaultValue: number;
+  } | null {
+    const caps = this.data["scan:ScannerCapabilities"];
+    return getToneMapSupport(caps["scan:ContrastSupport"]?.[0]);
+  }
+
+  get gammaSupport(): { min: number; max: number; defaultValue: number } | null {
+    const caps = this.data["scan:ScannerCapabilities"];
+    return getToneMapSupport(caps["scan:GammaSupport"]?.[0]);
+  }
+
+  get highlightSupport(): {
+    min: number;
+    max: number;
+    defaultValue: number;
+  } | null {
+    const caps = this.data["scan:ScannerCapabilities"];
+    return getToneMapSupport(caps["scan:HighlightSupport"]?.[0]);
+  }
+
+  get shadowSupport(): { min: number; max: number; defaultValue: number } | null {
+    const caps = this.data["scan:ScannerCapabilities"];
+    return getToneMapSupport(caps["scan:ShadowSupport"]?.[0]);
+  }
 }

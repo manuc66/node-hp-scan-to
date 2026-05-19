@@ -4,6 +4,7 @@ import { parseXmlString } from "./ParseXmlString.js";
 import type { IScanJobSettings } from "./IScanJobSettings.js";
 import { ScanMode } from "../type/scanMode.js";
 import type { ImageFormat } from "../imageFormats/index.js";
+import type { ToneMapSettings } from "../type/ToneMap.js";
 
 export enum DocumentFormatExt {
   Jpeg = "image/jpeg",
@@ -20,6 +21,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
   private readonly height: number | null;
   private readonly isDuplex: boolean;
   private readonly _format: ImageFormat;
+  private readonly toneMapSettings: ToneMapSettings;
 
   constructor(
     inputSource: InputSource,
@@ -30,6 +32,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     width: number | null,
     height: number | null,
     isDuplex: boolean,
+    toneMapSettings: ToneMapSettings,
   ) {
     this.inputSource = inputSource;
     this.contentType = contentType;
@@ -39,6 +42,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     this.width = width;
     this.height = height;
     this.isDuplex = isDuplex;
+    this.toneMapSettings = toneMapSettings;
   }
 
   async toXML(): Promise<string> {
@@ -115,6 +119,11 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     parsed.ScanSettings.XResolution = this.resolution;
     parsed.ScanSettings.YResolution = this.resolution;
     parsed.ScanSettings.Intent = this.contentType;
+    parsed.ScanSettings.Brightness = this.toneMapSettings.brightness;
+    parsed.ScanSettings.Contrast = this.toneMapSettings.contrast;
+    parsed.ScanSettings.Gamma = this.toneMapSettings.gamma;
+    parsed.ScanSettings.Highlight = this.toneMapSettings.highlite;
+    parsed.ScanSettings.Shadow = this.toneMapSettings.shadow;
 
     if (this.mode === ScanMode.Lineart) {
       parsed.ScanSettings.ColorMode = "BlackAndWhite1";

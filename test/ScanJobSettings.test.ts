@@ -7,6 +7,7 @@ import * as fs from "node:fs/promises";
 import { InputSource } from "../src/type/InputSource.js";
 import { ScanMode } from "../src/type/scanMode.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
+import { defaultToneMapSettings } from "../src/type/ToneMap.js";
 
 import { fileURLToPath } from "url";
 import { createImageFormat } from "../src/imageFormats/index.js";
@@ -35,6 +36,7 @@ describe("ScanJobSettings", () => {
         null,
         true,
         scanCaps,
+        defaultToneMapSettings,
       );
 
       const content: string = await fs.readFile(
@@ -57,6 +59,7 @@ describe("ScanJobSettings", () => {
         null,
         false,
         scanCaps,
+        defaultToneMapSettings,
       );
 
       const content: string = await fs.readFile(
@@ -79,6 +82,7 @@ describe("ScanJobSettings", () => {
         null,
         false,
         scanCaps,
+        defaultToneMapSettings,
       );
 
       const content: string = await fs.readFile(
@@ -101,6 +105,7 @@ describe("ScanJobSettings", () => {
         4000,
         false,
         scanCaps,
+        defaultToneMapSettings,
       );
 
       const content: string = await fs.readFile(

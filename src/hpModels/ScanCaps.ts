@@ -149,4 +149,14 @@ export default class ScanCaps implements IScanCaps {
   }
 
   readonly isEscl: boolean = false;
+
+  readonly brightnessSupport: { min: number; max: number; defaultValue: number } | null = null;
+
+  readonly contrastSupport: { min: number; max: number; defaultValue: number } | null = null;
+
+  readonly gammaSupport: { min: number; max: number; defaultValue: number } | null = null;
+
+  readonly highlightSupport: { min: number; max: number; defaultValue: number } | null = null;
+
+  readonly shadowSupport: { min: number; max: number; defaultValue: number } | null = null;
 }

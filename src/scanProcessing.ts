@@ -21,6 +21,30 @@ import type { IScanStatus } from "./hpModels/IScanStatus.js";
 import { ScannerState } from "./hpModels/ScannerState.js";
 import type { ScanPlexMode } from "./hpModels/ScanPlexMode.js";
 import { createImageFormat, type ImageFormat } from "./imageFormats/index.js";
+import {
+  defaultEsclToneMapSettings,
+  defaultToneMapSettings,
+  type ToneMapSettings,
+} from "./type/ToneMap.js";
+
+export function getToneMapSettings(
+  isEscl: boolean,
+  toneMapConfig: ScanConfig["toneMapConfig"],
+): ToneMapSettings {
+  const defaults = isEscl ? defaultEsclToneMapSettings : defaultToneMapSettings;
+
+  if (!toneMapConfig) {
+    return defaults;
+  }
+
+  return {
+    gamma: toneMapConfig.gamma ?? defaults.gamma,
+    brightness: toneMapConfig.brightness ?? defaults.brightness,
+    contrast: toneMapConfig.contrast ?? defaults.contrast,
+    highlite: toneMapConfig.highlite ?? defaults.highlite,
+    shadow: toneMapConfig.shadow ?? defaults.shadow,
+  };
+}
 
 export interface WalkupDestination {
   get shortcut(): null | KnownShortcut;
@@ -137,6 +161,10 @@ export async function saveScanFromEvent(
     scanWidth,
     scanHeight,
     isDuplex,
+    getToneMapSettings(
+      deviceCapabilities.isEscl,
+      scanConfig.toneMapConfig,
+    ),
   );
 
   const scanJobContent: ScanContent = { elements: [] };
@@ -199,6 +227,10 @@ export async function scanFromAdf(
     effectiveScanWidth,
     effectiveScanHeight,
     adfAutoScanConfig.isDuplex,
+    getToneMapSettings(
+      deviceCapabilities.isEscl,
+      adfAutoScanConfig.toneMapConfig,
+    ),
   );
 
   const scanJobContent: ScanContent = { elements: [] };
@@ -284,6 +316,10 @@ export async function singleScan(
     scanWidth,
     scanHeight,
     scanConfig.isDuplex,
+    getToneMapSettings(
+      deviceCapabilities.isEscl,
+      scanConfig.toneMapConfig,
+    ),
   );
 
   const scanJobContent: ScanContent = { elements: [] };

@@ -5,6 +5,7 @@ import type { IScanJobSettings } from "./IScanJobSettings.js";
 import { ScanMode } from "../type/scanMode.js";
 import type ScanCaps from "./ScanCaps.js";
 import type { ImageFormat } from "../imageFormats/index.js";
+import type { ToneMapSettings } from "../type/ToneMap.js";
 
 export enum DeviceFormat {
   Jpeg = "Jpeg",
@@ -21,6 +22,7 @@ export default class ScanJobSettings implements IScanJobSettings {
   private readonly isDuplex: boolean;
   private readonly _format: ImageFormat;
   private readonly scanCaps: ScanCaps;
+  private readonly toneMapSettings: ToneMapSettings;
 
   constructor(
     inputSource: InputSource,
@@ -32,6 +34,7 @@ export default class ScanJobSettings implements IScanJobSettings {
     height: number | null,
     isDuplex: boolean,
     scanCaps: ScanCaps,
+    toneMapSettings: ToneMapSettings,
   ) {
     this.inputSource = inputSource;
     this.contentType = contentType;
@@ -42,6 +45,7 @@ export default class ScanJobSettings implements IScanJobSettings {
     this.height = height;
     this.isDuplex = isDuplex;
     this.scanCaps = scanCaps;
+    this.toneMapSettings = toneMapSettings;
   }
 
   toJSON() {
@@ -106,7 +110,14 @@ export default class ScanJobSettings implements IScanJobSettings {
         YResolution: number[];
         ColorSpace: string[];
         BitDepth: number[];
-        ToneMap: [{ Threshold: number[] }];
+        ToneMap: [{
+          Gamma: number[];
+          Brightness: number[];
+          Contrast: number[];
+          Highlite: number[];
+          Shadow: number[];
+          Threshold: number[];
+        }];
         AdfOptions?: [{ AdfOption: ["Duplex"] }];
         ContentType: string[];
       };
@@ -114,6 +125,12 @@ export default class ScanJobSettings implements IScanJobSettings {
 
     parsed.ScanSettings.XResolution[0] = this.resolution;
     parsed.ScanSettings.YResolution[0] = this.resolution;
+
+    parsed.ScanSettings.ToneMap[0].Gamma[0] = this.toneMapSettings.gamma;
+    parsed.ScanSettings.ToneMap[0].Brightness[0] = this.toneMapSettings.brightness;
+    parsed.ScanSettings.ToneMap[0].Contrast[0] = this.toneMapSettings.contrast;
+    parsed.ScanSettings.ToneMap[0].Highlite[0] = this.toneMapSettings.highlite;
+    parsed.ScanSettings.ToneMap[0].Shadow[0] = this.toneMapSettings.shadow;
 
     let colorType: string;
     if (this.mode === ScanMode.Gray) {

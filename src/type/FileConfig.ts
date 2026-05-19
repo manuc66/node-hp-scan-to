@@ -3,6 +3,16 @@ import { DuplexAssemblyMode } from "./DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./scanFormat.js";
 import { parseScanMode, ScanMode } from "./scanMode.js";
 
+export const toneMapSchema = z
+  .strictObject({
+    gamma: z.number().int().min(0).optional(),
+    brightness: z.number().int().min(0).optional(),
+    contrast: z.number().int().min(0).optional(),
+    highlite: z.number().int().min(0).optional(),
+    shadow: z.number().int().min(0).optional(),
+  })
+  .optional();
+
 // Configuration schema for the config file
 export const configSchema = z
   .strictObject({
@@ -71,6 +81,11 @@ export const configSchema = z
     paper_dim: z.string().optional(), // Custom paper dimensions (e.g., "21x29.7cm", "8.5x11in")
 
     prefer_escl: z.boolean().optional(), // Always upload scans as PDF
+
+    ///
+    /// ToneMap Settings (per document type)
+    ///
+    tone_map: toneMapSchema,
 
     ///
     /// Duplex Scanning Options

@@ -3,6 +3,7 @@ import type { IScanJobSettings } from "../hpModels/IScanJobSettings.js";
 import type { InputSource } from "./InputSource.js";
 import type { ScanMode } from "./scanMode.js";
 import type { ImageFormat } from "../imageFormats/index.js";
+import type { ToneMapSettings } from "./ToneMap.js";
 
 export interface DeviceCapabilities {
   supportsMultiItemScanFromPlaten: boolean;
@@ -27,6 +28,7 @@ export interface DeviceCapabilities {
     width: number | null,
     height: number | null,
     isDuplex: boolean,
+    toneMapSettings: ToneMapSettings,
   ) => IScanJobSettings;
   submitScanJob: (scanJobSettings: IScanJobSettings) => Promise<string>;
 }
