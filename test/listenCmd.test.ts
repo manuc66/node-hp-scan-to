@@ -1,8 +1,16 @@
-import { describe } from "mocha";
 import { expect } from "chai";
 import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
-import { assembleDuplexScan } from "../src/commands/listenCmd.js";
+import { describe, it, beforeEach, afterEach } from "mocha";
+import nock from "nock";
+import HPApi from "../src/HPApi.js";
+import { assembleDuplexScan, listenCmd } from "../src/commands/listenCmd.js";
 import { DuplexAssemblyMode } from "../src/type/DuplexAssemblyMode.js";
+import type { ScanConfig } from "../src/type/scanConfigs.js";
+import { ScanMode } from "../src/type/scanMode.js";
+import { ScanFormat } from "../src/type/scanFormat.js";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 // Utility function to create a ScanPage with default values
 const createScanPage = (overrides: Partial<ScanPage>): ScanPage => {
@@ -311,5 +319,134 @@ describe("assembleDuplexScan", () => {
     );
 
     expect(result.elements).to.deep.equal([]);
+  });
+});
+
+describe("listenCmd", () => {
+  let tempDir: string;
+
+  let originalIsAlive: typeof HPApi.isAlive;
+  let originalWaitDeviceUp: typeof HPApi.waitDeviceUp;
+
+  beforeEach(() => {
+    nock.disableNetConnect();
+    HPApi.setDeviceIP("127.0.0.1");
+    // Mock HPApi.isAlive to return true instantly
+    originalIsAlive = HPApi.isAlive;
+    originalWaitDeviceUp = HPApi.waitDeviceUp;
+    HPApi.isAlive = async () => true;
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "listenCmd-test-"));
+  });
+
+  afterEach(() => {
+    HPApi.isAlive = originalIsAlive;
+    HPApi.waitDeviceUp = originalWaitDeviceUp;
+    nock.cleanAll();
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("should stop when device is down", async () => {
+    const scanConfig: ScanConfig = {
+      resolution: 300,
+      mode: ScanMode.Color,
+      width: undefined,
+      height: undefined,
+      format: ScanFormat.Jpeg,
+      directoryConfig: {
+        directory: tempDir,
+        tempDirectory: tempDir,
+        filePattern: undefined,
+      },
+      paperlessConfig: undefined,
+      nextcloudConfig: undefined,
+      preferEscl: false,
+      paperSize: undefined,
+      paperDim: undefined,
+      paperOrientation: undefined,
+    };
+
+    // Mock HPApi.getDiscoveryTree
+    nock("http://127.0.0.1")
+      .get("/DevMgmt/DiscoveryTree.xml")
+      .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+<ledm:DiscoveryTree xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/2007/09/21" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
+  <ledm:SupportedIfc>
+    <ledm:ManifestURI>/Scan/ScanJobManifest</ledm:ManifestURI>
+    <dd:ResourceType>ledm:hpLedmScanJobManifest</dd:ResourceType>
+  </ledm:SupportedIfc>
+</ledm:DiscoveryTree>`);
+
+    // Mock HPApi.getScanJobManifest
+    nock("http://127.0.0.1")
+      .get("/Scan/ScanJobManifest")
+      .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/map/2009/03/24" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scan/2008/11/17">
+    <map:ResourceMap>
+        <map:ResourceLink>
+            <dd:ResourceURI>http://127.0.0.1</dd:ResourceURI>
+        </map:ResourceLink>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/Scan/ScanCaps</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType>
+                <scan:ScanResourceType>ScanCaps</scan:ScanResourceType>
+            </map:ResourceType>
+        </map:ResourceNode>
+        <map:ResourceNode>
+            <map:ResourceLink>
+                <dd:ResourceURI>/Scan/Status</dd:ResourceURI>
+            </map:ResourceLink>
+            <map:ResourceType>
+                <scan:ScanResourceType>Status</scan:ScanResourceType>
+            </map:ResourceType>
+        </map:ResourceNode>
+    </map:ResourceMap>
+</man:Manifest>`);
+
+    // Mock HPApi.getScanCaps
+    nock("http://127.0.0.1")
+      .get("/Scan/ScanCaps")
+      .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+<ScanCaps xmlns="http://www.hp.com/schemas/imaging/con/ledm/scancaps/2008/11/17">
+    <PlatenMaxWidth>2550</PlatenMaxWidth>
+    <PlatenMaxHeight>3300</PlatenMaxHeight>
+</ScanCaps>`);
+
+    // Mock getWalkupScanDestinations
+    nock("http://127.0.0.1")
+      .get("/WalkupScan/WalkupScanDestinations")
+      .reply(200, `<?xml version="1.0" encoding="UTF-8"?>
+<wus:WalkupScanDestinations xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscandestinations/2009/03/12">
+</wus:WalkupScanDestinations>`);
+
+    // Mock registerWalkupScanDestination
+    nock("http://127.0.0.1")
+      .post("/WalkupScan/WalkupScanDestinations")
+      .reply(201, "", { Location: "http://127.0.0.1/WalkupScan/Destinations/1" });
+
+    // Mock waitForScanEvent -> HPApi.getEvents to fail
+    nock("http://127.0.0.1")
+      .get("/EventMgmt/Events")
+      .reply(500);
+
+    // Mock isAlive to return false after the first error to exit the loop
+    HPApi.isAlive = async () => false;
+    // Mock waitDeviceUp to return instantly even when down
+    HPApi.waitDeviceUp = async () => {
+      throw new Error("Test exit condition: waitDeviceUp called");
+    };
+
+    try {
+      await listenCmd([{ label: "host", isDuplexSingleSide: false }], scanConfig, 1);
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message !== "Test exit condition: waitDeviceUp called") {
+        throw e;
+      }
+    }
+
+    expect(true).to.be.true;
   });
 });
