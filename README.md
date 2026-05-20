@@ -58,12 +58,9 @@ This app has been developed and tested with the following HP All-in-One Printers
 - HP Smart Tank Plus 570 series
 - HP OfficeJet Pro 9019e
 
-Users have reported it also working on:
-
-- HP DeskJet 3050 (J610a),3522, 3775, 4670, 5525
-- HP Envy 4504, 4520, 5530, 7640
-- HP OfficeJet 250 Mobile, 3830, 5230, 5740, 6700 Premium, 6950, Pro 7730, 8010 series, 8025e, 9012e
-- HP PageWide 377dw MFP
+Users have reported it also working on additional devices. See
+[SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md) for the full community-reported list
+and the process for adding a new printer report.
 
 There is a good chance it also works on other unlisted HP All-in-One Printer.
 
