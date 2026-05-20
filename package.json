@@ -35,7 +35,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "SUPPORTED_DEVICES.md"
   ],
   "engines": {
     "node": ">=20.11.0"
