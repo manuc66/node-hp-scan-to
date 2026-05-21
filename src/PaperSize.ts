@@ -120,7 +120,6 @@ export function parsePaperSize(input: string): PaperSizeMm | null {
   }
 }
 
-
 function normalizeInput(input?: string | null): string | undefined {
   return typeof input === "string" ? input.trim() || undefined : undefined;
 }
