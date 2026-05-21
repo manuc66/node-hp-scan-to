@@ -24,6 +24,58 @@ function checkCapabilities(
   }
 }
 
+async function executeAutoscanIteration(
+  adfAutoScanConfig: AdfAutoScanConfig,
+  deviceCapabilities: DeviceCapabilities,
+  folder: string,
+  tempFolder: string,
+  scanCount: number,
+): Promise<{ success: boolean; isDeviceAlive: boolean }> {
+  try {
+    await waitAdfLoaded(
+      adfAutoScanConfig.pollingInterval,
+      adfAutoScanConfig.startScanDelay,
+      deviceCapabilities.getScanStatus,
+    );
+
+    console.log(`Scan event captured, saving scan #${scanCount}`);
+
+    await scanFromAdf(
+      scanCount,
+      folder,
+      tempFolder,
+      adfAutoScanConfig,
+      deviceCapabilities,
+      new Date(),
+    );
+    return { success: true, isDeviceAlive: true };
+  } catch (e) {
+    if (e instanceof Error) {
+      console.log(e.message);
+    } else {
+      console.log(e);
+    }
+    const isAlive = await HPApi.isAlive();
+    return { success: false, isDeviceAlive: isAlive };
+  }
+}
+
+async function handleLoopDelayOrTermination(
+  errorCount: number,
+  deviceUp: boolean,
+  deviceUpPollingInterval: number,
+): Promise<{ keepActive: boolean; deviceUp: boolean }> {
+  const keepActive = errorCount < 50;
+
+  if (!deviceUp) {
+    await HPApi.waitDeviceUp(deviceUpPollingInterval);
+    return { keepActive, deviceUp: true };
+  }
+
+  await HPApi.delay(1000);
+  return { keepActive, deviceUp };
+}
+
 export async function adfAutoscanCmd(
   adfAutoScanConfig: AdfAutoScanConfig,
   deviceUpPollingInterval: number,
@@ -52,47 +104,31 @@ export async function adfAutoscanCmd(
   while (keepActive) {
     iteration++;
     console.log(`Iteration ${iteration} (Errors so far: ${errorCount})`);
-    try {
-      await waitAdfLoaded(
-        adfAutoScanConfig.pollingInterval,
-        adfAutoScanConfig.startScanDelay,
-        deviceCapabilities.getScanStatus,
-      );
 
+    const result = await executeAutoscanIteration(
+      adfAutoScanConfig,
+      deviceCapabilities,
+      folder,
+      tempFolder,
+      scanCount + 1,
+    );
+
+    if (result.success) {
       scanCount++;
-
-      console.log(`Scan event captured, saving scan #${scanCount}`);
-
-      await scanFromAdf(
-        scanCount,
-        folder,
-        tempFolder,
-        adfAutoScanConfig,
-        deviceCapabilities,
-        new Date(),
-      );
-    } catch (e) {
-      if (e instanceof Error) {
-        console.log(e.message);
-      } else {
-        console.log(e);
-      }
-      if (await HPApi.isAlive()) {
-        errorCount++;
-      } else {
-        deviceUp = false;
-      }
+    }
+    if (!result.success && result.isDeviceAlive) {
+      errorCount++;
+    }
+    if (!result.success && !result.isDeviceAlive) {
+      deviceUp = false;
     }
 
-    if (errorCount === 50) {
-      keepActive = false;
-    }
-
-    if (!deviceUp) {
-      await HPApi.waitDeviceUp(deviceUpPollingInterval);
-      deviceUp = true;
-    } else {
-      await HPApi.delay(1000);
-    }
+    const nextState = await handleLoopDelayOrTermination(
+      errorCount,
+      deviceUp,
+      deviceUpPollingInterval,
+    );
+    keepActive = nextState.keepActive;
+    deviceUp = nextState.deviceUp;
   }
 }
