@@ -37,33 +37,218 @@ import path from "node:path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Utility function to create a ScanPage with default values
-const createScanPage = (overrides: Partial<ScanPage>): ScanPage => {
-  return {
-    path: "default.png",
-    pageNumber: 1,
-    width: 100,
-    height: 200,
-    xResolution: 300,
-    yResolution: 300,
-    ...overrides,
-  };
+// ─── XML Fixtures ──────────────────────────────────────────────────────────────
+// Centralised so any schema change is a one-line edit, not a grep-and-replace.
+
+const XML = {
+  discoveryTree: `<?xml version="1.0" encoding="UTF-8"?>
+<ledm:DiscoveryTree
+    xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/2007/09/21"
+    xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
+  <ledm:SupportedIfc>
+    <ledm:ManifestURI>/Scan/ScanJobManifest</ledm:ManifestURI>
+    <dd:ResourceType>ledm:hpLedmScanJobManifest</dd:ResourceType>
+  </ledm:SupportedIfc>
+</ledm:DiscoveryTree>`,
+
+  scanJobManifest: `<?xml version="1.0" encoding="UTF-8"?>
+<man:Manifest
+    xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24"
+    xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/map/2009/03/24"
+    xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/"
+    xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scan/2008/11/17">
+  <map:ResourceMap>
+    <map:ResourceLink><dd:ResourceURI>http://127.0.0.1</dd:ResourceURI></map:ResourceLink>
+    <map:ResourceNode>
+      <map:ResourceLink><dd:ResourceURI>/Scan/ScanCaps</dd:ResourceURI></map:ResourceLink>
+      <map:ResourceType><scan:ScanResourceType>ScanCaps</scan:ScanResourceType></map:ResourceType>
+    </map:ResourceNode>
+    <map:ResourceNode>
+      <map:ResourceLink><dd:ResourceURI>/Scan/Status</dd:ResourceURI></map:ResourceLink>
+      <map:ResourceType><scan:ScanResourceType>Status</scan:ScanResourceType></map:ResourceType>
+    </map:ResourceNode>
+  </map:ResourceMap>
+</man:Manifest>`,
+
+  scanCaps: `<?xml version="1.0" encoding="UTF-8"?>
+<ScanCaps xmlns="http://www.hp.com/schemas/imaging/con/ledm/scancaps/2008/11/17">
+  <PlatenMaxWidth>2550</PlatenMaxWidth>
+  <PlatenMaxHeight>3300</PlatenMaxHeight>
+</ScanCaps>`,
+
+  walkupDestinationsEmpty: `<?xml version="1.0" encoding="UTF-8"?>
+<wus:WalkupScanDestinations
+    xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscandestinations/2009/03/12">
+</wus:WalkupScanDestinations>`,
+
+  scanStatusIdle: `<?xml version="1.0" encoding="UTF-8"?>
+<ScanStatus>
+  <ScannerState>Idle</ScannerState>
+  <AdfState>Empty</AdfState>
+</ScanStatus>`,
+
+  eventTableEmpty: `<?xml version="1.0" encoding="UTF-8"?>
+<ev:EventTable
+    xmlns:ev="http://www.hp.com/schemas/imaging/con/ledm/events/2007/09/16"
+    xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
+  <dd:Version><dd:Revision>1</dd:Revision></dd:Version>
+</ev:EventTable>`,
+
+  walkupScanToCompEventPagesComplete: `<?xml version="1.0" encoding="UTF-8"?>
+<wus:WalkupScanToCompEvent
+    xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28">
+  <wus:WalkupScanToCompEventType>ScanPagesComplete</wus:WalkupScanToCompEventType>
+</wus:WalkupScanToCompEvent>`,
+
+  scanJobProcessing: (
+    jobId = "123",
+    pageNumber = 1,
+  ) => `<?xml version="1.0" encoding="UTF-8"?>
+<j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/job/2009/03/24">
+  <j:JobState>Processing</j:JobState>
+  <ScanJob>
+    <PreScanPage>
+      <PageState>ReadyToUpload</PageState>
+      <BinaryURL>/Scan/Jobs/${jobId}/Pages/${pageNumber}</BinaryURL>
+      <PageNumber>${pageNumber}</PageNumber>
+      <BufferInfo>
+        <ImageWidth>100</ImageWidth>
+        <ImageHeight>200</ImageHeight>
+        <ScanSettings>
+          <InputSource>Platen</InputSource>
+          <ContentType>Photo</ContentType>
+          <XResolution>300</XResolution>
+          <YResolution>300</YResolution>
+        </ScanSettings>
+      </BufferInfo>
+    </PreScanPage>
+  </ScanJob>
+</j:Job>`,
+
+  scanJobCompleted: (pageNumber = 1) => `<?xml version="1.0" encoding="UTF-8"?>
+<j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/job/2009/03/24">
+  <j:JobState>Completed</j:JobState>
+  <ScanJob>
+    <PostScanPage><PageNumber>${pageNumber}</PageNumber></PostScanPage>
+  </ScanJob>
+</j:Job>`,
+
+  /** A simplex scan event (no compEventURI). destinationId defaults to "1". */
+  scanEventSimple: (
+    destinationId = "1",
+    agingStamp = "1-1",
+  ) => `<?xml version="1.0" encoding="UTF-8"?>
+<ev:EventTable
+    xmlns:ev="http://www.hp.com/schemas/imaging/con/ledm/events/2007/09/16"
+    xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
+  <dd:Version><dd:Revision>1</dd:Revision></dd:Version>
+  <ev:Event>
+    <dd:UnqualifiedEventCategory>ScanEvent</dd:UnqualifiedEventCategory>
+    <dd:AgingStamp>${agingStamp}</dd:AgingStamp>
+    <ev:Payload>
+      <dd:ResourceURI>http://127.0.0.1:80/WalkupScan/Destinations/${destinationId}</dd:ResourceURI>
+      <dd:ResourceType>hpCnxWalkupScanDestinations</dd:ResourceType>
+    </ev:Payload>
+  </ev:Event>
+</ev:EventTable>`,
+
+  /** A WalkupScanToComp scan event (includes compEventURI payload). */
+  scanEventWithCompUri: (
+    destinationId = "1",
+    agingStamp = "1-1",
+  ) => `<?xml version="1.0" encoding="UTF-8"?>
+<ev:EventTable
+    xmlns:ev="http://www.hp.com/schemas/imaging/con/ledm/events/2007/09/16"
+    xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
+  <dd:Version><dd:Revision>1</dd:Revision></dd:Version>
+  <ev:Event>
+    <dd:UnqualifiedEventCategory>ScanEvent</dd:UnqualifiedEventCategory>
+    <dd:AgingStamp>${agingStamp}</dd:AgingStamp>
+    <ev:Payload>
+      <dd:ResourceURI>http://127.0.0.1:80/WalkupScan/Destinations/${destinationId}</dd:ResourceURI>
+      <dd:ResourceType>hpCnxWalkupScanDestinations</dd:ResourceType>
+    </ev:Payload>
+    <ev:Payload>
+      <dd:ResourceURI>/WalkupScanToComp/WalkupScanToCompEvent</dd:ResourceURI>
+      <dd:ResourceType>hpCnxWalkupScanToCompEvent</dd:ResourceType>
+    </ev:Payload>
+  </ev:Event>
+</ev:EventTable>`,
+
+  walkupDestination: (
+    opts: {
+      id?: string;
+      name?: string;
+      hostname?: string;
+      plexMode?: string;
+      shortcut?: string;
+    } = {},
+  ) => {
+    const {
+      id = "1",
+      name = "test",
+      hostname = "test",
+      plexMode = "Simplex",
+      shortcut = "SaveJPEG",
+    } = opts;
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<wus:WalkupScanDestinations
+    xmlns:wus="http://www.hp.com/schemas/imaging/con/rest/walkupscan/2009/09/21"
+    xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/"
+    xmlns:dd3="http://www.hp.com/schemas/imaging/con/dictionaries/2009/04/06"
+    xmlns:scantype="http://www.hp.com/schemas/imaging/con/ledm/scantype/2008/03/17">
+  <wus:WalkupScanDestination>
+    <dd:ResourceURI>http://127.0.0.1/WalkupScan/Destinations/${id}</dd:ResourceURI>
+    <dd:Name>${name}</dd:Name>
+    <dd3:Hostname>${hostname}</dd3:Hostname>
+    <wus:WalkupScanSettings>
+      <scantype:ScanSettings>
+        <dd:ScanPlexMode>${plexMode}</dd:ScanPlexMode>
+      </scantype:ScanSettings>
+      <wus:Shortcut>${shortcut}</wus:Shortcut>
+    </wus:WalkupScanSettings>
+  </wus:WalkupScanDestination>
+</wus:WalkupScanDestinations>`;
+  },
 };
 
-// Utility function to create ScanContent
-const createScanContent = (pages: Partial<ScanPage>[]): ScanContent => {
-  return { elements: pages.map(createScanPage) };
-};
+// ─── Builders / Factories ──────────────────────────────────────────────────────
 
-const createDefaultScanConfig = (tempDir: string): ScanConfig => ({
+const makeScanPage = (overrides: Partial<ScanPage> = {}): ScanPage => ({
+  path: "default.png",
+  pageNumber: 1,
+  width: 100,
+  height: 200,
+  xResolution: 300,
+  yResolution: 300,
+  ...overrides,
+});
+
+const makeScanContent = (pages: Partial<ScanPage>[]): ScanContent => ({
+  elements: pages.map(makeScanPage),
+});
+
+/** Convenience: build an n-page front or back scan with predictable path names. */
+const makePagedContent = (prefix: string, count: number): ScanContent =>
+  makeScanContent(
+    Array.from({ length: count }, (_, i) => ({
+      path: `${prefix}${i + 1}.png`,
+      pageNumber: i + 1,
+    })),
+  );
+
+const makeScanConfig = (
+  dir: string,
+  overrides: Partial<ScanConfig> = {},
+): ScanConfig => ({
   resolution: 300,
   mode: ScanMode.Color,
   width: undefined,
   height: undefined,
   format: ScanFormat.Jpeg,
   directoryConfig: {
-    directory: tempDir,
-    tempDirectory: tempDir,
+    directory: dir,
+    tempDirectory: dir,
     filePattern: undefined,
   },
   paperlessConfig: undefined,
@@ -72,9 +257,10 @@ const createDefaultScanConfig = (tempDir: string): ScanConfig => ({
   paperSize: undefined,
   paperDim: undefined,
   paperOrientation: undefined,
+  ...overrides,
 });
 
-const makeEvent = (
+const makeScanEvent = (
   overrides: Partial<{
     unqualifiedEventCategory: string;
     agingStamp: string;
@@ -91,8 +277,26 @@ const makeEvent = (
   ...overrides,
 });
 
-const createMockDeviceCapabilities = (
-  overrides?: Partial<DeviceCapabilities>,
+const makeDestination = (
+  overrides: Partial<WalkupDestination> = {},
+): WalkupDestination => ({
+  shortcut: KnownShortcut.SaveJPEG,
+  scanPlexMode: null,
+  ...overrides,
+});
+
+const makeScanTarget = (
+  overrides: Partial<SelectedScanTarget> = {},
+): SelectedScanTarget => ({
+  resourceURI: "/WalkupScan/Destinations/1",
+  label: "test",
+  isDuplexSingleSide: false,
+  event: makeScanEvent(),
+  ...overrides,
+});
+
+const makeDeviceCapabilities = (
+  overrides: Partial<DeviceCapabilities> = {},
 ): DeviceCapabilities => ({
   supportsMultiItemScanFromPlaten: false,
   useWalkupScanToComp: false,
@@ -124,1491 +328,748 @@ const createMockDeviceCapabilities = (
   ...overrides,
 });
 
+const makeFrontContext = (
+  dir: string,
+  overrides: Partial<FrontOfDoubleSidedScanContext> = {},
+): FrontOfDoubleSidedScanContext => ({
+  scanConfig: makeScanConfig(dir),
+  folder: dir,
+  tempFolder: dir,
+  scanCount: 1,
+  scanJobContent: { elements: [] },
+  scanDate: new Date("2024-01-01"),
+  scanToPdf: false,
+  ...overrides,
+});
+
+// ─── HTTP nock helpers ─────────────────────────────────────────────────────────
+// Registers the standard LEDM discovery + capability endpoints on port 80.
+// Call this at the top of any listenCmd integration test.
+
+const nockLedmBootstrap = () => {
+  const scope = nock("http://127.0.0.1:80").persist();
+  scope.get("/DevMgmt/DiscoveryTree.xml").reply(200, XML.discoveryTree);
+  scope.get("/Scan/ScanJobManifest").reply(200, XML.scanJobManifest);
+  scope.get("/Scan/ScanCaps").reply(200, XML.scanCaps);
+  scope.get("/Scan/Status").reply(200, XML.scanStatusIdle);
+  scope
+    .get("/WalkupScan/WalkupScanDestinations")
+    .reply(200, XML.walkupDestinationsEmpty);
+  scope.post("/WalkupScan/WalkupScanDestinations").reply(201, "", {
+    Location: "http://127.0.0.1/WalkupScan/Destinations/1",
+  });
+};
+
+/** Registers a standard single-page scan job lifecycle on port 8080. */
+const nockScanJob = (jobId = "123", pageNumber = 1) => {
+  const scope = nock("http://127.0.0.1:8080");
+  scope.post("/Scan/Jobs").optionally().reply(201, "", {
+    Location: `http://127.0.0.1:8080/Scan/Jobs/${jobId}`,
+  });
+  scope
+    .get(`/Scan/Jobs/${jobId}`)
+    .times(2)
+    .reply(200, XML.scanJobProcessing(jobId, pageNumber));
+  scope
+    .get(`/Scan/Jobs/${jobId}/Pages/${pageNumber}`)
+    .reply(200, Buffer.from("fake-image-data"), {
+      "Content-Type": "image/jpeg",
+    });
+  scope.get(`/Scan/Jobs/${jobId}`).reply(200, XML.scanJobCompleted(pageNumber));
+  return scope;
+};
+
+// ─── Filesystem helpers ────────────────────────────────────────────────────────
+
+/** Copies the test asset JPEG into a temp dir and returns the written path. */
+const writeSampleJpeg = (dir: string, filename = "sample.jpg"): string => {
+  const src = path.join(__dirname, "asset/sample.jpg");
+  const dest = path.join(dir, filename);
+  fs.writeFileSync(dest, fs.readFileSync(src));
+  return dest;
+};
+
+const makeTempDir = (prefix: string) =>
+  fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+
+const removeTempDir = (dir: string) => {
+  if (fs.existsSync(dir)) { fs.rmSync(dir, { recursive: true, force: true }); }
+};
+
+// ─── HPApi stub helpers ────────────────────────────────────────────────────────
+
+interface ApiStubs {
+  isAlive: typeof HPApi.isAlive;
+  delay: typeof HPApi.delay;
+  waitDeviceUp: typeof HPApi.waitDeviceUp;
+  isDebug: typeof HPApi.isDebug;
+  getWalkupScanToCompEvent: typeof HPApi.getWalkupScanToCompEvent;
+}
+
+const stubApiInstant = (): ApiStubs => {
+  const saved: ApiStubs = {
+    isAlive: HPApi.isAlive,
+    delay: HPApi.delay,
+    waitDeviceUp: HPApi.waitDeviceUp,
+    isDebug: HPApi.isDebug,
+    getWalkupScanToCompEvent: HPApi.getWalkupScanToCompEvent,
+  };
+  HPApi.isAlive = async () => true;
+  HPApi.delay = async () => {
+    /* instant */
+  };
+  HPApi.waitDeviceUp = async () => {
+    /* instant */
+  };
+  return saved;
+};
+
+const restoreApi = (saved: ApiStubs) => {
+  HPApi.isAlive = saved.isAlive;
+  HPApi.delay = saved.delay;
+  HPApi.waitDeviceUp = saved.waitDeviceUp;
+  HPApi.isDebug = saved.isDebug;
+  HPApi.getWalkupScanToCompEvent = saved.getWalkupScanToCompEvent;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// assembleDuplexScan
+// ─────────────────────────────────────────────────────────────────────────────
+
 describe("assembleDuplexScan", () => {
-  it("should assemble pages in natural order for PAGE_WISE mode", () => {
-    const frontScan = createScanContent([
-      { path: "front1.png", pageNumber: 1 },
-      { path: "front2.png", pageNumber: 2 },
-    ]);
-    const backScan = createScanContent([
-      { path: "back1.png", pageNumber: 1 },
-      { path: "back2.png", pageNumber: 2 },
-    ]);
-    const result = assembleDuplexScan(
-      frontScan,
-      backScan,
+  // ── Behavioural (example-based) ───────────────────────────────────────────
+
+  it("PAGE_WISE: interleaves front and back in natural order", () => {
+    const front = makePagedContent("front", 2);
+    const back = makePagedContent("back", 2);
+    const { elements } = assembleDuplexScan(
+      front,
+      back,
       DuplexAssemblyMode.PAGE_WISE,
     );
 
-    expect(result.elements).to.deep.equal([
-      {
-        path: "front1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "back1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "front2.png",
-        pageNumber: 2,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "back2.png",
-        pageNumber: 2,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
+    expect(elements.map((e) => e.path)).to.deep.equal([
+      "front1.png",
+      "back1.png",
+      "front2.png",
+      "back2.png",
     ]);
   });
 
-  it("should reverse backs for DOCUMENT_WISE mode", () => {
-    const frontScan = createScanContent([
-      { path: "front1.png", pageNumber: 1 },
-      { path: "front2.png", pageNumber: 2 },
-    ]);
-    const backScan = createScanContent([
-      { path: "back1.png", pageNumber: 1 },
-      { path: "back2.png", pageNumber: 2 },
-    ]);
-    const result = assembleDuplexScan(
-      frontScan,
-      backScan,
+  it("DOCUMENT_WISE: interleaves fronts with reversed backs", () => {
+    const front = makePagedContent("front", 2);
+    const back = makePagedContent("back", 2);
+    const { elements } = assembleDuplexScan(
+      front,
+      back,
       DuplexAssemblyMode.DOCUMENT_WISE,
     );
 
-    expect(result.elements).to.deep.equal([
-      {
-        path: "front1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "back2.png",
-        pageNumber: 2,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "front2.png",
-        pageNumber: 2,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "back1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
+    expect(elements.map((e) => e.path)).to.deep.equal([
+      "front1.png",
+      "back2.png",
+      "front2.png",
+      "back1.png",
     ]);
   });
 
-  it("should reverse fronts for REVERSE_FRONT mode", () => {
-    const frontScan = createScanContent([
-      { path: "front1.png", pageNumber: 1 },
-      { path: "front2.png", pageNumber: 2 },
-    ]);
-    const backScan = createScanContent([
-      { path: "back1.png", pageNumber: 1 },
-      { path: "back2.png", pageNumber: 2 },
-    ]);
-    const result = assembleDuplexScan(
-      frontScan,
-      backScan,
+  it("REVERSE_FRONT: interleaves reversed fronts with natural backs", () => {
+    const front = makePagedContent("front", 2);
+    const back = makePagedContent("back", 2);
+    const { elements } = assembleDuplexScan(
+      front,
+      back,
       DuplexAssemblyMode.REVERSE_FRONT,
     );
 
-    expect(result.elements).to.deep.equal([
-      {
-        path: "front2.png",
-        pageNumber: 2,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "back1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "front1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "back2.png",
-        pageNumber: 2,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
+    expect(elements.map((e) => e.path)).to.deep.equal([
+      "front2.png",
+      "back1.png",
+      "front1.png",
+      "back2.png",
     ]);
   });
 
-  it("should reverse both fronts and backs for REVERSE_BOTH mode", () => {
-    const frontScan = createScanContent([
-      { path: "front1.png", pageNumber: 1 },
-      { path: "front2.png", pageNumber: 2 },
-    ]);
-    const backScan = createScanContent([
-      { path: "back1.png", pageNumber: 1 },
-      { path: "back2.png", pageNumber: 2 },
-    ]);
-    const result = assembleDuplexScan(
-      frontScan,
-      backScan,
+  it("REVERSE_BOTH: interleaves reversed fronts with reversed backs", () => {
+    const front = makePagedContent("front", 2);
+    const back = makePagedContent("back", 2);
+    const { elements } = assembleDuplexScan(
+      front,
+      back,
       DuplexAssemblyMode.REVERSE_BOTH,
     );
 
-    expect(result.elements).to.deep.equal([
-      {
-        path: "front2.png",
-        pageNumber: 2,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "back2.png",
-        pageNumber: 2,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "front1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "back1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
+    expect(elements.map((e) => e.path)).to.deep.equal([
+      "front2.png",
+      "back2.png",
+      "front1.png",
+      "back1.png",
     ]);
   });
 
-  it("should handle cases with missing back pages gracefully", () => {
-    const frontScan = createScanContent([
-      { path: "front1.png", pageNumber: 1 },
-      { path: "front2.png", pageNumber: 2 },
-    ]);
-    const backScan = createScanContent([
-      { path: "back1.png", pageNumber: 1 }, // Only one back page
-    ]);
-    const result = assembleDuplexScan(
-      frontScan,
-      backScan,
+  it("tolerates a missing last back page (odd-page document)", () => {
+    const front = makePagedContent("front", 2);
+    const back = makePagedContent("back", 1);
+    const { elements } = assembleDuplexScan(
+      front,
+      back,
       DuplexAssemblyMode.PAGE_WISE,
     );
 
-    expect(result.elements).to.deep.equal([
-      {
-        path: "front1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "back1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "front2.png",
-        pageNumber: 2,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
+    expect(elements.map((e) => e.path)).to.deep.equal([
+      "front1.png",
+      "back1.png",
+      "front2.png",
     ]);
   });
 
-  it("should handle cases with missing front pages gracefully", () => {
-    const frontScan = createScanContent([]); // No front pages
-    const backScan = createScanContent([
-      { path: "back1.png", pageNumber: 1 },
-      { path: "back2.png", pageNumber: 2 },
-    ]);
-    const result = assembleDuplexScan(
-      frontScan,
-      backScan,
+  it("tolerates an entirely missing front scan", () => {
+    const front = makeScanContent([]);
+    const back = makePagedContent("back", 2);
+    const { elements } = assembleDuplexScan(
+      front,
+      back,
       DuplexAssemblyMode.PAGE_WISE,
     );
 
-    expect(result.elements).to.deep.equal([
-      {
-        path: "back1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "back2.png",
-        pageNumber: 2,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
+    expect(elements.map((e) => e.path)).to.deep.equal([
+      "back1.png",
+      "back2.png",
     ]);
   });
 
-  it("should return an empty array if both scans are empty", () => {
-    const frontScan = createScanContent([]); // No front pages
-    const backScan = createScanContent([]); // No back pages
+  it("returns empty output when both scans are empty", () => {
     const result = assembleDuplexScan(
-      frontScan,
-      backScan,
+      makeScanContent([]),
+      makeScanContent([]),
       DuplexAssemblyMode.PAGE_WISE,
     );
-
     expect(result.elements).to.deep.equal([]);
   });
 
-  it("should interleave unequal pages correctly for DOCUMENT_WISE mode", () => {
-    const frontScan = createScanContent([
-      { path: "front1.png", pageNumber: 1 },
-      { path: "front2.png", pageNumber: 2 },
-      { path: "front3.png", pageNumber: 3 },
-    ]);
-    const backScan = createScanContent([
-      { path: "back1.png", pageNumber: 1 },
-      { path: "back2.png", pageNumber: 2 },
-    ]);
-    const result = assembleDuplexScan(
-      frontScan,
-      backScan,
+  it("DOCUMENT_WISE: handles unequal page counts (3 fronts, 2 backs)", () => {
+    const front = makePagedContent("front", 3);
+    const back = makePagedContent("back", 2);
+    const { elements } = assembleDuplexScan(
+      front,
+      back,
       DuplexAssemblyMode.DOCUMENT_WISE,
     );
 
-    expect(result.elements).to.deep.equal([
-      {
-        path: "front1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "back2.png",
-        pageNumber: 2,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "front2.png",
-        pageNumber: 2,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "back1.png",
-        pageNumber: 1,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
-      {
-        path: "front3.png",
-        pageNumber: 3,
-        width: 100,
-        height: 200,
-        xResolution: 300,
-        yResolution: 300,
-      },
+    // backs reversed → back2, back1; front3 has no matching back
+    expect(elements.map((e) => e.path)).to.deep.equal([
+      "front1.png",
+      "back2.png",
+      "front2.png",
+      "back1.png",
+      "front3.png",
     ]);
   });
+
+  // ── Property-style invariant tests ────────────────────────────────────────
+  // These are not full property-based tests (which would need fast-check /
+  // similar), but they exhaustively cover the invariants across every mode
+  // and several representative sizes, without hardcoding the exact order.
+
+  const ALL_MODES = Object.values(DuplexAssemblyMode) as DuplexAssemblyMode[];
+
+  // Helper: build n-page content with globally unique, distinguishable paths.
+  const uniqueContent = (prefix: string, n: number): ScanContent =>
+    makeScanContent(
+      Array.from({ length: n }, (_, i) => ({
+        path: `${prefix}_${i}`,
+        pageNumber: i,
+      })),
+    );
+
+  const runProperty = (
+    frontCount: number,
+    backCount: number,
+    mode: DuplexAssemblyMode,
+  ) => {
+    const front = uniqueContent("F", frontCount);
+    const back = uniqueContent("B", backCount);
+    const result = assembleDuplexScan(front, back, mode);
+    return { front, back, result };
+  };
+
+  for (const mode of ALL_MODES) {
+    describe(`mode=${mode}`, () => {
+      for (const [fCount, bCount] of [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+        [1, 1],
+        [3, 3],
+        [4, 3],
+        [3, 4],
+      ]) {
+        it(`[${fCount}F + ${bCount}B] output length = fronts + backs`, () => {
+          const { result } = runProperty(fCount, bCount, mode);
+          expect(result.elements.length).to.equal(fCount + bCount);
+        });
+
+        it(`[${fCount}F + ${bCount}B] no page is lost (all paths present)`, () => {
+          const { front, back, result } = runProperty(fCount, bCount, mode);
+          const outPaths = result.elements.map((e) => e.path).sort();
+          const inPaths = [
+            ...front.elements.map((e) => e.path),
+            ...back.elements.map((e) => e.path),
+          ].sort();
+          expect(outPaths).to.deep.equal(inPaths);
+        });
+
+        it(`[${fCount}F + ${bCount}B] no page is duplicated`, () => {
+          const { result } = runProperty(fCount, bCount, mode);
+          const paths = result.elements.map((e) => e.path);
+          const unique = new Set(paths);
+          expect(unique.size).to.equal(paths.length);
+        });
+      }
+    });
+  }
+
+  // Relative order within each stream is preserved for modes that don't reverse.
+  it("PAGE_WISE: relative order of fronts is preserved", () => {
+    const { front, result } = runProperty(4, 4, DuplexAssemblyMode.PAGE_WISE);
+    const outFronts = result.elements
+      .filter((e) => e.path.startsWith("F_"))
+      .map((e) => e.path);
+    expect(outFronts).to.deep.equal(front.elements.map((e) => e.path));
+  });
+
+  it("PAGE_WISE: relative order of backs is preserved", () => {
+    const { back, result } = runProperty(4, 4, DuplexAssemblyMode.PAGE_WISE);
+    const outBacks = result.elements
+      .filter((e) => e.path.startsWith("B_"))
+      .map((e) => e.path);
+    expect(outBacks).to.deep.equal(back.elements.map((e) => e.path));
+  });
+
+  it("DOCUMENT_WISE: relative order of fronts is preserved", () => {
+    const { front, result } = runProperty(
+      4,
+      4,
+      DuplexAssemblyMode.DOCUMENT_WISE,
+    );
+    const outFronts = result.elements
+      .filter((e) => e.path.startsWith("F_"))
+      .map((e) => e.path);
+    expect(outFronts).to.deep.equal(front.elements.map((e) => e.path));
+  });
+
+  it("DOCUMENT_WISE: backs appear in reversed order", () => {
+    const { back, result } = runProperty(
+      4,
+      4,
+      DuplexAssemblyMode.DOCUMENT_WISE,
+    );
+    const outBacks = result.elements
+      .filter((e) => e.path.startsWith("B_"))
+      .map((e) => e.path);
+    expect(outBacks).to.deep.equal(
+      [...back.elements.map((e) => e.path)].reverse(),
+    );
+  });
+
+  it("REVERSE_FRONT: fronts appear in reversed order", () => {
+    const { front, result } = runProperty(
+      4,
+      4,
+      DuplexAssemblyMode.REVERSE_FRONT,
+    );
+    const outFronts = result.elements
+      .filter((e) => e.path.startsWith("F_"))
+      .map((e) => e.path);
+    expect(outFronts).to.deep.equal(
+      [...front.elements.map((e) => e.path)].reverse(),
+    );
+  });
 });
 
-describe("listenCmd", () => {
-  let tempDir: string;
-
-  let originalIsAlive: typeof HPApi.isAlive;
-  let originalWaitDeviceUp: typeof HPApi.waitDeviceUp;
-
-  beforeEach(() => {
-    if (!nock.isActive()) {
-      nock.activate();
-    }
-    nock.disableNetConnect();
-    HPApi.setDeviceIP("127.0.0.1");
-    // Mock HPApi.isAlive to return true instantly
-    originalIsAlive = HPApi.isAlive;
-    originalWaitDeviceUp = HPApi.waitDeviceUp;
-    HPApi.isAlive = async () => true;
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "listenCmd-test-"));
-  });
-
-  afterEach(() => {
-    HPApi.isAlive = originalIsAlive;
-    HPApi.waitDeviceUp = originalWaitDeviceUp;
-    nock.cleanAll();
-    if (fs.existsSync(tempDir)) {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
-
-  it("should stop after reaching error limit when event polling fails repeatedly", async () => {
-    const scanConfig: ScanConfig = {
-      resolution: 300,
-      mode: ScanMode.Color,
-      width: undefined,
-      height: undefined,
-      format: ScanFormat.Jpeg,
-      directoryConfig: {
-        directory: tempDir,
-        tempDirectory: tempDir,
-        filePattern: undefined,
-      },
-      paperlessConfig: undefined,
-      nextcloudConfig: undefined,
-      preferEscl: false,
-      paperSize: undefined,
-      paperDim: undefined,
-      paperOrientation: undefined,
-    };
-
-    // Mock HPApi.getDiscoveryTree
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/DevMgmt/DiscoveryTree.xml")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<ledm:DiscoveryTree xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/2007/09/21" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
-  <ledm:SupportedIfc>
-    <ledm:ManifestURI>/Scan/ScanJobManifest</ledm:ManifestURI>
-    <dd:ResourceType>ledm:hpLedmScanJobManifest</dd:ResourceType>
-  </ledm:SupportedIfc>
-</ledm:DiscoveryTree>`,
-      );
-
-    // Mock HPApi.getScanJobManifest
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/Scan/ScanJobManifest")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/map/2009/03/24" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scan/2008/11/17">
-    <map:ResourceMap>
-        <map:ResourceLink>
-            <dd:ResourceURI>http://127.0.0.1</dd:ResourceURI>
-        </map:ResourceLink>
-        <map:ResourceNode>
-            <map:ResourceLink>
-                <dd:ResourceURI>/Scan/ScanCaps</dd:ResourceURI>
-            </map:ResourceLink>
-            <map:ResourceType>
-                <scan:ScanResourceType>ScanCaps</scan:ScanResourceType>
-            </map:ResourceType>
-        </map:ResourceNode>
-        <map:ResourceNode>
-            <map:ResourceLink>
-                <dd:ResourceURI>/Scan/Status</dd:ResourceURI>
-            </map:ResourceLink>
-            <map:ResourceType>
-                <scan:ScanResourceType>Status</scan:ScanResourceType>
-            </map:ResourceType>
-        </map:ResourceNode>
-    </map:ResourceMap>
-</man:Manifest>`,
-      );
-
-    // Mock HPApi.getScanCaps
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/Scan/ScanCaps")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<ScanCaps xmlns="http://www.hp.com/schemas/imaging/con/ledm/scancaps/2008/11/17">
-    <PlatenMaxWidth>2550</PlatenMaxWidth>
-    <PlatenMaxHeight>3300</PlatenMaxHeight>
-</ScanCaps>`,
-      );
-
-    // Mock getWalkupScanDestinations
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/WalkupScan/WalkupScanDestinations")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<wus:WalkupScanDestinations xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscandestinations/2009/03/12">
-</wus:WalkupScanDestinations>`,
-      );
-
-    // Mock registerWalkupScanDestination
-    nock("http://127.0.0.1:80")
-      .persist()
-      .post("/WalkupScan/WalkupScanDestinations")
-      .reply(201, "", {
-        Location: "http://127.0.0.1/WalkupScan/Destinations/1",
-      });
-
-    // Mock waitForScanEvent -> HPApi.getEvents to fail
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/EventMgmt/EventTable")
-      .reply(500);
-
-    // Mock isAlive to return true so errors increment and loop exits after 50
-    HPApi.isAlive = async () => true;
-    // Mock HPApi.delay to return instantly
-    HPApi.delay = async () => {
-      /* no-op */
-    };
-    // Mock waitDeviceUp to return instantly
-    HPApi.waitDeviceUp = async () => {
-      /* no-op */
-    };
-
-    await listenCmd(
-      [{ label: "host", isDuplexSingleSide: false }],
-      scanConfig,
-      1,
-    );
-  });
-
-  it("should skip scan and continue loop when no shortcut destination is found", async () => {
-    const scanConfig: ScanConfig = {
-      resolution: 300,
-      mode: ScanMode.Color,
-      width: undefined,
-      height: undefined,
-      format: ScanFormat.Jpeg,
-      directoryConfig: {
-        directory: tempDir,
-        tempDirectory: tempDir,
-        filePattern: undefined,
-      },
-      paperlessConfig: undefined,
-      nextcloudConfig: undefined,
-      preferEscl: false,
-      paperSize: undefined,
-      paperDim: undefined,
-      paperOrientation: undefined,
-    };
-
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/DevMgmt/DiscoveryTree.xml")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<ledm:DiscoveryTree xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/2007/09/21" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
-  <ledm:SupportedIfc>
-    <ledm:ManifestURI>/Scan/ScanJobManifest</ledm:ManifestURI>
-    <dd:ResourceType>ledm:hpLedmScanJobManifest</dd:ResourceType>
-  </ledm:SupportedIfc>
-</ledm:DiscoveryTree>`,
-      );
-
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/Scan/ScanJobManifest")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/map/2009/03/24" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scan/2008/11/17">
-    <map:ResourceMap>
-        <map:ResourceLink>
-            <dd:ResourceURI>http://127.0.0.1</dd:ResourceURI>
-        </map:ResourceLink>
-        <map:ResourceNode>
-            <map:ResourceLink>
-                <dd:ResourceURI>/Scan/ScanCaps</dd:ResourceURI>
-            </map:ResourceLink>
-            <map:ResourceType>
-                <scan:ScanResourceType>ScanCaps</scan:ScanResourceType>
-            </map:ResourceType>
-        </map:ResourceNode>
-        <map:ResourceNode>
-            <map:ResourceLink>
-                <dd:ResourceURI>/Scan/Status</dd:ResourceURI>
-            </map:ResourceLink>
-            <map:ResourceType>
-                <scan:ScanResourceType>Status</scan:ScanResourceType>
-            </map:ResourceType>
-        </map:ResourceNode>
-    </map:ResourceMap>
-</man:Manifest>`,
-      );
-
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/Scan/ScanCaps")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<ScanCaps xmlns="http://www.hp.com/schemas/imaging/con/ledm/scancaps/2008/11/17">
-    <PlatenMaxWidth>2550</PlatenMaxWidth>
-    <PlatenMaxHeight>3300</PlatenMaxHeight>
-</ScanCaps>`,
-      );
-
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/WalkupScan/WalkupScanDestinations")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<wus:WalkupScanDestinations xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscandestinations/2009/03/12">
-</wus:WalkupScanDestinations>`,
-      );
-
-    nock("http://127.0.0.1:80")
-      .persist()
-      .post("/WalkupScan/WalkupScanDestinations")
-      .reply(201, "", {
-        Location: "http://127.0.0.1/WalkupScan/Destinations/1",
-      });
-
-    const eventTableEmpty = `<?xml version="1.0" encoding="UTF-8"?>
-<ev:EventTable xmlns:ev="http://www.hp.com/schemas/imaging/con/ledm/events/2007/09/16" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
-    <dd:Version>
-        <dd:Revision>1</dd:Revision>
-    </dd:Version>
-</ev:EventTable>`;
-
-    const scanEvent: string = `<?xml version="1.0" encoding="UTF-8"?>
-<ev:EventTable xmlns:ev="http://www.hp.com/schemas/imaging/con/ledm/events/2007/09/16" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
-    <dd:Version>
-        <dd:Revision>1</dd:Revision>
-    </dd:Version>
-    <ev:Event>
-        <dd:UnqualifiedEventCategory>ScanEvent</dd:UnqualifiedEventCategory>
-        <dd:AgingStamp>1-1</dd:AgingStamp>
-        <ev:Payload>
-            <dd:ResourceURI>http://127.0.0.1:80/WalkupScan/Destinations/1</dd:ResourceURI>
-            <dd:ResourceType>hpCnxWalkupScanDestinations</dd:ResourceType>
-        </ev:Payload>
-        <ev:Payload>
-            <dd:ResourceURI>/WalkupScanToComp/WalkupScanToCompEvent</dd:ResourceURI>
-            <dd:ResourceType>hpCnxWalkupScanToCompEvent</dd:ResourceType>
-        </ev:Payload>
-    </ev:Event>
-</ev:EventTable>`;
-
-    // First getEvents call: no timeout, returns empty events
-    nock("http://127.0.0.1:80")
-      .get("/EventMgmt/EventTable")
-      .reply(200, eventTableEmpty, { etag: "emptyTag" });
-
-    // Polling getEvents call: with timeout, returns scan event with compEventURI
-    nock("http://127.0.0.1:80")
-      .get("/EventMgmt/EventTable")
-      .query({ timeout: 1200 })
-      .reply(200, scanEvent, { etag: "scanTag" });
-
-    // Mock walkupScanToCompEvent to return ScanPagesComplete (causes waitScanRequest to return false)
-    nock("http://127.0.0.1:80")
-      .get("/WalkupScanToComp/WalkupScanToCompEvent")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<wus:WalkupScanToCompEvent xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscan/2010/09/28">
-    <wus:WalkupScanToCompEventType>ScanPagesComplete</wus:WalkupScanToCompEventType>
-</wus:WalkupScanToCompEvent>`,
-      );
-
-    HPApi.isAlive = async () => true;
-    HPApi.delay = async () => {
-      /* no-op */
-    };
-    HPApi.waitDeviceUp = async () => {
-      /* no-op */
-    };
-
-    await listenCmd(
-      [{ label: "host", isDuplexSingleSide: false }],
-      scanConfig,
-      1,
-    );
-  });
-
-  it("should perform a complete scan flow and update state", async () => {
-    const scanConfig: ScanConfig = {
-      resolution: 300,
-      mode: ScanMode.Color,
-      width: undefined,
-      height: undefined,
-      format: ScanFormat.Jpeg,
-      directoryConfig: {
-        directory: tempDir,
-        tempDirectory: tempDir,
-        filePattern: undefined,
-      },
-      paperlessConfig: undefined,
-      nextcloudConfig: undefined,
-      preferEscl: false,
-      paperSize: undefined,
-      paperDim: undefined,
-      paperOrientation: undefined,
-    };
-
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/DevMgmt/DiscoveryTree.xml")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<ledm:DiscoveryTree xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/2007/09/21" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
-  <ledm:SupportedIfc>
-    <ledm:ManifestURI>/Scan/ScanJobManifest</ledm:ManifestURI>
-    <dd:ResourceType>ledm:hpLedmScanJobManifest</dd:ResourceType>
-  </ledm:SupportedIfc>
-</ledm:DiscoveryTree>`,
-      );
-
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/Scan/ScanJobManifest")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/03/24" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/map/2009/03/24" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scan/2008/11/17">
-    <map:ResourceMap>
-        <map:ResourceLink>
-            <dd:ResourceURI>http://127.0.0.1</dd:ResourceURI>
-        </map:ResourceLink>
-        <map:ResourceNode>
-            <map:ResourceLink>
-                <dd:ResourceURI>/Scan/ScanCaps</dd:ResourceURI>
-            </map:ResourceLink>
-            <map:ResourceType>
-                <scan:ScanResourceType>ScanCaps</scan:ScanResourceType>
-            </map:ResourceType>
-        </map:ResourceNode>
-        <map:ResourceNode>
-            <map:ResourceLink>
-                <dd:ResourceURI>/Scan/Status</dd:ResourceURI>
-            </map:ResourceLink>
-            <map:ResourceType>
-                <scan:ScanResourceType>Status</scan:ScanResourceType>
-            </map:ResourceType>
-        </map:ResourceNode>
-    </map:ResourceMap>
-</man:Manifest>`,
-      );
-
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/Scan/ScanCaps")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<ScanCaps xmlns="http://www.hp.com/schemas/imaging/con/ledm/scancaps/2008/11/17">
-    <PlatenMaxWidth>2550</PlatenMaxWidth>
-    <PlatenMaxHeight>3300</PlatenMaxHeight>
-</ScanCaps>`,
-      );
-
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/WalkupScan/WalkupScanDestinations")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<wus:WalkupScanDestinations xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscandestinations/2009/03/12">
-</wus:WalkupScanDestinations>`,
-      );
-
-    nock("http://127.0.0.1:80")
-      .persist()
-      .post("/WalkupScan/WalkupScanDestinations")
-      .reply(201, "", {
-        Location: "http://127.0.0.1/WalkupScan/Destinations/1",
-      });
-
-    const eventTableEmpty = `<?xml version="1.0" encoding="UTF-8"?>
-<ev:EventTable xmlns:ev="http://www.hp.com/schemas/imaging/con/ledm/events/2007/09/16" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
-    <dd:Version>
-        <dd:Revision>1</dd:Revision>
-    </dd:Version>
-</ev:EventTable>`;
-
-    const scanEvent: string = `<?xml version="1.0" encoding="UTF-8"?>
-<ev:EventTable xmlns:ev="http://www.hp.com/schemas/imaging/con/ledm/events/2007/09/16" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
-    <dd:Version>
-        <dd:Revision>1</dd:Revision>
-    </dd:Version>
-    <ev:Event>
-        <dd:UnqualifiedEventCategory>ScanEvent</dd:UnqualifiedEventCategory>
-        <dd:AgingStamp>1-1</dd:AgingStamp>
-        <ev:Payload>
-            <dd:ResourceURI>http://127.0.0.1:80/WalkupScan/Destinations/1</dd:ResourceURI>
-            <dd:ResourceType>hpCnxWalkupScanDestinations</dd:ResourceType>
-        </ev:Payload>
-    </ev:Event>
-</ev:EventTable>`;
-
-    // First getEvents call: no timeout, returns empty events
-    nock("http://127.0.0.1:80")
-      .get("/EventMgmt/EventTable")
-      .reply(200, eventTableEmpty, { etag: "tag1" });
-
-    // Polling getEvents call: with timeout, returns scan event (no compEventURI)
-    nock("http://127.0.0.1:80")
-      .get("/EventMgmt/EventTable")
-      .query({ timeout: 1200 })
-      .reply(200, scanEvent, { etag: "tag2" });
-
-    // Mock HPApi.getScanStatus (called by saveScanFromEvent)
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/Scan/Status")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<ScanStatus>
-    <ScannerState>Idle</ScannerState>
-    <AdfState>Empty</AdfState>
-</ScanStatus>`,
-      );
-
-    // Mock HPApi.getDestination (called by tryGetDestination) to return a valid destination
-    nock("http://127.0.0.1:80")
-      .get("/WalkupScan/Destinations/1")
-      .reply(
-        200,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<wus:WalkupScanDestinations xmlns:wus="http://www.hp.com/schemas/imaging/con/rest/walkupscan/2009/09/21" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:dd3="http://www.hp.com/schemas/imaging/con/dictionaries/2009/04/06" xmlns:scantype="http://www.hp.com/schemas/imaging/con/ledm/scantype/2008/03/17">
-    <wus:WalkupScanDestination>
-        <dd:ResourceURI>http://127.0.0.1/WalkupScan/Destinations/1</dd:ResourceURI>
-        <dd:Name>test</dd:Name>
-        <dd3:Hostname>test</dd3:Hostname>
-        <wus:WalkupScanSettings>
-            <scantype:ScanSettings>
-                <dd:ScanPlexMode>Simplex</dd:ScanPlexMode>
-            </scantype:ScanSettings>
-            <wus:Shortcut>SaveJPEG</wus:Shortcut>
-        </wus:WalkupScanSettings>
-    </wus:WalkupScanDestination>
-</wus:WalkupScanDestinations>`,
-      );
-
-    // Mock scan job submission (POST)
-    nock("http://127.0.0.1:8080")
-      .post("/Scan/Jobs")
-      .reply(201, "", {
-        Location: "http://127.0.0.1:8080/Scan/Jobs/123",
-      });
-
-    // Mock getJob polling: first returns Processing with a PreScanPage
-    const processingXml = `<?xml version="1.0" encoding="UTF-8"?>
-<j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/job/2009/03/24">
-  <j:JobState>Processing</j:JobState>
-  <ScanJob>
-    <PreScanPage>
-      <PageState>ReadyToUpload</PageState>
-      <BinaryURL>/Scan/Jobs/123/Pages/1</BinaryURL>
-      <PageNumber>1</PageNumber>
-      <BufferInfo>
-        <ImageWidth>100</ImageWidth>
-        <ImageHeight>200</ImageHeight>
-        <ScanSettings>
-          <InputSource>Platen</InputSource>
-          <ContentType>Photo</ContentType>
-          <XResolution>300</XResolution>
-          <YResolution>300</YResolution>
-        </ScanSettings>
-      </BufferInfo>
-    </PreScanPage>
-  </ScanJob>
-</j:Job>`;
-
-    const completedXml = `<?xml version="1.0" encoding="UTF-8"?>
-<j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/job/2009/03/24">
-  <j:JobState>Completed</j:JobState>
-  <ScanJob>
-    <PostScanPage>
-      <PageNumber>1</PageNumber>
-    </PostScanPage>
-  </ScanJob>
-</j:Job>`;
-
-    const jobScope = nock("http://127.0.0.1:8080");
-    jobScope.get("/Scan/Jobs/123").times(2).reply(200, processingXml);
-    jobScope
-      .get("/Scan/Jobs/123/Pages/1")
-      .reply(200, Buffer.from("fake-image-data"), {
-        "Content-Type": "image/jpeg",
-      });
-    jobScope.get("/Scan/Jobs/123").reply(200, completedXml);
-
-    HPApi.isAlive = async () => true;
-    HPApi.delay = async () => {
-      /* no-op */
-    };
-    HPApi.waitDeviceUp = async () => {
-      /* no-op */
-    };
-
-    await listenCmd(
-      [{ label: "host", isDuplexSingleSide: false }],
-      scanConfig,
-      1,
-    );
-    expect(jobScope.isDone()).to.be.true;
-  });
-});
+// ─────────────────────────────────────────────────────────────────────────────
+// determineDuplexModes  (pure function — no I/O)
+// ─────────────────────────────────────────────────────────────────────────────
 
 describe("determineDuplexModes", () => {
-  it("should return Simplex when scanPlexMode is null and not isDuplexSingleSide", () => {
-    const destination: WalkupDestination = {
-      shortcut: KnownShortcut.SaveJPEG,
-      scanPlexMode: null,
-    };
-    const selectedScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/1",
-      label: "test",
-      isDuplexSingleSide: false,
-      event: makeEvent(),
-    };
-    const result = determineDuplexModes(
-      destination,
-      selectedScanTarget,
+  // Helpers: narrow factories for this suite.
+  const simplexDest = () => makeDestination({ scanPlexMode: null });
+  const duplexDest = () =>
+    makeDestination({ scanPlexMode: ScanPlexMode.Duplex });
+  const singleSideTarget = (uri = "/WalkupScan/Destinations/1") =>
+    makeScanTarget({ resourceURI: uri, isDuplexSingleSide: true });
+  const normalTarget = () => makeScanTarget({ isDuplexSingleSide: false });
+
+  it("scanPlexMode=null, isDuplexSingleSide=false → Simplex / Simplex", () => {
+    const { duplexMode, targetDuplexMode } = determineDuplexModes(
+      simplexDest(),
+      normalTarget(),
       DuplexMode.Simplex,
       undefined,
     );
-    expect(result.duplexMode).to.equal(DuplexMode.Simplex);
-    expect(result.targetDuplexMode).to.equal(TargetDuplexMode.Simplex);
+    expect(duplexMode).to.equal(DuplexMode.Simplex);
+    expect(targetDuplexMode).to.equal(TargetDuplexMode.Simplex);
   });
 
-  it("should return Simplex when scanPlexMode is Simplex", () => {
-    const destination: WalkupDestination = {
-      shortcut: KnownShortcut.SaveJPEG,
-      scanPlexMode: ScanPlexMode.Simplex,
-    };
-    const selectedScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/1",
-      label: "test",
-      isDuplexSingleSide: false,
-      event: makeEvent(),
-    };
-    const result = determineDuplexModes(
-      destination,
-      selectedScanTarget,
+  it("scanPlexMode=Simplex, isDuplexSingleSide=false → Simplex / Simplex", () => {
+    const { duplexMode, targetDuplexMode } = determineDuplexModes(
+      makeDestination({ scanPlexMode: ScanPlexMode.Simplex }),
+      normalTarget(),
       DuplexMode.Simplex,
       undefined,
     );
-    expect(result.duplexMode).to.equal(DuplexMode.Simplex);
-    expect(result.targetDuplexMode).to.equal(TargetDuplexMode.Simplex);
+    expect(duplexMode).to.equal(DuplexMode.Simplex);
+    expect(targetDuplexMode).to.equal(TargetDuplexMode.Simplex);
   });
 
-  it("should return Duplex when scanPlexMode is Duplex", () => {
-    const destination: WalkupDestination = {
-      shortcut: KnownShortcut.SaveJPEG,
-      scanPlexMode: ScanPlexMode.Duplex,
-    };
-    const selectedScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/1",
-      label: "test",
-      isDuplexSingleSide: false,
-      event: makeEvent(),
-    };
-    const result = determineDuplexModes(
-      destination,
-      selectedScanTarget,
+  it("scanPlexMode=Duplex → Duplex / Duplex (overrides isDuplexSingleSide)", () => {
+    const { duplexMode, targetDuplexMode } = determineDuplexModes(
+      duplexDest(),
+      normalTarget(),
       DuplexMode.Simplex,
       undefined,
     );
-    expect(result.duplexMode).to.equal(DuplexMode.Duplex);
-    expect(result.targetDuplexMode).to.equal(TargetDuplexMode.Duplex);
+    expect(duplexMode).to.equal(DuplexMode.Duplex);
+    expect(targetDuplexMode).to.equal(TargetDuplexMode.Duplex);
   });
 
-  it("should return FrontOfDoubleSided on first emulated duplex scan", () => {
-    const destination: WalkupDestination = {
-      shortcut: KnownShortcut.SaveJPEG,
-      scanPlexMode: null,
-    };
-    const selectedScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/1",
-      label: "test",
-      isDuplexSingleSide: true,
-      event: makeEvent(),
-    };
-    const result = determineDuplexModes(
-      destination,
-      selectedScanTarget,
+  it("first emulated-duplex scan → FrontOfDoubleSided", () => {
+    const { duplexMode, targetDuplexMode } = determineDuplexModes(
+      simplexDest(),
+      singleSideTarget(),
       DuplexMode.Simplex,
       undefined,
     );
-    expect(result.duplexMode).to.equal(DuplexMode.FrontOfDoubleSided);
-    expect(result.targetDuplexMode).to.equal(TargetDuplexMode.EmulatedDuplex);
+    expect(duplexMode).to.equal(DuplexMode.FrontOfDoubleSided);
+    expect(targetDuplexMode).to.equal(TargetDuplexMode.EmulatedDuplex);
   });
 
-  it("should return BackOfDoubleSided on subsequent same-target emulated duplex", () => {
-    const destination: WalkupDestination = {
-      shortcut: KnownShortcut.SaveJPEG,
-      scanPlexMode: null,
-    };
-    const selectedScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/1",
-      label: "test",
-      isDuplexSingleSide: true,
-      event: makeEvent(),
-    };
-    const lastScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/1",
-      label: "test",
-      isDuplexSingleSide: true,
-      event: makeEvent(),
-    };
-    const result = determineDuplexModes(
-      destination,
-      selectedScanTarget,
+  it("same target as last scan + previousMode=Front → BackOfDoubleSided", () => {
+    const target = singleSideTarget("/WalkupScan/Destinations/1");
+    const { duplexMode, targetDuplexMode } = determineDuplexModes(
+      simplexDest(),
+      target,
       DuplexMode.FrontOfDoubleSided,
-      lastScanTarget,
+      target,
     );
-    expect(result.duplexMode).to.equal(DuplexMode.BackOfDoubleSided);
-    expect(result.targetDuplexMode).to.equal(TargetDuplexMode.EmulatedDuplex);
+    expect(duplexMode).to.equal(DuplexMode.BackOfDoubleSided);
+    expect(targetDuplexMode).to.equal(TargetDuplexMode.EmulatedDuplex);
   });
 
-  it("should return FrontOfDoubleSided when previous mode was BackOfDoubleSided", () => {
-    const destination: WalkupDestination = {
-      shortcut: KnownShortcut.SaveJPEG,
-      scanPlexMode: null,
-    };
-    const selectedScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/1",
-      label: "test",
-      isDuplexSingleSide: true,
-      event: makeEvent(),
-    };
-    const lastScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/1",
-      label: "test",
-      isDuplexSingleSide: true,
-      event: makeEvent(),
-    };
-    const result = determineDuplexModes(
-      destination,
-      selectedScanTarget,
+  it("same target + previousMode=Back → FrontOfDoubleSided (cycle resets)", () => {
+    const target = singleSideTarget("/WalkupScan/Destinations/1");
+    const { duplexMode, targetDuplexMode } = determineDuplexModes(
+      simplexDest(),
+      target,
       DuplexMode.BackOfDoubleSided,
-      lastScanTarget,
+      target,
     );
-    expect(result.duplexMode).to.equal(DuplexMode.FrontOfDoubleSided);
-    expect(result.targetDuplexMode).to.equal(TargetDuplexMode.EmulatedDuplex);
+    expect(duplexMode).to.equal(DuplexMode.FrontOfDoubleSided);
+    expect(targetDuplexMode).to.equal(TargetDuplexMode.EmulatedDuplex);
+  });
+
+  it("different target from last scan → FrontOfDoubleSided (new document)", () => {
+    const current = singleSideTarget("/WalkupScan/Destinations/2");
+    const previous = singleSideTarget("/WalkupScan/Destinations/1");
+    const { duplexMode } = determineDuplexModes(
+      simplexDest(),
+      current,
+      DuplexMode.FrontOfDoubleSided,
+      previous,
+    );
+    expect(duplexMode).to.equal(DuplexMode.FrontOfDoubleSided);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// setupScanParameters  (async but pure — only PathHelper is a dependency)
+// ─────────────────────────────────────────────────────────────────────────────
 
 describe("setupScanParameters", () => {
   let originalGetNextScanNumber: typeof PathHelper.getNextScanNumber;
 
-  const scanConfig: ScanConfig = {
-    resolution: 300,
-    mode: ScanMode.Color,
-    width: undefined,
-    height: undefined,
-    format: ScanFormat.Jpeg,
-    directoryConfig: {
-      directory: "/tmp",
-      tempDirectory: "/tmp",
-      filePattern: undefined,
-    },
-    paperlessConfig: undefined,
-    nextcloudConfig: undefined,
-    preferEscl: false,
-    paperSize: undefined,
-    paperDim: undefined,
-    paperOrientation: undefined,
-  };
-
-  const saveJpegDestination: WalkupDestination = {
-    shortcut: KnownShortcut.SaveJPEG,
-    scanPlexMode: null,
-  };
-
-  const savePdfDestination: WalkupDestination = {
-    shortcut: KnownShortcut.SavePDF,
-    scanPlexMode: null,
-  };
+  const cfg = makeScanConfig("/tmp");
+  const jpegDest = makeDestination({ shortcut: KnownShortcut.SaveJPEG });
+  const pdfDest = makeDestination({ shortcut: KnownShortcut.SavePDF });
 
   beforeEach(() => {
     originalGetNextScanNumber = PathHelper.getNextScanNumber;
-    PathHelper.getNextScanNumber = async (
-      _folder: string,
-      _currentScanCount: number,
-      _filePattern: string | undefined,
-    ) => 42;
+    // Always returns 42 so assertions are deterministic.
+    PathHelper.getNextScanNumber = async () => 42;
   });
 
   afterEach(() => {
     PathHelper.getNextScanNumber = originalGetNextScanNumber;
   });
 
-  it("should return Normal page counting and scanToPdf=false for Simplex with SaveJPEG", async () => {
+  it("Simplex + SaveJPEG → Normal counting, not PDF, incremented scan number", async () => {
     const result = await setupScanParameters(
       DuplexMode.Simplex,
       TargetDuplexMode.Simplex,
-      saveJpegDestination,
+      jpegDest,
       0,
       "/tmp",
-      scanConfig,
+      cfg,
       null,
     );
-
     expect(result.pageCountingStrategy).to.equal(PageCountingStrategy.Normal);
     expect(result.scanToPdf).to.be.false;
     expect(result.scanCount).to.equal(42);
   });
 
-  it("should return Normal page counting for Duplex mode", async () => {
+  it("Duplex + SaveJPEG → Normal counting, not PDF", async () => {
     const result = await setupScanParameters(
       DuplexMode.Duplex,
       TargetDuplexMode.Duplex,
-      saveJpegDestination,
+      jpegDest,
       0,
       "/tmp",
-      scanConfig,
+      cfg,
       null,
     );
-
     expect(result.pageCountingStrategy).to.equal(PageCountingStrategy.Normal);
     expect(result.scanToPdf).to.be.false;
     expect(result.scanCount).to.equal(42);
   });
 
-  it("should return scanToPdf=true for Duplex with SavePDF destination", async () => {
+  it("Duplex + SavePDF → scanToPdf=true", async () => {
     const result = await setupScanParameters(
       DuplexMode.Duplex,
       TargetDuplexMode.Duplex,
-      savePdfDestination,
+      pdfDest,
       0,
       "/tmp",
-      scanConfig,
+      cfg,
       null,
     );
-
     expect(result.scanToPdf).to.be.true;
     expect(result.pageCountingStrategy).to.equal(PageCountingStrategy.Normal);
     expect(result.scanCount).to.equal(42);
   });
 
-  it("should return OddOnly for FrontOfDoubleSided emulated duplex", async () => {
+  it("FrontOfDoubleSided → OddOnly counting, new scan number allocated", async () => {
     const result = await setupScanParameters(
       DuplexMode.FrontOfDoubleSided,
       TargetDuplexMode.EmulatedDuplex,
-      saveJpegDestination,
+      jpegDest,
       0,
       "/tmp",
-      scanConfig,
+      cfg,
       null,
     );
-
     expect(result.pageCountingStrategy).to.equal(PageCountingStrategy.OddOnly);
     expect(result.scanToPdf).to.be.false;
     expect(result.scanCount).to.equal(42);
   });
 
-  it("should return EvenOnly and reuse context values for BackOfDoubleSided", async () => {
-    const frontContext: FrontOfDoubleSidedScanContext = {
-      scanConfig,
-      folder: "/tmp",
-      tempFolder: "/tmp",
+  it("BackOfDoubleSided → EvenOnly counting, inherits scan number/date/pdf flag from front context", async () => {
+    const frontCtx = makeFrontContext("/tmp", {
       scanCount: 10,
-      scanJobContent: { elements: [] },
       scanDate: new Date("2024-06-15"),
       scanToPdf: true,
-    };
-
+    });
     const result = await setupScanParameters(
       DuplexMode.BackOfDoubleSided,
       TargetDuplexMode.EmulatedDuplex,
-      saveJpegDestination,
+      jpegDest,
       0,
       "/tmp",
-      scanConfig,
-      frontContext,
+      cfg,
+      frontCtx,
     );
-
-    expect(result.pageCountingStrategy).to.equal(
-      PageCountingStrategy.EvenOnly,
-    );
+    expect(result.pageCountingStrategy).to.equal(PageCountingStrategy.EvenOnly);
     expect(result.scanToPdf).to.be.true;
     expect(result.scanCount).to.equal(10);
-    expect(result.scanDate).to.equal(frontContext.scanDate);
+    // Same reference — no copy made.
+    expect(result.scanDate).to.equal(frontCtx.scanDate);
+  });
+
+  it("BackOfDoubleSided with null front context → falls back to safe defaults", async () => {
+    // Tests the nullish-coalescing fallback path in setupScanParameters.
+    const result = await setupScanParameters(
+      DuplexMode.BackOfDoubleSided,
+      TargetDuplexMode.EmulatedDuplex,
+      jpegDest,
+      5,
+      "/tmp",
+      cfg,
+      null,
+    );
+    expect(result.pageCountingStrategy).to.equal(PageCountingStrategy.EvenOnly);
+    expect(result.scanToPdf).to.be.false;
+    // scanCount falls back to the passed-in value when no context.
+    expect(result.scanCount).to.equal(5);
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// handleScanResult
+// ─────────────────────────────────────────────────────────────────────────────
+
 describe("handleScanResult", () => {
-  const scanConfig: ScanConfig = {
-    resolution: 300,
-    mode: ScanMode.Color,
-    width: undefined,
-    height: undefined,
-    format: ScanFormat.Jpeg,
-    directoryConfig: {
-      directory: "/tmp",
-      tempDirectory: "/tmp",
-      filePattern: undefined,
-    },
-    paperlessConfig: undefined,
-    nextcloudConfig: undefined,
-    preferEscl: false,
-    paperSize: undefined,
-    paperDim: undefined,
-    paperOrientation: undefined,
-  };
+  const FIXED_DATE = new Date("2024-01-01");
 
-  const folder = "/tmp";
-  const tempFolder = "/tmp";
-  const scanCount = 1;
-  const scanJobContent = createScanContent([
-    { path: "page1.png", pageNumber: 1 },
-  ]);
-  const scanDate = new Date("2024-01-01");
-  const scanToPdf = false;
-
-  it("should create front of double-sided context for FrontOfDoubleSided", async () => {
+  // FrontOfDoubleSided is pure context-capture — no I/O needed.
+  it("FrontOfDoubleSided: captures all inputs into a new context, returns it", async () => {
+    const cfg = makeScanConfig("/tmp");
+    const content = makeScanContent([{ path: "p1.png" }]);
     const result = await handleScanResult(
       DuplexMode.FrontOfDoubleSided,
       null,
-      scanConfig,
-      folder,
-      tempFolder,
-      scanCount,
-      scanJobContent,
-      scanDate,
-      scanToPdf,
+      cfg,
+      "/tmp",
+      "/tmp",
+      7,
+      content,
+      FIXED_DATE,
+      true,
       DuplexAssemblyMode.DOCUMENT_WISE,
     );
 
     expect(result).to.not.be.null;
-    expect(result?.scanConfig).to.equal(scanConfig);
-    expect(result?.folder).to.equal(folder);
-    expect(result?.tempFolder).to.equal(tempFolder);
-    expect(result?.scanCount).to.equal(scanCount);
-    expect(result?.scanJobContent).to.equal(scanJobContent);
-    expect(result?.scanDate).to.equal(scanDate);
-    expect(result?.scanToPdf).to.equal(scanToPdf);
+    expect(result?.scanConfig).to.equal(cfg);
+    expect(result?.folder).to.equal("/tmp");
+    expect(result?.tempFolder).to.equal("/tmp");
+    expect(result?.scanCount).to.equal(7);
+    expect(result?.scanJobContent).to.equal(content);
+    expect(result?.scanDate).to.equal(FIXED_DATE);
+    expect(result?.scanToPdf).to.be.true;
   });
 
-  it("should call postProcessing and return null for Simplex mode", async () => {
-    const tempDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "handleScanResult-simplex-"),
-    );
+  // Simplex and BackOfDoubleSided both write output — need a real temp dir + JPEG.
+  describe("modes that invoke postProcessing", () => {
+    let tempDir: string;
 
-    try {
-      const jpegBytes = fs.readFileSync(
-        path.join(__dirname, "asset/sample.jpg"),
-      );
-      const pagePath = path.join(tempDir, "page1.jpg");
-      fs.writeFileSync(pagePath, jpegBytes);
+    beforeEach(() => {
+      tempDir = makeTempDir("handleScanResult-");
+    });
+    afterEach(() => removeTempDir(tempDir));
 
+    it("Simplex: returns null and writes output PDF", async () => {
+      const jpegPath = writeSampleJpeg(tempDir, "page1.jpg");
+      const cfg = makeScanConfig(tempDir);
       const result = await handleScanResult(
         DuplexMode.Simplex,
         null,
-        scanConfig,
+        cfg,
         tempDir,
         tempDir,
         1,
-        createScanContent([{ path: pagePath, pageNumber: 1 }]),
-        scanDate,
+        makeScanContent([{ path: jpegPath }]),
+        FIXED_DATE,
         true,
         DuplexAssemblyMode.DOCUMENT_WISE,
       );
 
       expect(result).to.be.null;
-      const pdfPath = path.join(tempDir, "scan1.pdf");
-      expect(fs.existsSync(pdfPath)).to.be.true;
-    } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
+      expect(fs.existsSync(path.join(tempDir, "scan1.pdf"))).to.be.true;
+    });
 
-  it("should assemble duplex scan and call postProcessing for BackOfDoubleSided", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "handleScanResult-test-"));
+    it("BackOfDoubleSided: assembles front+back, writes merged PDF, returns (unchanged) front context", async () => {
+      const frontPath = writeSampleJpeg(tempDir, "front1.jpg");
+      const backPath = writeSampleJpeg(tempDir, "back1.jpg");
+      const cfg = makeScanConfig(tempDir);
 
-    try {
-      const jpegBytes = fs.readFileSync(
-        path.join(__dirname, "asset/sample.jpg"),
-      );
-      const frontJpegPath = path.join(tempDir, "front1.jpg");
-      const backJpegPath = path.join(tempDir, "back1.jpg");
-      fs.writeFileSync(frontJpegPath, jpegBytes);
-      fs.writeFileSync(backJpegPath, jpegBytes);
-
-      const frontContext: FrontOfDoubleSidedScanContext = {
-        scanConfig,
-        folder: tempDir,
-        tempFolder: tempDir,
-        scanCount: 1,
-        scanJobContent: createScanContent([
-          { path: frontJpegPath, pageNumber: 1 },
-        ]),
-        scanDate,
+      const frontCtx = makeFrontContext(tempDir, {
+        scanConfig: cfg,
+        scanCount: 2,
         scanToPdf: true,
-      };
-
-      const backContent = createScanContent([
-        { path: backJpegPath, pageNumber: 1 },
-      ]);
+        scanDate: FIXED_DATE,
+        scanJobContent: makeScanContent([{ path: frontPath }]),
+      });
 
       const result = await handleScanResult(
         DuplexMode.BackOfDoubleSided,
-        frontContext,
-        scanConfig,
+        frontCtx,
+        cfg,
         tempDir,
         tempDir,
         2,
-        backContent,
-        scanDate,
+        makeScanContent([{ path: backPath }]),
+        FIXED_DATE,
         true,
         DuplexAssemblyMode.DOCUMENT_WISE,
       );
 
-      expect(result).to.equal(frontContext);
-      const pdfPath = path.join(tempDir, "scan2.pdf");
-      expect(fs.existsSync(pdfPath)).to.be.true;
-    } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
+      // The function returns the front context object reference unchanged.
+      expect(result).to.equal(frontCtx);
+      expect(fs.existsSync(path.join(tempDir, "scan2.pdf"))).to.be.true;
+    });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// processFinishedPartialDuplexScan
+// ─────────────────────────────────────────────────────────────────────────────
 
 describe("processFinishedPartialDuplexScan", () => {
-  it("should call postProcessing with front context values and create a PDF", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "processFinished-test-"));
+  it("flushes the front context via postProcessing and produces a PDF", async () => {
+    const tempDir = makeTempDir("processFinished-");
 
     try {
-      const scanConfig: ScanConfig = {
-        resolution: 300,
-        mode: ScanMode.Color,
-        width: undefined,
-        height: undefined,
-        format: ScanFormat.Jpeg,
-        directoryConfig: {
-          directory: tempDir,
-          tempDirectory: tempDir,
-          filePattern: undefined,
-        },
-        paperlessConfig: undefined,
-        nextcloudConfig: undefined,
-        preferEscl: false,
-        paperSize: undefined,
-        paperDim: undefined,
-        paperOrientation: undefined,
-      };
-
-      const jpegBytes = fs.readFileSync(
-        path.join(__dirname, "asset/sample.jpg"),
-      );
-      const jpegPath = path.join(tempDir, "scan1_page1.jpg");
-      fs.writeFileSync(jpegPath, jpegBytes);
-
-      const frontContext: FrontOfDoubleSidedScanContext = {
-        scanConfig,
-        folder: tempDir,
-        tempFolder: tempDir,
+      const jpegPath = writeSampleJpeg(tempDir, "scan1_page1.jpg");
+      const frontCtx = makeFrontContext(tempDir, {
+        scanConfig: makeScanConfig(tempDir),
         scanCount: 1,
-        scanJobContent: createScanContent([
-          { path: jpegPath, pageNumber: 1 },
-        ]),
-        scanDate: new Date(),
         scanToPdf: true,
-      };
-
-      const lastScanTarget: SelectedScanTarget = {
-        resourceURI: "/dest/1",
-        label: "test",
-        isDuplexSingleSide: true,
-        event: makeEvent(),
-      };
-
-      const selectedScanTarget: SelectedScanTarget = {
-        resourceURI: "/dest/2",
-        label: "test2",
-        isDuplexSingleSide: true,
-        event: makeEvent({
-          destinationURI: "/WalkupScan/Destinations/2",
-        }),
-      };
+        scanJobContent: makeScanContent([{ path: jpegPath }]),
+      });
 
       await processFinishedPartialDuplexScan(
-        lastScanTarget,
-        selectedScanTarget,
+        makeScanTarget({ resourceURI: "/dest/1", isDuplexSingleSide: true }),
+        makeScanTarget({ resourceURI: "/dest/2", isDuplexSingleSide: true }),
         1,
-        frontContext,
+        frontCtx,
       );
 
-      const pdfPath = path.join(tempDir, "scan1.pdf");
-      expect(fs.existsSync(pdfPath)).to.be.true;
+      expect(fs.existsSync(path.join(tempDir, "scan1.pdf"))).to.be.true;
     } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      removeTempDir(tempDir);
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// processScanWithDestination
+// ─────────────────────────────────────────────────────────────────────────────
 
 describe("processScanWithDestination", () => {
   let tempDir: string;
-  let originalIsAlive: typeof HPApi.isAlive;
-  let originalDelay: typeof HPApi.delay;
+  let savedApi: ApiStubs;
   let originalGetNextScanNumber: typeof PathHelper.getNextScanNumber;
 
   beforeEach(() => {
-    if (!nock.isActive()) {
-      nock.activate();
-    }
+    if (!nock.isActive()) { nock.activate(); }
     nock.disableNetConnect();
     HPApi.setDeviceIP("127.0.0.1");
-    originalIsAlive = HPApi.isAlive;
-    originalDelay = HPApi.delay;
+
+    savedApi = stubApiInstant();
+
     originalGetNextScanNumber = PathHelper.getNextScanNumber;
-    HPApi.isAlive = async () => true;
-    HPApi.delay = async () => {
-      /* no-op */
-    };
-    PathHelper.getNextScanNumber = async (
-      _folder: string,
-      currentScanCount: number,
-      _filePattern: string | undefined,
-    ) => currentScanCount + 1;
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "processScan-test-"));
+    PathHelper.getNextScanNumber = async (_f, current) => current + 1;
+
+    tempDir = makeTempDir("processScan-");
   });
 
   afterEach(() => {
-    HPApi.isAlive = originalIsAlive;
-    HPApi.delay = originalDelay;
+    restoreApi(savedApi);
     PathHelper.getNextScanNumber = originalGetNextScanNumber;
     nock.cleanAll();
-    if (fs.existsSync(tempDir)) {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
+    removeTempDir(tempDir);
   });
 
-  it("should perform a Simplex scan and return the result", async () => {
-    const processingXml = `<?xml version="1.0" encoding="UTF-8"?>
-<j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/job/2009/03/24">
-  <j:JobState>Processing</j:JobState>
-  <ScanJob>
-    <PreScanPage>
-      <PageState>ReadyToUpload</PageState>
-      <BinaryURL>/Scan/Jobs/123/Pages/1</BinaryURL>
-      <PageNumber>1</PageNumber>
-      <BufferInfo>
-        <ImageWidth>100</ImageWidth>
-        <ImageHeight>200</ImageHeight>
-        <ScanSettings>
-          <InputSource>Platen</InputSource>
-          <ContentType>Photo</ContentType>
-          <XResolution>300</XResolution>
-          <YResolution>300</YResolution>
-        </ScanSettings>
-      </BufferInfo>
-    </PreScanPage>
-  </ScanJob>
-</j:Job>`;
-
-    const completedXml = `<?xml version="1.0" encoding="UTF-8"?>
-<j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/job/2009/03/24">
-  <j:JobState>Completed</j:JobState>
-  <ScanJob>
-    <PostScanPage>
-      <PageNumber>1</PageNumber>
-    </PostScanPage>
-  </ScanJob>
-</j:Job>`;
-
-    const jobScope = nock("http://127.0.0.1:8080");
-
-    // Calls 1 & 2: getJob in hpScanJobHandling and waitDeviceUntilItIsReadyToUploadOrCompleted
-    jobScope.get("/Scan/Jobs/123").times(2).reply(200, processingXml);
-
-    // Call 3: downloadPage binary
-    jobScope
-      .get("/Scan/Jobs/123/Pages/1")
-      .reply(200, Buffer.from("fake-image-data"), {
-        "Content-Type": "image/jpeg",
-      });
-
-    // Call 4: getJob after page processing
-    jobScope.get("/Scan/Jobs/123").reply(200, completedXml);
-
-    const destination: WalkupDestination = {
-      shortcut: KnownShortcut.SaveJPEG,
-      scanPlexMode: null,
-    };
-
-    const selectedScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/1",
-      label: "test",
-      isDuplexSingleSide: false,
-      event: makeEvent(),
-    };
-
-    const scanConfig = createDefaultScanConfig(tempDir);
-
-    const mockDeviceCapabilities = createMockDeviceCapabilities();
+  it("Simplex scan: returns Simplex mode, incremented scan count, null duplex context", async () => {
+    const jobScope = nockScanJob();
 
     const result = await processScanWithDestination(
-      destination,
-      selectedScanTarget,
+      makeDestination({ scanPlexMode: null }),
+      makeScanTarget({ isDuplexSingleSide: false }),
       DuplexMode.Simplex,
       undefined,
       tempDir,
       tempDir,
-      scanConfig,
-      mockDeviceCapabilities,
+      makeScanConfig(tempDir),
+      makeDeviceCapabilities(),
       0,
       null,
     );
@@ -1619,213 +1080,248 @@ describe("processScanWithDestination", () => {
     expect(jobScope.isDone()).to.be.true;
   });
 
-  it("should call processFinishedPartialDuplexScan when switching from emulated front to simplex", async () => {
-    const processingXml = `<?xml version="1.0" encoding="UTF-8"?>
-<j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/job/2009/03/24">
-  <j:JobState>Processing</j:JobState>
-  <ScanJob>
-    <PreScanPage>
-      <PageState>ReadyToUpload</PageState>
-      <BinaryURL>/Scan/Jobs/123/Pages/1</BinaryURL>
-      <PageNumber>1</PageNumber>
-      <BufferInfo>
-        <ImageWidth>100</ImageWidth>
-        <ImageHeight>200</ImageHeight>
-        <ScanSettings>
-          <InputSource>Platen</InputSource>
-          <ContentType>Photo</ContentType>
-          <XResolution>300</XResolution>
-          <YResolution>300</YResolution>
-        </ScanSettings>
-      </BufferInfo>
-    </PreScanPage>
-  </ScanJob>
-</j:Job>`;
-
-    const completedXml = `<?xml version="1.0" encoding="UTF-8"?>
-<j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/job/2009/03/24">
-  <j:JobState>Completed</j:JobState>
-  <ScanJob>
-    <PostScanPage>
-      <PageNumber>1</PageNumber>
-    </PostScanPage>
-  </ScanJob>
-</j:Job>`;
-
-    const jobScope = nock("http://127.0.0.1:8080");
-
-    jobScope.get("/Scan/Jobs/123").times(2).reply(200, processingXml);
-
-    jobScope
-      .get("/Scan/Jobs/123/Pages/1")
-      .reply(200, Buffer.from("fake-image-data"), {
-        "Content-Type": "image/jpeg",
-      });
-
-    jobScope.get("/Scan/Jobs/123").reply(200, completedXml);
-
-    const destination: WalkupDestination = {
-      shortcut: KnownShortcut.SaveJPEG,
-      scanPlexMode: null,
-    };
-
-    const jpegBytes = fs.readFileSync(
-      path.join(__dirname, "asset/sample.jpg"),
-    );
-    const frontJpegPath = path.join(tempDir, "front.jpg");
-    fs.writeFileSync(frontJpegPath, jpegBytes);
-
-    const selectedScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/2",
-      label: "next",
-      isDuplexSingleSide: false,
-      event: makeEvent(),
-    };
-
-    const lastScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/1",
-      label: "prev",
-      isDuplexSingleSide: true,
-      event: makeEvent(),
-    };
-
-    const frontContext: FrontOfDoubleSidedScanContext = {
-      scanConfig: createDefaultScanConfig(tempDir),
-      folder: tempDir,
-      tempFolder: tempDir,
-      scanCount: 0,
-      scanJobContent: createScanContent([
-        { path: frontJpegPath, pageNumber: 1 },
-      ]),
-      scanDate: new Date(),
-      scanToPdf: true,
-    };
-
-    const scanConfig = createDefaultScanConfig(tempDir);
-
-    const mockDeviceCapabilities = createMockDeviceCapabilities();
+  it("switching from emulated front to Simplex: flushes partial PDF then scans", async () => {
+    const jobScope = nockScanJob();
+    const frontJpeg = writeSampleJpeg(tempDir, "front.jpg");
 
     const result = await processScanWithDestination(
-      destination,
-      selectedScanTarget,
+      makeDestination({ shortcut: KnownShortcut.SaveJPEG, scanPlexMode: null }),
+      makeScanTarget({
+        resourceURI: "/WalkupScan/Destinations/2",
+        isDuplexSingleSide: false,
+      }),
       DuplexMode.FrontOfDoubleSided,
-      lastScanTarget,
+      makeScanTarget({
+        resourceURI: "/WalkupScan/Destinations/1",
+        isDuplexSingleSide: true,
+      }),
       tempDir,
       tempDir,
-      scanConfig,
-      mockDeviceCapabilities,
+      makeScanConfig(tempDir),
+      makeDeviceCapabilities(),
       1,
-      frontContext,
+      makeFrontContext(tempDir, {
+        scanCount: 0,
+        scanToPdf: true,
+        scanJobContent: makeScanContent([{ path: frontJpeg }]),
+      }),
     );
 
     expect(result.duplexMode).to.equal(DuplexMode.Simplex);
     expect(result.scanCount).to.equal(2);
     expect(jobScope.isDone()).to.be.true;
-    expect(fs.existsSync(path.join(tempDir, "scan0.pdf"))).to.be.true;
+    // The flushed front-only PDF must exist (scan count from frontContext = 0).
+    const pdfPath = path.join(tempDir, "scan0.pdf");
+    console.log("DEBUG: checking for", pdfPath);
+    console.log("DEBUG: tempDir contents:", fs.readdirSync(tempDir));
+    console.log("DEBUG: exists?", fs.existsSync(pdfPath));
+    expect(fs.existsSync(pdfPath)).to.be.true;
   });
 
-  it("should call processFinishedPartialDuplexScan when switching from emulated front to duplex", async () => {
-    const processingXml = `<?xml version="1.0" encoding="UTF-8"?>
-<j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/job/2009/03/24">
-  <j:JobState>Processing</j:JobState>
-  <ScanJob>
-    <PreScanPage>
-      <PageState>ReadyToUpload</PageState>
-      <BinaryURL>/Scan/Jobs/123/Pages/1</BinaryURL>
-      <PageNumber>1</PageNumber>
-      <BufferInfo>
-        <ImageWidth>100</ImageWidth>
-        <ImageHeight>200</ImageHeight>
-        <ScanSettings>
-          <InputSource>Platen</InputSource>
-          <ContentType>Photo</ContentType>
-          <XResolution>300</XResolution>
-          <YResolution>300</YResolution>
-        </ScanSettings>
-      </BufferInfo>
-    </PreScanPage>
-  </ScanJob>
-</j:Job>`;
-
-    const completedXml = `<?xml version="1.0" encoding="UTF-8"?>
-<j:Job xmlns:j="http://www.hp.com/schemas/imaging/con/ledm/job/2009/03/24">
-  <j:JobState>Completed</j:JobState>
-  <ScanJob>
-    <PostScanPage>
-      <PageNumber>1</PageNumber>
-    </PostScanPage>
-  </ScanJob>
-</j:Job>`;
-
-    const jobScope = nock("http://127.0.0.1:8080");
-
-    jobScope.get("/Scan/Jobs/123").times(2).reply(200, processingXml);
-
-    jobScope
-      .get("/Scan/Jobs/123/Pages/1")
-      .reply(200, Buffer.from("fake-image-data"), {
-        "Content-Type": "image/jpeg",
-      });
-
-    jobScope.get("/Scan/Jobs/123").reply(200, completedXml);
-
-    const destination: WalkupDestination = {
-      shortcut: KnownShortcut.SaveJPEG,
-      scanPlexMode: ScanPlexMode.Duplex,
-    };
-
-    const jpegBytes = fs.readFileSync(
-      path.join(__dirname, "asset/sample.jpg"),
-    );
-    const frontJpegPath = path.join(tempDir, "front.jpg");
-    fs.writeFileSync(frontJpegPath, jpegBytes);
-
-    const selectedScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/2",
-      label: "next",
-      isDuplexSingleSide: false,
-      event: makeEvent(),
-    };
-
-    const lastScanTarget: SelectedScanTarget = {
-      resourceURI: "/WalkupScan/Destinations/1",
-      label: "prev",
-      isDuplexSingleSide: true,
-      event: makeEvent(),
-    };
-
-    const frontContext: FrontOfDoubleSidedScanContext = {
-      scanConfig: createDefaultScanConfig(tempDir),
-      folder: tempDir,
-      tempFolder: tempDir,
-      scanCount: 0,
-      scanJobContent: createScanContent([
-        { path: frontJpegPath, pageNumber: 1 },
-      ]),
-      scanDate: new Date(),
-      scanToPdf: true,
-    };
-
-    const scanConfig = createDefaultScanConfig(tempDir);
-
-    const mockDeviceCapabilities = createMockDeviceCapabilities();
+  it("switching from emulated front to Duplex: flushes partial PDF then scans in Duplex mode", async () => {
+    const jobScope = nockScanJob();
+    const frontJpeg = writeSampleJpeg(tempDir, "front.jpg");
 
     const result = await processScanWithDestination(
-      destination,
-      selectedScanTarget,
+      makeDestination({ scanPlexMode: ScanPlexMode.Duplex }),
+      makeScanTarget({
+        resourceURI: "/WalkupScan/Destinations/2",
+        isDuplexSingleSide: false,
+      }),
       DuplexMode.FrontOfDoubleSided,
-      lastScanTarget,
+      makeScanTarget({
+        resourceURI: "/WalkupScan/Destinations/1",
+        isDuplexSingleSide: true,
+      }),
       tempDir,
       tempDir,
-      scanConfig,
-      mockDeviceCapabilities,
+      makeScanConfig(tempDir),
+      makeDeviceCapabilities(),
       1,
-      frontContext,
+      makeFrontContext(tempDir, {
+        scanCount: 0,
+        scanToPdf: true,
+        scanJobContent: makeScanContent([{ path: frontJpeg }]),
+      }),
     );
 
     expect(result.duplexMode).to.equal(DuplexMode.Duplex);
     expect(result.scanCount).to.equal(2);
     expect(jobScope.isDone()).to.be.true;
     expect(fs.existsSync(path.join(tempDir, "scan0.pdf"))).to.be.true;
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// listenCmd  (full integration — exercises the event loop)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("listenCmd", () => {
+  let tempDir: string;
+  let savedApi: ApiStubs;
+
+  beforeEach(() => {
+    if (!nock.isActive()) { nock.activate(); }
+    nock.disableNetConnect();
+    HPApi.setDeviceIP("127.0.0.1");
+    savedApi = stubApiInstant();
+    tempDir = makeTempDir("listenCmd-");
+  });
+
+  afterEach(() => {
+    restoreApi(savedApi);
+    nock.cleanAll();
+    removeTempDir(tempDir);
+  });
+
+  it("exits after 50 consecutive errors when device is alive (circuit breaker)", async () => {
+    nockLedmBootstrap();
+    // Every event-table poll returns 500 → errorCount increments each iteration.
+    nock("http://127.0.0.1:80")
+      .persist()
+      .get("/EventMgmt/EventTable")
+      .reply(500);
+
+    const errorsBefore = 0;
+    const originalIsAlive = HPApi.isAlive;
+    let callCount = 0;
+    HPApi.isAlive = async () => {
+      callCount++;
+      return true;
+    };
+
+    await listenCmd(
+      [{ label: "host", isDuplexSingleSide: false }],
+      makeScanConfig(tempDir),
+      1,
+    );
+
+    // isAlive is checked once per failing iteration — must have been called ≥50 times.
+    expect(callCount).to.be.greaterThanOrEqual(50);
+    HPApi.isAlive = originalIsAlive;
+    void errorsBefore; // suppress unused-variable warning
+  });
+
+  it("skips scan when waitScanRequest returns false (ScanPagesComplete event)", async () => {
+    nockLedmBootstrap();
+    nock("http://127.0.0.1:80")
+      .get("/EventMgmt/EventTable")
+      .reply(200, XML.eventTableEmpty, { etag: "e0" });
+    nock("http://127.0.0.1:80")
+      .get("/EventMgmt/EventTable")
+      .query({ timeout: 1200 })
+      .reply(200, XML.scanEventWithCompUri(), { etag: "e1" });
+    nock("http://127.0.0.1:80")
+      .get("/WalkupScanToComp/WalkupScanToCompEvent")
+      .reply(200, XML.walkupScanToCompEventPagesComplete);
+
+    // After the WalkupScanToComp mock is consumed, the next EventTable poll
+    // will fail (no mock).  Make isAlive return false so deviceUp = false,
+    // then waitDeviceUp throws to exit the loop immediately (no 50-iteration
+    // circuit-breaker needed).  No /Scan/Jobs mock is registered, so any
+    // attempt to create a scan job would also fail hard with disableNetConnect.
+    const originalIsAlive = HPApi.isAlive;
+    HPApi.isAlive = async () => false;
+
+    const originalWaitDeviceUp = HPApi.waitDeviceUp;
+    HPApi.waitDeviceUp = async () => {
+      throw new Error("device is down");
+    };
+
+    try {
+      await listenCmd(
+        [{ label: "host", isDuplexSingleSide: false }],
+        makeScanConfig(tempDir),
+        1,
+      );
+      expect.fail("Expected listenCmd to reject");
+    } catch (e: unknown) {
+      expect((e as Error).message).to.equal("device is down");
+    }
+
+    HPApi.isAlive = originalIsAlive;
+    HPApi.waitDeviceUp = originalWaitDeviceUp;
+
+    // No scan was performed — tempDir should be empty.
+    const files = fs.readdirSync(tempDir);
+    expect(files).to.have.lengthOf(0);
+  });
+
+  it("performs a complete Simplex scan flow end-to-end and writes output file", async () => {
+    nockLedmBootstrap();
+    nock("http://127.0.0.1:80")
+      .get("/EventMgmt/EventTable")
+      .reply(200, XML.eventTableEmpty, { etag: "t0" });
+    nock("http://127.0.0.1:80")
+      .get("/EventMgmt/EventTable")
+      .query({ timeout: 1200 })
+      .reply(200, XML.scanEventSimple(), { etag: "t1" });
+    nock("http://127.0.0.1:80")
+      .get("/WalkupScan/Destinations/1")
+      .reply(200, XML.walkupDestination());
+
+    const jobScope = nockScanJob();
+
+    await listenCmd(
+      [{ label: "host", isDuplexSingleSide: false }],
+      makeScanConfig(tempDir),
+      1,
+    );
+
+    expect(jobScope.isDone()).to.be.true;
+    // The scan was saved to tempDir; at least one file should exist.
+    const files = fs.readdirSync(tempDir);
+    expect(files.length).to.be.greaterThan(0);
+  });
+
+  it("catches non-Error throws when device is alive (hits line 111)", async () => {
+    nockLedmBootstrap();
+    nock("http://127.0.0.1:80")
+      .get("/EventMgmt/EventTable")
+      .reply(200, XML.eventTableEmpty, { etag: "t0" });
+    nock("http://127.0.0.1:80")
+      .get("/EventMgmt/EventTable")
+      .query({ timeout: 1200 })
+      .reply(200, XML.scanEventWithCompUri(), { etag: "t1" });
+
+    const savedGetEvent = HPApi.getWalkupScanToCompEvent;
+    HPApi.getWalkupScanToCompEvent = async () => {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw "non-error-throw";
+    };
+
+    await listenCmd(
+      [{ label: "host", isDuplexSingleSide: false }],
+      makeScanConfig(tempDir),
+      1,
+    );
+
+    HPApi.getWalkupScanToCompEvent = savedGetEvent;
+  });
+
+  it("logs debug info when device goes down and debug is enabled", async () => {
+    nockLedmBootstrap();
+    nock("http://127.0.0.1:80")
+      .persist()
+      .get("/EventMgmt/EventTable")
+      .reply(500);
+
+    const savedIsAlive = HPApi.isAlive;
+    const savedIsDebug = HPApi.isDebug;
+    let isAliveCalls = 0;
+    HPApi.isAlive = async () => {
+      isAliveCalls++;
+      return isAliveCalls > 1;
+    };
+    HPApi.isDebug = () => true;
+
+    await listenCmd(
+      [{ label: "host", isDuplexSingleSide: false }],
+      makeScanConfig(tempDir),
+      1,
+    );
+
+    HPApi.isAlive = savedIsAlive;
+    HPApi.isDebug = savedIsDebug;
   });
 });
