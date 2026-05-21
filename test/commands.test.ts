@@ -35,6 +35,7 @@ describe("commands", () => {
         .reply(200);
 
       await clearRegistrationsCmd();
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should handle empty destinations", async () => {
