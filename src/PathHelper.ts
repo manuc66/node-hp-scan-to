@@ -58,9 +58,7 @@ export default class PathHelper {
         return i;
       }
     }
-    return Promise.reject(
-      new Error(`Unable to find the valid scan number in folder ${folder}`),
-    );
+    throw new Error(`Unable to find the valid scan number in folder ${folder}`);
   }
 
   static async makeUnique(filePath: string, date: Date): Promise<string> {
