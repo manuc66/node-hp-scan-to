@@ -122,8 +122,12 @@ describe("adfAutoscanCmd", () => {
     nock("http://127.0.0.1:80").persist().get("/Scan/Status").reply(500);
 
     HPApi.isAlive = async () => true;
-    HPApi.delay = async () => {};
-    HPApi.waitDeviceUp = async () => {};
+    HPApi.delay = async () => {
+      /* noop */
+    };
+    HPApi.waitDeviceUp = async () => {
+      /* noop */
+    };
 
     await adfAutoscanCmd(config, 1);
   });
@@ -214,7 +218,9 @@ describe("adfAutoscanCmd", () => {
       isAliveCallCount++;
       return isAliveCallCount > 1;
     };
-    HPApi.delay = async () => {};
+    HPApi.delay = async () => {
+      /* noop */
+    };
     HPApi.waitDeviceUp = async () => {
       waitDeviceUpCalled = true;
     };
@@ -381,8 +387,12 @@ describe("adfAutoscanCmd", () => {
       .reply(500);
 
     HPApi.isAlive = async () => true;
-    HPApi.delay = async () => {};
-    HPApi.waitDeviceUp = async () => {};
+    HPApi.delay = async () => {
+      /* noop */
+    };
+    HPApi.waitDeviceUp = async () => {
+      /* noop */
+    };
 
     await adfAutoscanCmd(config, 1);
 
