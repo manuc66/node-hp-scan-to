@@ -134,7 +134,7 @@ export async function listenCmd(
   }
 }
 
-async function processScanWithDestination(
+export async function processScanWithDestination(
   destination: WalkupDestination,
   selectedScanTarget: SelectedScanTarget,
   lastDuplexMode: DuplexMode,
@@ -214,7 +214,7 @@ async function processScanWithDestination(
   return { scanCount, frontOfDoubleSidedScanContext, duplexMode };
 }
 
-async function handleScanResult(
+export async function handleScanResult(
   duplexMode: DuplexMode,
   frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null,
   scanConfig: ScanConfig,
@@ -267,7 +267,7 @@ async function handleScanResult(
   return frontOfDoubleSidedScanContext;
 }
 
-function determineDuplexModes(
+export function determineDuplexModes(
   destination: WalkupDestination,
   selectedScanTarget: SelectedScanTarget,
   previousDuplexMode: DuplexMode,
@@ -355,7 +355,7 @@ interface ScanParameters {
   scanCount: number;
 }
 
-async function setupScanParameters(
+export async function setupScanParameters(
   duplexMode: DuplexMode,
   targetDuplexMode: TargetDuplexMode,
   destination: WalkupDestination,
@@ -417,7 +417,7 @@ async function setupScanParameters(
   return { pageCountingStrategy, scanToPdf, scanDate, scanCount };
 }
 
-async function processFinishedPartialDuplexScan(
+export async function processFinishedPartialDuplexScan(
   lastScanTarget: SelectedScanTarget,
   selectedScanTarget: SelectedScanTarget,
   scanCount: number,
@@ -438,7 +438,7 @@ async function processFinishedPartialDuplexScan(
   );
 }
 
-interface FrontOfDoubleSidedScanContext {
+export interface FrontOfDoubleSidedScanContext {
   scanConfig: ScanConfig;
   folder: string;
   tempFolder: string;
