@@ -4,7 +4,7 @@
 "use strict";
 
 import os from "os";
-import { Bonjour } from "bonjour-service";
+import Bonjour from "bonjour-service";
 import HPApi from "./HPApi.js";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
