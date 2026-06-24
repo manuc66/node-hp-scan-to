@@ -1,4 +1,4 @@
-import HPApi from "./HPApi.js";
+import type DeviceClient from "./DeviceClient.js";
 import type { IEvent } from "./hpModels/Event.js";
 import Destination from "./hpModels/Destination.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
@@ -10,13 +10,14 @@ import type {
 import { EventType } from "./hpModels/WalkupScanToCompEvent.js";
 
 export async function waitScanRequest(
+  api: DeviceClient,
   compEventURI: string,
   userActionTimeout: number | null = null,
 ): Promise<boolean> {
   const waitMax = userActionTimeout ?? 50;
   for (let i = 0; i < waitMax; i++) {
     const walkupScanToCompEvent =
-      await HPApi.getWalkupScanToCompEvent(compEventURI);
+      await api.getWalkupScanToCompEvent(compEventURI);
     const eventType = walkupScanToCompEvent.eventType;
     if (eventType === EventType.HostSelected) {
       // this ok to wait
@@ -30,21 +31,23 @@ export async function waitScanRequest(
     }
 
     console.log(`Waiting for user input (attempt ${i + 1} of ${waitMax})`);
-    await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   console.log("Timeout waiting for user input");
   return false;
 }
 
 export async function waitForScanEventFromTarget(
+  api: DeviceClient,
   scanTarget: ScanTarget,
   afterEtag: string,
 ): Promise<IEvent | undefined> {
   console.log("Waiting for additional pages or scan completion...");
-  return (await waitForScanEventInternal([scanTarget], afterEtag))?.event;
+  return (await waitForScanEventInternal(api, [scanTarget], afterEtag))?.event;
 }
 
 export async function waitForScanEvent(
+  api: DeviceClient,
   scanTargets: ScanTarget[],
   afterEtag: string | null = null,
 ): Promise<SelectedScanTarget | null> {
@@ -54,19 +57,20 @@ export async function waitForScanEvent(
   const since = afterEtag !== null ? ` since event ${afterEtag}` : "";
   console.log(`Waiting for scan event from: ${targetList}${since}`);
 
-  return await waitForScanEventInternal(scanTargets, afterEtag);
+  return await waitForScanEventInternal(api, scanTargets, afterEtag);
 }
 
 async function waitForScanEventInternal(
+  api: DeviceClient,
   scanTargets: ScanTarget[],
   afterEtag: string | null = null,
 ): Promise<SelectedScanTarget | null> {
-  let eventTable = await HPApi.getEvents(afterEtag ?? "");
+  let eventTable = await api.getEvents(afterEtag ?? "");
   let acceptedScanEvent: IEvent | undefined = undefined;
   let scanTarget: ScanTarget | undefined = undefined;
   let currentEtag = eventTable.etag;
   while (acceptedScanEvent === undefined) {
-    eventTable = await HPApi.getEvents(currentEtag, 1200);
+    eventTable = await api.getEvents(currentEtag, 1200);
     currentEtag = eventTable.etag;
 
     for (
@@ -89,18 +93,19 @@ async function waitForScanEventInternal(
 }
 
 async function registerWalkupScanDestination(
+  api: DeviceClient,
   registrationConfigs: RegistrationConfig[],
   isScanToComp = false,
 ): Promise<ScanTarget[]> {
   const registerMethod = isScanToComp
     ? (destination: Destination) =>
-        HPApi.registerWalkupScanToCompDestination(destination)
+        api.registerWalkupScanToCompDestination(destination)
     : (destination: Destination) =>
-        HPApi.registerWalkupScanDestination(destination);
+        api.registerWalkupScanDestination(destination);
 
   const walkupScanDestinations = isScanToComp
-    ? await HPApi.getWalkupScanToCompDestinations()
-    : await HPApi.getWalkupScanDestinations();
+    ? await api.getWalkupScanToCompDestinations()
+    : await api.getWalkupScanDestinations();
 
   const destinations = walkupScanDestinations.destinations;
 
@@ -133,13 +138,15 @@ async function registerWalkupScanDestination(
 }
 
 export async function waitScanEvent(
+  api: DeviceClient,
   deviceCapabilities: DeviceCapabilities,
   registrationConfigs: RegistrationConfig[],
 ): Promise<SelectedScanTarget | null> {
   const scanTargets = await registerWalkupScanDestination(
+    api,
     registrationConfigs,
     deviceCapabilities.useWalkupScanToComp,
   );
 
-  return await waitForScanEvent(scanTargets);
+  return await waitForScanEvent(api, scanTargets);
 }

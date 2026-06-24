@@ -16,7 +16,7 @@ import type {
 } from "../src/type/scanConfigs.js";
 import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
 import nock from "nock";
-import HPApi from "../src/HPApi.js";
+import DeviceClient from "../src/DeviceClient.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
 import { ScannerState } from "../src/hpModels/ScannerState.js";
 import { AdfState } from "../src/hpModels/AdfState.js";
@@ -41,8 +41,10 @@ describe("scanProcessing Format Selection", () => {
     isScanEvent: true,
   };
 
+  let api: DeviceClient;
+
   beforeEach(() => {
-    HPApi.setDeviceIP("127.0.0.1");
+    api = new DeviceClient("127.0.0.1");
   });
 
   afterEach(() => {
@@ -93,6 +95,7 @@ describe("scanProcessing Format Selection", () => {
     // but we only care about capturedFormat.
     try {
       await singleScan(
+        api,
         scanCount,
         folder,
         tempFolder,
@@ -151,6 +154,7 @@ describe("scanProcessing Format Selection", () => {
 
     try {
       await scanFromAdf(
+        api,
         scanCount,
         folder,
         tempFolder,
@@ -205,6 +209,7 @@ describe("scanProcessing Format Selection", () => {
 
     try {
       await saveScanFromEvent(
+        api,
         {
           event: mockEvent,
           label: "test",

@@ -2,15 +2,17 @@ import { describe, it, beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
 import nock from "nock";
 import { readDeviceCapabilities } from "../src/readDeviceCapabilities.js";
-import HPApi from "../src/HPApi.js";
+import DeviceClient from "../src/DeviceClient.js";
 import { InputSource } from "../src/type/InputSource.js";
 import { ScanMode } from "../src/type/scanMode.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
 import { createImageFormat } from "../src/imageFormats/index.js";
 
 describe("readDeviceCapabilities", () => {
+  let api: DeviceClient;
+
   beforeEach(() => {
-    HPApi.setDeviceIP("127.0.0.1");
+    api = new DeviceClient("127.0.0.1");
     if (!nock.isActive()) {
       nock.activate();
     }
@@ -72,7 +74,7 @@ describe("readDeviceCapabilities", () => {
 </ScanCaps>`,
       );
 
-    const caps = await readDeviceCapabilities(false);
+    const caps = await readDeviceCapabilities(api, false);
 
     expect(caps.platenMaxWidth).to.equal(2550);
     expect(caps.platenMaxHeight).to.equal(3300);
@@ -131,7 +133,7 @@ describe("readDeviceCapabilities", () => {
 </scan:ScannerCapabilities>`,
       );
 
-    const caps = await readDeviceCapabilities(true);
+    const caps = await readDeviceCapabilities(api, true);
 
     expect(caps.isEscl).to.be.true;
     expect(caps.platenMaxWidth).to.equal(2550);
@@ -216,7 +218,7 @@ describe("readDeviceCapabilities", () => {
 </wus:WalkupScanToCompCaps>`,
       );
 
-    const caps = await readDeviceCapabilities(false);
+    const caps = await readDeviceCapabilities(api, false);
 
     expect(caps.useWalkupScanToComp).to.be.true;
     expect(caps.supportsMultiItemScanFromPlaten).to.be.true;
