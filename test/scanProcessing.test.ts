@@ -8,7 +8,7 @@ import {
   tryGetDestination,
 } from "../src/scanProcessing.js";
 import { KnownShortcut } from "../src/type/KnownShortcut.js";
-import HPApi from "../src/HPApi.js";
+import DeviceClient from "../src/DeviceClient.js";
 import type { IEvent } from "../src/hpModels/Event.js";
 import { ScannerState } from "../src/hpModels/ScannerState.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
@@ -50,8 +50,10 @@ describe("scanProcessing", () => {
   });
 
   describe("tryGetDestination", () => {
+    let api: DeviceClient;
+
     beforeEach(() => {
-      HPApi.setDeviceIP("127.0.0.1");
+      api = new DeviceClient("127.0.0.1");
       if (!nock.isActive()) {
         nock.activate();
       }
@@ -85,7 +87,7 @@ describe("scanProcessing", () => {
         compEventURI: undefined,
         isScanEvent: true,
       };
-      const destination = await tryGetDestination(event);
+      const destination = await tryGetDestination(api, event);
 
       expect(destination).to.not.be.null;
       expect(destination?.shortcut).to.equal(KnownShortcut.SavePDF);
@@ -93,6 +95,12 @@ describe("scanProcessing", () => {
   });
 
   describe("scanner state check", () => {
+    let api: DeviceClient;
+
+    beforeEach(() => {
+      api = new DeviceClient("127.0.0.1");
+    });
+
     const mockDeviceCapabilities = (state: ScannerState): DeviceCapabilities =>
       ({
         getScanStatus: async () => ({
@@ -119,6 +127,7 @@ describe("scanProcessing", () => {
         ScannerState.BusyWithScanJob,
       );
       const result = await saveScanFromEvent(
+        api,
         {} as SelectedScanTarget,
         "folder",
         "temp",
@@ -148,6 +157,7 @@ describe("scanProcessing", () => {
       // If it doesn't abort, it would call other methods on deviceCapabilities and fail (since they are missing from mock)
       // or at least we check it returns without throwing further errors if we mock just enough.
       await singleScan(
+        api,
         1,
         "folder",
         "temp",

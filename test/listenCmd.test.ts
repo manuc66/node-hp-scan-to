@@ -2,7 +2,7 @@ import { expect } from "chai";
 import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import { describe, it, beforeEach, afterEach } from "mocha";
 import nock from "nock";
-import HPApi from "../src/HPApi.js";
+import DeviceClient from "../src/DeviceClient.js";
 import {
   assembleDuplexScan,
   listenCmd,
@@ -396,41 +396,7 @@ const removeTempDir = (dir: string) => {
   if (fs.existsSync(dir)) { fs.rmSync(dir, { recursive: true, force: true }); }
 };
 
-// ─── HPApi stub helpers ────────────────────────────────────────────────────────
 
-interface ApiStubs {
-  isAlive: typeof HPApi.isAlive;
-  delay: typeof HPApi.delay;
-  waitDeviceUp: typeof HPApi.waitDeviceUp;
-  isDebug: typeof HPApi.isDebug;
-  getWalkupScanToCompEvent: typeof HPApi.getWalkupScanToCompEvent;
-}
-
-const stubApiInstant = (): ApiStubs => {
-  const saved: ApiStubs = {
-    isAlive: HPApi.isAlive,
-    delay: HPApi.delay,
-    waitDeviceUp: HPApi.waitDeviceUp,
-    isDebug: HPApi.isDebug,
-    getWalkupScanToCompEvent: HPApi.getWalkupScanToCompEvent,
-  };
-  HPApi.isAlive = async () => true;
-  HPApi.delay = async () => {
-    /* instant */
-  };
-  HPApi.waitDeviceUp = async () => {
-    /* instant */
-  };
-  return saved;
-};
-
-const restoreApi = (saved: ApiStubs) => {
-  HPApi.isAlive = saved.isAlive;
-  HPApi.delay = saved.delay;
-  HPApi.waitDeviceUp = saved.waitDeviceUp;
-  HPApi.isDebug = saved.isDebug;
-  HPApi.getWalkupScanToCompEvent = saved.getWalkupScanToCompEvent;
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // assembleDuplexScan
@@ -1034,16 +1000,17 @@ describe("processFinishedPartialDuplexScan", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("processScanWithDestination", () => {
+  let api: DeviceClient;
   let tempDir: string;
-  let savedApi: ApiStubs;
   let originalGetNextScanNumber: typeof PathHelper.getNextScanNumber;
 
   beforeEach(() => {
     if (!nock.isActive()) { nock.activate(); }
     nock.disableNetConnect();
-    HPApi.setDeviceIP("127.0.0.1");
-
-    savedApi = stubApiInstant();
+    api = new DeviceClient("127.0.0.1", false);
+    api.isAlive = async () => true;
+    api.delay = async () => { /* noop */ };
+    api.waitDeviceUp = async () => { /* noop */ };
 
     originalGetNextScanNumber = PathHelper.getNextScanNumber;
     PathHelper.getNextScanNumber = async (_f, current) => current + 1;
@@ -1052,7 +1019,6 @@ describe("processScanWithDestination", () => {
   });
 
   afterEach(() => {
-    restoreApi(savedApi);
     PathHelper.getNextScanNumber = originalGetNextScanNumber;
     nock.cleanAll();
     removeTempDir(tempDir);
@@ -1062,6 +1028,7 @@ describe("processScanWithDestination", () => {
     const jobScope = nockScanJob();
 
     const result = await processScanWithDestination(
+      api,
       makeDestination({ scanPlexMode: null }),
       makeScanTarget({ isDuplexSingleSide: false }),
       DuplexMode.Simplex,
@@ -1085,6 +1052,7 @@ describe("processScanWithDestination", () => {
     const frontJpeg = writeSampleJpeg(tempDir, "front.jpg");
 
     const result = await processScanWithDestination(
+      api,
       makeDestination({ shortcut: KnownShortcut.SaveJPEG, scanPlexMode: null }),
       makeScanTarget({
         resourceURI: "/WalkupScan/Destinations/2",
@@ -1123,6 +1091,7 @@ describe("processScanWithDestination", () => {
     const frontJpeg = writeSampleJpeg(tempDir, "front.jpg");
 
     const result = await processScanWithDestination(
+      api,
       makeDestination({ scanPlexMode: ScanPlexMode.Duplex }),
       makeScanTarget({
         resourceURI: "/WalkupScan/Destinations/2",
@@ -1157,19 +1126,20 @@ describe("processScanWithDestination", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("listenCmd", () => {
+  let api: DeviceClient;
   let tempDir: string;
-  let savedApi: ApiStubs;
 
   beforeEach(() => {
     if (!nock.isActive()) { nock.activate(); }
     nock.disableNetConnect();
-    HPApi.setDeviceIP("127.0.0.1");
-    savedApi = stubApiInstant();
+    api = new DeviceClient("127.0.0.1", false);
+    api.isAlive = async () => true;
+    api.delay = async () => { /* noop */ };
+    api.waitDeviceUp = async () => { /* noop */ };
     tempDir = makeTempDir("listenCmd-");
   });
 
   afterEach(() => {
-    restoreApi(savedApi);
     nock.cleanAll();
     removeTempDir(tempDir);
   });
@@ -1183,14 +1153,13 @@ describe("listenCmd", () => {
       .reply(500);
 
     const errorsBefore = 0;
-    const originalIsAlive = HPApi.isAlive;
     let callCount = 0;
-    HPApi.isAlive = async () => {
+    api.isAlive = async () => {
       callCount++;
       return true;
     };
 
-    await listenCmd(
+    await listenCmd(api,
       [{ label: "host", isDuplexSingleSide: false }],
       makeScanConfig(tempDir),
       1,
@@ -1198,7 +1167,6 @@ describe("listenCmd", () => {
 
     // isAlive is checked once per failing iteration — must have been called ≥50 times.
     expect(callCount).to.be.greaterThanOrEqual(50);
-    HPApi.isAlive = originalIsAlive;
     void errorsBefore; // suppress unused-variable warning
   });
 
@@ -1220,16 +1188,14 @@ describe("listenCmd", () => {
     // then waitDeviceUp throws to exit the loop immediately (no 50-iteration
     // circuit-breaker needed).  No /Scan/Jobs mock is registered, so any
     // attempt to create a scan job would also fail hard with disableNetConnect.
-    const originalIsAlive = HPApi.isAlive;
-    HPApi.isAlive = async () => false;
+    api.isAlive = async () => false;
 
-    const originalWaitDeviceUp = HPApi.waitDeviceUp;
-    HPApi.waitDeviceUp = async () => {
+    api.waitDeviceUp = async () => {
       throw new Error("device is down");
     };
 
     try {
-      await listenCmd(
+      await listenCmd(api,
         [{ label: "host", isDuplexSingleSide: false }],
         makeScanConfig(tempDir),
         1,
@@ -1239,8 +1205,6 @@ describe("listenCmd", () => {
       expect((e as Error).message).to.equal("device is down");
     }
 
-    HPApi.isAlive = originalIsAlive;
-    HPApi.waitDeviceUp = originalWaitDeviceUp;
 
     // No scan was performed — tempDir should be empty.
     const files = fs.readdirSync(tempDir);
@@ -1262,7 +1226,7 @@ describe("listenCmd", () => {
 
     const jobScope = nockScanJob();
 
-    await listenCmd(
+    await listenCmd(api,
       [{ label: "host", isDuplexSingleSide: false }],
       makeScanConfig(tempDir),
       1,
@@ -1284,19 +1248,17 @@ describe("listenCmd", () => {
       .query({ timeout: 1200 })
       .reply(200, XML.scanEventWithCompUri(), { etag: "t1" });
 
-    const savedGetEvent = HPApi.getWalkupScanToCompEvent;
-    HPApi.getWalkupScanToCompEvent = async () => {
+    api.getWalkupScanToCompEvent = async () => {
       // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw "non-error-throw";
     };
 
-    await listenCmd(
+    await listenCmd(api,
       [{ label: "host", isDuplexSingleSide: false }],
       makeScanConfig(tempDir),
       1,
     );
 
-    HPApi.getWalkupScanToCompEvent = savedGetEvent;
   });
 
   it("logs debug info when device goes down and debug is enabled", async () => {
@@ -1306,22 +1268,18 @@ describe("listenCmd", () => {
       .get("/EventMgmt/EventTable")
       .reply(500);
 
-    const savedIsAlive = HPApi.isAlive;
-    const savedIsDebug = HPApi.isDebug;
     let isAliveCalls = 0;
-    HPApi.isAlive = async () => {
+    api.isAlive = async () => {
       isAliveCalls++;
       return isAliveCalls > 1;
     };
-    HPApi.isDebug = () => true;
+    api.isDebug = () => true;
 
-    await listenCmd(
+    await listenCmd(api,
       [{ label: "host", isDuplexSingleSide: false }],
       makeScanConfig(tempDir),
       1,
     );
 
-    HPApi.isAlive = savedIsAlive;
-    HPApi.isDebug = savedIsDebug;
   });
 });

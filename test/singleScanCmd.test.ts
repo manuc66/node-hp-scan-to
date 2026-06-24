@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
 import nock from "nock";
-import HPApi from "../src/HPApi.js";
+import DeviceClient from "../src/DeviceClient.js";
 import { singleScanCmd } from "../src/commands/singleScanCmd.js";
 import type { SingleScanConfig } from "../src/type/scanConfigs.js";
 import { ScanMode } from "../src/type/scanMode.js";
@@ -12,7 +12,7 @@ import path from "node:path";
 
 describe("singleScanCmd", () => {
   let tempDir: string;
-  let originalIsAlive: typeof HPApi.isAlive;
+  let api: DeviceClient;
 
   beforeEach(() => {
     if (!nock.isActive()) {
@@ -20,21 +20,17 @@ describe("singleScanCmd", () => {
     }
     if (!nock.isDone()) {
       const pending = nock.pendingMocks();
-      nock.cleanAll(); // prevent cascade failures
+      nock.cleanAll();
       throw new Error("Test left pending nock mocks:\n" + pending.join("\n"));
     }
 
     nock.disableNetConnect();
-    HPApi.setDeviceIP("127.0.0.1");
-
-    // Mock HPApi.isAlive to return true instantly
-    originalIsAlive = HPApi.isAlive;
-    HPApi.isAlive = async () => true;
+    api = new DeviceClient("127.0.0.1", false);
+    api.isAlive = async () => true;
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "singleScanCmd-test-"));
   });
 
   afterEach(() => {
-    HPApi.isAlive = originalIsAlive;
     nock.cleanAll();
     if (fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true, force: true });
@@ -63,7 +59,7 @@ describe("singleScanCmd", () => {
       generatePdf: false,
     };
 
-    // Mock HPApi.getDiscoveryTree
+    // Mock DeviceClient.getDiscoveryTree
     nock("http://127.0.0.1")
       .get("/DevMgmt/DiscoveryTree.xml")
       .reply(
@@ -77,7 +73,7 @@ describe("singleScanCmd", () => {
 </ledm:DiscoveryTree>`,
       );
 
-    // Mock HPApi.getScanJobManifest
+    // Mock DeviceClient.getScanJobManifest
     nock("http://127.0.0.1")
       .get("/Scan/ScanJobManifest")
       .reply(
@@ -108,7 +104,7 @@ describe("singleScanCmd", () => {
 </man:Manifest>`,
       );
 
-    // Mock HPApi.getScanCaps
+    // Mock DeviceClient.getScanCaps
     nock("http://127.0.0.1")
       .get("/Scan/ScanCaps")
       .reply(
@@ -120,7 +116,7 @@ describe("singleScanCmd", () => {
 </ScanCaps>`,
       );
 
-    // Mock HPApi.getScanStatus
+    // Mock DeviceClient.getScanStatus
     nock("http://127.0.0.1")
       .get("/Scan/Status")
       .reply(
@@ -132,12 +128,12 @@ describe("singleScanCmd", () => {
 </ScanStatus>`,
       );
 
-    // Mock HPApi.postJob
+    // Mock DeviceClient.postJob
     nock("http://127.0.0.1:8080")
       .post("/Scan/Jobs")
       .reply(201, "", { Location: "http://127.0.0.1/Scan/Jobs/123" });
 
-    // Mock HPApi.getJob (Processing)
+    // Mock DeviceClient.getJob (Processing)
     nock("http://127.0.0.1")
       .get("/Scan/Jobs/123")
       .times(3)
@@ -176,7 +172,7 @@ describe("singleScanCmd", () => {
 </j:Job>`,
       );
 
-    // Mock HPApi.getJob (Completed)
+    // Mock DeviceClient.getJob (Completed)
     nock("http://127.0.0.1")
       .get("/Scan/Jobs/123")
       .reply(
@@ -192,12 +188,12 @@ describe("singleScanCmd", () => {
 </j:Job>`,
       );
 
-    // Mock HPApi.downloadPage
+    // Mock DeviceClient.downloadPage
     nock("http://127.0.0.1:8080")
       .get("/Scan/Jobs/123/Pages/1")
       .reply(200, "fake-image-data");
 
-    await singleScanCmd(config, 1);
+    await singleScanCmd(api, config, 1);
 
     // Check if file was created in tempDir
     const files = fs.readdirSync(tempDir);

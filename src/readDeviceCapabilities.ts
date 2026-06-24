@@ -1,4 +1,4 @@
-import HPApi from "./HPApi.js";
+import type DeviceClient from "./DeviceClient.js";
 import type ScanCaps from "./hpModels/ScanCaps.js";
 import type DiscoveryTree from "./type/DiscoveryTree.js";
 import type EsclScanCaps from "./hpModels/EsclScanCaps.js";
@@ -13,26 +13,27 @@ import type { ImageFormat } from "./imageFormats/index.js";
 import type { IScanCaps } from "./IScanCaps.js";
 
 async function getScanCaps(
+  api: DeviceClient,
   discoveryTree: DiscoveryTree,
   preferEscl: boolean,
 ): Promise<IScanCaps | null> {
   let scanCaps: ScanCaps | null = null;
   if (discoveryTree.ScanJobManifestURI !== null) {
-    const scanJobManifest = await HPApi.getScanJobManifest(
+    const scanJobManifest = await api.getScanJobManifest(
       discoveryTree.ScanJobManifestURI,
     );
     if (scanJobManifest.ScanCapsURI !== null) {
-      scanCaps = await HPApi.getScanCaps(scanJobManifest.ScanCapsURI);
+      scanCaps = await api.getScanCaps(scanJobManifest.ScanCapsURI);
     }
   }
 
   let eSclScanCaps: EsclScanCaps | null = null;
   if (discoveryTree.EsclManifestURI !== null) {
-    const scanJobManifest = await HPApi.getEsclScanJobManifest(
+    const scanJobManifest = await api.getEsclScanJobManifest(
       discoveryTree.EsclManifestURI,
     );
     if (scanJobManifest.scanCapsURI !== null) {
-      eSclScanCaps = await HPApi.getEsclScanCaps(scanJobManifest.scanCapsURI);
+      eSclScanCaps = await api.getEsclScanCaps(scanJobManifest.scanCapsURI);
     }
   }
 
@@ -47,21 +48,22 @@ async function getScanCaps(
 }
 
 export async function readDeviceCapabilities(
+  api: DeviceClient,
   preferEscl: boolean,
 ): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
   let useWalkupScanToComp = false;
   let userActionTimeout: number | null = null;
 
-  const discoveryTree = await HPApi.getDiscoveryTree();
+  const discoveryTree = await api.getDiscoveryTree();
 
   if (discoveryTree.WalkupScanToCompManifestURI !== null) {
     useWalkupScanToComp = true;
-    const walkupScanToCompManifest = await HPApi.getWalkupScanToCompManifest(
+    const walkupScanToCompManifest = await api.getWalkupScanToCompManifest(
       discoveryTree.WalkupScanToCompManifestURI,
     );
     if (walkupScanToCompManifest.WalkupScanToCompCapsURI !== null) {
-      const walkupScanToCompCaps = await HPApi.getWalkupScanToCompCaps(
+      const walkupScanToCompCaps = await api.getWalkupScanToCompCaps(
         walkupScanToCompManifest.WalkupScanToCompCapsURI,
       );
       supportsMultiItemScanFromPlaten =
@@ -69,14 +71,13 @@ export async function readDeviceCapabilities(
       userActionTimeout = walkupScanToCompCaps.userActionTimeout;
     }
   } else if (discoveryTree.WalkupScanManifestURI !== null) {
-    // No caps to load here but check we can load the specified manifest
-    await HPApi.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
+    await api.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
   } else {
     console.log(
       "WARNING: No compatible device capabilities detected. The device may not support the listen command, and while the application will continue to run, it is likely to encounter a crash. If your device has an automatic document feeder, you may want to try using the adf-autoscan command.",
     );
   }
-  const scanCaps = await getScanCaps(discoveryTree, preferEscl);
+  const scanCaps = await getScanCaps(api, discoveryTree, preferEscl);
 
   if (scanCaps === null) {
     console.log(
@@ -98,9 +99,9 @@ export async function readDeviceCapabilities(
   const getScanStatus = async (): Promise<IScanStatus> => {
     let scanStatus: IScanStatus;
     if (scanCaps?.isEscl === true) {
-      scanStatus = await HPApi.getEsclScanStatus();
+      scanStatus = await api.getEsclScanStatus();
     } else {
-      scanStatus = await HPApi.getScanStatus();
+      scanStatus = await api.getScanStatus();
     }
     return scanStatus;
   };
@@ -148,9 +149,9 @@ export async function readDeviceCapabilities(
   ): Promise<string> => {
     let jobUrl: string;
     if (scanCaps?.isEscl === true) {
-      jobUrl = await HPApi.postEsclJob(scanJobSettings);
+      jobUrl = await api.postEsclJob(scanJobSettings);
     } else {
-      jobUrl = await HPApi.postJob(scanJobSettings);
+      jobUrl = await api.postJob(scanJobSettings);
     }
     return jobUrl;
   };

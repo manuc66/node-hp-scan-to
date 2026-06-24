@@ -1,4 +1,4 @@
-import HPApi from "../HPApi.js";
+import type DeviceClient from "../DeviceClient.js";
 import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
 import { scanFromAdf, waitAdfLoaded } from "../scanProcessing.js";
 import PathHelper from "../PathHelper.js";
@@ -25,6 +25,7 @@ function checkCapabilities(
 }
 
 async function executeAutoscanIteration(
+  api: DeviceClient,
   adfAutoScanConfig: AdfAutoScanConfig,
   deviceCapabilities: DeviceCapabilities,
   folder: string,
@@ -33,6 +34,7 @@ async function executeAutoscanIteration(
 ): Promise<{ success: boolean; isDeviceAlive: boolean }> {
   try {
     await waitAdfLoaded(
+      api,
       adfAutoScanConfig.pollingInterval,
       adfAutoScanConfig.startScanDelay,
       deviceCapabilities.getScanStatus,
@@ -41,6 +43,7 @@ async function executeAutoscanIteration(
     console.log(`Scan event captured, saving scan #${scanCount}`);
 
     await scanFromAdf(
+      api,
       scanCount,
       folder,
       tempFolder,
@@ -55,12 +58,13 @@ async function executeAutoscanIteration(
     } else {
       console.log(e);
     }
-    const isAlive = await HPApi.isAlive();
+    const isAlive = await api.isAlive();
     return { success: false, isDeviceAlive: isAlive };
   }
 }
 
 async function handleLoopDelayOrTermination(
+  api: DeviceClient,
   errorCount: number,
   deviceUp: boolean,
   deviceUpPollingInterval: number,
@@ -68,20 +72,20 @@ async function handleLoopDelayOrTermination(
   const keepActive = errorCount < 50;
 
   if (!deviceUp) {
-    await HPApi.waitDeviceUp(deviceUpPollingInterval);
+    await api.waitDeviceUp(deviceUpPollingInterval);
     return { keepActive, deviceUp: true };
   }
 
-  await HPApi.delay(1000);
+  await api.delay(1000);
   return { keepActive, deviceUp };
 }
 
 export async function adfAutoscanCmd(
+  api: DeviceClient,
   adfAutoScanConfig: AdfAutoScanConfig,
   deviceUpPollingInterval: number,
 ): Promise<void> {
-  // first make sure the device is reachable
-  await HPApi.waitDeviceUp(deviceUpPollingInterval);
+  await api.waitDeviceUp(deviceUpPollingInterval);
 
   const folder = await PathHelper.getTargetFolder(
     adfAutoScanConfig.directoryConfig.directory,
@@ -91,6 +95,7 @@ export async function adfAutoscanCmd(
   );
 
   const deviceCapabilities = await readDeviceCapabilities(
+    api,
     adfAutoScanConfig.preferEscl,
   );
 
@@ -106,6 +111,7 @@ export async function adfAutoscanCmd(
     console.log(`Iteration ${iteration} (Errors so far: ${errorCount})`);
 
     const result = await executeAutoscanIteration(
+      api,
       adfAutoScanConfig,
       deviceCapabilities,
       folder,
@@ -124,6 +130,7 @@ export async function adfAutoscanCmd(
     }
 
     const nextState = await handleLoopDelayOrTermination(
+      api,
       errorCount,
       deviceUp,
       deviceUpPollingInterval,

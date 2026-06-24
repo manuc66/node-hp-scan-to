@@ -1,15 +1,15 @@
-import HPApi from "../HPApi.js";
+import type DeviceClient from "../DeviceClient.js";
 import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
 import { singleScan } from "../scanProcessing.js";
 import type { SingleScanConfig } from "../type/scanConfigs.js";
 import PathHelper from "../PathHelper.js";
 
 export async function singleScanCmd(
+  api: DeviceClient,
   singleScanConfig: SingleScanConfig,
   deviceUpPollingInterval: number,
 ) {
-  // first make sure the device is reachable
-  await HPApi.waitDeviceUp(deviceUpPollingInterval);
+  await api.waitDeviceUp(deviceUpPollingInterval);
 
   const folder = await PathHelper.getTargetFolder(
     singleScanConfig.directoryConfig.directory,
@@ -20,11 +20,13 @@ export async function singleScanCmd(
   );
 
   const deviceCapabilities = await readDeviceCapabilities(
+    api,
     singleScanConfig.preferEscl,
   );
 
   try {
     await singleScan(
+      api,
       0,
       folder,
       tempFolder,

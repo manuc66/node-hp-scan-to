@@ -2,13 +2,15 @@ import { describe, it, beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
 import { clearRegistrationsCmd } from "../src/commands/clearRegistrationsCmd.js";
 import { singleScanCmd } from "../src/commands/singleScanCmd.js";
-import HPApi from "../src/HPApi.js";
+import DeviceClient from "../src/DeviceClient.js";
 import nock from "nock";
 
 describe("commands", () => {
+  let api: DeviceClient;
+
   beforeEach(() => {
     nock.disableNetConnect();
-    HPApi.setDeviceIP("127.0.0.1");
+    api = new DeviceClient("127.0.0.1");
   });
 
   afterEach(() => {
@@ -34,7 +36,7 @@ describe("commands", () => {
         .delete("/WalkupScanToComp/Destinations/1")
         .reply(200);
 
-      await clearRegistrationsCmd();
+      await clearRegistrationsCmd(api);
       expect(nock.isDone()).to.be.true;
     });
 
@@ -48,7 +50,7 @@ describe("commands", () => {
           </wus:WalkupScanToCompDestinations>`,
         );
 
-      await clearRegistrationsCmd();
+      await clearRegistrationsCmd(api);
       expect(nock.isDone()).to.be.true;
     });
   });

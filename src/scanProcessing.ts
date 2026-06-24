@@ -1,7 +1,7 @@
 import type { IEvent } from "./hpModels/Event.js";
 import type WalkupScanDestination from "./hpModels/WalkupScanDestination.js";
 import type WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination.js";
-import HPApi from "./HPApi.js";
+import type DeviceClient from "./DeviceClient.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type { ScanContent } from "./type/ScanContent.js";
 import { InputSource } from "./type/InputSource.js";
@@ -29,17 +29,16 @@ export interface WalkupDestination {
 }
 
 export async function tryGetDestination(
+  api: DeviceClient,
   event: IEvent,
 ): Promise<WalkupDestination | null> {
-  // this code can in some cases be executed before the user actually chooses between Document or Photo,
-  // so, let's fetch the contentType (Document or Photo) until we get a value
   let destination: WalkupScanDestination | WalkupScanToCompDestination | null =
     null;
 
   for (let i = 0; i < 20; i++) {
     const destinationURI = event.destinationURI;
     if (destinationURI !== undefined) {
-      destination = await HPApi.getDestination(destinationURI);
+      destination = await api.getDestination(destinationURI);
 
       const shortcut = destination.shortcut;
       if (shortcut !== null) {
@@ -50,7 +49,7 @@ export async function tryGetDestination(
     }
 
     console.log(`No shortcut yet available, attempt: ${i + 1}/20`);
-    await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
   console.log("Failing to detect destination shortcut");
@@ -79,6 +78,7 @@ export function isPdf(destination: WalkupDestination): boolean {
 }
 
 export async function saveScanFromEvent(
+  api: DeviceClient,
   selectedScanTarget: SelectedScanTarget,
   folder: string,
   tempFolder: string,
@@ -142,6 +142,7 @@ export async function saveScanFromEvent(
   const scanJobContent: ScanContent = { elements: [] };
 
   await executeScanJobs(
+    api,
     scanJobSettings,
     inputSource,
     destinationFolder,
@@ -158,6 +159,7 @@ export async function saveScanFromEvent(
 }
 
 export async function scanFromAdf(
+  api: DeviceClient,
   scanCount: number,
   folder: string,
   tempFolder: string,
@@ -202,6 +204,7 @@ export async function scanFromAdf(
   const scanJobContent: ScanContent = { elements: [] };
 
   await executeScanJob(
+    api,
     scanJobSettings,
     InputSource.Adf,
     destinationFolder,
@@ -229,6 +232,7 @@ export async function scanFromAdf(
 }
 
 export async function singleScan(
+  api: DeviceClient,
   scanCount: number,
   folder: string,
   tempFolder: string,
@@ -285,6 +289,7 @@ export async function singleScan(
   const scanJobContent: ScanContent = { elements: [] };
 
   await executeScanJob(
+    api,
     scanJobSettings,
     inputSource,
     destinationFolder,
@@ -312,6 +317,7 @@ export async function singleScan(
 }
 
 export async function waitAdfLoaded(
+  api: DeviceClient,
   pollingInterval: number,
   startScanDelay: number,
   getScanStatus: () => Promise<IScanStatus>,
@@ -320,7 +326,7 @@ export async function waitAdfLoaded(
   while (!ready) {
     let scanStatus: IScanStatus = await getScanStatus();
     while (!scanStatus.isLoaded()) {
-      await HPApi.delay(pollingInterval);
+      await api.delay(pollingInterval);
       scanStatus = await getScanStatus();
     }
     console.log(`ADF load detected`);
@@ -329,7 +335,7 @@ export async function waitAdfLoaded(
     let counter = 0;
     const shortPollingInterval = 500;
     while (loaded && counter < startScanDelay) {
-      await HPApi.delay(shortPollingInterval);
+      await api.delay(shortPollingInterval);
       scanStatus = await getScanStatus();
       loaded = scanStatus.isLoaded();
       counter += shortPollingInterval;

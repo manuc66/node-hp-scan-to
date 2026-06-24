@@ -34,53 +34,47 @@ import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
 import EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import PathHelper from "./PathHelper.js";
 
-let printerIP = "192.168.1.11";
-let debug = false;
-let callCount = 0;
+export default class DeviceClient {
+  readonly deviceIP: string;
+  readonly debug: boolean;
+  private callCount = 0;
 
-export default class HPApi {
-  static setDeviceIP(ip: string): void {
-    printerIP = ip;
+  constructor(deviceIP: string, debug = false) {
+    this.deviceIP = deviceIP;
+    this.debug = debug;
   }
 
-  static getDeviceIP(): string {
-    return printerIP;
+  isDebug(): boolean {
+    return this.debug;
   }
 
-  static setDebug(dbg: boolean): void {
-    debug = dbg;
-  }
-  static isDebug(): boolean {
-    return debug;
-  }
-
-  private static logDebug(
+  private logDebug(
     callId: number,
     isRequest: boolean,
     msg: object | string,
   ): void {
-    if (debug) {
+    if (this.debug) {
       const id = String(callId).padStart(4, "0");
       const content = typeof msg === "string" ? msg : JSON.stringify(msg);
       console.log(id + (isRequest ? " -> " : " <- ") + content);
     }
   }
 
-  private static async callAxios<T = string>(
+  private async callAxios<T = string>(
     request: AxiosRequestConfig,
   ): Promise<AxiosResponse<T>> {
-    callCount++;
+    this.callCount++;
 
     if (request.timeout === 0) {
       request.timeout = 100_000;
     }
-    HPApi.logDebug(callCount, true, request);
+    this.logDebug(this.callCount, true, request);
     try {
       const response = await axios({
         ...request,
         adapter: "http",
       });
-      HPApi.logDebug(callCount, false, {
+      this.logDebug(this.callCount, false, {
         status: response.status,
         data: response.data as unknown,
         headers: response.headers,
@@ -91,7 +85,7 @@ export default class HPApi {
       const axiosError = error as AxiosError;
 
       if (axiosError.isAxiosError) {
-        HPApi.logDebug(callCount, false, {
+        this.logDebug(this.callCount, false, {
           status: axiosError.response?.status,
           data: axiosError.response?.data,
           headers: axiosError.response?.headers,
@@ -102,10 +96,10 @@ export default class HPApi {
     }
   }
 
-  static async isAlive(timeout: number | null = null): Promise<boolean> {
-    const definedTimeout = timeout ?? 10000; // default of 10 seconds
+  async isAlive(timeout: number | null = null): Promise<boolean> {
+    const definedTimeout = timeout ?? 10000;
     return new Promise((resolve) => {
-      const socket = net.createConnection(80, printerIP, () => {
+      const socket = net.createConnection(80, this.deviceIP, () => {
         clearTimeout(timer);
         resolve(true);
         socket.end();
@@ -121,12 +115,12 @@ export default class HPApi {
     });
   }
 
-  static async waitDeviceUp(deviceUpPollingInterval: number): Promise<void> {
+  async waitDeviceUp(deviceUpPollingInterval: number): Promise<void> {
     let first = true;
-    while (!(await HPApi.isAlive())) {
+    while (!(await this.isAlive())) {
       if (first) {
         console.log(
-          `Device ip: ${printerIP} is down! [${new Date().toISOString()}]`,
+          `Device ip: ${this.deviceIP} is down! [${new Date().toISOString()}]`,
         );
       }
       first = false;
@@ -134,14 +128,14 @@ export default class HPApi {
     }
     if (!first) {
       console.log(
-        `Device ip: ${printerIP} is up again! [${new Date().toISOString()}]`,
+        `Device ip: ${this.deviceIP} is up again! [${new Date().toISOString()}]`,
       );
     }
   }
 
-  static async getDiscoveryTree(): Promise<DiscoveryTree> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+  async getDiscoveryTree(): Promise<DiscoveryTree> {
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: "/DevMgmt/DiscoveryTree.xml",
       method: "GET",
       responseType: "text",
@@ -154,11 +148,11 @@ export default class HPApi {
     }
   }
 
-  static async getWalkupScanDestinations(
+  async getWalkupScanDestinations(
     uri = "/WalkupScan/WalkupScanDestinations",
   ): Promise<WalkupScanDestinations> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: uri,
       method: "GET",
       responseType: "text",
@@ -171,9 +165,9 @@ export default class HPApi {
     }
   }
 
-  static async getWalkupScanToCompDestinations(): Promise<WalkupScanToCompDestinations> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+  async getWalkupScanToCompDestinations(): Promise<WalkupScanToCompDestinations> {
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: "/WalkupScanToComp/WalkupScanToCompDestinations",
       method: "GET",
       responseType: "text",
@@ -188,9 +182,9 @@ export default class HPApi {
     }
   }
 
-  static async getWalkupScanManifest(uri: string): Promise<WalkupScanManifest> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+  async getWalkupScanManifest(uri: string): Promise<WalkupScanManifest> {
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: uri,
       method: "GET",
       responseType: "text",
@@ -202,11 +196,12 @@ export default class HPApi {
       return WalkupScanManifest.createWalkupScanManifest(response.data);
     }
   }
-  static async getWalkupScanToCompManifest(
+
+  async getWalkupScanToCompManifest(
     uri: string,
   ): Promise<WalkupScanToCompManifest> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: uri,
       method: "GET",
       responseType: "text",
@@ -221,9 +216,9 @@ export default class HPApi {
     }
   }
 
-  static async getScanJobManifest(uri: string): Promise<ScanJobManifest> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+  async getScanJobManifest(uri: string): Promise<ScanJobManifest> {
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: uri,
       method: "GET",
       responseType: "text",
@@ -236,11 +231,11 @@ export default class HPApi {
     }
   }
 
-  static async getEsclScanJobManifest(
+  async getEsclScanJobManifest(
     uri: string,
   ): Promise<EsclScanJobManifest> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: uri,
       method: "GET",
       responseType: "text",
@@ -253,9 +248,9 @@ export default class HPApi {
     }
   }
 
-  static async getScanCaps(uri: string): Promise<ScanCaps> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+  async getScanCaps(uri: string): Promise<ScanCaps> {
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: uri,
       method: "GET",
       responseType: "text",
@@ -268,9 +263,9 @@ export default class HPApi {
     }
   }
 
-  static async getEsclScanCaps(uri: string): Promise<EsclScanCaps> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+  async getEsclScanCaps(uri: string): Promise<EsclScanCaps> {
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: uri,
       method: "GET",
       responseType: "text",
@@ -283,11 +278,11 @@ export default class HPApi {
     }
   }
 
-  static async getWalkupScanToCompCaps(
+  async getWalkupScanToCompCaps(
     uri: string,
   ): Promise<WalkupScanToCompCaps> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: uri,
       method: "GET",
       responseType: "text",
@@ -300,11 +295,11 @@ export default class HPApi {
     }
   }
 
-  static async getWalkupScanToCompEvent(
+  async getWalkupScanToCompEvent(
     compEventURI: string,
   ): Promise<WalkupScanToCompEvent> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: compEventURI,
       method: "GET",
       responseType: "text",
@@ -319,15 +314,15 @@ export default class HPApi {
     }
   }
 
-  static async removeDestination(
+  async removeDestination(
     walkupScanDestination: WalkupScanDestination | WalkupScanToCompDestination,
   ): Promise<boolean> {
     const path = PathHelper.getPathFromHttpLocation(
       walkupScanDestination.resourceURI,
     );
 
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: path,
       method: "DELETE",
       responseType: "text",
@@ -341,13 +336,13 @@ export default class HPApi {
     }
   }
 
-  static async registerWalkupScanDestination(
+  async registerWalkupScanDestination(
     destination: Destination,
   ): Promise<string> {
     const xml = await destination.toXML();
     const url = "/WalkupScan/WalkupScanDestinations";
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: url,
       method: "POST",
       headers: { "Content-Type": "text/xml" },
@@ -366,13 +361,14 @@ export default class HPApi {
       );
     }
   }
-  static async registerWalkupScanToCompDestination(
+
+  async registerWalkupScanToCompDestination(
     destination: Destination,
   ): Promise<string> {
     const xml = await destination.toXML();
     const url = "/WalkupScanToComp/WalkupScanToCompDestinations";
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: url,
       method: "POST",
       headers: { "Content-Type": "text/xml" },
@@ -392,18 +388,18 @@ export default class HPApi {
     }
   }
 
-  static async getEvents(
+  async getEvents(
     etag = "",
     decisecondTimeout = 0,
   ): Promise<EtagEventTable> {
-    const url = this.appendTimeout("/EventMgmt/EventTable", decisecondTimeout);
+    const url = DeviceClient.appendTimeout("/EventMgmt/EventTable", decisecondTimeout);
 
-    const headers = this.placeETagHeader(etag, {});
+    const headers = DeviceClient.placeETagHeader(etag, {});
 
     let response: AxiosResponse<string>;
     try {
-      response = await HPApi.callAxios({
-        baseURL: `http://${printerIP}`,
+      response = await this.callAxios({
+        baseURL: `http://${this.deviceIP}`,
         url: url,
         method: "GET",
         responseType: "text",
@@ -453,11 +449,11 @@ export default class HPApi {
     return url;
   }
 
-  static async getDestination(
+  async getDestination(
     destinationURL: string,
   ): Promise<WalkupScanDestination | WalkupScanToCompDestination> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: destinationURL,
       method: "GET",
       responseType: "text",
@@ -479,9 +475,9 @@ export default class HPApi {
     }
   }
 
-  static async getScanStatus(): Promise<ScanStatus> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+  async getScanStatus(): Promise<ScanStatus> {
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: "/Scan/Status",
       method: "GET",
       responseType: "text",
@@ -497,9 +493,9 @@ export default class HPApi {
     }
   }
 
-  static async getEsclScanStatus(): Promise<EsclScanStatus> {
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+  async getEsclScanStatus(): Promise<EsclScanStatus> {
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: "/eSCL/ScannerStatus",
       method: "GET",
       responseType: "text",
@@ -515,17 +511,15 @@ export default class HPApi {
     }
   }
 
-  static delay(t: number): Promise<void> {
-    return new Promise(function (resolve) {
-      setTimeout(resolve, t);
-    });
+  async delay(t: number): Promise<void> {
+    return delay(t);
   }
 
-  static async postJob(job: IScanJobSettings): Promise<string> {
-    await HPApi.delay(500);
+  async postJob(job: IScanJobSettings): Promise<string> {
+    await this.delay(500);
     const xml = await job.toXML();
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}:8080`,
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}:8080`,
       url: "/Scan/Jobs",
       method: "POST",
       headers: { "Content-Type": "text/xml" },
@@ -545,11 +539,11 @@ export default class HPApi {
     }
   }
 
-  static async postEsclJob(job: IScanJobSettings): Promise<string> {
-    await HPApi.delay(500);
+  async postEsclJob(job: IScanJobSettings): Promise<string> {
+    await this.delay(500);
     const xml = await job.toXML();
-    const response = await HPApi.callAxios({
-      baseURL: `http://${printerIP}`,
+    const response = await this.callAxios({
+      baseURL: `http://${this.deviceIP}`,
       url: "/eSCL/ScanJobs",
       method: "POST",
       headers: { "Content-Type": "text/xml" },
@@ -568,12 +562,9 @@ export default class HPApi {
       );
     }
   }
-  /**
-   * @param jobURL
-   * @return {Promise<Job|*>}
-   */
-  static async getJob(jobURL: string): Promise<Job> {
-    const response = await HPApi.callAxios({
+
+  async getJob(jobURL: string): Promise<Job> {
+    const response = await this.callAxios({
       url: jobURL,
       method: "GET",
       responseType: "text",
@@ -589,13 +580,13 @@ export default class HPApi {
     }
   }
 
-  static async downloadPage(
+  async downloadPage(
     binaryURL: string,
     destination: string,
     timeout?: number,
   ): Promise<string> {
-    const response = await HPApi.callAxios<Stream>({
-      baseURL: `http://${printerIP}:8080`,
+    const response = await this.callAxios<Stream>({
+      baseURL: `http://${this.deviceIP}:8080`,
       url: binaryURL,
       method: "GET",
       responseType: "stream",
@@ -612,14 +603,14 @@ export default class HPApi {
     return destination;
   }
 
-  static async downloadPageWithMeta(
+  async downloadPageWithMeta(
     binaryURL: string,
     destination: string,
     timeout?: number,
   ): Promise<{ path: string; contentType: string | undefined }> {
     const { data, headers }: AxiosResponse<Stream> =
       await axios.request<Stream>({
-        baseURL: `http://${printerIP}:8080`,
+        baseURL: `http://${this.deviceIP}:8080`,
         url: binaryURL,
         method: "GET",
         responseType: "stream",
@@ -639,7 +630,7 @@ export default class HPApi {
     return { path: destination, contentType };
   }
 
-  static async esclWaitDeviceBusy<T>(fn: () => Promise<T>): Promise<T> {
+  async esclWaitDeviceBusy<T>(fn: () => Promise<T>): Promise<T> {
     let i = 0;
     do {
       i++;
@@ -648,7 +639,7 @@ export default class HPApi {
       } catch (error) {
         if (error instanceof AxiosError && error.status === 503) {
           console.log("Waiting, device is busy");
-          await HPApi.delay(1000);
+          await this.delay(1000);
           continue;
         }
         throw error;
@@ -657,12 +648,12 @@ export default class HPApi {
     throw new Error(`Failed, max retries reached: ${i}`);
   }
 
-  static async downloadEsclPage(
+  async downloadEsclPage(
     jobUri: string,
     destination: string,
   ): Promise<{ path: string; contentType: string | undefined }> {
-    return await HPApi.esclWaitDeviceBusy(async () => {
-      return await HPApi.downloadPageWithMeta(
+    return await this.esclWaitDeviceBusy(async () => {
+      return await this.downloadPageWithMeta(
         jobUri + "/NextDocument",
         destination,
         60_000,
@@ -670,12 +661,12 @@ export default class HPApi {
     });
   }
 
-  static async getEsclScanImageInfo(
+  async getEsclScanImageInfo(
     jobUri: string,
   ): Promise<EsclScanImageInfo> {
-    return await HPApi.esclWaitDeviceBusy(async () => {
-      const response = await HPApi.callAxios({
-        baseURL: `http://${printerIP}`,
+    return await this.esclWaitDeviceBusy(async () => {
+      const response = await this.callAxios({
+        baseURL: `http://${this.deviceIP}`,
         url: jobUri + "/ScanImageInfo",
         method: "GET",
         responseType: "text",
