@@ -1008,6 +1008,9 @@ describe("processScanWithDestination", () => {
     if (!nock.isActive()) { nock.activate(); }
     nock.disableNetConnect();
     api = new DeviceClient("127.0.0.1", false);
+    api.isAlive = async () => true;
+    api.delay = async () => {};
+    api.waitDeviceUp = async () => {};
 
     originalGetNextScanNumber = PathHelper.getNextScanNumber;
     PathHelper.getNextScanNumber = async (_f, current) => current + 1;
@@ -1130,6 +1133,9 @@ describe("listenCmd", () => {
     if (!nock.isActive()) { nock.activate(); }
     nock.disableNetConnect();
     api = new DeviceClient("127.0.0.1", false);
+    api.isAlive = async () => true;
+    api.delay = async () => {};
+    api.waitDeviceUp = async () => {};
     tempDir = makeTempDir("listenCmd-");
   });
 
