@@ -1,9 +1,9 @@
-import HPApi from "../HPApi.js";
+import type DeviceClient from "../DeviceClient.js";
 
-export async function clearRegistrationsCmd() {
-  const dests = await HPApi.getWalkupScanToCompDestinations();
+export async function clearRegistrationsCmd(api: DeviceClient) {
+  const dests = await api.getWalkupScanToCompDestinations();
   for (const item of dests.destinations) {
     console.log(`Removing: ${item.name}`);
-    await HPApi.removeDestination(item);
+    await api.removeDestination(item);
   }
 }

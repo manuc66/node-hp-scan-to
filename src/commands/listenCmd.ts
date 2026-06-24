@@ -2,7 +2,7 @@ import type {
   RegistrationConfig,
   SelectedScanTarget,
 } from "../type/scanTargetDefinitions.js";
-import HPApi from "../HPApi.js";
+import type DeviceClient from "../DeviceClient.js";
 import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
 import type { ScanContent } from "../type/ScanContent.js";
 import { waitScanEvent, waitScanRequest } from "../listening.js";
@@ -26,12 +26,12 @@ import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode.js";
 let iteration = 0;
 
 export async function listenCmd(
+  api: DeviceClient,
   registrationConfigs: RegistrationConfig[],
   scanConfig: ScanConfig,
   deviceUpPollingInterval: number,
 ) {
-  // first make sure the device is reachable
-  await HPApi.waitDeviceUp(deviceUpPollingInterval);
+  await api.waitDeviceUp(deviceUpPollingInterval);
   let deviceUp = true;
 
   const folder = await PathHelper.getTargetFolder(
@@ -43,6 +43,7 @@ export async function listenCmd(
   );
 
   const deviceCapabilities = await readDeviceCapabilities(
+    api,
     scanConfig.preferEscl,
   );
 
@@ -60,6 +61,7 @@ export async function listenCmd(
     console.log(`Iteration ${iteration} (Errors so far: ${errorCount})`);
     try {
       const selectedScanTarget: SelectedScanTarget | null = await waitScanEvent(
+        api,
         deviceCapabilities,
         registrationConfigs,
       );
@@ -67,6 +69,7 @@ export async function listenCmd(
       let proceedToScan = true;
       if (selectedScanTarget?.event.compEventURI !== undefined) {
         proceedToScan = await waitScanRequest(
+          api,
           selectedScanTarget.event.compEventURI,
           deviceCapabilities.userActionTimeout,
         );
@@ -75,7 +78,7 @@ export async function listenCmd(
       let destination: WalkupDestination | null = null;
 
       if (proceedToScan && selectedScanTarget !== null) {
-        destination = await tryGetDestination(selectedScanTarget.event);
+        destination = await tryGetDestination(api, selectedScanTarget.event);
       }
       if (!destination || selectedScanTarget === null) {
         console.log(
@@ -85,6 +88,7 @@ export async function listenCmd(
       }
 
       const r = await processScanWithDestination(
+        api,
         destination,
         selectedScanTarget,
         lastDuplexMode,
@@ -103,7 +107,7 @@ export async function listenCmd(
       lastScanTarget = selectedScanTarget;
       lastDuplexMode = r.duplexMode;
     } catch (e) {
-      if (await HPApi.isAlive()) {
+      if (await api.isAlive()) {
         if (e instanceof Error) {
           console.log(e.message);
         } else {
@@ -111,7 +115,7 @@ export async function listenCmd(
         }
         errorCount++;
       } else {
-        if (HPApi.isDebug()) {
+        if (api.isDebug()) {
           if (e instanceof Error) {
             console.log(e.message);
           } else {
@@ -127,14 +131,15 @@ export async function listenCmd(
     }
 
     if (!deviceUp) {
-      await HPApi.waitDeviceUp(deviceUpPollingInterval);
+      await api.waitDeviceUp(deviceUpPollingInterval);
     } else {
-      await HPApi.delay(1000);
+      await api.delay(1000);
     }
   }
 }
 
 export async function processScanWithDestination(
+  api: DeviceClient,
   destination: WalkupDestination,
   selectedScanTarget: SelectedScanTarget,
   lastDuplexMode: DuplexMode,
@@ -188,6 +193,7 @@ export async function processScanWithDestination(
   scanCount = newScanCount;
 
   const scanJobContent = await saveScanFromEvent(
+    api,
     selectedScanTarget,
     folder,
     tempFolder,

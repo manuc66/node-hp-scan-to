@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
 import nock from "nock";
-import HPApi from "../src/HPApi.js";
+import DeviceClient from "../src/DeviceClient.js";
 import { adfAutoscanCmd } from "../src/commands/adfAutoscanCmd.js";
 import type { AdfAutoScanConfig } from "../src/type/scanConfigs.js";
 import { ScanMode } from "../src/type/scanMode.js";
@@ -12,25 +12,19 @@ import path from "node:path";
 
 describe("adfAutoscanCmd", () => {
   let tempDir: string;
-  let originalIsAlive: typeof HPApi.isAlive;
-  let originalWaitDeviceUp: typeof HPApi.waitDeviceUp;
+  let api: DeviceClient;
 
   beforeEach(() => {
     if (!nock.isActive()) {
       nock.activate();
     }
     nock.disableNetConnect();
-    HPApi.setDeviceIP("127.0.0.1");
-    // Mock HPApi.isAlive to return true instantly
-    originalIsAlive = HPApi.isAlive;
-    originalWaitDeviceUp = HPApi.waitDeviceUp;
-    HPApi.isAlive = async () => true;
+    api = new DeviceClient("127.0.0.1", false);
+    api.isAlive = async () => true;
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "adfAutoscanCmd-test-"));
   });
 
   afterEach(() => {
-    HPApi.isAlive = originalIsAlive;
-    HPApi.waitDeviceUp = originalWaitDeviceUp;
     nock.cleanAll();
     if (fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true, force: true });
@@ -61,7 +55,7 @@ describe("adfAutoscanCmd", () => {
       startScanDelay: 1,
     };
 
-    // Mock HPApi.getDiscoveryTree
+    // Mock DeviceClient.getDiscoveryTree
     nock("http://127.0.0.1:80")
       .get("/DevMgmt/DiscoveryTree.xml")
       .reply(
@@ -75,7 +69,7 @@ describe("adfAutoscanCmd", () => {
 </ledm:DiscoveryTree>`,
       );
 
-    // Mock HPApi.getScanJobManifest
+    // Mock DeviceClient.getScanJobManifest
     nock("http://127.0.0.1:80")
       .get("/Scan/ScanJobManifest")
       .reply(
@@ -106,7 +100,7 @@ describe("adfAutoscanCmd", () => {
 </man:Manifest>`,
       );
 
-    // Mock HPApi.getScanCaps (No ADF detection advertised)
+    // Mock DeviceClient.getScanCaps (No ADF detection advertised)
     nock("http://127.0.0.1:80")
       .get("/Scan/ScanCaps")
       .reply(
@@ -121,15 +115,15 @@ describe("adfAutoscanCmd", () => {
     // Mock getScanStatus to fail
     nock("http://127.0.0.1:80").persist().get("/Scan/Status").reply(500);
 
-    HPApi.isAlive = async () => true;
-    HPApi.delay = async () => {
+    api.isAlive = async () => true;
+    api.delay = async () => {
       /* noop */
     };
-    HPApi.waitDeviceUp = async () => {
+    api.waitDeviceUp = async () => {
       /* noop */
     };
 
-    await adfAutoscanCmd(config, 1);
+    await adfAutoscanCmd(api, config, 1);
   });
 
   it("should call waitDeviceUp when device goes down and recover", async () => {
@@ -214,18 +208,18 @@ describe("adfAutoscanCmd", () => {
 
     let waitDeviceUpCalled = false;
     let isAliveCallCount = 0;
-    HPApi.isAlive = async () => {
+    api.isAlive = async () => {
       isAliveCallCount++;
       return isAliveCallCount > 1;
     };
-    HPApi.delay = async () => {
+    api.delay = async () => {
       /* noop */
     };
-    HPApi.waitDeviceUp = async () => {
+    api.waitDeviceUp = async () => {
       waitDeviceUpCalled = true;
     };
 
-    await adfAutoscanCmd(config, 1);
+    await adfAutoscanCmd(api, config, 1);
 
     expect(waitDeviceUpCalled).to.be.true;
   });
@@ -386,15 +380,15 @@ describe("adfAutoscanCmd", () => {
       .get("/Scan/Status")
       .reply(500);
 
-    HPApi.isAlive = async () => true;
-    HPApi.delay = async () => {
+    api.isAlive = async () => true;
+    api.delay = async () => {
       /* noop */
     };
-    HPApi.waitDeviceUp = async () => {
+    api.waitDeviceUp = async () => {
       /* noop */
     };
 
-    await adfAutoscanCmd(config, 1);
+    await adfAutoscanCmd(api, config, 1);
 
     // Verify a file was indeed saved during the success iteration
     const files = fs.readdirSync(tempDir);

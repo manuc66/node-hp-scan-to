@@ -5,7 +5,7 @@
 
 import os from "os";
 import Bonjour from "bonjour-service";
-import HPApi from "./HPApi.js";
+import DeviceClient from "./DeviceClient.js";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import { startHealthCheckServer } from "./healthcheck.js";
@@ -583,10 +583,8 @@ function createListenCliCmd(configFile: FileConfig) {
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
       const ip = await getDeviceIp(options, configFile);
-      HPApi.setDeviceIP(ip);
-
       const isDebug = getIsDebug(options, configFile);
-      HPApi.setDebug(isDebug);
+      const api = new DeviceClient(ip, isDebug);
 
       const registrationConfigs: RegistrationConfig[] = [];
 
@@ -639,7 +637,7 @@ function createListenCliCmd(configFile: FileConfig) {
 
       const scanConfig = getScanConfiguration(options, configFile);
 
-      await listenCmd(registrationConfigs, scanConfig, deviceUpPollingInterval);
+      await listenCmd(api, registrationConfigs, scanConfig, deviceUpPollingInterval);
 
       healthCheckSrv?.close();
     });
@@ -682,10 +680,8 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
       const options = cmd.optsWithGlobals();
 
       const ip = await getDeviceIp(options, fileConfig);
-      HPApi.setDeviceIP(ip);
-
       const isDebug = getIsDebug(options, fileConfig);
-      HPApi.setDebug(isDebug);
+      const api = new DeviceClient(ip, isDebug);
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(
         options,
@@ -728,7 +724,7 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
           5000,
       };
 
-      await adfAutoscanCmd(adfScanConfig, deviceUpPollingInterval);
+      await adfAutoscanCmd(api, adfScanConfig, deviceUpPollingInterval);
 
       healthCheckSrv?.close();
     });
@@ -757,10 +753,8 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
       const options = cmd.optsWithGlobals();
 
       const ip = await getDeviceIp(options, fileConfig);
-      HPApi.setDeviceIP(ip);
-
       const isDebug = getIsDebug(options, fileConfig);
-      HPApi.setDebug(isDebug);
+      const api = new DeviceClient(ip, isDebug);
 
       let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
@@ -791,7 +785,7 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
         ),
       };
 
-      await singleScanCmd(singleScanConfig, deviceUpPollingInterval);
+      await singleScanCmd(api, singleScanConfig, deviceUpPollingInterval);
 
       healthCheckSrv?.close();
     });
@@ -804,10 +798,8 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
       const options: ProgramOption = cmd.optsWithGlobals();
 
       const ip = await getDeviceIp(options, fileConfig);
-      HPApi.setDeviceIP(ip);
-
       const isDebug = getIsDebug(options, fileConfig);
-      HPApi.setDebug(isDebug);
+      const api = new DeviceClient(ip, isDebug);
 
       let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
@@ -817,7 +809,7 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
         );
       }
 
-      await clearRegistrationsCmd();
+      await clearRegistrationsCmd(api);
 
       healthCheckSrv?.close();
     });
