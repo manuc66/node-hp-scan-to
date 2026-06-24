@@ -35,7 +35,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "SUPPORTED_DEVICES.md"
   ],
   "engines": {
     "node": ">=20.11.0"
@@ -58,7 +59,7 @@
     "@types/config": "^4.4.0",
     "@types/dateformat": "^5.0.3",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^25.5.0",
+    "@types/node": "^26.0.0",
     "@types/xml2js": "^0.4.14",
     "c8": "^11.0.0",
     "chai": "^6.2.2",
@@ -73,10 +74,10 @@
     "typescript-eslint": "^8.57.1"
   },
   "dependencies": {
-    "@commander-js/extra-typings": "^14.0.0",
+    "@commander-js/extra-typings": "^15.0.0",
     "axios": "^1.13.6",
     "bonjour-service": "^1.3.0",
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "config": "^4.4.1",
     "dateformat": "^5.0.3",
     "form-data": "^4.0.5",

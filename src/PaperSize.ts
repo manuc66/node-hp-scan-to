@@ -120,6 +120,23 @@ export function parsePaperSize(input: string): PaperSizeMm | null {
   }
 }
 
+function normalizeInput(input?: string | null): string | undefined {
+  return typeof input === "string" ? input.trim() || undefined : undefined;
+}
+
+function applyOrientation(
+  preset: PaperSizeMm,
+  orientation?: "portrait" | "landscape" | null,
+): PaperSizeMm {
+  if (orientation === "landscape" && preset.widthMm < preset.heightMm) {
+    return { widthMm: preset.heightMm, heightMm: preset.widthMm };
+  }
+  if (orientation === "portrait" && preset.widthMm > preset.heightMm) {
+    return { widthMm: preset.heightMm, heightMm: preset.widthMm };
+  }
+  return { ...preset };
+}
+
 /**
  * Resolves a paper size configuration (preset name or custom dimension string)
  * to millimeters, without any device clamping.
@@ -137,14 +154,8 @@ export function validateAndResolvePaperSize(
   paperDimInput?: string | null,
   orientation?: "portrait" | "landscape" | null,
 ): ResolvedPaperSize | null {
-  const normalizedSize =
-    typeof paperSizeInput === "string"
-      ? paperSizeInput.trim() || undefined
-      : undefined;
-  const normalizedDim =
-    typeof paperDimInput === "string"
-      ? paperDimInput.trim() || undefined
-      : undefined;
+  const normalizedSize = normalizeInput(paperSizeInput);
+  const normalizedDim = normalizeInput(paperDimInput);
 
   if (normalizedSize !== undefined && normalizedDim !== undefined) {
     throw new Error(
@@ -174,24 +185,7 @@ export function validateAndResolvePaperSize(
       throw new Error(`Unknown paper size preset: "${normalizedSize}".`);
     }
 
-    let resolvedMm = { ...preset };
-    if (
-      orientation === "landscape" &&
-      resolvedMm.widthMm < resolvedMm.heightMm
-    ) {
-      resolvedMm = {
-        widthMm: resolvedMm.heightMm,
-        heightMm: resolvedMm.widthMm,
-      };
-    } else if (
-      orientation === "portrait" &&
-      resolvedMm.widthMm > resolvedMm.heightMm
-    ) {
-      resolvedMm = {
-        widthMm: resolvedMm.heightMm,
-        heightMm: resolvedMm.widthMm,
-      };
-    }
+    const resolvedMm = applyOrientation(preset, orientation);
 
     return { resolvedMm, source: normalizedSize.toUpperCase() };
   }

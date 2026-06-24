@@ -1,4 +1,4 @@
-import HPApi from "./HPApi.js";
+import type DeviceClient from "./DeviceClient.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import { waitForScanEventFromTarget } from "./listening.js";
 import type { ScanContent, ScanPage } from "./type/ScanContent.js";
@@ -18,12 +18,13 @@ import type EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import type { ImageFormat, JobDesc } from "./imageFormats/index.js";
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
+  api: DeviceClient,
   jobUrl: string,
 ): Promise<Job> {
   let job: null | Job;
   let isReadyToUpload;
   do {
-    job = await HPApi.getJob(jobUrl);
+    job = await api.getJob(jobUrl);
     if (job.jobState === JobState.Canceled) {
       return job;
     }
@@ -42,7 +43,6 @@ async function fixJpegHeight(filePath: string): Promise<number | null> {
 
   const height = JpegUtil.fixSizeWithDNL(buffer);
   if (height !== null) {
-    // rewrite the fixed file
     await fs.writeFile(filePath, buffer);
     return height;
   }
@@ -50,6 +50,7 @@ async function fixJpegHeight(filePath: string): Promise<number | null> {
 }
 
 async function handleNativeJpegFlow(
+  api: DeviceClient,
   folder: string,
   scanCount: number,
   currentPageNumber: number,
@@ -58,7 +59,6 @@ async function handleNativeJpegFlow(
   job: JobDesc,
   inputSource: InputSource,
 ) {
-  // don't use a temp file write directly to target
   const destinationFilePath: string = await PathHelper.getFileForPage(
     folder,
     scanCount,
@@ -71,8 +71,9 @@ async function handleNativeJpegFlow(
     `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`,
   );
 
-  await HPApi.downloadPage(job.binaryURL, destinationFilePath);
+  await api.downloadPage(job.binaryURL, destinationFilePath);
   const adfHeight = await getAndFixHeightWHenAdf(
+    api,
     inputSource,
     destinationFilePath,
     job.imageHeight,
@@ -89,6 +90,7 @@ async function handleNativeJpegFlow(
 }
 
 async function handleOtherFormatFlow(
+  api: DeviceClient,
   tempFolder: string,
   scanCount: number,
   currentPageNumber: number,
@@ -99,7 +101,6 @@ async function handleOtherFormatFlow(
   targetImageFormat: ImageFormat,
   scanJobSettings: IScanJobSettings,
 ) {
-  // download to temp
   const tempDestinationFilePath = await PathHelper.getFileForPage(
     tempFolder,
     scanCount,
@@ -113,7 +114,7 @@ async function handleOtherFormatFlow(
     `Downloading page ${job.currentPageNumber} → ${tempDestinationFilePath}`,
   );
 
-  const downloadMeta = await HPApi.downloadPageWithMeta(
+  const downloadMeta = await api.downloadPageWithMeta(
     job.binaryURL,
     tempDestinationFilePath,
   );
@@ -148,6 +149,7 @@ async function handleOtherFormatFlow(
 }
 
 export async function handleScanProcessingState(
+  api: DeviceClient,
   job: Job,
   scanJobSettings: IScanJobSettings,
   inputSource: InputSource,
@@ -175,6 +177,7 @@ export async function handleScanProcessingState(
 
     if (targetImageFormat.isJpeg()) {
       return await handleNativeJpegFlow(
+        api,
         folder,
         scanCount,
         currentPageNumber,
@@ -185,6 +188,7 @@ export async function handleScanProcessingState(
       );
     } else {
       return await handleOtherFormatFlow(
+        api,
         tempFolder,
         scanCount,
         currentPageNumber,
@@ -226,6 +230,7 @@ function getPageNumber(
 }
 
 async function hpScanJobHandling(
+  api: DeviceClient,
   jobUrl: string,
   scanJobSettings: IScanJobSettings,
   pageCountingStrategy:
@@ -239,9 +244,9 @@ async function hpScanJobHandling(
   scanCount: number,
   filePattern: string | undefined,
 ) {
-  let job = await HPApi.getJob(jobUrl);
+  let job = await api.getJob(jobUrl);
   while (job.jobState !== JobState.Completed) {
-    job = await waitDeviceUntilItIsReadyToUploadOrCompleted(jobUrl);
+    job = await waitDeviceUntilItIsReadyToUploadOrCompleted(api, jobUrl);
 
     if (job.jobState === JobState.Completed) {
       continue;
@@ -251,6 +256,7 @@ async function hpScanJobHandling(
       const pageNumber = getPageNumber(pageCountingStrategy, scanJobContent);
 
       const page = await handleScanProcessingState(
+        api,
         job,
         scanJobSettings,
         inputSource,
@@ -261,7 +267,7 @@ async function hpScanJobHandling(
         filePattern,
         new Date(),
       );
-      job = await HPApi.getJob(jobUrl);
+      job = await api.getJob(jobUrl);
       if (page !== null && job.jobState !== JobState.Canceled) {
         scanJobContent.elements.push(page);
       }
@@ -285,7 +291,6 @@ function logJobInfo(
   jobInfo: EsclJobInfo | undefined,
 ) {
   if (!jobUrl.includes(scanImageInfo.jobURI)) {
-    // for an unknown reason this happens on an HP Smart Tank Plus 570!
     console.log(
       `Incoherent state !!!! Job URI has changed: ${jobUrl} -> ${scanImageInfo.jobURI} -- crazy!`,
     );
@@ -319,6 +324,7 @@ function mapToJobState(jobStateReason: JobStateReason) {
 }
 
 async function getAndFixHeightWHenAdf(
+  api: DeviceClient,
   inputSource: InputSource,
   filePath: string,
   actualHeight: number | null,
@@ -331,7 +337,7 @@ async function getAndFixHeightWHenAdf(
         `Image height has not been fixed, DNF may not have been found and approximate height is: ${actualHeight}`,
       );
     } else {
-      if (HPApi.isDebug()) {
+      if (api.isDebug()) {
         console.log(
           `Image height has been fixed to: ${sizeFixed} (contained in jpeg's DNL), scan job indicates: ${actualHeight}`,
         );
@@ -342,6 +348,7 @@ async function getAndFixHeightWHenAdf(
 }
 
 async function eSCLScanJobHandling(
+  api: DeviceClient,
   jobUrl: string,
   scanJobSettings: IScanJobSettings,
   pageCountingStrategy:
@@ -380,17 +387,18 @@ async function eSCLScanJobHandling(
 
       const jobLocation = PathHelper.getPathFromHttpLocation(jobUrl);
 
-      const filePath = await HPApi.downloadEsclPage(
+      const filePath = await api.downloadEsclPage(
         jobUrl,
         destinationFilePath,
       );
 
-      const scanImageInfo = await HPApi.getEsclScanImageInfo(jobLocation);
+      const scanImageInfo = await api.getEsclScanImageInfo(jobLocation);
       console.log("scanImageInfo:", scanImageInfo.jobURI);
 
       const actualHeight = scanImageInfo.actualHeight;
 
       const adfHeight = await getAndFixHeightWHenAdf(
+        api,
         inputSource,
         filePath.path,
         actualHeight,
@@ -409,11 +417,10 @@ async function eSCLScanJobHandling(
 
       scanJobContent.elements.push(page);
 
-      if (HPApi.isDebug()) {
+      if (api.isDebug()) {
         logJobInfo(jobUrl, scanImageInfo, jobInfo);
       }
     } else {
-      // download to temp
       const tempDestinationFilePath = await PathHelper.getFileForPage(
         tempFolder,
         scanCount,
@@ -427,14 +434,14 @@ async function eSCLScanJobHandling(
         `Downloading page ${currentPageNumber} → ${tempDestinationFilePath}`,
       );
 
-      const downloadMeta = await HPApi.downloadEsclPage(
+      const downloadMeta = await api.downloadEsclPage(
         jobUrl,
         tempDestinationFilePath,
       );
 
       console.log("Page downloaded content-type:", downloadMeta.contentType);
 
-      const scanImageInfo = await HPApi.getEsclScanImageInfo(jobLocation);
+      const scanImageInfo = await api.getEsclScanImageInfo(jobLocation);
 
       const width = scanImageInfo.actualWidth;
       const height = scanImageInfo.actualHeight;
@@ -470,11 +477,11 @@ async function eSCLScanJobHandling(
 
       scanJobContent.elements.push(page);
 
-      if (HPApi.isDebug()) {
+      if (api.isDebug()) {
         logJobInfo(jobUrl, scanImageInfo, jobInfo);
       }
     }
-    const scannerStatus = await HPApi.getEsclScanStatus();
+    const scannerStatus = await api.getEsclScanStatus();
 
     jobInfo = scannerStatus.findJobByUri(jobLocation);
 
@@ -498,6 +505,7 @@ async function eSCLScanJobHandling(
 }
 
 export async function executeScanJob(
+  api: DeviceClient,
   scanJobSettings: IScanJobSettings,
   inputSource: InputSource,
   folder: string,
@@ -517,6 +525,7 @@ export async function executeScanJob(
   let jobState: JobState;
   if (deviceCapabilities.isEscl) {
     jobState = await eSCLScanJobHandling(
+      api,
       jobUrl,
       scanJobSettings,
       pageCountingStrategy,
@@ -529,6 +538,7 @@ export async function executeScanJob(
     );
   } else {
     jobState = await hpScanJobHandling(
+      api,
       jobUrl,
       scanJobSettings,
       pageCountingStrategy,
@@ -544,6 +554,7 @@ export async function executeScanJob(
 }
 
 async function waitScanNewPageRequest(
+  api: DeviceClient,
   compEventURI: string,
   userActionTimeout: number | null = null,
 ): Promise<boolean> {
@@ -553,10 +564,10 @@ async function waitScanNewPageRequest(
   let i = 0;
   while (wait && i < waitMax) {
     i++;
-    await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const walkupScanToCompEvent =
-      await HPApi.getWalkupScanToCompEvent(compEventURI);
+      await api.getWalkupScanToCompEvent(compEventURI);
     const eventType = walkupScanToCompEvent.eventType;
     const eventTypeStr = eventType.toString();
     if (eventType === EventType.ScanNewPageRequested) {
@@ -565,7 +576,6 @@ async function waitScanNewPageRequest(
     } else if (eventType === EventType.ScanPagesComplete) {
       wait = false;
     } else if (eventType === EventType.ScanRequested) {
-      // continue waiting
       console.log(`Waiting for user input (attempt ${i} of ${waitMax})`);
     } else {
       wait = false;
@@ -576,6 +586,7 @@ async function waitScanNewPageRequest(
 }
 
 export async function executeScanJobs(
+  api: DeviceClient,
   scanJobSettings: IScanJobSettings,
   inputSource: InputSource,
   folder: string,
@@ -588,6 +599,7 @@ export async function executeScanJobs(
   pageCountingStrategy: PageCountingStrategy,
 ): Promise<void> {
   let jobState = await executeScanJob(
+    api,
     scanJobSettings,
     inputSource,
     folder,
@@ -612,6 +624,7 @@ export async function executeScanJobs(
     deviceCapabilities.supportsMultiItemScanFromPlaten
   ) {
     const nextEvent = await waitForScanEventFromTarget(
+      api,
       scanTarget,
       lastEvent.agingStamp,
     );
@@ -623,11 +636,13 @@ export async function executeScanJobs(
       return;
     }
     let startNewScanJob = await waitScanNewPageRequest(
+      api,
       lastEvent.compEventURI,
       deviceCapabilities.userActionTimeout,
     );
     while (startNewScanJob) {
       jobState = await executeScanJob(
+        api,
         scanJobSettings,
         inputSource,
         folder,
@@ -645,6 +660,7 @@ export async function executeScanJobs(
         break;
       }
       const nextEvent = await waitForScanEventFromTarget(
+        api,
         scanTarget,
         lastEvent.agingStamp,
       );
@@ -656,6 +672,7 @@ export async function executeScanJobs(
         return;
       }
       startNewScanJob = await waitScanNewPageRequest(
+        api,
         lastEvent.compEventURI,
         deviceCapabilities.userActionTimeout,
       );
