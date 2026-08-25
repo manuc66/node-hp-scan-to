@@ -58,8 +58,8 @@ Var RadioLater
 Var EditOther
 Var SelDisplay
 
-!ifndef CB_SETCURSEL
-  !define CB_SETCURSEL 0x014E
+!ifndef LB_SETCURSEL
+  !define LB_SETCURSEL 0x0186
 !endif
 
 !define MUI_ABORTWARNING
@@ -249,7 +249,7 @@ Function DevicePageCreate
     "Detected devices are listed below. Locating the printer by name keeps working even when its IP address changes."
   Pop $0
 
-  ${NSD_CreateDropList} 8u 22u 92% 12u ""
+  ${NSD_CreateListBox} 8u 22u 92% 12u ""
   Pop $DropList
 
   ${NSD_CreateRadioButton} 8u 42u 90% 10u \
@@ -292,14 +292,14 @@ Function DevicePageCreate
     ${If} "$R5" != ""
       IntOp $R7 "$R5" + 1
       StrCpy $R6 "$R8" "" $R7    ; display part after "|"
-      ${NSD_CB_AddItem} $DropList "$R6"
+      ${NSD_LB_AddItem} $DropList "$R6"
     ${EndIf}
     IntOp $R9 "$R9" + 1
   ${Loop}
 
   ${If} $DeviceCount > 0
     ${NSD_SetState} $RadioByName ${BST_CHECKED}
-    SendMessage $DropList ${CB_SETCURSEL} 0 0
+    SendMessage $DropList ${LB_SETCURSEL} 0 0
   ${Else}
     !insertmacro _CtrlEnable $RadioByName 0
     !insertmacro _CtrlEnable $RadioByIp 0
@@ -356,7 +356,7 @@ Function DevicePageLeave
   ${EndIf}
 
   ; by-name or by-ip: require a selection in the list
-  ${NSD_CB_GetSelection} $DropList $SelDisplay
+  ${NSD_LB_GetSelection} $DropList $SelDisplay
   ${If} "$SelDisplay" == ""
     MessageBox MB_OK|MB_ICONEXCLAMATION "Please select a detected printer."
     Abort
