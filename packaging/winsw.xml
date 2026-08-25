@@ -17,7 +17,7 @@ Uninstall:
 <service>
   <id>node-hp-scan-to</id>
   <name>HP Scan to Computer</name>
-  <description>Listens for scan jobs initiated from HP All-in-One printer front panels.</description>
+  <description>Scan document to Computer for HP All-in-One Printers</description>
 
   <executable>%BASE%\node-hp-scan-to.exe</executable>
   <arguments>listen --health-check</arguments>

@@ -9,9 +9,7 @@ priority: optional
 
 maintainer: Emmanuel Counasse <manuc66@gmail.com>
 description: |
-  Scan document to Computer for HP All-in-One Printers.
-  Listens for scan jobs initiated from the printer front panel and saves
-  documents locally or uploads them to Paperless-ngx / Nextcloud.
+  Scan document to Computer for HP All-in-One Printers
 homepage: https://github.com/manuc66/node-hp-scan-to
 license: MIT
 

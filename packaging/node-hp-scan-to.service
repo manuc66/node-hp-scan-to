@@ -1,5 +1,5 @@
 [Unit]
-Description=HP scan-to-computer listener
+Description=Scan document to Computer for HP All-in-One Printers
 Documentation=https://github.com/manuc66/node-hp-scan-to
 After=network-online.target
 Wants=network-online.target

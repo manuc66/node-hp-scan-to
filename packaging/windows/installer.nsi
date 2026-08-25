@@ -108,7 +108,12 @@ Function .onInit
   StrCpy $DeviceChoice "skip"
   StrCpy $DevName ""
   StrCpy $DevIp ""
-  !insertmacro _InitUserMode
+  ; silent installs skip pages entirely, so the preset must be decided here
+  ${If} $CmdlineSystemMode == "1"
+    !insertmacro _InitSystemMode
+  ${Else}
+    !insertmacro _InitUserMode
+  ${EndIf}
 FunctionEnd
 
 ; ---------------------------------------------------------------------------
@@ -116,8 +121,7 @@ FunctionEnd
 
 Function ModePageCreate
   ${If} $CmdlineSystemMode == "1"
-    !insertmacro _InitSystemMode
-    Abort ; skip selection, we relaunched elevated ourselves
+    Abort ; skip selection, we relaunched elevated ourselves (preset already applied)
   ${EndIf}
 
   !insertmacro MUI_HEADER_TEXT \
@@ -441,7 +445,7 @@ Section "Install"
   ${ElseIf} $DeviceChoice == "ip"
     FileWrite $0 '  "ip": "$DevIp",$\r$\n'
   ${EndIf}
-  FileWrite $0 '  "debug": false'$\r$\n
+  FileWrite $0 '  "debug": false$\r$\n'
   FileWrite $0 "}$\r$\n"
   FileClose $0
 
@@ -451,18 +455,12 @@ Section "Install"
 
   ; autostart ----------------------------------------------------------------
   ${If} $Mode == "user"
-    ; logging wrapper (also usable manually to watch the console)
     File "run.cmd"
 
-    ; S4U scheduled task: runs in session 0 (no window, no stored password),
-    ; restarts on failure, no execution time limit. Native Task Scheduler,
-    ; no scripting host involved.
-    ; NB: NSIS expands $WINDIR/$INSTDIR/$USERDOMAIN/$USERNAME/${APPNAME};
-    ;     lowercase $a/$t/$p/$s are unknown to NSIS and stay literal for PS.
-    ;     The 4 consecutive quotes around the path survive both the argv
-    ;     layer and PowerShell so that Task Scheduler stores /c ""path""
-    ;     (safe when the install folder contains spaces).
-    nsExec::ExecToLog "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"$ErrorActionPreference='Stop'; $a = New-ScheduledTaskAction -Execute '$WINDIR\System32\cmd.exe' -Argument '/c $\"$\"$\"$\"$INSTDIR\run.cmd$\"$\"$\"$\"'; $t = New-ScheduledTaskTrigger -AtLogOn -User '$USERDOMAIN\$USERNAME'; $p = New-ScheduledTaskPrincipal -UserId '$USERDOMAIN\$USERNAME' -LogonType S4U; $s = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; Register-ScheduledTask -TaskName '${APPNAME}' -Action $a -Trigger $t -Principal $p -Settings $s -Force | Out-Null\""
+    ; S4U task: session 0 (no window), restart-on-failure, no time limit.
+    ; $$ keeps PowerShell variables away from NSIS expansion; quadrupled
+    ; quotes survive argv+PS so Task Scheduler stores /c ""path"".
+    nsExec::ExecToLog "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"$$ErrorActionPreference='Stop'; $$a = New-ScheduledTaskAction -Execute '$WINDIR\System32\cmd.exe' -Argument '/c $\"$\"$\"$\"$INSTDIR\run.cmd$\"$\"$\"$\"'; $$t = New-ScheduledTaskTrigger -AtLogOn -User '$USERDOMAIN\$USERNAME'; $$p = New-ScheduledTaskPrincipal -UserId '$USERDOMAIN\$USERNAME' -LogonType S4U; $$s = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; Register-ScheduledTask -TaskName '${APPNAME}' -Action $$a -Trigger $$t -Principal $$p -Settings $$s -Force | Out-Null\""
     Pop $0
     ${If} $0 != 0
       DetailPrint "Scheduled task registration failed ($0) - falling back to simple ONLOGON task."
@@ -477,15 +475,15 @@ Section "Install"
     FileWrite $0 "<service>$\r$\n"
     FileWrite $0 "  <id>${APPNAME}</id>$\r$\n"
     FileWrite $0 "  <name>${DISPLAY}</name>$\r$\n"
-    FileWrite $0 "  <description>Listens for scan jobs initiated from HP All-in-One printer front panels.</description>$\r$\n"
+    FileWrite $0 "  <description>Scan document to Computer for HP All-in-One Printers</description>$\r$\n"
     FileWrite $0 "  <executable>$INSTDIR\${APPNAME}.exe</executable>$\r$\n"
     FileWrite $0 "  <arguments>listen --health-check</arguments>$\r$\n"
     FileWrite $0 "  <workingdirectory>$INSTDIR</workingdirectory>$\r$\n"
-    FileWrite $0 '  <env name=$"NODE_CONFIG_DIR$" value=$"$ConfigDir$"/>$\r$\n'
+    FileWrite $0 '  <env name=$\"NODE_CONFIG_DIR$\" value=$\"$ConfigDir$\"/>$\r$\n'
     FileWrite $0 "  <startmode>Automatic</startmode>$\r$\n"
     FileWrite $0 "  <delayedautostart>true</delayedautostart>$\r$\n"
-    FileWrite $0 '  <onfailure action=$"restart$" delay=$"10 sec$"/>$\r$\n'
-    FileWrite $0 '  <log mode=$"roll-by-size$">$\r$\n'
+    FileWrite $0 '  <onfailure action=$\"restart$\" delay=$\"10 sec$\"/>$\r$\n'
+    FileWrite $0 '  <log mode=$\"roll-by-size$\">$\r$\n'
     FileWrite $0 "    <logpath>$INSTDIR\logs</logpath>$\r$\n"
     FileWrite $0 "    <sizeThreshold>10240</sizeThreshold>$\r$\n"
     FileWrite $0 "    <keepFiles>4</keepFiles>$\r$\n"

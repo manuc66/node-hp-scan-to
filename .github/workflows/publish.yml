@@ -164,3 +164,30 @@ jobs:
           chown builder:builder /tmp/update-aur.sh
           su builder -c "bash /tmp/update-aur.sh"
 
+  winget:
+    name: Submit to winget
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    env:
+      WINGET_CREATE_TOKEN: ${{ secrets.WINGET_CREATE_TOKEN }}
+    steps:
+      - name: Check winget configuration
+        id: cfg
+        shell: pwsh
+        run: |
+          "enabled=$([ -n "$env:WINGET_CREATE_TOKEN" ] ? 'true' : 'false')" >> $env:GITHUB_OUTPUT
+
+      # Requires a one-time manual submission of the package first:
+      #   wingetcreate new <installer-url> --submit --token <pat>
+      # Afterwards every tag opens the version-bump PR automatically.
+      - name: Open winget-pkgs version PR
+        if: steps.cfg.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          $version = "${env:GITHUB_REF_NAME}".Substring(1)
+          $url = "https://github.com/${env:GITHUB_REPOSITORY}/releases/download/${env:GITHUB_REF_NAME}/setup-node-hp-scan-to-v$version.exe"
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          ./wingetcreate update manuc66.node-hp-scan-to `
+            --version $version --urls $url `
+            --submit --token "$env:WINGET_CREATE_TOKEN"
+
