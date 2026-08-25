@@ -114,6 +114,43 @@ there until you either scan the back side or perform a single side scan instead.
 
 - In a Terminal, run: `npm install node-hp-scan-to`
 
+### Using standalone binaries (Windows, macOS, Linux)
+
+Each [release](https://github.com/manuc66/node-hp-scan-to/releases/latest) ships self-contained executables (no NodeJS required):
+
+| File | Platform |
+|---|---|
+| `setup-node-hp-scan-to-v*.exe` | Windows 10/11 x64 installer (per-user autostart or system service) |
+| `node-hp-scan-to-v*-windows-x64.zip` | Windows 10/11 x64 portable |
+| `node-hp-scan-to-v*-darwin-arm64.zip` | Apple Silicon |
+| `node-hp-scan-to-v*-darwin-x64.zip` | Intel Mac |
+| `node-hp-scan-to-v*-linux-x64.tar.gz` | Linux x64 |
+| `node-hp-scan-to-v*-linux-arm64.tar.gz` | Linux ARM64 |
+
+Extract the archive anywhere and run `node-hp-scan-to` from its folder. It automatically reads the `config/default.json` shipped next to the binary; edit it to your needs.
+
+The Windows installer offers two modes:
+
+- *For me* (default, no admin rights): installs to `%LOCALAPPDATA%\Programs\node-hp-scan-to`, saves scans to the `hp-scan` folder inside your Documents (follows OneDrive redirection) and starts hidden at login via a scheduled task, with a persistent log in `%APPDATA%\node-hp-scan-to\logs\scan.log`
+- *Windows service for all users*: installs to `Program Files`, runs as a service via [WinSW](https://github.com/winsw/winsw) and saves scans to `C:\ProgramData\node-hp-scan-to\scans`
+
+Notes:
+
+- **Windows**: SmartScreen may warn about an unsigned executable — click *More info* → *Run anyway*
+- **macOS**: the binary is unsigned, so Gatekeeper may block it on first run. Either right-click → *Open*, or clear the quarantine flag with `xattr -cr node-hp-scan-to`
+
+### Using Debian / RPM packages
+
+`.deb` and `.rpm` packages (`amd64`/`arm64`) are attached to each [release](https://github.com/manuc66/node-hp-scan-to/releases/latest). They install `/usr/bin/node-hp-scan-to`, a `node-hp-scan-to.service` systemd unit (enabled with `systemctl enable --now node-hp-scan-to`) and an example configuration in `/etc/node-hp-scan-to/default.json`:
+
+```bash
+sudo apt install ./node-hp-scan-to_*_amd64.deb
+# or
+sudo rpm -i node-hp-scan-to-*.x86_64.rpm
+```
+
+Scans are saved under `/var/lib/node-hp-scan-to` by default when running as a service.
+
 ### Using Docker
 
 - You must have [Docker installed](https://www.docker.com/get-started/)
@@ -153,6 +190,14 @@ Main options:
 Example usage:
 
 `npx node-hp-scan-to -a 192.168.0.5 -d ~/scans`
+
+#### Discovering devices
+
+`npx node-hp-scan-to discover`
+
+Lists every HP scan-capable device found on the network, one `name<TAB>ip` pair per line. Devices are discovered through mDNS and verified against the printer's proprietary `DiscoveryTree.xml` endpoint, so other network gadgets are filtered out. Useful to pick the right `-n/--name` value (recommended over a fixed IP, since it keeps working when the printer's DHCP lease changes).
+
+Options: `--timeout <seconds>` (browsing window, default 5), `--json` (machine-readable array), `--ip <address[:port]>` (verify a single address), `--name <prefix>` (only keep matching names). Exit code is `0` when at least one device was found.
 
 #### CLI Options
 
