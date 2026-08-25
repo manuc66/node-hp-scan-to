@@ -370,7 +370,7 @@ Function DevicePageLeave
     Pop $R1                       ; discard captured stdout
     ${If} $0 != 0
       MessageBox MB_OK|MB_ICONEXCLAMATION \
-        "No HP scan-capable device answered at \"$DevName\".$\nCheck that the printer is powered on and connected to this network."
+        "No HP scan-capable device answered at $\"$DevName$\".$\nCheck that the printer is powered on and connected to this network."
       Abort
     ${EndIf}
     Return
