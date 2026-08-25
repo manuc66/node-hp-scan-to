@@ -3,11 +3,25 @@
 
 "use strict";
 
-import config, { type Config } from "config";
+import fs from "fs";
+import path from "path";
+import type { Config } from "config";
 import z from "zod";
 import commitInfo from "./commitInfo.json" with { type: "json" };
 import { configSchema, type FileConfig } from "./type/FileConfig.js";
 import { setupProgram } from "./program.js";
+
+// When running from a bundled executable, look for the configuration
+// directory next to the binary unless NODE_CONFIG_DIR was explicitly set.
+const bundledConfigDir = path.join(path.dirname(process.execPath), "config");
+if (
+  process.env["NODE_CONFIG_DIR"] === undefined &&
+  fs.existsSync(bundledConfigDir)
+) {
+  process.env["NODE_CONFIG_DIR"] = bundledConfigDir;
+}
+
+const { default: config } = await import("config");
 
 const validateConfig = (config: Config) => {
   const result = configSchema.safeParse(config.util.toObject());
