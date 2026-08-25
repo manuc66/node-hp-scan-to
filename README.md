@@ -134,6 +134,8 @@ The Windows installer offers two modes:
 - *For me* (default, no admin rights): installs to `%LOCALAPPDATA%\Programs\node-hp-scan-to`, saves scans to the `hp-scan` folder inside your Documents (follows OneDrive redirection) and starts hidden at login via a scheduled task, with a persistent log in `%APPDATA%\node-hp-scan-to\logs\scan.log`
 - *Windows service for all users*: installs to `Program Files`, runs as a service via [WinSW](https://github.com/winsw/winsw) and saves scans to `C:\ProgramData\node-hp-scan-to\scans`
 
+Both modes also let you pick the startup behaviour: waiting for scan jobs triggered from the printer panel, or scanning automatically each time paper is loaded into the document feeder (`adf-autoscan`).
+
 Notes:
 
 - **Windows**: SmartScreen may warn about an unsigned executable — click *More info* → *Run anyway*

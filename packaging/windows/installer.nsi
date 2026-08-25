@@ -59,6 +59,11 @@ Var RadioOther
 Var RadioLater
 Var EditOther
 
+; startup behaviour
+Var RunArgs           ; arguments passed to node-hp-scan-to at boot
+Var RadioListen
+Var RadioAdf
+
 !define MUI_ABORTWARNING
 
 !insertmacro MUI_PAGE_WELCOME
@@ -108,6 +113,12 @@ Function .onInit
   StrCpy $DeviceChoice "skip"
   StrCpy $DevName ""
   StrCpy $DevIp ""
+  StrCpy $RunArgs "listen --health-check"
+  ; /ADF switches the startup behaviour in silent installs
+  ${GetOptions} "$CMDLINE" "/ADF" $R0
+  ${IfNot} ${Errors}
+    StrCpy $RunArgs "adf-autoscan --health-check"
+  ${EndIf}
   ; silent installs skip pages entirely, so the preset must be decided here
   ${If} $CmdlineSystemMode == "1"
     !insertmacro _InitSystemMode
@@ -145,6 +156,20 @@ Function ModePageCreate
     "Windows service for all users (requires administrator rights)"
   Pop $RadioSystem
 
+  ${NSD_CreateLabel} 8u 80u 90% 10u \
+    "Startup behaviour:"
+  Pop $0
+
+  ${NSD_CreateRadioButton} 16u 92u 88% 10u \
+    "Wait for scan jobs started from the printer panel"
+  Pop $RadioListen
+  ${NSD_AddStyle} $RadioListen ${WS_GROUP}
+  ${NSD_SetState} $RadioListen ${BST_CHECKED}
+
+  ${NSD_CreateRadioButton} 16u 106u 88% 10u \
+    "Scan automatically when paper is loaded in the feeder (adf-autoscan)"
+  Pop $RadioAdf
+
   nsDialogs::Show
 FunctionEnd
 
@@ -156,6 +181,13 @@ Function ModePageLeave
     !insertmacro _InitUserMode
   ${EndIf}
 
+  ${NSD_GetState} $RadioAdf $0
+  ${If} $0 == ${BST_CHECKED}
+    StrCpy $RunArgs "adf-autoscan --health-check"
+  ${Else}
+    StrCpy $RunArgs "listen --health-check"
+  ${EndIf}
+
   ${If} $Mode == "system"
     ; verify we can write outside protected locations, i.e. we are elevated;
     ; otherwise relaunch ourselves elevated and bail out of this instance
@@ -164,7 +196,11 @@ Function ModePageLeave
     ${If} ${Errors}
       MessageBox MB_OK|MB_ICONEXCLAMATION \
         "Administrator rights are required for the Windows service mode.$\nThe installer will now restart elevated."
-      ExecShell "runas" "$EXEPATH" "/SYSTEM_MODE"
+      StrCpy $0 "/SYSTEM_MODE"
+      ${If} $RunArgs == "adf-autoscan --health-check"
+        StrCpy $0 "/SYSTEM_MODE /ADF"
+      ${EndIf}
+      ExecShell "runas" "$EXEPATH" "$0"
       Quit
     ${EndIf}
   ${EndIf}
@@ -451,11 +487,28 @@ Section "Install"
 
   ; start menu shortcut ------------------------------------------------------
   CreateDirectory "$SMPROGRAMS"
-  CreateShortCut "$SMPROGRAMS\${DISPLAY}.lnk" "$INSTDIR\${APPNAME}.exe" "listen"
+  CreateShortCut "$SMPROGRAMS\${DISPLAY}.lnk" "$INSTDIR\${APPNAME}.exe" "$RunArgs"
 
   ; autostart ----------------------------------------------------------------
   ${If} $Mode == "user"
-    File "run.cmd"
+    ; logging wrapper with rotation, arguments follow the chosen behaviour
+    FileOpen $0 "$INSTDIR\run.cmd" w
+    FileWrite $0 "@echo off$\r$\n"
+    FileWrite $0 'rem node-hp-scan-to background runner - log under %APPDATA%\node-hp-scan-to\logs$\r$\n'
+    FileWrite $0 'cd /d "%~dp0"$\r$\n'
+    FileWrite $0 'set "LOGDIR=%APPDATA%\node-hp-scan-to\logs"$\r$\n'
+    FileWrite $0 'set "LOG=%LOGDIR%\scan.log"$\r$\n'
+    FileWrite $0 'if not exist "%LOGDIR%" mkdir "%LOGDIR%" >nul 2>&1$\r$\n'
+    FileWrite $0 'if exist "%LOG%" ($\r$\n'
+    FileWrite $0 '    for %%F in ("%LOG%") do ($\r$\n'
+    FileWrite $0 '        if %%~zF GTR 5000000 ($\r$\n'
+    FileWrite $0 '            if exist "%LOG%.old" del "%LOG%.old" >nul 2>&1$\r$\n'
+    FileWrite $0 '            ren "%LOG%" "scan.log.old" >nul 2>&1$\r$\n'
+    FileWrite $0 '        )$\r$\n'
+    FileWrite $0 '    )$\r$\n'
+    FileWrite $0 ')$\r$\n'
+    FileWrite $0 '".\node-hp-scan-to.exe" $RunArgs >> "%LOG%" 2>&1$\r$\n'
+    FileClose $0
 
     ; S4U task: session 0 (no window), restart-on-failure, no time limit.
     ; $$ keeps PowerShell variables away from NSIS expansion; quadrupled
@@ -477,7 +530,7 @@ Section "Install"
     FileWrite $0 "  <name>${DISPLAY}</name>$\r$\n"
     FileWrite $0 "  <description>Scan document to Computer for HP All-in-One Printers</description>$\r$\n"
     FileWrite $0 "  <executable>$INSTDIR\${APPNAME}.exe</executable>$\r$\n"
-    FileWrite $0 "  <arguments>listen --health-check</arguments>$\r$\n"
+    FileWrite $0 "  <arguments>$RunArgs</arguments>$\r$\n"
     FileWrite $0 "  <workingdirectory>$INSTDIR</workingdirectory>$\r$\n"
     FileWrite $0 '  <env name=$\"NODE_CONFIG_DIR$\" value=$\"$ConfigDir$\"/>$\r$\n'
     FileWrite $0 "  <startmode>Automatic</startmode>$\r$\n"
