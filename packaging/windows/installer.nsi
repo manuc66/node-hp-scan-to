@@ -50,17 +50,14 @@ Var DevName
 Var DevIp
 Var DeviceRaw         ; raw stdout of the discover run
 Var DeviceCount       ; number of parsed devices
-Var DropList
+Var DeviceShown       ; number of rendered device radios
+Var RadioTmp          ; scratch handle holder for NSD_GetState
+Var YPos              ; dynamic vertical layout cursor
 Var RadioByName
 Var RadioByIp
 Var RadioOther
 Var RadioLater
 Var EditOther
-Var SelDisplay
-
-!ifndef LB_SETCURSEL
-  !define LB_SETCURSEL 0x0186
-!endif
 
 !define MUI_ABORTWARNING
 
@@ -245,65 +242,89 @@ Function DevicePageCreate
   nsDialogs::Create 1018
   Pop $0
 
-  ${NSD_CreateLabel} 0 0 100% 16u \
+  ${NSD_CreateLabel} 0 0 100% 20u \
     "Detected devices are listed below. Locating the printer by name keeps working even when its IP address changes."
   Pop $0
 
-  ${NSD_CreateListBox} 8u 22u 92% 12u ""
-  Pop $DropList
-
-  ${NSD_CreateRadioButton} 8u 42u 90% 10u \
-    "Use the selected printer by name (recommended)"
-  Pop $RadioByName
-  ${NSD_AddStyle} $RadioByName ${WS_GROUP}
-
-  ${NSD_CreateRadioButton} 8u 56u 90% 10u \
-    "Pin this printer by IP address (only if name lookup fails on your network)"
-  Pop $RadioByIp
-
-  ${NSD_CreateRadioButton} 8u 70u 90% 10u \
-    "Other - enter it manually:"
-  Pop $RadioOther
-  ${NSD_OnClick} $RadioOther OnOtherClick
-
-  ${NSD_CreateText} 20u 82u 78% 12u ""
-  Pop $EditOther
-  !insertmacro _CtrlEnable $EditOther 0
-
-  ${NSD_CreateRadioButton} 8u 100u 90% 10u \
-    "Configure later (you will have to edit config\\default.json yourself)"
-  Pop $RadioLater
-  ${NSD_AddStyle} $RadioLater ${WS_GROUP}
-
-  ; populate the list from discovery output
   ${If} $R0 == 0
     Call _ParseDevices
   ${Else}
     StrCpy $DeviceCount 0
   ${EndIf}
 
+  ; one radio button per discovered device (first six), using only the
+  ; basic nsDialogs macros - distro builds lack the LB_/CB_ helpers
+  StrCpy $DeviceShown 0
   StrCpy $R9 0
   ${Do}
     ${If} $R9 >= $DeviceCount
+      ${Break}
+    ${EndIf}
+    ${If} $R9 >= 6
       ${Break}
     ${EndIf}
     ReadIniStr $R8 "$PLUGINSDIR\devices.ini" "d" "$R9"
     ${StrLoc} "$R5" "$R8" "|" "0"
     ${If} "$R5" != ""
       IntOp $R7 "$R5" + 1
-      StrCpy $R6 "$R8" "" $R7    ; display part after "|"
-      ${NSD_LB_AddItem} $DropList "$R6"
+      StrCpy $R6 "$R8" "" $R7          ; display part
+      IntOp $0 "$R9" * 10
+      IntOp $0 "$0" + 26               ; vertical position in dialog units
+      StrCpy $1 "$0"
+      StrCpy $1 "$1u"
+      ${NSD_CreateRadioButton} 8u "$1" 90% 10u "$R6"
+      Pop $RadioTmp
+      WriteIniStr "$PLUGINSDIR\devices.ini" "h" "$R9" "$RadioTmp"
+      ${If} $R9 == 0
+        ${NSD_AddStyle} $RadioTmp ${WS_GROUP}
+        ${NSD_SetState} $RadioTmp ${BST_CHECKED}
+      ${EndIf}
+      IntOp $DeviceShown "$DeviceShown" + 1
     ${EndIf}
     IntOp $R9 "$R9" + 1
   ${Loop}
 
-  ${If} $DeviceCount > 0
-    ${NSD_SetState} $RadioByName ${BST_CHECKED}
-    SendMessage $DropList ${LB_SETCURSEL} 0 0
-  ${Else}
-    !insertmacro _CtrlEnable $RadioByName 0
-    !insertmacro _CtrlEnable $RadioByIp 0
-    !insertmacro _CtrlEnable $DropList 0
+  ; fixed controls below the dynamic list
+  IntOp $YPos "$DeviceShown" * 10
+  IntOp $YPos "$YPos" + 28
+
+  StrCpy $1 "$YPos"
+  StrCpy $1 "$1u"
+  ${NSD_CreateRadioButton} 8u "$1" 90% 10u \
+    "Use the selected printer by name (recommended)"
+  Pop $RadioByName
+
+  IntOp $YPos "$YPos" + 12
+  StrCpy $1 "$YPos"
+  StrCpy $1 "$1u"
+  ${NSD_CreateRadioButton} 8u "$1" 90% 10u \
+    "Pin this printer by IP address (only if name lookup fails on your network)"
+  Pop $RadioByIp
+
+  IntOp $YPos "$YPos" + 14
+  StrCpy $1 "$YPos"
+  StrCpy $1 "$1u"
+  ${NSD_CreateRadioButton} 8u "$1" 90% 10u \
+    "Other - enter it manually:"
+  Pop $RadioOther
+  ${NSD_OnClick} $RadioOther OnOtherClick
+
+  IntOp $YPos "$YPos" + 11
+  StrCpy $1 "$YPos"
+  StrCpy $1 "$1u"
+  ${NSD_CreateText} 24u "$1" 74% 12u ""
+  Pop $EditOther
+  !insertmacro _CtrlEnable $EditOther 0
+
+  IntOp $YPos "$YPos" + 18
+  StrCpy $1 "$YPos"
+  StrCpy $1 "$1u"
+  ${NSD_CreateRadioButton} 8u "$1" 90% 10u \
+    "Configure later (you will have to edit config\\default.json yourself)"
+  Pop $RadioLater
+  ${NSD_AddStyle} $RadioLater ${WS_GROUP}
+
+  ${If} $DeviceShown == 0
     ${NSD_SetState} $RadioLater ${BST_CHECKED}
   ${EndIf}
 
@@ -355,47 +376,40 @@ Function DevicePageLeave
     Return
   ${EndIf}
 
-  ; by-name or by-ip: require a selection in the list
-  ${NSD_LB_GetSelection} $DropList $SelDisplay
-  ${If} "$SelDisplay" == ""
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Please select a detected printer."
-    Abort
-  ${EndIf}
-
-  ; resolve the selected display string back to its ip (and bare name)
+  ; a discovered device radio is checked -> resolve it through the ini
   StrCpy $R9 0
   ${Do}
-    ${If} $R9 >= $DeviceCount
+    ${If} $R9 >= $DeviceShown
       ${Break}
     ${EndIf}
-    ReadIniStr $R8 "$PLUGINSDIR\devices.ini" "d" "$R9"   ; ip|display
-    ${StrLoc} "$R5" "$R8" "|" "0"
-    StrCpy $R4 ""                                  ; resolved flag/name
-    ${If} "$R5" != ""
-      ${If} $R5 > 0
-        StrCpy $R6 "$R8" $R5                       ; ip
-        IntOp $R7 "$R5" + 1
-        StrCpy $R4 "$R8" "" $R7                    ; display
+    ReadIniStr $RadioTmp "$PLUGINSDIR\devices.ini" "h" "$R9"
+    ${NSD_GetState} $RadioTmp $0
+    ${If} $0 == ${BST_CHECKED}
+      ReadIniStr $R8 "$PLUGINSDIR\devices.ini" "d" "$R9"   ; ip|display
+      ${StrLoc} "$R5" "$R8" "|" "0"
+      ${If} "$R5" == ""
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Internal error: malformed device entry."
+        Abort
       ${EndIf}
-    ${EndIf}
-
-    ${If} "$R4" == "$SelDisplay"
+      StrCpy $R6 "$R8" $R5                                 ; ip
+      IntOp $R7 "$R5" + 1
+      StrCpy $R4 "$R8" "" $R7                              ; display
       StrCpy $DevIp "$R6"
       ${NSD_GetState} $RadioByIp $0
       ${If} $0 == ${BST_CHECKED}
         StrCpy $DeviceChoice "ip"
-        StrCpy $DevName "$SelDisplay"
+        StrCpy $DevName "$R4"
       ${Else}
         StrCpy $DeviceChoice "name"
-        ${StrRep} "$DevName" "$SelDisplay" " ($R6)" ""    ; strip " (ip)"
+        ${StrRep} "$DevName" "$R4" " ($R6)" ""             ; strip " (ip)"
       ${EndIf}
       Return
     ${EndIf}
-
     IntOp $R9 "$R9" + 1
   ${Loop}
 
-  MessageBox MB_OK|MB_ICONEXCLAMATION "Internal error: selected device not found."
+  MessageBox MB_OK|MB_ICONEXCLAMATION \
+    "Please select a detected printer, choose Other, or pick Configure later."
   Abort
 FunctionEnd
 
