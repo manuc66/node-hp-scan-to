@@ -69,6 +69,7 @@ Var RadioAdf
 !insertmacro MUI_PAGE_WELCOME
 Page custom ModePageCreate ModePageLeave
 Page custom DevicePageCreate DevicePageLeave
+Page custom StartupPageCreate StartupPageLeave
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -156,20 +157,6 @@ Function ModePageCreate
     "Windows service for all users (requires administrator rights)"
   Pop $RadioSystem
 
-  ${NSD_CreateLabel} 8u 80u 90% 10u \
-    "Startup behaviour:"
-  Pop $0
-
-  ${NSD_CreateRadioButton} 16u 92u 88% 10u \
-    "Wait for scan jobs started from the printer panel"
-  Pop $RadioListen
-  ${NSD_AddStyle} $RadioListen ${WS_GROUP}
-  ${NSD_SetState} $RadioListen ${BST_CHECKED}
-
-  ${NSD_CreateRadioButton} 16u 106u 88% 10u \
-    "Scan automatically when paper is loaded in the feeder (adf-autoscan)"
-  Pop $RadioAdf
-
   nsDialogs::Show
 FunctionEnd
 
@@ -179,13 +166,6 @@ Function ModePageLeave
     !insertmacro _InitSystemMode
   ${Else}
     !insertmacro _InitUserMode
-  ${EndIf}
-
-  ${NSD_GetState} $RadioAdf $0
-  ${If} $0 == ${BST_CHECKED}
-    StrCpy $RunArgs "adf-autoscan --health-check"
-  ${Else}
-    StrCpy $RunArgs "listen --health-check"
   ${EndIf}
 
   ${If} $Mode == "system"
@@ -203,6 +183,48 @@ Function ModePageLeave
       ExecShell "runas" "$EXEPATH" "$0"
       Quit
     ${EndIf}
+  ${EndIf}
+FunctionEnd
+
+; ---------------------------------------------------------------------------
+; startup behaviour page (after the printer is known)
+
+Function StartupPageCreate
+  !insertmacro MUI_HEADER_TEXT \
+    "Startup behaviour" \
+    "What should node-hp-scan-to do once running?"
+
+  nsDialogs::Create 1018
+  Pop $0
+
+  ${NSD_CreateLabel} 0 0 100% 20u \
+    "Both options keep watching the selected printer until stopped."
+  Pop $0
+
+  ${NSD_CreateRadioButton} 8u 28u 90% 10u \
+    "Wait for scan jobs started from the printer panel"
+  Pop $RadioListen
+  ${NSD_AddStyle} $RadioListen ${WS_GROUP}
+  ${NSD_SetState} $RadioListen ${BST_CHECKED}
+
+  ${NSD_CreateRadioButton} 8u 44u 90% 10u \
+    "Scan automatically when paper is loaded in the feeder (adf-autoscan)"
+  Pop $RadioAdf
+
+  ; reflect the preset (silent /ADF flag survives elevated relaunches)
+  ${If} $RunArgs == "adf-autoscan --health-check"
+    ${NSD_SetState} $RadioAdf ${BST_CHECKED}
+  ${EndIf}
+
+  nsDialogs::Show
+FunctionEnd
+
+Function StartupPageLeave
+  ${NSD_GetState} $RadioAdf $0
+  ${If} $0 == ${BST_CHECKED}
+    StrCpy $RunArgs "adf-autoscan --health-check"
+  ${Else}
+    StrCpy $RunArgs "listen --health-check"
   ${EndIf}
 FunctionEnd
 
