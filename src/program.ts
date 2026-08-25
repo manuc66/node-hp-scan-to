@@ -4,7 +4,11 @@
 "use strict";
 
 import os from "os";
-import { Bonjour } from "bonjour-service";
+// default-import + destructure: this dependency is CommonJS and some loaders
+// (tsx) do not expose its named exports to ESM consumers
+import bonjourService from "bonjour-service";
+
+const { Bonjour } = bonjourService;
 import DeviceClient from "./DeviceClient.js";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
@@ -22,6 +26,7 @@ import type {
   ScanConfig,
   SingleScanConfig,
 } from "./type/scanConfigs.js";
+import { discoverCmd } from "./commands/discoverCmd.js";
 import type { FileConfig } from "./type/FileConfig.js";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
 import type { Server as NetServer } from "net";
@@ -815,6 +820,43 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
     });
 }
 
+function createDiscoverCliCmd() {
+  return new Command("discover")
+    .description(
+      "Discover HP scan-capable devices on the network, one 'name<TAB>ip' pair per line",
+    )
+    .addOption(
+      new Option(
+        "--timeout <timeout>",
+        "Browsing duration in seconds",
+      ).default("5"),
+    )
+    .addOption(
+      new Option("--json", "Output devices as a JSON array").default(false),
+    )
+    .addOption(
+      new Option(
+        "--ip <ip>",
+        "Only verify that the given address hosts an HP scan-capable device",
+      ),
+    )
+    .addOption(
+      new Option(
+        "--name <name>",
+        "Only keep devices whose announced name starts with this prefix",
+      ),
+    )
+    .action(async (options) => {
+      const exitCode = await discoverCmd({
+        timeoutSeconds: Number.parseInt(options.timeout, 10),
+        json: options.json,
+        ...(options.ip !== undefined && { ip: options.ip }),
+        ...(options.name !== undefined && { name: options.name }),
+      });
+      process.exitCode = exitCode === 0 ? 0 : 1;
+    });
+}
+
 function createProgram() {
   return new Command()
     .option(
@@ -860,5 +902,8 @@ export function setupProgram(fileConfig: FileConfig) {
   const cmdClearRegistrations = createClearRegistrationsCliCmd(fileConfig);
   cmdClearRegistrations.optsWithGlobals();
   program.addCommand(cmdClearRegistrations);
+
+  const cmdDiscover = createDiscoverCliCmd();
+  program.addCommand(cmdDiscover);
   return program;
 }
