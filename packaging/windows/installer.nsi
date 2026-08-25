@@ -507,9 +507,26 @@ Section "Install"
   FileWrite $0 "}$\r$\n"
   FileClose $0
 
-  ; start menu shortcut ------------------------------------------------------
-  CreateDirectory "$SMPROGRAMS"
-  CreateShortCut "$SMPROGRAMS\${DISPLAY}.lnk" "$INSTDIR\${APPNAME}.exe" "$RunArgs"
+  ; start menu shortcuts -----------------------------------------------------
+  CreateDirectory "$SMPROGRAMS\${DISPLAY}"
+  CreateShortCut "$SMPROGRAMS\${DISPLAY}\Run node-hp-scan-to now.lnk" \
+    "$INSTDIR\${APPNAME}.exe" "$RunArgs"
+  WriteINIStr "$SMPROGRAMS\${DISPLAY}\Project website.url" \
+    "InternetShortcut" "URL" "https://github.com/manuc66/node-hp-scan-to"
+  CreateShortCut "$SMPROGRAMS\${DISPLAY}\Configuration and logs.lnk" \
+    "$ConfigDir\.."
+  CreateShortCut "$SMPROGRAMS\${DISPLAY}\Scans folder.lnk" "$ScansDir"
+  ${If} $Mode == "user"
+    CreateShortCut "$SMPROGRAMS\${DISPLAY}\Start background task.lnk" \
+      "$WINDIR\System32\schtasks.exe" "/Run /TN ${APPNAME}"
+    CreateShortCut "$SMPROGRAMS\${DISPLAY}\Stop node-hp-scan-to.lnk" \
+      "$WINDIR\System32\taskkill.exe" "/F /IM ${APPNAME}.exe"
+  ${Else}
+    CreateShortCut "$SMPROGRAMS\${DISPLAY}\Start service.lnk" \
+      "$INSTDIR\${APPNAME}-service.exe" "start"
+    CreateShortCut "$SMPROGRAMS\${DISPLAY}\Stop service.lnk" \
+      "$INSTDIR\${APPNAME}-service.exe" "stop"
+  ${EndIf}
 
   ; autostart ----------------------------------------------------------------
   ${If} $Mode == "user"
@@ -529,6 +546,9 @@ Section "Install"
     FileWrite $0 '        )$\r$\n'
     FileWrite $0 '    )$\r$\n'
     FileWrite $0 ')$\r$\n'
+    ; single instance guard: bail out if the app is already running
+    FileWrite $0 'tasklist /FI "IMAGENAME eq ${APPNAME}.exe" | find /I "${APPNAME}.exe" >nul$\r$\n'
+    FileWrite $0 'if not errorlevel 1 exit /b 0$\r$\n'
     FileWrite $0 '".\node-hp-scan-to.exe" $RunArgs >> "%LOG%" 2>&1$\r$\n'
     FileClose $0
 
@@ -621,7 +641,7 @@ Section "un.Install"
     DeleteRegKey HKCU "Software\${APPNAME}"
   ${EndIf}
 
-  Delete "$SMPROGRAMS\${DISPLAY}.lnk"
+  RMDir /r "$SMPROGRAMS\${DISPLAY}"
   RMDir /r "$INSTDIR"
   ${If} $Mode == "system"
     DetailPrint "Configuration and scanned documents were kept."
