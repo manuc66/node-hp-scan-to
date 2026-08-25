@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+LaunchAgent for macOS - keeps node-hp-scan-to running in the background
+and starts it at login.
+
+Setup:
+  1. Extract this archive somewhere stable, e.g. /usr/local/node-hp-scan-to
+  2. Edit the two paths below (ProgramArguments[0] and NODE_CONFIG_DIR).
+  3. Copy the file:
+       mkdir -p ~/Library/LaunchAgents
+       cp io.github.manuc66.node-hp-scan-to.plist ~/Library/LaunchAgents/
+  4. Load it:
+       launchctl load ~/Library/LaunchAgents/io.github.manuc66.node-hp-scan-to.plist
+
+Unload:
+       launchctl unload ~/Library/LaunchAgents/io.github.manuc66.node-hp-scan-to.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>io.github.manuc66.node-hp-scan-to</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <!-- Adjust to the folder where you extracted the archive -->
+        <string>/usr/local/node-hp-scan-to/node-hp-scan-to</string>
+        <string>listen</string>
+        <string>--health-check</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Adjust to the same folder + /config -->
+        <key>NODE_CONFIG_DIR</key>
+        <string>/usr/local/node-hp-scan-to/config</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/node-hp-scan-to.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/node-hp-scan-to.err</string>
+</dict>
+</plist>

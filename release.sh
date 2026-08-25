@@ -96,9 +96,8 @@ else
 fi
 
 echo ""
-echo "AUR steps (https://aur.archlinux.org/packages/node-hp-scan-to):"
-echo "- Update PKGBUILD with version $NEW_VERSION"
-echo "- Update checksum (makepkg -g)"
-echo "- Update .SRCINFO (makepkg --printsrcinfo > .SRCINFO)"
-echo "- Commit and push to AUR"
+echo "On tag push, GitHub Actions will automatically:"
+echo "- publish to npm"
+echo "- build Windows/macOS/Linux binaries and .deb/.rpm packages, then attach them to the release"
+echo "- update the AUR package (once the AUR_SSH_KEY secret is configured, see packaging/arch/PKGBUILD)"
 echo "----------------------------------------"

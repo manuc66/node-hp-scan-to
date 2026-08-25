@@ -1,0 +1,7 @@
+{
+  "directory": "/var/lib/node-hp-scan-to",
+  "paper_size": "A4",
+  "image_format": "jpeg",
+  "resolution": 200,
+  "mode": "Color"
+}

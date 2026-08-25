@@ -1,0 +1,34 @@
+name: node-hp-scan-to
+
+arch: ${DEB_ARCH}
+platform: linux
+version: ${VERSION}
+release: "1"
+section: utils
+priority: optional
+
+maintainer: Emmanuel Counasse <manuc66@gmail.com>
+description: |
+  Scan document to Computer for HP All-in-One Printers.
+  Listens for scan jobs initiated from the printer front panel and saves
+  documents locally or uploads them to Paperless-ngx / Nextcloud.
+homepage: https://github.com/manuc66/node-hp-scan-to
+license: MIT
+
+depends:
+  - ca-certificates
+
+contents:
+  - src: release/.staging/current/node-hp-scan-to
+    dst: /usr/bin/node-hp-scan-to
+  - src: README.md
+    dst: /usr/share/doc/node-hp-scan-to/README.md
+  - src: SUPPORTED_DEVICES.md
+    dst: /usr/share/doc/node-hp-scan-to/SUPPORTED_DEVICES.md
+  - src: LICENSE
+    dst: /usr/share/doc/node-hp-scan-to/LICENSE
+  - src: packaging/node-hp-scan-to.service
+    dst: /usr/lib/systemd/system/node-hp-scan-to.service
+  - src: packaging/default.json
+    dst: /etc/node-hp-scan-to/default.json
+    type: config|noreplace

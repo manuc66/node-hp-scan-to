@@ -1,0 +1,36 @@
+<!--
+Service wrapper configuration for WinSW (https://github.com/winsw/winsw).
+
+Setup:
+  1. Download WinSW-x64.exe from https://github.com/winsw/winsw/releases
+     and place it in this folder.
+  2. Rename it to: node-hp-scan-to-service.exe
+  3. Rename this file to: node-hp-scan-to-service.xml   (same base name!)
+  4. From an elevated prompt, inside this folder:
+       node-hp-scan-to-service.exe install
+       node-hp-scan-to-service.exe start
+
+Uninstall:
+       node-hp-scan-to-service.exe stop
+       node-hp-scan-to-service.exe uninstall
+-->
+<service>
+  <id>node-hp-scan-to</id>
+  <name>HP Scan to Computer</name>
+  <description>Listens for scan jobs initiated from HP All-in-One printer front panels.</description>
+
+  <executable>%BASE%\node-hp-scan-to.exe</executable>
+  <arguments>listen --health-check</arguments>
+  <workingdirectory>%BASE%</workingdirectory>
+  <env name="NODE_CONFIG_DIR" value="%BASE%\config"/>
+
+  <startmode>Automatic</startmode>
+  <delayedautostart>true</delayedautostart>
+  <onfailure action="restart" delay="10 sec"/>
+
+  <log mode="roll-by-size">
+    <logpath>%BASE%\logs</logpath>
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>4</keepFiles>
+  </log>
+</service>

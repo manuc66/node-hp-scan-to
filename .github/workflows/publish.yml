@@ -1,18 +1,19 @@
-name: Publish npm
+name: Publish
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
-  publish:
+  npm:
+    name: Publish to npm
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -31,3 +32,134 @@ jobs:
       - run: pnpm build
 
       - run: npm publish --provenance --access public
+
+  binaries:
+    name: Binaries and packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9.5.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.0'
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+      - name: Compute version
+        id: ver
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            VERSION="0.0.0-dispatch"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build binaries
+        run: ./scripts/build-binaries.sh "v${{ steps.ver.outputs.version }}"
+
+      - name: Install nfpm
+        run: |
+          NFPM_VERSION=v2.42.3
+          curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/${NFPM_VERSION}/nfpm_$(echo "$NFPM_VERSION" | tr -d v)_Linux_x86_64.tar.gz" | tar -xz -C /usr/local/bin nfpm
+
+      - name: Build deb and rpm packages
+        run: ./scripts/build-packages.sh "v${{ steps.ver.outputs.version }}"
+
+      - name: Stage Windows installer inputs
+        run: |
+          mkdir -p packaging/windows/staging
+          cp release/.staging/windows-x64/node-hp-scan-to.exe packaging/windows/staging/
+          curl -fsSL -o packaging/windows/staging/WinSW-x64.exe \
+            https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe
+
+      - name: Build Windows installer
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq nsis
+          cd packaging/windows
+          makensis -DVERSION="${{ steps.ver.outputs.version }}" installer.nsi
+
+      - name: Attach artifacts to the GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.zip
+            release/*.tar.gz
+            release/*.deb
+            release/*.rpm
+            release/*.exe
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+
+  aur:
+    name: Update AUR package
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+    env:
+      AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+      AUR_PACKAGE: ${{ vars.AUR_PACKAGE || 'node-hp-scan-to' }}
+      ACTOR: ${{ github.actor }}
+    steps:
+      - name: Check AUR configuration
+        id: cfg
+        shell: bash
+        run: echo "enabled=$([ -n "$AUR_SSH_KEY" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies and create builder user
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          pacman -Syu --noconfirm git openssh pacman-contrib
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Install SSH key for the builder user
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          install -d -m 700 -o builder -g builder /home/builder/.ssh
+          echo "${AUR_SSH_KEY}" > /home/builder/.ssh/aur_key
+          chown builder:builder /home/builder/.ssh/aur_key
+          chmod 600 /home/builder/.ssh/aur_key
+
+      - name: Clone, update and push the AUR package
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          cat > /tmp/update-aur.sh <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+
+          git clone --depth 1 --branch "${GITHUB_REF_NAME}" \
+            "https://github.com/${GITHUB_REPOSITORY}.git" src
+          git clone "ssh://aur@aur.archlinux.org/${AUR_PACKAGE}.git" aur
+
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/; s/^pkgrel=.*/pkgrel=1/" \
+            src/packaging/arch/PKGBUILD
+          cp src/packaging/arch/PKGBUILD aur/PKGBUILD
+
+          cd aur
+          updpkgsums
+          makepkg --printsrcinfo > .SRCINFO
+
+          git config user.name "${ACTOR}"
+          git config user.email "${ACTOR}@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+          git diff --cached --quiet || \
+            git commit -m "upstream release ${GITHUB_REF_NAME}"
+          GIT_SSH_COMMAND="ssh -i /home/builder/.ssh/aur_key -o StrictHostKeyChecking=accept-new" \
+            git push origin master
+          SCRIPT
+          chown builder:builder /tmp/update-aur.sh
+          su builder -c "bash /tmp/update-aur.sh"
+

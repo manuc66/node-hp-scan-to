@@ -1,0 +1,18 @@
+[Unit]
+Description=HP scan-to-computer listener
+Documentation=https://github.com/manuc66/node-hp-scan-to
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=NODE_CONFIG_DIR=/etc/node-hp-scan-to
+ExecStart=/usr/bin/node-hp-scan-to listen --health-check
+Restart=on-failure
+RestartSec=5
+DynamicUser=yes
+StateDirectory=node-hp-scan-to
+ConfigurationDirectory=node-hp-scan-to
+
+[Install]
+WantedBy=multi-user.target
