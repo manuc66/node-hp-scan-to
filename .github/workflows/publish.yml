@@ -104,7 +104,7 @@ jobs:
           output-file: release/node-hp-scan-to.sbom.json
 
       - name: Attest build provenance
-        uses: actions/attest@v4
+        uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
             release/*.zip
@@ -115,7 +115,6 @@ jobs:
             release/*.exe
             release/*.sbom.json
             release/SHA256SUMS.txt
-          predicate-type: https://slsa.dev/provenance/v1
 
       - name: Attest SBOM
         uses: actions/attest-sbom@v2
