@@ -14,5 +14,20 @@ DynamicUser=yes
 StateDirectory=node-hp-scan-to
 ConfigurationDirectory=node-hp-scan-to
 
+# hardening: the app only talks to the printer over the network and writes
+# to its state directory plus a private /tmp
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictNamespaces=yes
+CapabilityBoundingSet=
+
 [Install]
 WantedBy=multi-user.target

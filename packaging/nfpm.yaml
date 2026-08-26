@@ -16,6 +16,10 @@ license: MIT
 depends:
   - ca-certificates
 
+scripts:
+  postinstall: packaging/scripts/reload-unit
+  postremove: packaging/scripts/reload-unit
+
 contents:
   - src: release/.staging/current/node-hp-scan-to
     dst: /usr/bin/node-hp-scan-to

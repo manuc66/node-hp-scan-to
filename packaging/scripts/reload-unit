@@ -1,0 +1,5 @@
+#!/bin/sh
+# reload systemd after unit file install/upgrade
+if [ -x /usr/bin/systemctl ]; then
+    /usr/bin/systemctl daemon-reload || true
+fi

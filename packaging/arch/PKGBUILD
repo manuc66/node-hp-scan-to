@@ -16,7 +16,8 @@ sha256sums=('SKIP')
 prepare() {
     cat > "${srcdir}/${pkgname}.service" <<EOF
 [Unit]
-Description=Receive scan from HP All-in-One printers
+Description=Scan document to Computer for HP All-in-One Printers
+Documentation=https://github.com/manuc66/node-hp-scan-to
 After=network-online.target
 Wants=network-online.target
 
@@ -29,6 +30,18 @@ RestartSec=10
 KillMode=process
 DynamicUser=yes
 StateDirectory=${pkgname}
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictNamespaces=yes
+CapabilityBoundingSet=
 
 [Install]
 WantedBy=multi-user.target

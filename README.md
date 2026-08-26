@@ -153,6 +153,12 @@ sudo rpm -i node-hp-scan-to-*.x86_64.rpm
 
 Scans are saved under `/var/lib/node-hp-scan-to` by default when running as a service.
 
+Linux networking notes:
+
+- the service only makes **outbound** connections: mDNS discovery on UDP 5353 (multicast), HTTP to the printer and HTTPS to Paperless-ngx/Nextcloud if configured — no inbound port is required for scanning
+- `--health-check` listens on **all interfaces** (port 3000 by default); restrict it with a local firewall rule if that matters to you, or drop the flag from `/usr/lib/systemd/system/node-hp-scan-to.service`
+- the packaged systemd unit runs under a dynamic non-root user with `PrivateTmp`, read-only system paths and an empty capability set
+
 ### Using Docker
 
 - You must have [Docker installed](https://www.docker.com/get-started/)
