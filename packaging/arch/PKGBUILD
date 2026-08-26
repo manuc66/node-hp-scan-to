@@ -7,7 +7,7 @@ pkgdesc='Scan document to Computer for HP All-in-One Printers'
 arch=(any)
 url='https://github.com/manuc66/node-hp-scan-to'
 license=(MIT)
-depends=(nodejs>=20.11)
+depends=('nodejs>=20.11')
 makedepends=(npm)
 backup=('etc/node-hp-scan-to/default.json')
 source=("${pkgname}-${pkgver}.tgz::https://registry.npmjs.org/${pkgname}/-/${pkgname}-${pkgver}.tgz")
@@ -47,6 +47,25 @@ CapabilityBoundingSet=
 WantedBy=multi-user.target
 EOF
 
+    cat > "${srcdir}/${pkgname}-user.service" <<EOF
+[Unit]
+Description=Scan document to Computer for HP All-in-One Printers (per user)
+Documentation=https://github.com/manuc66/node-hp-scan-to
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=NODE_CONFIG_DIR=%h/.config/node-hp-scan-to
+ExecStart=/usr/bin/node-hp-scan-to listen --health-check
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target
+EOF
+
     cat > "${srcdir}/default.json" <<EOF
 {
   "debug": false
@@ -80,6 +99,8 @@ package() {
 
     install -Dm0644 "${srcdir}/${pkgname}.service" \
         "${pkgdir}/usr/lib/systemd/system/${pkgname}.service"
+    install -Dm0644 "${srcdir}/${pkgname}-user.service" \
+        "${pkgdir}/usr/lib/systemd/user/${pkgname}.service"
 
     install -d "${pkgdir}/etc/node-hp-scan-to"
     install -m644 "${srcdir}/default.json" \

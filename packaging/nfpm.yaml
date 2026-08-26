@@ -31,6 +31,8 @@ contents:
     dst: /usr/share/doc/node-hp-scan-to/LICENSE
   - src: packaging/node-hp-scan-to.service
     dst: /usr/lib/systemd/system/node-hp-scan-to.service
+  - src: packaging/node-hp-scan-to-user.service
+    dst: /usr/lib/systemd/user/node-hp-scan-to.service
   - src: packaging/default.json
     dst: /etc/node-hp-scan-to/default.json
     type: config|noreplace

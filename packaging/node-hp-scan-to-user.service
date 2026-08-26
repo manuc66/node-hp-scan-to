@@ -1,0 +1,16 @@
+[Unit]
+Description=Scan document to Computer for HP All-in-One Printers (per user)
+Documentation=https://github.com/manuc66/node-hp-scan-to
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=NODE_CONFIG_DIR=%h/.config/node-hp-scan-to
+ExecStart=/usr/bin/node-hp-scan-to listen --health-check
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

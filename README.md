@@ -155,9 +155,44 @@ Scans are saved under `/var/lib/node-hp-scan-to` by default when running as a se
 
 Linux networking notes:
 
-- the service only makes **outbound** connections: mDNS discovery on UDP 5353 (multicast), HTTP to the printer and HTTPS to Paperless-ngx/Nextcloud if configured — no inbound port is required for scanning
+- the service only makes **outbound** connections: mDNS discovery (UDP 5353 multicast), plain HTTP calls to the printer itself on port 80 (discovery tree, scan job creation and polling), and HTTPS uploads to Paperless-ngx/Nextcloud when configured — nothing listens for the scanning flow itself
 - `--health-check` listens on **all interfaces** (port 3000 by default); restrict it with a local firewall rule if that matters to you, or drop the flag from `/usr/lib/systemd/system/node-hp-scan-to.service`
 - the packaged systemd unit runs under a dynamic non-root user with `PrivateTmp`, read-only system paths and an empty capability set
+
+#### Saving scans in your own user folder
+
+The system service is sandboxed on purpose, so point it at your home folder this way:
+
+1. set `"directory"` in `/etc/node-hp-scan-to/default.json` to your folder
+2. allow writes through the sandbox and to the dynamic user:
+
+```bash
+sudo systemctl edit node-hp-scan-to
+# add:
+#   [Service]
+#   ReadWritePaths=/home/YOU/Documents/scans
+#   SupplementaryGroups=users
+# then: sudo chmod g+w /home/YOU/Documents/scans
+```
+
+Simpler alternative — run the app **as yourself** with the shipped per-user unit:
+
+```bash
+mkdir -p ~/.config/node-hp-scan-to
+cp /etc/node-hp-scan-to/default.json ~/.config/node-hp-scan-to/
+systemctl --user enable --now node-hp-scan-to
+# optional: also start at boot without being logged in
+sudo loginctl enable-linger "$USER"
+```
+
+#### Verifying release artifacts
+
+Every release artifact ships with a Sigstore build provenance attestation bound to the exact commit and workflow that produced it, plus a checksum file:
+
+```bash
+gh attestation verify node-hp-scan-to_*_amd64.deb -R manuc66/node-hp-scan-to
+sha256sum -c SHA256SUMS.txt
+```
 
 ### Using Docker
 
