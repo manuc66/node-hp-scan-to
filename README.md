@@ -197,10 +197,11 @@ sudo loginctl enable-linger "$USER"
 
 #### Verifying release artifacts
 
-Every release artifact ships with a Sigstore build provenance attestation bound to the exact commit and workflow that produced it, plus a checksum file:
+Every release artifact ships with a Sigstore build provenance attestation bound to the exact commit and workflow that produced it, plus a dependency SBOM (CycloneDX), and a checksum file:
 
 ```bash
 gh attestation verify node-hp-scan-to_*_amd64.deb -R manuc66/node-hp-scan-to
+gh attestation verify release/node-hp-scan-to.sbom.json -R manuc66/node-hp-scan-to --predicate-type https://cyclonedx.org/bom
 sha256sum -c SHA256SUMS.txt
 ```
 

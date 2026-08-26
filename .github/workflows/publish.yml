@@ -96,8 +96,15 @@ jobs:
           find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\0' |
             xargs -0 sha256sum > SHA256SUMS.txt
 
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0.23.1
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: release/node-hp-scan-to.sbom.json
+
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest@v4
         with:
           subject-path: |
             release/*.zip
@@ -106,7 +113,15 @@ jobs:
             release/*.apk
             release/*.rpm
             release/*.exe
+            release/*.sbom.json
             release/SHA256SUMS.txt
+          predicate-type: https://slsa.dev/provenance/v1
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@v2
+        with:
+          subject-path: release/*.sbom.json
+          sbom-path: release/node-hp-scan-to.sbom.json
 
       - name: Attach artifacts to the GitHub release
         if: startsWith(github.ref, 'refs/tags/')
@@ -119,6 +134,7 @@ jobs:
             release/*.apk
             release/*.rpm
             release/*.exe
+            release/*.sbom.json
             release/SHA256SUMS.txt
           fail_on_unmatched_files: true
           generate_release_notes: true
