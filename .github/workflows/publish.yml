@@ -170,6 +170,7 @@ jobs:
           sed -i "s/^pkgver=.*/pkgver=${VERSION}/; s/^pkgrel=.*/pkgrel=1/" \
             src/packaging/arch/PKGBUILD
           cp src/packaging/arch/PKGBUILD aur/PKGBUILD
+          cp src/packaging/arch/node-hp-scan-to.install aur/
 
           cd aur
           updpkgsums

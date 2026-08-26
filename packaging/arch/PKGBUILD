@@ -10,6 +10,7 @@ license=(MIT)
 depends=('nodejs>=20.11')
 makedepends=(npm)
 backup=('etc/node-hp-scan-to/default.json')
+install=${pkgname}.install
 source=("${pkgname}-${pkgver}.tgz::https://registry.npmjs.org/${pkgname}/-/${pkgname}-${pkgver}.tgz")
 sha256sums=('SKIP')
 
