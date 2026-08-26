@@ -126,6 +126,7 @@ jobs:
   aur:
     name: Update AUR package
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
     container:
       image: archlinux:base-devel
     env:
