@@ -1,12 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-  <!-- 16px pixel-aligned monitor with H + scan line -->
+  <!-- 16px: H inside screen + tiny arrow -->
   <g shape-rendering="crispEdges">
-    <rect x="1" y="1" width="14" height="12" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
-    <rect x="3" y="3" width="10" height="8" fill="#ccfbf1"/>
-    <rect x="4" y="4" width="2" height="6" fill="#1e293b"/>
-    <rect x="10" y="4" width="2" height="6" fill="#1e293b"/>
-    <rect x="4" y="6" width="8" height="2" fill="#0d9488"/>
-    <rect x="7" y="13" width="2" height="1" fill="#1e293b"/>
-    <rect x="5" y="14" width="6" height="1" fill="#1e293b"/>
+    <rect x="1" y="2" width="14" height="10" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+    <rect x="3" y="4" width="10" height="6" fill="#ccfbf1"/>
+    <rect x="3" y="5" width="2" height="4" fill="#1e293b"/>
+    <rect x="11" y="5" width="2" height="4" fill="#1e293b"/>
+    <rect x="3" y="7" width="10" height="2" fill="#0d9488"/>
+    <!-- tiny arrow → -->
+    <path d="M 5 4 L 8 4 M 7 3 L 8 4 L 7 5" stroke="#0f766e" stroke-width="1" fill="none"/>
+    <rect x="7" y="12" width="2" height="1" fill="#1e293b"/>
+    <rect x="5" y="13" width="6" height="1" fill="#1e293b"/>
   </g>
 </svg>
