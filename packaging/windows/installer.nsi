@@ -24,6 +24,9 @@ Name "${DISPLAY}"
 OutFile "..\..\release\setup-${APPNAME}-v${VERSION}.exe"
 InstallDir "$LOCALAPPDATA\Programs\${APPNAME}"
 
+!define MUI_ICON "..\..\assets\icon.ico"
+!define MUI_UNICON "..\..\assets\icon.ico"
+
 !include "MUI2.nsh"
 !include "nsDialogs.nsh"
 !include "LogicLib.nsh"
