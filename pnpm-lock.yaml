@@ -21,8 +21,8 @@ importers:
         specifier: ^15.0.0
         version: 15.0.0
       config:
-        specifier: ^4.4.1
-        version: 4.4.2
+        specifier: ^5.0.1
+        version: 5.0.1
       dateformat:
         specifier: ^5.0.3
         version: 5.0.3
@@ -594,9 +594,9 @@ packages:
     resolution: {integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==}
     engines: {node: '>=22.12.0'}
 
-  config@4.4.2:
-    resolution: {integrity: sha512-5HJD7TX70gOG2dAd72eDjDeSTYn6D8nOiKgysQQS8mRUo9X1wDtlzb1JlmIWkP+sM9zKRVdYJxmj+qmCsYu6DQ==}
-    engines: {node: '>= 20.0.0'}
+  config@5.0.1:
+    resolution: {integrity: sha512-vnJGpQA9FjKSTafO9TiNZr1+NiZAIuZXScp034tH+R6VH3Ufe7r+Z730j/f6/KQ2+kNIly6auTYloIaNhpK8lg==}
+    engines: {node: '>= 20.11.0'}
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
@@ -1497,7 +1497,7 @@ snapshots:
 
   '@types/config@4.4.0':
     dependencies:
-      config: 4.4.2
+      config: 5.0.1
 
   '@types/dateformat@5.0.3': {}
 
@@ -1755,7 +1755,7 @@ snapshots:
 
   commander@15.0.0: {}
 
-  config@4.4.2:
+  config@5.0.1:
     dependencies:
       json5: 2.2.3
 
