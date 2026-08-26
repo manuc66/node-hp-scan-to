@@ -17,9 +17,6 @@
     <rect x="40" y="-50" width="24" height="100" rx="4" fill="#1e293b"/>
     <rect x="-64" y="0" width="128" height="18" rx="9" fill="url(#scanGrad)"/>
     <circle cx="64" cy="9" r="4" fill="#ccfbf1"/>
-    <g transform="translate(110, 10)" fill="#0f766e">
-      <path d="M 0 0 L 30 0 M 22 -6 L 30 0 L 22 6" stroke="#0f766e" stroke-width="4" stroke-linecap="round" fill="none"/>
-    </g>
     <rect x="-8" y="80" width="16" height="16" fill="#1e293b"/>
     <rect x="-20" y="96" width="40" height="6" rx="3" fill="#1e293b"/>
   </g>
