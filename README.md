@@ -161,7 +161,7 @@ Linux networking notes:
 
 #### Alpine Linux
 
-`.apk` packages (`x86_64`/`aarch64`) are attached to each [release](https://github.com/manuc66/node-hp-scan-to/releases/latest). They install the binary, an OpenRC service and `/etc/node-hp-scan-to/default.json`, and create a `node-scan` system user (scans land in `/var/lib/node-hp-scan-to`):
+`.apk` packages (`x86_64`/`aarch64`) are attached to each [release](https://github.com/manuc66/node-hp-scan-to/releases/latest). They ship a **musl** build, install the binary, an OpenRC service and `/etc/node-hp-scan-to/default.json`, and create a `node-scan` system user (scans land in `/var/lib/node-hp-scan-to`):
 
 ```sh
 apk add ./node-hp-scan-to_*_x86_64.apk

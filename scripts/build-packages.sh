@@ -31,12 +31,15 @@ for pair in "amd64 x64 x86_64" "arm64 arm64 aarch64"; do
 
   [ -f "$binary" ] || { echo "error: missing $binary, run build-binaries.sh first" >&2; exit 1; }
 
-  echo "==> packaging linux-$deb_arch (deb + rpm + apk)"
+  echo "==> packaging linux-$deb_arch (deb + rpm from glibc, apk from musl)"
   cp "$binary" "$OUT_DIR/.staging/current/node-hp-scan-to"
   DEB_ARCH="$deb_arch" VERSION="$VERSION" "$NFPM_BIN" package \
     -f packaging/nfpm.yaml -p deb -t "$OUT_DIR/"
   DEB_ARCH="$deb_arch" VERSION="$VERSION" "$NFPM_BIN" package \
     -f packaging/nfpm.yaml -p rpm -t "$OUT_DIR/"
+  musl_binary="$OUT_DIR/.staging/linux-$bun_arch-musl/node-hp-scan-to"
+  [ -f "$musl_binary" ] || { echo "error: missing $musl_binary, run build-binaries.sh with musl targets first" >&2; exit 1; }
+  cp "$musl_binary" "$OUT_DIR/.staging/current/node-hp-scan-to"
   DEB_ARCH="$apk_arch" VERSION="$VERSION" "$NFPM_BIN" package \
     -f packaging/nfpm.yaml -p apk -t "$OUT_DIR/"
 done

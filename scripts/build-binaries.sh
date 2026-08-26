@@ -18,7 +18,7 @@ cd "$(dirname "$0")/.."
 
 VERSION="${1:-$(git describe --tags --always 2>/dev/null || echo dev)}"
 VERSION="${VERSION#v}"
-TARGETS=(${TARGETS:-bun-windows-x64 bun-darwin-x64 bun-darwin-arm64 bun-linux-x64 bun-linux-arm64})
+TARGETS=(${TARGETS:-bun-windows-x64 bun-darwin-x64 bun-darwin-arm64 bun-linux-x64 bun-linux-arm64 bun-linux-x64-musl bun-linux-arm64-musl})
 OUT_DIR="${OUT_DIR:-release}"
 
 command -v bun >/dev/null 2>&1 || { echo "error: bun is not installed" >&2; exit 1; }
@@ -35,6 +35,8 @@ for target in "${TARGETS[@]}"; do
     bun-darwin-arm64)   os=darwin;  arch=arm64; ext="";  archive=zip ;;
     bun-linux-x64)      os=linux;   arch=x64;  ext="";   archive=targz ;;
     bun-linux-arm64)    os=linux;   arch=arm64; ext="";  archive=targz ;;
+    bun-linux-x64-musl) os=linux;   arch=x64-musl; ext=""; archive=targz ;;
+    bun-linux-arm64-musl) os=linux; arch=arm64-musl; ext=""; archive=targz ;;
     *) echo "error: unsupported target '$target'" >&2; exit 1 ;;
   esac
 

@@ -16,6 +16,13 @@ license: MIT
 depends:
   - ca-certificates
 
+# Alpine apk ships the musl binary, which links libstdc++ at runtime
+overrides:
+  apk:
+    depends:
+      - ca-certificates
+      - libstdc++
+
 scripts:
   preinstall: packaging/scripts/preinstall
   postinstall: packaging/scripts/reload-unit
