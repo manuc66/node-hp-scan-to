@@ -103,6 +103,7 @@ jobs:
             release/*.zip
             release/*.tar.gz
             release/*.deb
+            release/*.apk
             release/*.rpm
             release/*.exe
             release/SHA256SUMS.txt
@@ -115,6 +116,7 @@ jobs:
             release/*.zip
             release/*.tar.gz
             release/*.deb
+            release/*.apk
             release/*.rpm
             release/*.exe
             release/SHA256SUMS.txt

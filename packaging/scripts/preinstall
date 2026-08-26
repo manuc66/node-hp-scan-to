@@ -1,0 +1,7 @@
+#!/bin/sh
+# apk: create the dedicated system user and its state directory
+if [ "$PACKAGER" = "apk" ] && command -v adduser >/dev/null 2>&1; then
+    adduser -S -H -h /var/lib/node-hp-scan-to -s /sbin/nologin -D node-scan 2>/dev/null || true
+    mkdir -p /var/lib/node-hp-scan-to
+    chown node-scan /var/lib/node-hp-scan-to 2>/dev/null || true
+fi

@@ -159,6 +159,16 @@ Linux networking notes:
 - `--health-check` listens on **all interfaces** (port 3000 by default); restrict it with a local firewall rule if that matters to you, or drop the flag from `/usr/lib/systemd/system/node-hp-scan-to.service`
 - the packaged systemd unit runs under a dynamic non-root user with `PrivateTmp`, read-only system paths and an empty capability set
 
+#### Alpine Linux
+
+`.apk` packages (`x86_64`/`aarch64`) are attached to each [release](https://github.com/manuc66/node-hp-scan-to/releases/latest). They install the binary, an OpenRC service and `/etc/node-hp-scan-to/default.json`, and create a `node-scan` system user (scans land in `/var/lib/node-hp-scan-to`):
+
+```sh
+apk add ./node-hp-scan-to_*_x86_64.apk
+rc-update add node-hp-scan-to default
+rc-service node-hp-scan-to start
+```
+
 #### Saving scans in your own user folder
 
 The system service is sandboxed on purpose, so point it at your home folder this way:

@@ -1,0 +1,17 @@
+#!/sbin/openrc-run
+description="HP scan-to-computer listener"
+
+supervisor=supervise-daemon
+command="/usr/bin/node-hp-scan-to"
+command_args="${NODE_HP_ARGS:-listen --health-check}"
+command_user="node-scan"
+directory="/var/lib/node-hp-scan-to"
+output_log="/var/log/node-hp-scan-to.log"
+error_log="/var/log/node-hp-scan-to.log"
+
+export NODE_CONFIG_DIR="${NODE_CONFIG_DIR:-/etc/node-hp-scan-to}"
+
+depend() {
+    need net
+    use logger
+}

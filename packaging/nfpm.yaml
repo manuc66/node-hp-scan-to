@@ -17,6 +17,7 @@ depends:
   - ca-certificates
 
 scripts:
+  preinstall: packaging/scripts/preinstall
   postinstall: packaging/scripts/reload-unit
   postremove: packaging/scripts/reload-unit
 
@@ -33,6 +34,10 @@ contents:
     dst: /usr/lib/systemd/system/node-hp-scan-to.service
   - src: packaging/node-hp-scan-to-user.service
     dst: /usr/lib/systemd/user/node-hp-scan-to.service
+  - src: packaging/openrc/node-hp-scan-to
+    dst: /etc/init.d/node-hp-scan-to
+    file_info:
+      mode: 0755
   - src: packaging/default.json
     dst: /etc/node-hp-scan-to/default.json
     type: config|noreplace
