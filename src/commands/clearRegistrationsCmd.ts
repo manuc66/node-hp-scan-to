@@ -1,5 +1,5 @@
 import type DeviceClient from "../DeviceClient.js";
-import { getLoggerForFile } from "../logger";
+import { getLoggerForFile } from "../logger.js";
 
 const logger = getLoggerForFile(__filename);
 

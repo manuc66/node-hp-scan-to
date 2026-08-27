@@ -51,7 +51,7 @@ export async function tryGetDestination(
       logger.warn(`No destination URI found`);
     }
 
-logger.info(`No shortcut yet available, attempt: ${i + 1}/20`);
+    logger.info(`No shortcut yet available, attempt: ${i + 1}/20`);
     await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
   }
 
@@ -100,7 +100,7 @@ export async function saveScanFromEvent(
     contentType = "Document";
     destinationFolder = tempFolder;
     filePattern = undefined;
-logger.info(`Converting scan to PDF…`);
+    logger.info(`Converting scan to PDF…`);
     effectiveFormat = ScanFormat.Jpeg;
   } else {
     contentType = "Photo";
@@ -111,7 +111,6 @@ logger.info(`Converting scan to PDF…`);
   const scanStatus = await deviceCapabilities.getScanStatus();
 
   if (scanStatus.scannerState !== ScannerState.Idle) {
-if (scanStatus.scannerState !== ScannerState.Idle) {
     logger.warn(
       `Scanner state is not Idle: ${scanStatus.scannerState}, aborting scan attempt...!`,
     );
@@ -176,7 +175,7 @@ export async function scanFromAdf(
   if (adfAutoScanConfig.generatePdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
-logger.info(`Converting scan to PDF...`);
+    logger.info(`Converting scan to PDF...`);
     effectiveFormat = ScanFormat.Jpeg;
   } else {
     contentType = "Photo";
@@ -249,7 +248,7 @@ export async function singleScan(
   if (scanConfig.generatePdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
-logger.info(`Converting scan to PDF...`);
+    logger.info(`Converting scan to PDF...`);
     effectiveFormat = ScanFormat.Jpeg;
   } else {
     contentType = "Photo";

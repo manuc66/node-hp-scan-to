@@ -1,4 +1,4 @@
-import pino, { Logger } from "pino";
+import pino, { type Logger } from "pino";
 import path from "node:path";
 import isDocker from "is-docker";
 
@@ -6,17 +6,19 @@ const inDocker = isDocker();
 const isCli = process.stdout.isTTY && !inDocker;
 
 const baseLogger: Logger = pino({
-  level: process.env.LOG_LEVEL || "info",
-  transport: isCli
+  level: process.env["LOG_LEVEL"] ?? "info",
+  ...(isCli
     ? {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          translateTime: "HH:MM:ss.l",
-          ignore: "pid,hostname",
+        transport: {
+          target: "pino-pretty",
+          options: {
+            colorize: true,
+            translateTime: "HH:MM:ss.l",
+            ignore: "pid,hostname",
+          },
         },
       }
-    : undefined,
+    : {}),
 });
 
 export function getLoggerForFile(filename: string): Logger {

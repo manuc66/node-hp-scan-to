@@ -140,7 +140,7 @@ async function handleOtherFormatFlow(
     destinationFilePath,
   );
 
-  logger.info("Page downloaded to:", destinationFilePath);
+  logger.info(`Page downloaded to: ${destinationFilePath}`);
   return {
     path: destinationFilePath,
     pageNumber: currentPageNumber,
@@ -217,7 +217,7 @@ function getPageNumber(
     | PageCountingStrategy.EvenOnly,
   scanJobContent: ScanContent,
 ) {
-switch (pageCountingStrategy) {
+  switch (pageCountingStrategy) {
     case PageCountingStrategy.Normal:
       return scanJobContent.elements.length + 1;
     case PageCountingStrategy.OddOnly:
@@ -389,13 +389,10 @@ async function eSCLScanJobHandling(
 
       const jobLocation = PathHelper.getPathFromHttpLocation(jobUrl);
 
-      const filePath = await api.downloadEsclPage(
-        jobUrl,
-        destinationFilePath,
-      );
+      const filePath = await api.downloadEsclPage(jobUrl, destinationFilePath);
 
       const scanImageInfo = await api.getEsclScanImageInfo(jobLocation);
-      logger.info("scanImageInfo:", scanImageInfo.jobURI);
+      logger.info(`scanImageInfo: ${scanImageInfo.jobURI}`);
 
       const actualHeight = scanImageInfo.actualHeight;
 
@@ -441,7 +438,7 @@ async function eSCLScanJobHandling(
         tempDestinationFilePath,
       );
 
-      logger.info("Page downloaded content-type:", downloadMeta.contentType);
+      logger.info(`Page downloaded content-type: ${downloadMeta.contentType}`);
 
       const scanImageInfo = await api.getEsclScanImageInfo(jobLocation);
 
@@ -466,7 +463,7 @@ async function eSCLScanJobHandling(
         destinationFilePath,
       );
 
-      logger.info("Page downloaded to:", destinationFilePath);
+      logger.info(`Page downloaded to: ${destinationFilePath}`);
 
       const page: ScanPage = {
         path: destinationFilePath,
@@ -522,7 +519,7 @@ export async function executeScanJob(
 
   logger.info(`Creating job with settings: ${JSON.stringify(scanJobSettings)}`);
 
-  logger.info("New job created:", jobUrl);
+  logger.info(`New job created: ${jobUrl}`);
 
   let jobState: JobState;
   if (deviceCapabilities.isEscl) {

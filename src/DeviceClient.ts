@@ -56,7 +56,7 @@ export default class DeviceClient {
     isRequest: boolean,
     msg: object | string,
   ): void {
-if (this.debug) {
+    if (this.debug) {
       const id = String(callId).padStart(4, "0");
       const prefix = id + (isRequest ? " -> " : " <- ");
       const content = typeof msg === "string" ? msg : JSON.stringify(msg);
@@ -236,9 +236,7 @@ if (this.debug) {
     }
   }
 
-  async getEsclScanJobManifest(
-    uri: string,
-  ): Promise<EsclScanJobManifest> {
+  async getEsclScanJobManifest(uri: string): Promise<EsclScanJobManifest> {
     const response = await this.callAxios({
       baseURL: `http://${this.deviceIP}`,
       url: uri,
@@ -283,9 +281,7 @@ if (this.debug) {
     }
   }
 
-  async getWalkupScanToCompCaps(
-    uri: string,
-  ): Promise<WalkupScanToCompCaps> {
+  async getWalkupScanToCompCaps(uri: string): Promise<WalkupScanToCompCaps> {
     const response = await this.callAxios({
       baseURL: `http://${this.deviceIP}`,
       url: uri,
@@ -393,11 +389,11 @@ if (this.debug) {
     }
   }
 
-  async getEvents(
-    etag = "",
-    decisecondTimeout = 0,
-  ): Promise<EtagEventTable> {
-    const url = DeviceClient.appendTimeout("/EventMgmt/EventTable", decisecondTimeout);
+  async getEvents(etag = "", decisecondTimeout = 0): Promise<EtagEventTable> {
+    const url = DeviceClient.appendTimeout(
+      "/EventMgmt/EventTable",
+      decisecondTimeout,
+    );
 
     const headers = DeviceClient.placeETagHeader(etag, {});
 
@@ -656,7 +652,7 @@ if (this.debug) {
   async downloadEsclPage(
     jobUri: string,
     destination: string,
-): Promise<{ path: string; contentType: string | undefined }> {
+  ): Promise<{ path: string; contentType: string | undefined }> {
     return await this.esclWaitDeviceBusy(async () => {
       return await this.downloadPageWithMeta(
         `${jobUri}/NextDocument`,
@@ -666,10 +662,8 @@ if (this.debug) {
     });
   }
 
-  async getEsclScanImageInfo(
-    jobUri: string,
-  ): Promise<EsclScanImageInfo> {
-return await this.esclWaitDeviceBusy(async () => {
+  async getEsclScanImageInfo(jobUri: string): Promise<EsclScanImageInfo> {
+    return await this.esclWaitDeviceBusy(async () => {
       const response = await this.callAxios({
         baseURL: `http://${this.deviceIP}`,
         url: `${jobUri}/ScanImageInfo`,

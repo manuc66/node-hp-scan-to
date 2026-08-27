@@ -1,6 +1,6 @@
 import http from "node:http";
 import type { Server as NetServer } from "node:net";
-import { getLoggerForFile } from "./logger";
+import { getLoggerForFile } from "./logger.js";
 
 const logger = getLoggerForFile(__filename);
 

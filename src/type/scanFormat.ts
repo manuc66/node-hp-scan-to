@@ -1,8 +1,8 @@
 export enum ScanFormat {
-  "Jpeg" = "Jpeg",
-  "Bmp" = "Bmp",
-  "Ppm" = "Ppm",
-  "Raw" = "Raw",
+  Jpeg = "Jpeg",
+  Bmp = "Bmp",
+  Ppm = "Ppm",
+  Raw = "Raw",
 }
 
 export function parseScanFormat(value: string): ScanFormat | undefined {

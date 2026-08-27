@@ -363,9 +363,12 @@ const nockLedmBootstrap = () => {
 /** Registers a standard single-page scan job lifecycle on port 8080. */
 const nockScanJob = (jobId = "123", pageNumber = 1) => {
   const scope = nock("http://127.0.0.1:8080");
-  scope.post("/Scan/Jobs").optionally().reply(201, "", {
-    Location: `http://127.0.0.1:8080/Scan/Jobs/${jobId}`,
-  });
+  scope
+    .post("/Scan/Jobs")
+    .optionally()
+    .reply(201, "", {
+      Location: `http://127.0.0.1:8080/Scan/Jobs/${jobId}`,
+    });
   scope
     .get(`/Scan/Jobs/${jobId}`)
     .times(2)
@@ -393,10 +396,10 @@ const makeTempDir = (prefix: string) =>
   fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 
 const removeTempDir = (dir: string) => {
-  if (fs.existsSync(dir)) { fs.rmSync(dir, { recursive: true, force: true }); }
+  if (fs.existsSync(dir)) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 };
-
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // assembleDuplexScan
@@ -1005,12 +1008,18 @@ describe("processScanWithDestination", () => {
   let originalGetNextScanNumber: typeof PathHelper.getNextScanNumber;
 
   beforeEach(() => {
-    if (!nock.isActive()) { nock.activate(); }
+    if (!nock.isActive()) {
+      nock.activate();
+    }
     nock.disableNetConnect();
     api = new DeviceClient("127.0.0.1", false);
     api.isAlive = async () => true;
-    api.delay = async () => { /* noop */ };
-    api.waitDeviceUp = async () => { /* noop */ };
+    api.delay = async () => {
+      /* noop */
+    };
+    api.waitDeviceUp = async () => {
+      /* noop */
+    };
 
     originalGetNextScanNumber = PathHelper.getNextScanNumber;
     PathHelper.getNextScanNumber = async (_f, current) => current + 1;
@@ -1130,12 +1139,18 @@ describe("listenCmd", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    if (!nock.isActive()) { nock.activate(); }
+    if (!nock.isActive()) {
+      nock.activate();
+    }
     nock.disableNetConnect();
     api = new DeviceClient("127.0.0.1", false);
     api.isAlive = async () => true;
-    api.delay = async () => { /* noop */ };
-    api.waitDeviceUp = async () => { /* noop */ };
+    api.delay = async () => {
+      /* noop */
+    };
+    api.waitDeviceUp = async () => {
+      /* noop */
+    };
     tempDir = makeTempDir("listenCmd-");
   });
 
@@ -1159,7 +1174,8 @@ describe("listenCmd", () => {
       return true;
     };
 
-    await listenCmd(api,
+    await listenCmd(
+      api,
       [{ label: "host", isDuplexSingleSide: false }],
       makeScanConfig(tempDir),
       1,
@@ -1195,7 +1211,8 @@ describe("listenCmd", () => {
     };
 
     try {
-      await listenCmd(api,
+      await listenCmd(
+        api,
         [{ label: "host", isDuplexSingleSide: false }],
         makeScanConfig(tempDir),
         1,
@@ -1204,7 +1221,6 @@ describe("listenCmd", () => {
     } catch (e: unknown) {
       expect((e as Error).message).to.equal("device is down");
     }
-
 
     // No scan was performed — tempDir should be empty.
     const files = fs.readdirSync(tempDir);
@@ -1226,7 +1242,8 @@ describe("listenCmd", () => {
 
     const jobScope = nockScanJob();
 
-    await listenCmd(api,
+    await listenCmd(
+      api,
       [{ label: "host", isDuplexSingleSide: false }],
       makeScanConfig(tempDir),
       1,
@@ -1253,12 +1270,12 @@ describe("listenCmd", () => {
       throw "non-error-throw";
     };
 
-    await listenCmd(api,
+    await listenCmd(
+      api,
       [{ label: "host", isDuplexSingleSide: false }],
       makeScanConfig(tempDir),
       1,
     );
-
   });
 
   it("logs debug info when device goes down and debug is enabled", async () => {
@@ -1275,11 +1292,11 @@ describe("listenCmd", () => {
     };
     api.isDebug = () => true;
 
-    await listenCmd(api,
+    await listenCmd(
+      api,
       [{ label: "host", isDuplexSingleSide: false }],
       makeScanConfig(tempDir),
       1,
     );
-
   });
 });

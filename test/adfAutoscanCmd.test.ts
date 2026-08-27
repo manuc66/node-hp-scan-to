@@ -375,10 +375,7 @@ describe("adfAutoscanCmd", () => {
       .reply(200, "fake-image-data");
 
     // Subsequent Status requests fail to trigger loop exit after 50 errors
-    nock("http://127.0.0.1:80")
-      .persist()
-      .get("/Scan/Status")
-      .reply(500);
+    nock("http://127.0.0.1:80").persist().get("/Scan/Status").reply(500);
 
     api.isAlive = async () => true;
     api.delay = async () => {

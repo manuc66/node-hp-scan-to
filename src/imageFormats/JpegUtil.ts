@@ -1,4 +1,4 @@
-import { getLoggerForFile } from "./logger";
+import { getLoggerForFile } from "../logger.js";
 
 const logger = getLoggerForFile(__filename);
 
@@ -108,7 +108,7 @@ export default class JpegUtil {
       },
     });
 
-if (numberOfLine === undefined) {
+    if (numberOfLine === undefined) {
       logger.debug("DNL marker not found impossible to fix height");
       return null;
     }
@@ -276,16 +276,11 @@ if (numberOfLine === undefined) {
     //Increase the file index to get to the next block
     i += blockLength;
     while (i < buffer.length) {
-if (buffer[i] !== 0xff) {
+      if (buffer[i] !== 0xff) {
         logger.debug(
           `We should be at the begining of the next block, but got: ${
             buffer[i]
           }`,
-        );
-        return false;
-      }
-          "We should be at the begining of the next block, but got: " +
-            buffer[i],
         );
         return false;
       }
@@ -295,22 +290,16 @@ if (buffer[i] !== 0xff) {
         return false;
       }
 
-if (buffer[i + 1] === 0x00) {
+      if (buffer[i + 1] === 0x00) {
         logger.debug(`Bad marker at ${i} 0x00 just after marker ${marker}`);
-        return false;
-      }
         return false;
       }
 
       marker = this.numToHex(buffer[i]) + this.numToHex(buffer[i + 1]);
 
       const foundBlockLength = this.getBlockLength(buffer, i, marker);
-if (foundBlockLength === null) {
+      if (foundBlockLength === null) {
         logger.debug(
-          `Was not able to determine block size for marker ${marker}`,
-        );
-        return false;
-      }
           `Was not able to determine block size for marker ${marker}`,
         );
         return false;

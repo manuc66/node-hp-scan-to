@@ -18,7 +18,7 @@ const __dirname = path.dirname(__filename);
 describe("nextcloud", () => {
   // prepare test data
   const fileName = "nextcloud_sample.jpg";
-  const filePath = path.resolve(__dirname, "./asset/" + fileName);
+  const filePath = path.resolve(__dirname, `./asset/${fileName}`);
   const nextcloudUrl = "https://nextcloud.example.test";
   const username = "scanner";
   const password = "pa$$word";
@@ -91,8 +91,8 @@ describe("nextcloud", () => {
     it("success upload multiple images", async () => {
       const fileName1 = "sample1.jpg";
       const fileName2 = "sample2.jpg";
-      const filePath1 = path.resolve(__dirname, "./asset/" + fileName1);
-      const filePath2 = path.resolve(__dirname, "./asset/" + fileName2);
+      const filePath1 = path.resolve(__dirname, `./asset/${fileName1}`);
+      const filePath2 = path.resolve(__dirname, `./asset/${fileName2}`);
 
       nock(nextcloudUrl)
         .intercept(

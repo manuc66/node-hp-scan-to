@@ -73,13 +73,13 @@ export async function readDeviceCapabilities(
         walkupScanToCompCaps.supportsMultiItemScanFromPlaten;
       userActionTimeout = walkupScanToCompCaps.userActionTimeout;
     }
-} else if (discoveryTree.WalkupScanManifestURI !== null) {
+  } else if (discoveryTree.WalkupScanManifestURI !== null) {
     await api.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
     useWalkupScanToComp = false;
   }
   const scanCaps = await getScanCaps(api, discoveryTree, preferEscl);
 
-if (scanCaps === null) {
+  if (scanCaps === null) {
     logger.warn(
       "No scan capabilities detected on the device. It seems that the device may not be adequately supported or may not support scanning at all.",
     );

@@ -21,7 +21,7 @@ describe("singleScanCmd", () => {
     if (!nock.isDone()) {
       const pending = nock.pendingMocks();
       nock.cleanAll();
-      throw new Error("Test left pending nock mocks:\n" + pending.join("\n"));
+      throw new Error(`Test left pending nock mocks:\n${pending.join("\n")}`);
     }
 
     nock.disableNetConnect();

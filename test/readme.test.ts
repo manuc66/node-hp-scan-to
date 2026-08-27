@@ -36,7 +36,7 @@ function expectComandUsageIsUpdated(commandName: string) {
     if (command.name() === commandName) {
       const help = new Help();
       help.showGlobalOptions = true;
-      const val = "```text\n" + help.formatHelp(command, help) + "```";
+      const val = `\`\`\`text\n${help.formatHelp(command, help)}\`\`\``;
       expect(usageInReadme).to.be.eq(val);
     }
   }

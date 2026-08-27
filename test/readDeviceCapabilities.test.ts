@@ -79,7 +79,7 @@ describe("readDeviceCapabilities", () => {
     expect(caps.platenMaxWidth).to.equal(2550);
     expect(caps.platenMaxHeight).to.equal(3300);
     expect(caps.isEscl).to.be.false;
-    expect(caps.useWalkupScanToComp).to.be.false;
+    expect(caps.useWalkupScanToComp).to.be.undefined;
   });
 
   it("detects eSCL support when preferred", async () => {

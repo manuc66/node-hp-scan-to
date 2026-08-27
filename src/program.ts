@@ -302,7 +302,7 @@ function getPaperlessConfig(
       false,
     );
 
-let paperlessToken: string;
+    let paperlessToken: string;
     if (configPaperlessTokenFile !== undefined) {
       paperlessToken = fs
         .readFileSync(configPaperlessTokenFile, "utf8")
@@ -590,7 +590,7 @@ function createListenCliCmd(configFile: FileConfig) {
       const options = cmd.optsWithGlobals();
       const ip = await getDeviceIp(options, configFile);
       const isDebug = getIsDebug(options, configFile);
-const api = new DeviceClient(ip, isDebug);
+      const api = new DeviceClient(ip, isDebug);
       if (isDebug) {
         baseLogger.level = "debug";
       }
@@ -646,7 +646,12 @@ const api = new DeviceClient(ip, isDebug);
 
       const scanConfig = getScanConfiguration(options, configFile);
 
-      await listenCmd(api, registrationConfigs, scanConfig, deviceUpPollingInterval);
+      await listenCmd(
+        api,
+        registrationConfigs,
+        scanConfig,
+        deviceUpPollingInterval,
+      );
 
       healthCheckSrv?.close();
     });
@@ -690,7 +695,7 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
-const api = new DeviceClient(ip, isDebug);
+      const api = new DeviceClient(ip, isDebug);
       if (isDebug) {
         baseLogger.level = "debug";
       }
@@ -839,10 +844,9 @@ function createDiscoverCliCmd() {
       "Discover HP scan-capable devices on the network, one 'name<TAB>ip' pair per line",
     )
     .addOption(
-      new Option(
-        "--timeout <timeout>",
-        "Browsing duration in seconds",
-      ).default("5"),
+      new Option("--timeout <timeout>", "Browsing duration in seconds").default(
+        "5",
+      ),
     )
     .addOption(
       new Option("--json", "Output devices as a JSON array").default(false),
