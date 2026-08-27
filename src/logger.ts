@@ -9,6 +9,13 @@ const isTest = process.env["NODE_ENV"] === "test";
 
 const defaultLevel = process.env["LOG_LEVEL"] ?? "info";
 
+// "auto" (default): pretty in a terminal, JSON otherwise (docker/pipe).
+// "pretty": force human-readable output even outside of a terminal.
+// "json": force JSON output even in a terminal.
+const logFormat = process.env["LOG_FORMAT"] ?? "auto";
+const usePrettyTransport =
+  logFormat === "pretty" || (logFormat !== "json" && isCli);
+
 const baseLogger: Logger = pino({
   enabled: !isTest,
   level: defaultLevel,
@@ -26,12 +33,12 @@ const baseLogger: Logger = pino({
     ],
     censor: "[Redacted]",
   },
-  ...(isCli
+  ...(usePrettyTransport
     ? {
         transport: {
           target: "pino-pretty",
           options: {
-            colorize: true,
+            colorize: isCli,
             translateTime: "HH:MM:ss.l",
             ignore: "pid,hostname",
           },
