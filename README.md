@@ -768,6 +768,36 @@ Configuration can be done in a config file instead of using command line switche
 
 The configuration file is handled by https://www.npmjs.com/package/config
 
+#### Network / device identification
+
+The printer can be addressed either by a single fixed address or by a list:
+
+```json
+{
+  "ip": "192.168.1.53",
+  "name": "HP Smart Tank Plus 570 series"
+}
+```
+
+- `ip` — a fixed address. When set, it wins over `name`.
+- `name` — resolved through mDNS when `ip` is absent.
+- `device_addresses` — an *ordered list* of candidate addresses. When `ip`
+  is not set, each entry is tried in order at startup (plain TCP port 80
+  check, **no network scanning**). This is the mode for stateless hosts
+  (Docker, Kubernetes, read-only filesystems): addresses come from the
+  config and nothing is written back.
+
+```json
+{
+  "device_addresses": ["192.168.1.53", "192.168.1.54"]
+}
+```
+
+> **Note.** ARP is Layer-2 only and does not cross routers or virtual/overlay
+> networks (Docker bridge, Kubernetes pods). `device_addresses` (or a fixed
+> `ip`) is the right approach in those environments; it never scans the
+> network - it only connects to addresses you explicitly listed.
+
 ## Build Source Code
 
 How to build and run the project's source code:

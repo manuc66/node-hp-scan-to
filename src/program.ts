@@ -4,6 +4,7 @@
 "use strict";
 
 import os from "os";
+import net from "net";
 // default-import + destructure: this dependency is CommonJS and some loaders
 // (tsx) do not expose its named exports to ESM consumers
 import bonjourService from "bonjour-service";
@@ -241,6 +242,15 @@ async function getDeviceIp(
   configFile: FileConfig,
 ): Promise<string> {
   let ip = getOptConfiguredValue(options.address, configFile.ip);
+  const addressList = configFile.device_addresses;
+  if (ip === undefined && addressList !== undefined && addressList.length > 0) {
+    // stateless mode: a fixed list of candidate addresses from the config;
+    // pick the first one that answers on port 80 (no network scanning)
+    console.log(
+      `Trying configured device addresses (${addressList.length})...`,
+    );
+    ip = await findFirstUsableIp(addressList);
+  }
   if (ip === undefined) {
     const name = getConfiguredValue(
       options.name,
@@ -251,6 +261,30 @@ async function getDeviceIp(
   }
   console.log(`Using device at IP: ${ip}`);
   return ip;
+}
+
+/** return the first address of `candidates` that accepts a TCP connection */
+async function findFirstUsableIp(candidates: string[]): Promise<string | undefined> {
+  for (const candidate of candidates) {
+    const usable = await new Promise<boolean>((resolve) => {
+      const socket = net.createConnection(80, candidate, () => {
+        socket.destroy();
+        resolve(true);
+      });
+      socket.setTimeout(1500, () => {
+        socket.destroy();
+        resolve(false);
+      });
+      socket.once("error", () => {
+        socket.destroy();
+        resolve(false);
+      });
+    });
+    if (usable) {
+      return candidate;
+    }
+  }
+  return undefined;
 }
 
 function getIsDebug(options: ProgramOption, configFile: FileConfig) {
@@ -589,7 +623,7 @@ function createListenCliCmd(configFile: FileConfig) {
       const options = cmd.optsWithGlobals();
       const ip = await getDeviceIp(options, configFile);
       const isDebug = getIsDebug(options, configFile);
-      const api = new DeviceClient(ip, isDebug);
+        const api = new DeviceClient(ip, isDebug);
 
       const registrationConfigs: RegistrationConfig[] = [];
 
@@ -686,7 +720,7 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
-      const api = new DeviceClient(ip, isDebug);
+        const api = new DeviceClient(ip, isDebug);
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(
         options,
@@ -759,7 +793,7 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
-      const api = new DeviceClient(ip, isDebug);
+        const api = new DeviceClient(ip, isDebug);
 
       let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
@@ -804,7 +838,7 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
-      const api = new DeviceClient(ip, isDebug);
+        const api = new DeviceClient(ip, isDebug);
 
       let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
@@ -907,3 +941,4 @@ export function setupProgram(fileConfig: FileConfig) {
   program.addCommand(cmdDiscover);
   return program;
 }
+

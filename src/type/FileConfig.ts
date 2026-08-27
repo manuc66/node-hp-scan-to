@@ -12,6 +12,9 @@ export const configSchema = z
     ip: z.string().optional(), // IP address of the device (optional)
     name: z.string().optional(), // Device name (used for mDNS if IP is not set)
     label: z.string().optional(), // Display label on the device screen
+    // Ordered candidate addresses (e.g. for stateless/thrown-away hosts):
+    // tried in order at startup when `ip` is not set, no network scanning.
+    device_addresses: z.array(z.string()).optional(),
 
     ///
     /// Connectivity & Debug
