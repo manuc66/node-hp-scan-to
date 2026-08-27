@@ -16,8 +16,7 @@ const requestedLevel = process.env["LOG_LEVEL"]?.toLowerCase();
 const VALID_LEVELS = ["trace", "debug", "info", "warn", "error", "fatal"];
 const defaultLevel = debugRequested
   ? "debug"
-  : requestedLevel !== undefined &&
-      VALID_LEVELS.includes(requestedLevel)
+  : requestedLevel !== undefined && VALID_LEVELS.includes(requestedLevel)
     ? requestedLevel
     : "info";
 
