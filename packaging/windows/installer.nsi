@@ -520,7 +520,7 @@ Function DevicePageLeave
       Abort
     ${EndIf}
     Call _FwDiscoveryAllow
-    nsExec::ExecToStack '"$PLUGINSDIR\node-hp-scan-to.exe" discover --timeout 4 --ip "$DevIp"'
+    nsExec::ExecToStack '"$DiscDir\node-hp-scan-to.exe" discover --timeout 4 --ip "$DevIp"'
     Call _FwDiscoveryRemove
     Pop $0
     Pop $R1                       ; discard captured stdout
@@ -558,12 +558,12 @@ Function DevicePageLeave
       StrCpy $DeviceChoice "ip"
       StrCpy $DevIp "$DevName"
       Call _FwDiscoveryAllow
-      nsExec::ExecToStack '"$PLUGINSDIR\node-hp-scan-to.exe" discover --timeout 4 --ip "$DevIp"'
+nsExec::ExecToStack '"$DiscDir\node-hp-scan-to.exe" discover --timeout 4 --ip "$DevIp"'
       Call _FwDiscoveryRemove
     ${Else}
       StrCpy $DeviceChoice "name"
       Call _FwDiscoveryAllow
-      nsExec::ExecToStack '"$PLUGINSDIR\node-hp-scan-to.exe" discover --timeout 4 --name "$DevName"'
+      nsExec::ExecToStack '"$DiscDir\node-hp-scan-to.exe" discover --timeout 4 --name "$DevName"'
       Call _FwDiscoveryRemove
     ${EndIf}
     Pop $0
