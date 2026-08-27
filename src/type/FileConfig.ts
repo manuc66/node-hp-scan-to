@@ -70,6 +70,24 @@ export const configSchema = z
     paper_orientation: z.enum(["portrait", "landscape"]).optional(), // Applied to paper_size only
     paper_dim: z.string().optional(), // Custom paper dimensions (e.g., "21x29.7cm", "8.5x11in")
 
+    ///
+    /// Tone Map (image transforms: gamma, brightness, contrast, ...)
+    ///
+    // Raw protocol values. Ranges are device-specific: for eSCL devices the
+    // values are clamped to the device's advertised Min/Max (see XxxSupport),
+    // while legacy (LEDM) devices expose no ranges and values are sent as-is.
+    tone_map: z
+      .object({
+        gamma: z.number().int().optional(),
+        brightness: z.number().int().optional(),
+        contrast: z.number().int().optional(),
+        highlight: z.number().int().optional(),
+        shadow: z.number().int().optional(),
+        threshold: z.number().int().optional(),
+      })
+      .strict()
+      .optional(),
+
     prefer_escl: z.boolean().optional(), // Always upload scans as PDF
 
     ///

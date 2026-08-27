@@ -545,6 +545,7 @@ function getScanConfiguration(
     paperlessConfig,
     nextcloudConfig,
     preferEscl,
+    ...(fileConfig.tone_map !== undefined && { toneMap: fileConfig.tone_map }),
   };
   return scanConfig;
 }

@@ -4,6 +4,9 @@ import { parseXmlString } from "./ParseXmlString.js";
 import type { IScanJobSettings } from "./IScanJobSettings.js";
 import { ScanMode } from "../type/scanMode.js";
 import type { ImageFormat } from "../imageFormats/index.js";
+import type { ToneMap } from "../type/scanConfigs.js";
+import type EsclScanCaps from "./EsclScanCaps.js";
+import type { ScanTransformName } from "./EsclScanCaps.js";
 
 export enum DocumentFormatExt {
   Jpeg = "image/jpeg",
@@ -20,6 +23,8 @@ export default class EsclScanJobSettings implements IScanJobSettings {
   private readonly height: number | null;
   private readonly isDuplex: boolean;
   private readonly _format: ImageFormat;
+  private readonly toneMap: ToneMap | undefined;
+  private readonly scanCaps: EsclScanCaps | undefined;
 
   constructor(
     inputSource: InputSource,
@@ -30,6 +35,8 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     width: number | null,
     height: number | null,
     isDuplex: boolean,
+    toneMap?: ToneMap,
+    scanCaps?: EsclScanCaps,
   ) {
     this.inputSource = inputSource;
     this.contentType = contentType;
@@ -39,6 +46,8 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     this.width = width;
     this.height = height;
     this.isDuplex = isDuplex;
+    this.toneMap = toneMap;
+    this.scanCaps = scanCaps;
   }
 
   async toXML(): Promise<string> {
@@ -118,7 +127,18 @@ export default class EsclScanJobSettings implements IScanJobSettings {
 
     if (this.mode === ScanMode.Lineart) {
       parsed.ScanSettings.ColorMode = "BlackAndWhite1";
-      parsed.ScanSettings.Threshold = 128;
+      const rawThreshold = this.toneMap?.threshold ?? 128;
+      const thresholdRange = this.scanCaps?.getTransformRange("Threshold");
+      if (thresholdRange === undefined) {
+        parsed.ScanSettings.Threshold = rawThreshold;
+      } else if (thresholdRange === null) {
+        delete parsed.ScanSettings.Threshold;
+      } else {
+        parsed.ScanSettings.Threshold = Math.min(
+          Math.max(rawThreshold, thresholdRange.min),
+          thresholdRange.max,
+        );
+      }
     } else if (this.mode === ScanMode.Gray) {
       parsed.ScanSettings.ColorMode = "Grayscale8";
     } else {
@@ -153,6 +173,41 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     }
 
     parsed.ScanSettings.Duplex = this.isDuplex;
+
+    const transformDefaults: Record<
+      Exclude<ScanTransformName, "Threshold">,
+      number
+    > = {
+      Brightness: 996,
+      Contrast: 996,
+      Gamma: 180,
+      Highlight: 1396,
+      Shadow: 70,
+    };
+
+    const applyTransform = (
+      name: Exclude<ScanTransformName, "Threshold">,
+      configured: number | undefined,
+    ) => {
+      const range = this.scanCaps?.getTransformRange(name);
+      const raw = configured ?? transformDefaults[name];
+      if (range === undefined) {
+        parsed.ScanSettings[name] = raw;
+      } else if (range === null) {
+        delete parsed.ScanSettings[name];
+      } else {
+        parsed.ScanSettings[name] = Math.min(
+          Math.max(raw, range.min),
+          range.max,
+        );
+      }
+    };
+
+    applyTransform("Brightness", this.toneMap?.brightness);
+    applyTransform("Contrast", this.toneMap?.contrast);
+    applyTransform("Gamma", this.toneMap?.gamma);
+    applyTransform("Highlight", this.toneMap?.highlight);
+    applyTransform("Shadow", this.toneMap?.shadow);
 
     const builder = new xml2js.Builder({
       xmldec: { version: "1.0", encoding: "UTF-8" },

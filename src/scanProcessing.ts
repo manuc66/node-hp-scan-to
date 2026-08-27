@@ -137,6 +137,7 @@ export async function saveScanFromEvent(
     scanWidth,
     scanHeight,
     isDuplex,
+    scanConfig.toneMap,
   );
 
   const scanJobContent: ScanContent = { elements: [] };
@@ -199,6 +200,7 @@ export async function scanFromAdf(
     effectiveScanWidth,
     effectiveScanHeight,
     adfAutoScanConfig.isDuplex,
+    adfAutoScanConfig.toneMap,
   );
 
   const scanJobContent: ScanContent = { elements: [] };
@@ -284,6 +286,7 @@ export async function singleScan(
     scanWidth,
     scanHeight,
     scanConfig.isDuplex,
+    scanConfig.toneMap,
   );
 
   const scanJobContent: ScanContent = { elements: [] };

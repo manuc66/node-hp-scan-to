@@ -11,6 +11,7 @@ import ScanJobSettings from "./hpModels/ScanJobSettings.js";
 import type { ScanMode } from "./type/scanMode.js";
 import type { ImageFormat } from "./imageFormats/index.js";
 import type { IScanCaps } from "./IScanCaps.js";
+import type { ToneMap } from "./type/scanConfigs.js";
 
 async function getScanCaps(
   api: DeviceClient,
@@ -115,6 +116,7 @@ export async function readDeviceCapabilities(
     width: number | null,
     height: number | null,
     isDuplex: boolean,
+    toneMap?: ToneMap,
   ): IScanJobSettings => {
     let scanJobSettings: IScanJobSettings;
     if (scanCaps?.isEscl === true) {
@@ -127,6 +129,8 @@ export async function readDeviceCapabilities(
         width,
         height,
         isDuplex,
+        toneMap,
+        scanCaps as EsclScanCaps,
       );
     } else {
       scanJobSettings = new ScanJobSettings(
@@ -139,6 +143,7 @@ export async function readDeviceCapabilities(
         height,
         isDuplex,
         scanCaps as ScanCaps,
+        toneMap,
       );
     }
     return scanJobSettings;
