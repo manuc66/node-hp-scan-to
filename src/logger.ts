@@ -12,9 +12,14 @@ const isTest = process.env["NODE_ENV"] === "test";
 // program.ts additionally honors `debug: true` from the config file.
 const debugRequested =
   process.argv.includes("-D") || process.argv.includes("--debug");
+const requestedLevel = process.env["LOG_LEVEL"]?.toLowerCase();
+const VALID_LEVELS = ["trace", "debug", "info", "warn", "error", "fatal"];
 const defaultLevel = debugRequested
   ? "debug"
-  : (process.env["LOG_LEVEL"] ?? "info");
+  : requestedLevel !== undefined &&
+      VALID_LEVELS.includes(requestedLevel)
+    ? requestedLevel
+    : "info";
 
 // "auto" (default): pretty in a terminal, JSON otherwise (docker/pipe).
 // "pretty": force human-readable output even outside of a terminal.
