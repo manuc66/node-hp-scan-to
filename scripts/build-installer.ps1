@@ -51,7 +51,14 @@ try {
     if (-not $SkipBinary) {
         Write-Host "==> compiling binary with bun ($bunExe)"
         New-Item -ItemType Directory -Force -Path packaging\windows\staging | Out-Null
+        $ver = $Version.TrimStart("v")
         & $bunExe build --compile --target=bun-windows-x64 `
+            --windows-icon (Join-Path $repoRoot "assets\icon.ico") `
+            --windows-title "node-hp-scan-to" `
+            --windows-publisher "manuc66" `
+            --windows-version "$ver.0" `
+            --windows-description "Scan document to Computer from your printer" `
+            --windows-copyright "Copyright 2026 manuc66" `
             --outfile packaging\windows\staging\node-hp-scan-to.exe src/index.ts
         if ($LASTEXITCODE -ne 0) { throw "bun build failed" }
     }

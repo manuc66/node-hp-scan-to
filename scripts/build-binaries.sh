@@ -45,9 +45,21 @@ for target in "${TARGETS[@]}"; do
   echo "==> building $target -> $stage/$name$ext"
 
   mkdir -p "$stage"
+  WINDOWS_EXTRA=()
+  if [ "$os" = windows ]; then
+    WINDOWS_EXTRA+=(
+      --windows-icon="assets/icon.ico"
+      --windows-title="node-hp-scan-to"
+      --windows-publisher="manuc66"
+      --windows-version="$VERSION.0"
+      --windows-description="Scan document to Computer from your printer"
+      --windows-copyright="Copyright 2026 manuc66"
+    )
+  fi
   bun build --compile \
     --target="$target" \
     --outfile "$stage/$name" \
+    "${WINDOWS_EXTRA[@]}" \
     src/index.ts
 
   mkdir -p "$stage/config"
