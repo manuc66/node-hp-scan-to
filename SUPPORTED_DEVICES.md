@@ -21,6 +21,7 @@ Users have reported successful scans with these devices:
 - HP DeskJet 3775
 - HP DeskJet 4670
 - HP DeskJet 5525
+- HP DeskJet Ink Advantage 4530 All-in-One Printer series
 - HP Envy 4504
 - HP Envy 4520
 - HP Envy 5530
