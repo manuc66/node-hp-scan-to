@@ -2,10 +2,16 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
+import pino from 'eslint-plugin-pino';
 
 export default tseslint.config(
   {
     ignores: ['dist/**', 'node_modules/**', 'coverage/**', '*.js', 'test/**/*.js', "eslint.config.mjs"]
+  },
+  {
+    plugins: {
+      pino
+    }
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -52,6 +58,7 @@ export default tseslint.config(
       'curly': ['error', 'all'],
       'no-debugger': 'error',
       'prefer-template': 'error',
+      'pino/correct-args-position': 'error',
 
       // 'no-console': 'warn',
       // '@typescript-eslint/explicit-function-return-type': 'error',

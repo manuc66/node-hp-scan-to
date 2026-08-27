@@ -7,6 +7,9 @@ import {
   THREE_HUNDREDTHS_OF_INCH_DPI,
   validateAndResolvePaperSize,
 } from "./PaperSize.js";
+import { getLoggerForFile } from "./logger.js";
+
+const logger = getLoggerForFile(__filename);
 
 /**
  * Gets the maximum scan dimensions for a given input source and mode,
@@ -84,7 +87,7 @@ export function resolvePaperSizeToScanRegion(
     maxHeight,
   );
 
-  console.log(
+  logger.debug(
     `Paper size resolved: ${resolved.source}` +
       ` → ${region.width}×${region.height} units` +
       ` (unitResolution=${unitResolution}, isEscl=${isEscl})`,
