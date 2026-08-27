@@ -454,6 +454,20 @@ You can also set the environment variable `MAIN_COMMAND="adf-autoscan"` with Doc
 docker run -e MAIN_COMMAND="adf-autoscan" -e CMDLINE=--debug docker.io/manuc66/node-hp-scan-to:latest
 ```
 
+###### Logging
+
+Logs go to stdout as machine-readable JSON lines by default (one per event), which
+docker log drivers and aggregators such as Loki or ELK can parse directly. In an
+interactive terminal they are formatted for humans instead.
+
+| Env var      | Values                  | Effect                                                                 |
+|--------------|-------------------------|------------------------------------------------------------------------|
+| `LOG_LEVEL`  | `trace` … `fatal`       | Minimum level to emit (default `info`). `debug` shows HTTP traces too.  |
+| `LOG_FORMAT` | `auto`, `pretty`, `json`| `auto` (default): pretty in a terminal, JSON otherwise. `pretty` forces human-readable output outside a terminal (no ANSI colors). `json` forces JSON even in a terminal. |
+
+Sensitive fields (`password`, `token`, `authToken`, `Authorization`) are
+redacted as `[Redacted]` in every log line.
+
 Run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help.
 
 <!-- BEGIN HELP command: adf-autoscan -->
