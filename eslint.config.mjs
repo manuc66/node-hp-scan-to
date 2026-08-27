@@ -2,11 +2,11 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
-import pino from 'eslint-plugin-pino';
+import pino from './eslint-local/pino.mjs';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**', '*.js', 'test/**/*.js', "eslint.config.mjs"]
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**', '*.js', 'test/**/*.js', 'eslint-local/**', "eslint.config.mjs"]
   },
   {
     plugins: {

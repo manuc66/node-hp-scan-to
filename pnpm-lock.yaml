@@ -4,11 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  eslint-plugin-pino@1.0.3:
-    hash: gcrejhihdm7nrbprltpj5jgokq
-    path: patches/eslint-plugin-pino@1.0.3.patch
-
 importers:
 
   .:
@@ -95,9 +90,6 @@ importers:
       eslint-config-prettier:
         specifier: ^10.1.8
         version: 10.1.8(eslint@10.9.0)
-      eslint-plugin-pino:
-        specifier: ^1.0.3
-        version: 1.0.3(patch_hash=gcrejhihdm7nrbprltpj5jgokq)(eslint@10.9.0)
       globals:
         specifier: ^17.4.0
         version: 17.11.0
@@ -741,12 +733,6 @@ packages:
   eslint-config-prettier@10.1.8:
     resolution: {integrity: sha512-82GZUjRS0p/jganf6q1rEO25VSoHH0hKPCTrgillPjdI/3bgBhAE1QzHrHTizjpRvy6pGAvKjDJtk2pF9NDq8w==}
     hasBin: true
-    peerDependencies:
-      eslint: '>=7.0.0'
-
-  eslint-plugin-pino@1.0.3:
-    resolution: {integrity: sha512-LvwWY16RvYppg/c8UzcweGn1bX+oXc6stM4rLEA/e9+Hn0ZOJWBp6stPnD/CsBqKP7Scj1BbyypTPBrIlPXSXw==}
-    engines: {node: '>=14.0.0'}
     peerDependencies:
       eslint: '>=7.0.0'
 
@@ -2019,10 +2005,6 @@ snapshots:
   escape-string-regexp@4.0.0: {}
 
   eslint-config-prettier@10.1.8(eslint@10.9.0):
-    dependencies:
-      eslint: 10.9.0
-
-  eslint-plugin-pino@1.0.3(patch_hash=gcrejhihdm7nrbprltpj5jgokq)(eslint@10.9.0):
     dependencies:
       eslint: 10.9.0
 

@@ -67,7 +67,6 @@
     "chai": "^6.2.2",
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-pino": "^1.0.3",
     "globals": "^17.4.0",
     "mocha": "^11.7.5",
     "nock": "^14.0.11",
@@ -92,10 +91,5 @@
     "xml2js": "^0.6.2",
     "zod": "^4.3.6"
   },
-  "packageManager": "pnpm@9.5.0+sha512.140036830124618d624a2187b50d04289d5a087f326c9edfc0ccd733d76c4f52c3a313d4fc148794a2a9d81553016004e6742e8cf850670268a7387fc220c903",
-  "pnpm": {
-    "patchedDependencies": {
-      "eslint-plugin-pino@1.0.3": "patches/eslint-plugin-pino@1.0.3.patch"
-    }
-  }
+  "packageManager": "pnpm@9.5.0+sha512.140036830124618d624a2187b50d04289d5a087f326c9edfc0ccd733d76c4f52c3a313d4fc148794a2a9d81553016004e6742e8cf850670268a7387fc220c903"
 }
