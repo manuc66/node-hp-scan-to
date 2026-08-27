@@ -76,7 +76,6 @@ async function handleNativeJpegFlow(
 
   await api.downloadPage(job.binaryURL, destinationFilePath);
   const adfHeight = await getAndFixHeightWHenAdf(
-    api,
     inputSource,
     destinationFilePath,
     job.imageHeight,
@@ -293,7 +292,7 @@ function logJobInfo(
   jobInfo: EsclJobInfo | undefined,
 ) {
   if (!jobUrl.includes(scanImageInfo.jobURI)) {
-    logger.warn(
+    logger.debug(
       `Incoherent state !!!! Job URI has changed: ${jobUrl} -> ${scanImageInfo.jobURI} -- crazy!`,
     );
   }
@@ -326,7 +325,6 @@ function mapToJobState(jobStateReason: JobStateReason) {
 }
 
 async function getAndFixHeightWHenAdf(
-  api: DeviceClient,
   inputSource: InputSource,
   filePath: string,
   actualHeight: number | null,
@@ -339,11 +337,9 @@ async function getAndFixHeightWHenAdf(
         `Image height has not been fixed, DNF may not have been found and approximate height is: ${actualHeight}`,
       );
     } else {
-      if (api.isDebug()) {
-        logger.debug(
-          `Image height has been fixed to: ${sizeFixed} (contained in jpeg's DNL), scan job indicates: ${actualHeight}`,
-        );
-      }
+      logger.debug(
+        `Image height has been fixed to: ${sizeFixed} (contained in jpeg's DNL), scan job indicates: ${actualHeight}`,
+      );
     }
   }
   return sizeFixed;
@@ -397,7 +393,6 @@ async function eSCLScanJobHandling(
       const actualHeight = scanImageInfo.actualHeight;
 
       const adfHeight = await getAndFixHeightWHenAdf(
-        api,
         inputSource,
         filePath.path,
         actualHeight,
@@ -416,9 +411,7 @@ async function eSCLScanJobHandling(
 
       scanJobContent.elements.push(page);
 
-      if (api.isDebug()) {
-        logJobInfo(jobUrl, scanImageInfo, jobInfo);
-      }
+      logJobInfo(jobUrl, scanImageInfo, jobInfo);
     } else {
       const tempDestinationFilePath = await PathHelper.getFileForPage(
         tempFolder,
@@ -476,9 +469,7 @@ async function eSCLScanJobHandling(
 
       scanJobContent.elements.push(page);
 
-      if (api.isDebug()) {
-        logJobInfo(jobUrl, scanImageInfo, jobInfo);
-      }
+      logJobInfo(jobUrl, scanImageInfo, jobInfo);
     }
     const scannerStatus = await api.getEsclScanStatus();
 

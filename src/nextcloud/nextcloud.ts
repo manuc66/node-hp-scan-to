@@ -117,13 +117,12 @@ async function checkNextcloudFolderExists(
         `User has no permission to access upload folder '${uploadFolder}' in Nextcloud`,
       );
     } else {
-      logger.error(
-        axiosError,
-        "Fail to check upload folder exists:",
-        axiosError.toJSON(),
-      );
+      logger.error(axiosError, "Fail to check upload folder exists");
     }
-    logger.debug(axiosError.response);
+    logger.debug(
+      { status: axiosError.response?.status },
+      "Nextcloud folder check failed",
+    );
     return false;
   }
   return true;

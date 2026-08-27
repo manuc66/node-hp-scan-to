@@ -6,9 +6,25 @@ const inDocker = isDocker();
 const isCli = process.stdout.isTTY && !inDocker;
 const isTest = process.env["NODE_ENV"] === "test";
 
+const defaultLevel = process.env["LOG_LEVEL"] ?? "info";
+
 const baseLogger: Logger = pino({
   enabled: !isTest,
-  level: process.env["LOG_LEVEL"] ?? "info",
+  level: defaultLevel,
+  redact: {
+    paths: [
+      "password",
+      "*.password",
+      "authToken",
+      "*.authToken",
+      "token",
+      "*.token",
+      "Authorization",
+      "headers.Authorization",
+      "*.headers.Authorization",
+    ],
+    censor: "[Redacted]",
+  },
   ...(isCli
     ? {
         transport: {
@@ -22,6 +38,10 @@ const baseLogger: Logger = pino({
       }
     : {}),
 });
+
+export function setDebugLevel(isDebug: boolean): void {
+  baseLogger.level = isDebug ? "debug" : defaultLevel;
+}
 
 export function getLoggerForFile(filename: string): Logger {
   const name = path.basename(filename, path.extname(filename)); // e.g. "pathHelper"

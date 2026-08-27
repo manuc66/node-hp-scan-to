@@ -29,7 +29,7 @@ export async function mergeToPdf(
     }
     return pdfFilePath;
   }
-  logger.error(`No page available to build a pdf file`);
+  logger.warn(`No page available to build a pdf file`);
   return null;
 }
 

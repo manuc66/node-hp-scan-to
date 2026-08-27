@@ -114,9 +114,7 @@ export async function listenCmd(
         logger.error(e);
         errorCount++;
       } else {
-        if (api.isDebug()) {
-          logger.debug(e);
-        }
+        logger.debug(e);
         deviceUp = false;
       }
     }

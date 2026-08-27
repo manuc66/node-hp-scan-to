@@ -33,7 +33,7 @@ import type { Server as NetServer } from "node:net";
 import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
-import baseLogger, { getLoggerForFile } from "./logger.js";
+import { getLoggerForFile, setDebugLevel } from "./logger.js";
 
 const logger = getLoggerForFile(__filename);
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
@@ -45,7 +45,6 @@ function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
         type: "http",
       },
       (service) => {
-        logger.info(".");
         if (
           service.name.startsWith(deviceNamePrefix) &&
           service.port === 80 &&
@@ -591,9 +590,6 @@ function createListenCliCmd(configFile: FileConfig) {
       const ip = await getDeviceIp(options, configFile);
       const isDebug = getIsDebug(options, configFile);
       const api = new DeviceClient(ip, isDebug);
-      if (isDebug) {
-        baseLogger.level = "debug";
-      }
 
       const registrationConfigs: RegistrationConfig[] = [];
 
@@ -696,9 +692,6 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
       const api = new DeviceClient(ip, isDebug);
-      if (isDebug) {
-        baseLogger.level = "debug";
-      }
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(
         options,
@@ -772,9 +765,6 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
       const api = new DeviceClient(ip, isDebug);
-      if (isDebug) {
-        baseLogger.level = "debug";
-      }
 
       let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
@@ -820,9 +810,6 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
       const api = new DeviceClient(ip, isDebug);
-      if (isDebug) {
-        baseLogger.level = "debug";
-      }
 
       let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
@@ -903,6 +890,15 @@ type ProgramOption = ReturnType<ReturnType<typeof createProgram>["opts"]>;
 
 export function setupProgram(fileConfig: FileConfig) {
   const program = createProgram();
+
+  program.hook("preAction", (thisCommand) => {
+    const isDebug = getConfiguredValue(
+      thisCommand.opts().debug,
+      fileConfig.debug,
+      false,
+    );
+    setDebugLevel(isDebug);
+  });
 
   const cmdListen = createListenCliCmd(fileConfig);
   cmdListen.optsWithGlobals();

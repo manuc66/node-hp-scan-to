@@ -101,7 +101,10 @@ async function uploadToPaperless(
       },
     });
 
-    logger.info(response.data, "Document successfully uploaded to paperless");
+    logger.info(
+      { status: response.status },
+      "Document successfully uploaded to paperless",
+    );
   } catch (error) {
     logger.error(error, "Fail to upload document");
     throw error;

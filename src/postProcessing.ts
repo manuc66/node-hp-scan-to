@@ -127,7 +127,7 @@ function displayPdfScan(
   scanCount: number,
 ) {
   if (pdfFilePath === null) {
-    logger.error(`Pdf generated has not been generated`);
+    logger.warn(`Pdf generated has not been generated`);
     return;
   }
 

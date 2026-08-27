@@ -56,12 +56,12 @@ export default class DeviceClient {
     isRequest: boolean,
     msg: object | string,
   ): void {
-    if (this.debug) {
-      const id = String(callId).padStart(4, "0");
-      const prefix = id + (isRequest ? " -> " : " <- ");
-      const content = typeof msg === "string" ? msg : JSON.stringify(msg);
-
-      logger.debug({ callId, isRequest, msg }, prefix + content);
+    const id = String(callId).padStart(4, "0");
+    const prefix = id + (isRequest ? " -> " : " <- ");
+    if (typeof msg === "string") {
+      logger.debug({ callId, isRequest }, prefix + msg);
+    } else {
+      logger.debug({ callId, isRequest, msg }, prefix);
     }
   }
 
