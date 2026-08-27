@@ -57,8 +57,10 @@ Var DevIp
 Var DeviceRaw         ; raw stdout of the discover run
 Var DeviceCount       ; number of parsed devices
 Var DiscDir           ; LOCALAPPDATA dir hosting the discovery binary
+Var OldOut            ; saved output dir around the discovery extraction
 Var ComboDevice       ; dropdown with discovered printers (when > 0)
 Var EditLogPath       ; read-only text showing the diagnostic log path
+Var LogPath           ; actual path of the diagnostic log file
 Var Status            ; outcome of the discovery, shown at the top of the page
 Var RadioByName
 Var RadioByIp
@@ -214,6 +216,10 @@ Function ModePageLeave
       Quit
     ${EndIf}
   ${EndIf}
+
+  ; network detection starts now (device page does the blocking work);
+  ; show the banner before the page transition so there is no dead time
+  Banner::show "Searching your network for printers, please wait..."
 FunctionEnd
 
 ; ---------------------------------------------------------------------------
@@ -347,33 +353,24 @@ Function _RunDiscovery
   ; allow the user profile, so discovery keeps working on such hosts.
   StrCpy $DiscDir "$LOCALAPPDATA\node-hp-scan-to-setup"
   CreateDirectory "$DiscDir"
-  ; use a private extraction dir to avoid clobbering a running instance
+  ; File writes to the current output dir; restore it afterwards so later
+  ; install/uninstall File instructions still land in $INSTDIR
+  StrCpy $OldOut "$OUTDIR"
   SetOutPath "$DiscDir"
   File "/oname=node-hp-scan-to.exe" "staging\node-hp-scan-to.exe"
+  SetOutPath "$OldOut"
   Call _FwDiscoveryAllow
+  ; cold mDNS cache: first browse sometimes finds nothing, so retry once
+  ; with a longer window before giving up
   nsExec::ExecToStack '"$DiscDir\node-hp-scan-to.exe" discover --timeout 5'
-  Call _FwDiscoveryRemove
-FunctionEnd
-
-; read a whole text file onto the stack (path in, contents out)
-Function _SlurpFile
-  Pop $R8
-  ClearErrors
-  FileOpen $R7 "$R8" r
-  ${If} ${Errors}
-    Push ""
-    Return
+  Pop $R0
+  Pop $DeviceRaw
+  ${If} $R0 != 0
+    nsExec::ExecToStack '"$DiscDir\node-hp-scan-to.exe" discover --timeout 8'
+    Pop $R0
+    Pop $DeviceRaw
   ${EndIf}
-  StrCpy $R9 ""
-  ${Do}
-    FileRead $R7 $R6
-    ${If} ${Errors}
-      ${Break}
-    ${EndIf}
-    StrCpy $R9 "$R9$R6"
-  ${Loop}
-  FileClose $R7
-  Push $R9
+  Call _FwDiscoveryRemove
 FunctionEnd
 
 Function DevicePageCreate
@@ -381,22 +378,18 @@ Function DevicePageCreate
     "Select your printer" \
     "The printer can be located by name (recommended) or by fixed IP address."
 
-  ; inform the user before the (blocking) discovery - no empty wizard page
-  Banner::show "Searching your network for printers...$\nThis can take up to 15 seconds."
-
   Call _RunDiscovery
-  Pop $R0                       ; exit code
-  Pop $DeviceRaw                ; stdout (line echoes from the binary)
+  ; $R0 and $DeviceRaw are set by _RunDiscovery (first or retry attempt)
 
   Banner::destroy
 
   ; on failure or empty result, persist diagnostics the user can open/copy
-  StrCpy $EditLogPath "$TEMP\node-hp-scan-to-discovery.log"
+  StrCpy $LogPath "$TEMP\node-hp-scan-to-discovery.log"
   ${If} $R0 == 0
     Call _ParseDevices
   ${Else}
     StrCpy $DeviceCount 0
-    FileOpen $0 "$EditLogPath" w
+    FileOpen $0 "$LogPath" w
     FileWrite $0 "exit code: $R0$\r$\n"
     FileWrite $0 "--- stdout ---$\r$\n"
     FileWrite $0 "$DeviceRaw$\r$\n"
@@ -407,12 +400,8 @@ Function DevicePageCreate
   nsDialogs::Create 1018
   Pop $0
 
-  ${NSD_CreateLabel} 0 0 100% 16u \
-    "Select how node-hp-scan-to finds your printer, then continue."
-  Pop $0
-
   ; result / status line
-  ${NSD_CreateLabel} 8u 18u 96% 20u "placeholder"
+  ${NSD_CreateLabel} 0 0 100% 16u "placeholder"
   Pop $Status
   ${If} $R0 == 0
     ${If} $DeviceCount == 0
@@ -428,9 +417,9 @@ Function DevicePageCreate
   ${EndIf}
 
   ; printer dropdown (only when at least one device was found)
-  ${NSD_CreateLabel} 0 42u 100% 10u "Printer:"
+  ${NSD_CreateLabel} 0 16u 100% 10u "Printer:"
   Pop $0
-  ${NSD_CreateDropList} 0 52u 100% 90u ""
+  ${NSD_CreateDropList} 0 26u 100% 10u ""
   Pop $ComboDevice
   ${If} $DeviceCount > 0
     ; add every "display" from the parser ini (ip|name (ip))
@@ -455,41 +444,43 @@ Function DevicePageCreate
   ${EndIf}
 
   ; how to reach the printer
-  ${NSD_CreateRadioButton} 8u 64u 90% 10u \
+  ${NSD_CreateRadioButton} 8u 40u 90% 10u \
     "Use the selected printer by name (recommended)"
   Pop $RadioByName
   ${NSD_AddStyle} $RadioByName ${WS_GROUP}
   ${NSD_SetState} $RadioByName ${BST_CHECKED}
 
-  ${NSD_CreateRadioButton} 8u 76u 60% 10u \
-    "Pin by IP address instead"
+  ${NSD_CreateRadioButton} 8u 51u 55% 10u \
+    "Pin by IP address instead:"
   Pop $RadioByIp
-  ${NSD_CreateText} 68% 76u 28% 12u ""
+  ${NSD_CreateText} 60% 51u 36% 12u ""
   Pop $EditIp
 
-  ${NSD_CreateRadioButton} 8u 90u 90% 10u \
+  ${NSD_CreateRadioButton} 8u 64u 55% 10u \
     "Enter it manually (name or IP):"
   Pop $RadioOther
   ${NSD_OnClick} $RadioOther OnOtherClick
-  ${NSD_CreateText} 0 100u 100% 12u ""
+  ${NSD_CreateText} 60% 64u 36% 12u ""
   Pop $EditOther
   !insertmacro _CtrlEnable $EditOther 0
 
-  ${NSD_CreateRadioButton} 8u 112u 90% 10u \
+  ${NSD_CreateRadioButton} 8u 77u 90% 10u \
     "Configure later (you will edit config\\default.json yourself)"
   Pop $RadioLater
   ${NSD_AddStyle} $RadioLater ${WS_GROUP}
 
   ; diagnostics: selectable log path + an "open folder" button
-  ${NSD_CreateLabel} 0 126u 100% 8u "Diagnostics (kept only on failure):"
+  ${NSD_CreateLabel} 0 89u 100% 8u "Diagnostics (kept only on failure):"
   Pop $0
-  ${NSD_CreateText} 0 134u 78% 12u ""
+  ${NSD_CreateText} 0 97u 76% 12u ""
   Pop $EditLogPath
-  ${NSD_SetText} $EditLogPath "$TEMP\node-hp-scan-to-discovery.log"
-  ${NSD_CreateButton} 80% 134u 18% 12u "Open folder"
+  ${NSD_AddStyle} $EditLogPath "${ES_READONLY}"
+  ${NSD_SetText} $EditLogPath "$LogPath"
+  ${NSD_CreateButton} 78% 97u 20% 12u "Open folder"
   Pop $0
   ${NSD_OnClick} $0 BrowseLogs
 
+  ; compact everything vertically so it fits the wizard pane (~115u tall)
   ${If} $DeviceCount == 0
     ; no printers: the dropdown is useless, disable it and "by name"
     System::Call "user32::EnableWindow(p$ComboDevice, i0)"
@@ -501,8 +492,8 @@ Function DevicePageCreate
 FunctionEnd
 
 Function BrowseLogs
-  ${If} ${FileExists} "$EditLogPath"
-    ExecShell "open" "explorer.exe" "/select,$EditLogPath"
+  ${If} ${FileExists} "$LogPath"
+    ExecShell "open" "explorer.exe" "/select,$LogPath"
   ${Else}
     MessageBox MB_OK|MB_ICONINFORMATION "No diagnostic log was written (discovery succeeded)."
   ${EndIf}
