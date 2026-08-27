@@ -111,5 +111,35 @@ describe("ScanJobSettings", () => {
         content.trimEnd().replace(/\r\n/g, "\n"),
       );
     });
+
+    it("Allows to override the tone map", async () => {
+      const scanJobSettings = new ScanJobSettings(
+        InputSource.Adf,
+        "Document",
+        createImageFormat(ScanFormat.Jpeg),
+        200,
+        ScanMode.Color,
+        null,
+        null,
+        false,
+        scanCaps,
+        {
+          gamma: 900,
+          brightness: 1100,
+          contrast: 1200,
+          highlight: 200,
+          shadow: 30,
+          threshold: 150,
+        },
+      );
+
+      const xml = await scanJobSettings.toXML();
+      expect(xml).to.contain("<Gamma>900</Gamma>");
+      expect(xml).to.contain("<Brightness>1100</Brightness>");
+      expect(xml).to.contain("<Contrast>1200</Contrast>");
+      expect(xml).to.contain("<Highlite>200</Highlite>");
+      expect(xml).to.contain("<Shadow>30</Shadow>");
+      expect(xml).to.contain("<Threshold>150</Threshold>");
+    });
   });
 });

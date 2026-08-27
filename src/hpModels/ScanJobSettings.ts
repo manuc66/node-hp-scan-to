@@ -5,6 +5,7 @@ import type { IScanJobSettings } from "./IScanJobSettings.js";
 import { ScanMode } from "../type/scanMode.js";
 import type ScanCaps from "./ScanCaps.js";
 import type { ImageFormat } from "../imageFormats/index.js";
+import type { ToneMap } from "../type/scanConfigs.js";
 
 export enum DeviceFormat {
   Jpeg = "Jpeg",
@@ -21,6 +22,7 @@ export default class ScanJobSettings implements IScanJobSettings {
   private readonly isDuplex: boolean;
   private readonly _format: ImageFormat;
   private readonly scanCaps: ScanCaps;
+  private readonly toneMap: ToneMap | undefined;
 
   constructor(
     inputSource: InputSource,
@@ -32,6 +34,7 @@ export default class ScanJobSettings implements IScanJobSettings {
     height: number | null,
     isDuplex: boolean,
     scanCaps: ScanCaps,
+    toneMap?: ToneMap,
   ) {
     this.inputSource = inputSource;
     this.contentType = contentType;
@@ -42,6 +45,7 @@ export default class ScanJobSettings implements IScanJobSettings {
     this.height = height;
     this.isDuplex = isDuplex;
     this.scanCaps = scanCaps;
+    this.toneMap = toneMap;
   }
 
   toJSON() {
@@ -106,7 +110,16 @@ export default class ScanJobSettings implements IScanJobSettings {
         YResolution: number[];
         ColorSpace: string[];
         BitDepth: number[];
-        ToneMap: [{ Threshold: number[] }];
+        ToneMap: [
+          {
+            Gamma: number[];
+            Brightness: number[];
+            Contrast: number[];
+            Highlite: number[];
+            Shadow: number[];
+            Threshold: number[];
+          },
+        ];
         AdfOptions?: [{ AdfOption: ["Duplex"] }];
         ContentType: string[];
       };
@@ -129,6 +142,26 @@ export default class ScanJobSettings implements IScanJobSettings {
       parsed.ScanSettings.BitDepth = [1];
       parsed.ScanSettings.ToneMap[0].Threshold[0] = 128;
       colorType = "K1";
+    }
+
+    const toneMap = this.toneMap;
+    if (toneMap?.gamma !== undefined) {
+      parsed.ScanSettings.ToneMap[0].Gamma[0] = toneMap.gamma;
+    }
+    if (toneMap?.brightness !== undefined) {
+      parsed.ScanSettings.ToneMap[0].Brightness[0] = toneMap.brightness;
+    }
+    if (toneMap?.contrast !== undefined) {
+      parsed.ScanSettings.ToneMap[0].Contrast[0] = toneMap.contrast;
+    }
+    if (toneMap?.highlight !== undefined) {
+      parsed.ScanSettings.ToneMap[0].Highlite[0] = toneMap.highlight;
+    }
+    if (toneMap?.shadow !== undefined) {
+      parsed.ScanSettings.ToneMap[0].Shadow[0] = toneMap.shadow;
+    }
+    if (toneMap?.threshold !== undefined) {
+      parsed.ScanSettings.ToneMap[0].Threshold[0] = toneMap.threshold;
     }
 
     const deviceFormat = this.format.getDeviceFormat();

@@ -4,6 +4,15 @@ import type { NextcloudConfig } from "../nextcloud/NextcloudConfig.js";
 import type { ScanMode } from "./scanMode.js";
 import type { ScanFormat } from "./scanFormat.js";
 
+export interface ToneMap {
+  gamma?: number | undefined;
+  brightness?: number | undefined;
+  contrast?: number | undefined;
+  highlight?: number | undefined;
+  shadow?: number | undefined;
+  threshold?: number | undefined;
+}
+
 export interface ScanConfig {
   resolution: number;
   mode: ScanMode;
@@ -17,6 +26,7 @@ export interface ScanConfig {
   paperSize: string | undefined; // e.g., "A4", "Letter", "Max", or preset name
   paperDim: string | undefined; // e.g., "21x29.7cm", "8.5x11in", "210x297mm"
   paperOrientation: "portrait" | "landscape" | undefined;
+  toneMap?: ToneMap;
 }
 export type AdfAutoScanConfig = ScanConfig & {
   isDuplex: boolean;

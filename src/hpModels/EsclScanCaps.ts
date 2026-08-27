@@ -4,6 +4,13 @@ import { parseXmlString } from "./ParseXmlString.js";
 
 import type { IScanCaps } from "../IScanCaps.js";
 //     this.data["scan:ScannerCapabilities"]["scan:Adf"]["0"]["scan:AdfSimplexInputCaps"]["0"]["scan:MaxWidth"]["0"]
+export interface TransformSupport {
+  "scan:Min": string[];
+  "scan:Max": string[];
+  "scan:Normal"?: string[];
+  "scan:Step"?: string[];
+}
+
 export interface EsclScanCapsData {
   "scan:ScannerCapabilities": {
     "scan:Platen": {
@@ -25,7 +32,23 @@ export interface EsclScanCapsData {
         "scan:AdfOption": string[];
       }[];
     }[];
+    "scan:BrightnessSupport"?: TransformSupport[];
+    "scan:ContrastSupport"?: TransformSupport[];
+    "scan:GammaSupport"?: TransformSupport[];
+    "scan:HighlightSupport"?: TransformSupport[];
+    "scan:ShadowSupport"?: TransformSupport[];
+    "scan:ThresholdSupport"?: TransformSupport[];
   };
+}
+
+export type ScanTransformName =
+  "Brightness" | "Contrast" | "Gamma" | "Highlight" | "Shadow" | "Threshold";
+
+export interface ScanTransformRange {
+  min: number;
+  max: number;
+  normal?: number | undefined;
+  step?: number | undefined;
 }
 
 export default class EsclScanCaps implements IScanCaps {
@@ -38,6 +61,26 @@ export default class EsclScanCaps implements IScanCaps {
   static async createScanCaps(content: string): Promise<EsclScanCaps> {
     const parsed = await parseXmlString<EsclScanCapsData>(content);
     return new EsclScanCaps(parsed);
+  }
+
+  getTransformRange(name: ScanTransformName): ScanTransformRange | null {
+    const key = `scan:${name}Support` as const;
+    const support = this.data["scan:ScannerCapabilities"][key]?.[0];
+    if (support === undefined) {
+      return null;
+    }
+    return {
+      min: Number.parseInt(support["scan:Min"][0], 10),
+      max: Number.parseInt(support["scan:Max"][0], 10),
+      normal:
+        support["scan:Normal"]?.[0] !== undefined
+          ? Number.parseInt(support["scan:Normal"][0], 10)
+          : undefined,
+      step:
+        support["scan:Step"]?.[0] !== undefined
+          ? Number.parseInt(support["scan:Step"][0], 10)
+          : undefined,
+    };
   }
 
   get platenMaxWidth(): number | null {
