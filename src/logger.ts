@@ -7,7 +7,14 @@ const inDocker = isDocker();
 const isCli = process.stdout.isTTY && !inDocker;
 const isTest = process.env["NODE_ENV"] === "test";
 
-const defaultLevel = process.env["LOG_LEVEL"] ?? "info";
+// -D/--debug takes effect as early as possible (before CLI parsing), so
+// startup logs are also emitted at debug level. The preAction hook in
+// program.ts additionally honors `debug: true` from the config file.
+const debugRequested =
+  process.argv.includes("-D") || process.argv.includes("--debug");
+const defaultLevel = debugRequested
+  ? "debug"
+  : (process.env["LOG_LEVEL"] ?? "info");
 
 // "auto" (default): pretty in a terminal, JSON otherwise (docker/pipe).
 // "pretty": force human-readable output even outside of a terminal.
@@ -32,6 +39,28 @@ const baseLogger: Logger = pino({
       "*.headers.Authorization",
     ],
     censor: "[Redacted]",
+  },
+  serializers: {
+    // axios Error objects carry the full request config (headers with auth
+    // tokens) and the request/response payloads: never serialize those.
+    err: (err: unknown) => {
+      if (!err) {
+        return err;
+      }
+      const serialized = pino.stdSerializers.err(err as Error);
+      const response = (
+        err as { response?: { status?: number; statusText?: string } }
+      ).response;
+      if (response !== undefined) {
+        serialized["response"] = {
+          status: response.status,
+          statusText: response.statusText,
+        };
+      }
+      delete serialized["config"];
+      delete serialized["request"];
+      return serialized;
+    },
   },
   ...(usePrettyTransport
     ? {
