@@ -4,5 +4,6 @@
   "extensions": ["ts"],
   "reporter": "spec",
   "timeout": 5000,
-  "color": true
+  "color": true,
+  "require": ["./test/setup-env.js"]
 }

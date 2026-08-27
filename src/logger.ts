@@ -4,8 +4,10 @@ import isDocker from "is-docker";
 
 const inDocker = isDocker();
 const isCli = process.stdout.isTTY && !inDocker;
+const isTest = process.env["NODE_ENV"] === "test";
 
 const baseLogger: Logger = pino({
+  enabled: !isTest,
   level: process.env["LOG_LEVEL"] ?? "info",
   ...(isCli
     ? {
