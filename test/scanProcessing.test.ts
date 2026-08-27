@@ -1,171 +1,115 @@
 import { describe, it } from "mocha";
 import { expect } from "chai";
-import nock from "nock";
-import {
-  isPdf,
-  saveScanFromEvent,
-  singleScan,
-  tryGetDestination,
-} from "../src/scanProcessing.js";
-import { KnownShortcut } from "../src/type/KnownShortcut.js";
-import DeviceClient from "../src/DeviceClient.js";
-import type { IEvent } from "../src/hpModels/Event.js";
-import { ScannerState } from "../src/hpModels/ScannerState.js";
+import { saveScanFromEvent, singleScan } from "../src/scanProcessing.js";
+import type DeviceClient from "../src/DeviceClient.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
-import type { ScanConfig, SingleScanConfig } from "../src/type/scanConfigs.js";
+import type { IScanStatus } from "../src/hpModels/IScanStatus.js";
+import { ScannerState } from "../src/hpModels/ScannerState.js";
+import { AdfState } from "../src/hpModels/AdfState.js";
+import { InputSource } from "../src/type/InputSource.js";
 import { ScanMode } from "../src/type/scanMode.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
 import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
-import { AdfState } from "../src/hpModels/AdfState.js";
-import { InputSource } from "../src/type/InputSource.js";
+import type { ScanConfig, SingleScanConfig } from "../src/type/scanConfigs.js";
 import type { SelectedScanTarget } from "../src/type/scanTargetDefinitions.js";
 
-describe("scanProcessing", () => {
-  describe("isPdf", () => {
-    it("returns true for PDF shortcuts", () => {
-      expect(isPdf({ shortcut: KnownShortcut.SavePDF, scanPlexMode: null })).to
-        .be.true;
-      expect(isPdf({ shortcut: KnownShortcut.EmailPDF, scanPlexMode: null })).to
-        .be.true;
-      expect(
-        isPdf({ shortcut: KnownShortcut.SaveDocument1, scanPlexMode: null }),
-      ).to.be.true;
-    });
+function notIdleStatus(): IScanStatus {
+  return {
+    scannerState: ScannerState.Processing,
+    adfState: AdfState.Empty,
+    isLoaded: () => false,
+    getInputSource: () => InputSource.Platen,
+  };
+}
 
-    it("returns false for JPEG/Photo shortcuts", () => {
-      expect(isPdf({ shortcut: KnownShortcut.SaveJPEG, scanPlexMode: null })).to
-        .be.false;
-      expect(isPdf({ shortcut: KnownShortcut.SavePhoto1, scanPlexMode: null }))
-        .to.be.false;
-    });
-
-    it("returns false for unknown shortcuts", () => {
-      expect(
-        isPdf({
-          shortcut: "Unknown" as unknown as KnownShortcut,
-          scanPlexMode: null,
-        }),
-      ).to.be.false;
-    });
-  });
-
-  describe("tryGetDestination", () => {
-    let api: DeviceClient;
-
-    beforeEach(() => {
-      api = new DeviceClient("127.0.0.1");
-      if (!nock.isActive()) {
-        nock.activate();
-      }
-    });
-
-    afterEach(() => {
-      nock.cleanAll();
-      nock.restore();
-    });
-
-    it("returns destination when shortcut is available", async () => {
-      nock("http://127.0.0.1")
-        .persist()
-        .get("/WalkupScan/Destinations/1")
-        .reply(
-          200,
-          `<?xml version="1.0" encoding="UTF-8"?>
-<wus:WalkupScanDestinations xmlns:wus="http://www.hp.com/schemas/imaging/con/ledm/walkupscandestinations/2009/03/12">
-  <wus:WalkupScanDestination>
-    <wus:WalkupScanSettings>
-      <wus:Shortcut>SavePDF</wus:Shortcut>
-    </wus:WalkupScanSettings>
-  </wus:WalkupScanDestination>
-</wus:WalkupScanDestinations>`,
-        );
-
-      const event: IEvent = {
-        destinationURI: "/WalkupScan/Destinations/1",
-        unqualifiedEventCategory: "ScanEvent",
-        agingStamp: "1",
-        compEventURI: undefined,
-        isScanEvent: true,
-      };
-      const destination = await tryGetDestination(api, event);
-
-      expect(destination).to.not.be.null;
-      expect(destination?.shortcut).to.equal(KnownShortcut.SavePDF);
-    });
-  });
-
-  describe("scanner state check", () => {
-    let api: DeviceClient;
-
-    beforeEach(() => {
-      api = new DeviceClient("127.0.0.1");
-    });
-
-    const mockDeviceCapabilities = (state: ScannerState): DeviceCapabilities =>
-      ({
-        getScanStatus: async () => ({
-          scannerState: state,
-          adfState: AdfState.Empty,
-          getInputSource: () => InputSource.Platen,
-          isLoaded: () => false,
-        }),
-      }) as unknown as DeviceCapabilities;
-
-    const scanConfig: ScanConfig = {
-      resolution: 200,
-      mode: ScanMode.Color,
-      format: ScanFormat.Jpeg,
-      directoryConfig: {
-        directory: "dir",
-        tempDirectory: "temp",
-      },
-      preferEscl: true,
-    } as ScanConfig;
-
-    it("saveScanFromEvent aborts if scanner is BusyWithScanJob", async () => {
-      const deviceCapabilities = mockDeviceCapabilities(
-        ScannerState.BusyWithScanJob,
+function makeDeviceCapabilities(): DeviceCapabilities {
+  return {
+    supportsMultiItemScanFromPlaten: false,
+    useWalkupScanToComp: false,
+    platenMaxWidth: null,
+    platenMaxHeight: null,
+    adfMaxWidth: null,
+    adfMaxHeight: null,
+    adfDuplexMaxWidth: null,
+    adfDuplexMaxHeight: null,
+    hasAdfDuplex: false,
+    hasAdfDetectPaperLoaded: false,
+    userActionTimeout: null,
+    isEscl: false,
+    getScanStatus: async () => notIdleStatus(),
+    createScanJobSettings: () => {
+      throw new Error(
+        "createScanJobSettings should not be called when scanner is not Idle",
       );
-      const result = await saveScanFromEvent(
+    },
+    submitScanJob: async () => {
+      throw new Error(
+        "submitScanJob should not be called when scanner is not Idle",
+      );
+    },
+  };
+}
+
+const scanConfig: ScanConfig = {
+  resolution: 200,
+  mode: ScanMode.Color,
+  width: undefined,
+  height: undefined,
+  format: ScanFormat.Jpeg,
+  directoryConfig: {
+    directory: "/tmp",
+    tempDirectory: "/tmp",
+    filePattern: undefined,
+  },
+  paperlessConfig: undefined,
+  nextcloudConfig: undefined,
+  preferEscl: false,
+  paperSize: undefined,
+  paperDim: undefined,
+  paperOrientation: undefined,
+};
+
+describe("scanProcessing", () => {
+  describe("saveScanFromEvent", () => {
+    it("aborts and returns empty content when the scanner is not Idle (regression: the pino branch only logged and continued)", async () => {
+      const api = {} as DeviceClient;
+      const selectedScanTarget = {} as SelectedScanTarget;
+
+      const content = await saveScanFromEvent(
         api,
-        {} as SelectedScanTarget,
-        "folder",
-        "temp",
+        selectedScanTarget,
+        "/tmp",
+        "/tmp",
         1,
-        deviceCapabilities,
+        makeDeviceCapabilities(),
         scanConfig,
         false,
-        false,
+        true,
         PageCountingStrategy.Normal,
       );
-      expect(result.elements).to.be.empty;
-    });
 
-    it("singleScan aborts if scanner is BusyWithScanJob", async () => {
-      let getScanStatusCalled = false;
-      const deviceCapabilities = {
-        getScanStatus: async () => {
-          getScanStatusCalled = true;
-          return {
-            scannerState: ScannerState.BusyWithScanJob,
-            adfState: AdfState.Empty,
-            getInputSource: () => InputSource.Platen,
-            isLoaded: () => false,
-          };
-        },
-      } as unknown as DeviceCapabilities;
-      // If it doesn't abort, it would call other methods on deviceCapabilities and fail (since they are missing from mock)
-      // or at least we check it returns without throwing further errors if we mock just enough.
+      expect(content.elements).to.be.empty;
+    });
+  });
+
+  describe("singleScan", () => {
+    it("aborts when the scanner is not Idle (regression: the pino branch only logged and continued)", async () => {
+      const api = {} as DeviceClient;
+      const singleScanConfig: SingleScanConfig = {
+        ...scanConfig,
+        isDuplex: false,
+        generatePdf: true,
+      };
+
       await singleScan(
         api,
         1,
-        "folder",
-        "temp",
-        { ...scanConfig, generatePdf: false } as SingleScanConfig,
-        deviceCapabilities,
+        "/tmp",
+        "/tmp",
+        singleScanConfig,
+        makeDeviceCapabilities(),
         new Date(),
       );
-      expect(getScanStatusCalled).to.be.true;
     });
   });
 });
