@@ -1,6 +1,4 @@
 import axios from "axios";
-import { execFile as execFileCb } from "node:child_process";
-import { promisify } from "node:util";
 // default-import + destructure: this dependency is CommonJS and some loaders
 // (tsx) do not expose its named exports to ESM consumers
 import bonjourService, {
@@ -8,7 +6,6 @@ import bonjourService, {
 } from "bonjour-service";
 
 const { Bonjour } = bonjourService;
-const execFile = promisify(execFileCb);
 
 export interface DiscoveredDevice {
   name: string;
@@ -47,109 +44,6 @@ async function probeDevice(ip: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-/**
- * Parse the local ARP cache ("arp -a") into { mac, ip } pairs. Non-invasive:
- * we only ever reach out to addresses already known to the OS, never sweep
- * the whole subnet.
- */
-async function getArpCache(): Promise<Array<{ ip: string; mac: string }>> {
-  try {
-    const { stdout } = await execFile("arp", ["-a"], { timeout: 3000 });
-    const entries: Array<{ ip: string; mac: string }> = [];
-    for (const line of stdout.split(/\r?\n/)) {
-      const m = line.match(
-        /\s(\d{1,3}(?:\.\d{1,3}){3})\s+([0-9a-f]{2}(?:-[0-9a-f]{2}){5})\s/i,
-      );
-      if (m) {
-        entries.push({
-          ip: m[1],
-          // normalise dashes -> colons, lowercase
-          mac: m[2].replace(/-/g, ":").toLowerCase(),
-        });
-      }
-    }
-    return entries;
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Fallback discovery when mDNS finds nothing: inspect the local ARP cache
- * (already-known neighbours only - not a subnet sweep) and probe each host
- * for an HP DiscoveryTree or an eSCL endpoint.
- */
-async function scanKnownArpNeighbours(): Promise<DiscoveredDevice[]> {
-  const entries = await getArpCache();
-  // dedupe by ip; no MAC filtering so non-HP eSCL-only scanners are covered
-  const seen = new Set<string>();
-  const neighbours = entries.filter((e) => {
-    if (seen.has(e.ip)) {
-      return false;
-    }
-    seen.add(e.ip);
-    return true;
-  });
-  console.error(
-    `Probing ${neighbours.length} neighbour(s) from the local ARP cache (mDNS found nothing)...`,
-  );
-  const found: DiscoveredDevice[] = [];
-  await Promise.all(
-    neighbours.map(async ({ ip }) => {
-      const probe = await probeDeviceAndGetName(ip);
-      if (probe) {
-        found.push(probe);
-      }
-    }),
-  );
-  return found;
-}
-
-/** probe either HP DiscoveryTree.xml or an eSCL endpoint */
-async function probeDeviceAndGetName(
-  ip: string,
-): Promise<DiscoveredDevice | null> {
-  // 1) HP proprietary discovery tree
-  try {
-    const response = await axios.get<string>(
-      `http://${ip}/DevMgmt/DiscoveryTree.xml`,
-      { timeout: PROBE_TIMEOUT_MS, responseType: "text" },
-    );
-    if (response.status === 200 && looksLikeHpScanDevice(response.data)) {
-      const name =
-        response.data.match(
-          /<dd:FriendlyName>([^<]+)<\/dd:FriendlyName>/,
-        )?.[1]?.trim() ||
-        response.data.match(/<FriendlyName>([^<]+)<\/FriendlyName>/)?.[1]
-          ?.trim() ||
-        ip;
-      return { name, ip };
-    }
-  } catch {
-    // not an HP DiscoveryTree host
-  }
-
-  // 2) eSCL scanner capabilities (great for non-HP AirPrint/eSCL scanners)
-  try {
-    const response = await axios.get<string>(
-      `http://${ip}/eSCL/ScannerCapabilities.xml`,
-      { timeout: PROBE_TIMEOUT_MS, responseType: "text" },
-    );
-    if (response.status === 200 && /<Scan:ScannerCapabilities>/.test(response.data)) {
-      const name =
-        response.data.match(/<dc:modelName>([^<]+)<\/dc:modelName>/)?.[1]
-          ?.trim() ||
-        response.data.match(/<modelName>([^<]+)<\/modelName>/)?.[1]?.trim() ||
-        ip;
-      return { name, ip };
-    }
-  } catch {
-    // not an eSCL scanner
-  }
-
-  return null;
 }
 
 /**
@@ -250,20 +144,11 @@ export async function discoverCmd(options: DiscoverOptions): Promise<number> {
   const devices = candidates.filter((_, index) => checks[index]);
   devices.sort((a, b) => a.name.localeCompare(b.name));
 
-  // mDNS can miss printers that do not answer multicast (VLAN, AP filters);
-  // fall back to probing HP neighbours already known to the OS (ARP cache)
-  const finalDevices =
-    devices.length > 0 || options.name !== undefined
-      ? devices
-      : (await scanKnownArpNeighbours()).sort((a, b) =>
-          a.name.localeCompare(b.name),
-        );
-
-  if (finalDevices.length === 0) {
+  if (devices.length === 0) {
     console.error("No HP scan-capable device found");
     return 1;
   }
 
-  printDevices(finalDevices, options.json);
+  printDevices(devices, options.json);
   return 0;
 }
