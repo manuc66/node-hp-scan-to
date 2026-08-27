@@ -75,6 +75,9 @@ Var RadioAdf
 
 !define MUI_ABORTWARNING
 
+; documentation opened from the Finish page (swap for a dedicated docs site when available)
+!define DOC_URL "https://manuc66.github.io/node-hp-scan-to/"
+
 ; non-endorsement / trademark / license notice, shown on the welcome page
 !define MUI_WELCOMEPAGE_TEXT \
   "This wizard installs node-hp-scan-to, a free (MIT) community tool$\n\
@@ -86,6 +89,15 @@ Var RadioAdf
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "..\..\LICENSE"
+
+; Finish page: link to the docs plus an optional "edit the config" shortcut
+; (notepad.exe is used as a plain text editor, safe everywhere)
+!define MUI_FINISHPAGE_LINK "Open the node-hp-scan-to documentation"
+!define MUI_FINISHPAGE_LINK_LOCATION "${DOC_URL}"
+!define MUI_FINISHPAGE_RUN "notepad.exe"
+!define MUI_FINISHPAGE_RUN_PARAMETERS "$\"$ConfigDir\default.json$\""
+!define MUI_FINISHPAGE_RUN_TEXT "Open the configuration file for editing"
+!define MUI_FINISHPAGE_RUN_CHECKED
 Page custom ModePageCreate ModePageLeave
 Page custom DevicePageCreate DevicePageLeave
 Page custom StartupPageCreate StartupPageLeave
