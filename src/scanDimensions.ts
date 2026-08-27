@@ -9,7 +9,7 @@ import {
 } from "./PaperSize.js";
 import { getLoggerForFile } from "./logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 /**
  * Gets the maximum scan dimensions for a given input source and mode,

@@ -17,7 +17,7 @@ import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import type { ScanConfig } from "./type/scanConfigs.js";
 import { getLoggerForFile } from "./logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 export async function postProcessing(
   scanConfig: ScanConfig,

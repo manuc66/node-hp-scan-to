@@ -18,7 +18,7 @@ import type EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import type { ImageFormat, JobDesc } from "./imageFormats/index.js";
 import { getLoggerForFile } from "./logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   api: DeviceClient,

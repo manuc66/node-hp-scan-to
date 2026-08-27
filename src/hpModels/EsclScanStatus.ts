@@ -8,7 +8,7 @@ import { EnumUtils } from "./EnumUtils.js";
 import PathHelper from "../PathHelper.js";
 import { getLoggerForFile } from "../logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 export enum JobStateReason {
   JobCompletedSuccessfully = "JobCompletedSuccessfully",

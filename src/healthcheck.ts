@@ -2,7 +2,7 @@ import http from "node:http";
 import type { Server as NetServer } from "node:net";
 import { getLoggerForFile } from "./logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 export function startHealthCheckServer(PORT: number): NetServer {
   const server = http.createServer((req, res) => {

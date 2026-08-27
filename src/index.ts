@@ -34,7 +34,7 @@ const validateConfig = (config: Config) => {
 };
 
 async function main() {
-  const logger = getLoggerForFile(__filename);
+  const logger = getLoggerForFile(import.meta.url);
   logger.info(`Running with Git commit ID: ${commitInfo.commitId}`);
   logger.debug({ env: process.env["NODE_ENV"] }, "Environment detected");
 

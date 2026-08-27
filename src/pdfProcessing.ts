@@ -5,7 +5,7 @@ import path from "node:path";
 import { jsPDF } from "jspdf";
 import { getLoggerForFile } from "./logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 export async function mergeToPdf(
   folder: string,

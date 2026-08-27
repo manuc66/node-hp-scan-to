@@ -1,6 +1,6 @@
 import { getLoggerForFile } from "../logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 const start_of_Frame_0 = "FFC0";
 const define_number_of_lines = "FFDC";

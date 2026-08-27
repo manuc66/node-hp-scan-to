@@ -8,7 +8,7 @@ import type { PaperlessConfig } from "./PaperlessConfig.js";
 import type { ScanConfig } from "../type/scanConfigs.js";
 import { getLoggerForFile } from "../logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 export async function uploadImagesAsSeparateDocumentsToPaperless(
   scanJobContent: ScanContent,

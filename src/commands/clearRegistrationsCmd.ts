@@ -1,7 +1,7 @@
 import type DeviceClient from "../DeviceClient.js";
 import { getLoggerForFile } from "../logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 export async function clearRegistrationsCmd(api: DeviceClient) {
   const dests = await api.getWalkupScanToCompDestinations();

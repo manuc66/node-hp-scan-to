@@ -23,7 +23,7 @@ import type { ScanPlexMode } from "./hpModels/ScanPlexMode.js";
 import { createImageFormat, type ImageFormat } from "./imageFormats/index.js";
 import { getLoggerForFile } from "./logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 export interface WalkupDestination {
   get shortcut(): null | KnownShortcut;

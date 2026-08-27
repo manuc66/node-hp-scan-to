@@ -13,7 +13,7 @@ import type { ImageFormat } from "./imageFormats/index.js";
 import type { IScanCaps } from "./IScanCaps.js";
 import { getLoggerForFile } from "./logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 async function getScanCaps(
   api: DeviceClient,

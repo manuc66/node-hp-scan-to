@@ -24,7 +24,7 @@ import type { DeviceCapabilities } from "../type/DeviceCapabilities.js";
 import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode.js";
 import { getLoggerForFile } from "../logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 let iteration = 0;
 

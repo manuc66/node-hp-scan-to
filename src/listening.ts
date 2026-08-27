@@ -10,7 +10,7 @@ import type {
 import { EventType } from "./hpModels/WalkupScanToCompEvent.js";
 import { getLoggerForFile } from "./logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 export async function waitScanRequest(
   api: DeviceClient,

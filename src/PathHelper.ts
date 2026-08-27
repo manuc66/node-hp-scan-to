@@ -5,7 +5,7 @@ import dateformat from "dateformat";
 import { customAlphabet } from "nanoid";
 import { getLoggerForFile } from "./logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 const nanoid = customAlphabet(
   "23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ",

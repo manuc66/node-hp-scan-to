@@ -35,7 +35,7 @@ import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
 import { getLoggerForFile, setDebugLevel } from "./logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
     const bonjour = new Bonjour();

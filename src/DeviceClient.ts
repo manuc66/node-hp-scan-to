@@ -35,7 +35,7 @@ import EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import PathHelper from "./PathHelper.js";
 import { getLoggerForFile } from "./logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 export default class DeviceClient {
   readonly deviceIP: string;

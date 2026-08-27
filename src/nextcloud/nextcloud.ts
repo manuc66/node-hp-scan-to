@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { getLoggerForFile } from "../logger.js";
 
-const logger = getLoggerForFile(__filename);
+const logger = getLoggerForFile(import.meta.url);
 
 export async function uploadImagesToNextcloud(
   scanJobContent: ScanContent,
