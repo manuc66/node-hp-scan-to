@@ -5,6 +5,8 @@ on:
     branches:
       - master
       - 'feature/**'
+    tags:
+      - 'v*'
   pull_request:
     branches: [ "master" ]
 
@@ -67,7 +69,7 @@ jobs:
             type=semver,pattern={{major}}
             type=ref,event=branch
           flavor: |
-            latest=false
+            latest=auto
 
       - name: Install pnpm
         uses: pnpm/action-setup@v3
