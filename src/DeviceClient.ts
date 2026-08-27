@@ -35,7 +35,7 @@ import EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import PathHelper from "./PathHelper.js";
 import { getLoggerForFile } from "./logger.js";
 
-const loggerForFile = getLoggerForFile(__filename);
+const logger = getLoggerForFile(__filename);
 
 export default class DeviceClient {
   readonly deviceIP: string;
@@ -61,7 +61,7 @@ export default class DeviceClient {
       const prefix = id + (isRequest ? " -> " : " <- ");
       const content = typeof msg === "string" ? msg : JSON.stringify(msg);
 
-      loggerForFile.debug({ callId, isRequest, msg }, prefix + content);
+      logger.debug({ callId, isRequest, msg }, prefix + content);
     }
   }
 
@@ -124,7 +124,7 @@ export default class DeviceClient {
     let first = true;
     while (!(await this.isAlive())) {
       if (first) {
-        loggerForFile.info(
+        logger.info(
           `Device ip: ${this.deviceIP} is down! [${new Date().toISOString()}]`,
         );
       }
@@ -132,7 +132,7 @@ export default class DeviceClient {
       await delay(deviceUpPollingInterval);
     }
     if (!first) {
-      loggerForFile.info(
+      logger.info(
         `Device ip: ${this.deviceIP} is up again! [${new Date().toISOString()}]`,
       );
     }
@@ -639,7 +639,7 @@ export default class DeviceClient {
         return await fn();
       } catch (error) {
         if (error instanceof AxiosError && error.status === 503) {
-          loggerForFile.info("Waiting, device is busy");
+          logger.info("Waiting, device is busy");
           await this.delay(1000);
           continue;
         }
