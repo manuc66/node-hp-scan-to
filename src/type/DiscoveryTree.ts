@@ -23,6 +23,13 @@ export default class DiscoveryTree {
     return new DiscoveryTree(parsed);
   }
 
+  static looksLikeHpScanDevice(discoveryTreeXml: string): boolean {
+    return (
+      discoveryTreeXml.includes("WalkupScanToCompManifest") ||
+      discoveryTreeXml.includes("eSclManifest")
+    );
+  }
+
   private getManifestURI(resourceType: string): string | null {
     const manifest = this.data["ledm:DiscoveryTree"]["ledm:SupportedIfc"].find(
       (x) => x["dd:ResourceType"][0] === resourceType,

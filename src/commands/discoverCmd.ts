@@ -1,4 +1,4 @@
-import axios from "axios";
+import DeviceClient from "../DeviceClient.js";
 // default-import + destructure: this dependency is CommonJS and some loaders
 // (tsx) do not expose its named exports to ESM consumers
 import bonjourService from "bonjour-service";
@@ -18,30 +18,9 @@ export interface DiscoverOptions {
 }
 
 const MDNS_SERVICE_TYPES = ["http", "uscan", "uscans", "ipp", "printer"];
-const PROBE_TIMEOUT_MS = 2000;
-
-/**
- * Cheap structural check on the HP proprietary DiscoveryTree document:
- * only scan-capable devices expose a WalkupScanToComp and/or an eSCL manifest.
- */
-export function looksLikeHpScanDevice(discoveryTreeXml: string): boolean {
-  return (
-    discoveryTreeXml.includes("WalkupScanToCompManifest") ||
-    discoveryTreeXml.includes("eSclManifest")
-  );
-}
 
 async function probeDevice(ip: string): Promise<boolean> {
-  try {
-    // ip may embed an explicit port (host:port), handy for tests
-    const response = await axios.get<string>(
-      `http://${ip}/DevMgmt/DiscoveryTree.xml`,
-      { timeout: PROBE_TIMEOUT_MS, responseType: "text" },
-    );
-    return response.status === 200 && looksLikeHpScanDevice(response.data);
-  } catch {
-    return false;
-  }
+  return new DeviceClient(ip).isHpScanDevice();
 }
 
 /**

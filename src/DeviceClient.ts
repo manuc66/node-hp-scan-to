@@ -511,13 +511,13 @@ export default class DeviceClient {
     }
   }
 
-  async isEscScanner(): Promise<boolean> {
+  async isHpScanDevice(): Promise<boolean> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 1500);
     try {
       const response = await this.callAxios({
         baseURL: `http://${this.deviceIP}`,
-        url: "/eSCL/ScannerStatus",
+        url: "/DevMgmt/DiscoveryTree.xml",
         method: "GET",
         responseType: "text",
         timeout: 1500,
@@ -527,14 +527,10 @@ export default class DeviceClient {
         return false;
       }
       const content = response.data;
-      if (
-        typeof content !== "string" ||
-        !content.includes("ScannerStatus")
-      ) {
+      if (typeof content !== "string") {
         return false;
       }
-      await EsclScanStatus.createScanStatus(content);
-      return true;
+      return DiscoveryTree.looksLikeHpScanDevice(content);
     } catch {
       return false;
     } finally {

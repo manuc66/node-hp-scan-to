@@ -10,22 +10,22 @@ import type { FileConfig } from "../src/type/FileConfig.js";
 
 const SCANNER_XML =
   '<?xml version="1.0"?>' +
-  '<scan:ScannerStatus xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" ' +
-  'xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">' +
-  "<pwg:Version>2.63</pwg:Version>" +
-  "<pwg:State>Idle</pwg:State>" +
-  "<scan:AdfState>ScannerAdfEmpty</scan:AdfState>" +
-  "</scan:ScannerStatus>";
+  '<ledm:DiscoveryTree xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/2007/09/21">' +
+  "<ledm:SupportedIfc>" +
+  "<ledm:ManifestURI>/eSCL/ScannerCapabilities.xml</ledm:ManifestURI>" +
+  "<dd:ResourceType>eSCL:eSclManifest</dd:ResourceType>" +
+  "</ledm:SupportedIfc>" +
+  "</ledm:DiscoveryTree>";
 
 function mockScanner(address: string) {
   nock(`http://${address}`)
-    .get("/eSCL/ScannerStatus")
+    .get("/DevMgmt/DiscoveryTree.xml")
     .reply(200, SCANNER_XML, { "Content-Type": "application/xml" });
 }
 
 function mockWebServer(address: string) {
   nock(`http://${address}`)
-    .get("/eSCL/ScannerStatus")
+    .get("/DevMgmt/DiscoveryTree.xml")
     .reply(200, "<html>router admin page</html>", {
       "Content-Type": "text/html",
     });
@@ -33,7 +33,7 @@ function mockWebServer(address: string) {
 
 function mockUnreachable(address: string) {
   nock(`http://${address}`)
-    .get("/eSCL/ScannerStatus")
+    .get("/DevMgmt/DiscoveryTree.xml")
     .replyWithError("ECONNREFUSED");
 }
 
@@ -49,7 +49,7 @@ describe("device address resolution", () => {
   });
 
   describe("findFirstUsableIp", () => {
-    it("returns the first address that exposes an eSCL scanner, in order", async () => {
+    it("returns the first address that exposes an HP scan device, in order", async () => {
       mockScanner("192.0.2.1");
       mockUnreachable("192.0.2.2");
       const result = await findFirstUsableIp(["192.0.2.1", "192.0.2.2"]);

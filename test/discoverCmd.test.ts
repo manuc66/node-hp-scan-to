@@ -1,15 +1,12 @@
 import { expect } from "chai";
 import { readFile } from "fs/promises";
-import { looksLikeHpScanDevice } from "../src/commands/discoverCmd.js";
+import DiscoveryTree from "../src/type/DiscoveryTree.js";
 
 describe("discoverCmd", () => {
   describe("looksLikeHpScanDevice", () => {
     it("detects a real HP DiscoveryTree document", async () => {
-      const content = await readFile(
-        "./test/asset/discoveryTree.xml",
-        "utf-8",
-      );
-      expect(looksLikeHpScanDevice(content)).to.equal(true);
+      const content = await readFile("./test/asset/discoveryTree.xml", "utf-8");
+      expect(DiscoveryTree.looksLikeHpScanDevice(content)).to.equal(true);
     });
 
     it("rejects an XML without scan manifests", () => {
@@ -20,12 +17,15 @@ describe("discoverCmd", () => {
         <dd:ResourceType>ledm:hpLedmCopyManifest</dd:ResourceType>
     </ledm:SupportedIfc>
 </ledm:DiscoveryTree>`;
-      expect(looksLikeHpScanDevice(content)).to.equal(false);
+      expect(DiscoveryTree.looksLikeHpScanDevice(content)).to.equal(false);
     });
 
     it("rejects arbitrary non HP content", () => {
-      expect(looksLikeHpScanDevice("<html><body>router admin</body></html>")).to
-        .equal(false);
+      expect(
+        DiscoveryTree.looksLikeHpScanDevice(
+          "<html><body>router admin</body></html>",
+        ),
+      ).to.equal(false);
     });
   });
 });

@@ -244,7 +244,7 @@ export async function getDeviceIp(
   const addressList = configFile.device_addresses;
   if (ip === undefined && addressList !== undefined && addressList.length > 0) {
     // stateless mode: a fixed list of candidate addresses from the config;
-    // pick the first one that exposes an eSCL scanner (no network scanning)
+    // pick the first one that exposes an HP scan device (no network scanning)
     console.log(
       `Trying configured device addresses (${addressList.length})...`,
     );
@@ -262,19 +262,19 @@ export async function getDeviceIp(
   return ip;
 }
 
-/** return the first address of `candidates` that exposes an eSCL scanner */
+/** return the first address of `candidates` that exposes an HP scan device */
 export async function findFirstUsableIp(
   candidates: string[],
 ): Promise<string | undefined> {
   const results = await Promise.all(
-    candidates.map((candidate) => isEscScanner(candidate)),
+    candidates.map((candidate) => isHpScanDevice(candidate)),
   );
   const index = results.findIndex((usable) => usable);
   return index === -1 ? undefined : candidates[index];
 }
 
-function isEscScanner(host: string): Promise<boolean> {
-  return new DeviceClient(host).isEscScanner();
+function isHpScanDevice(host: string): Promise<boolean> {
+  return new DeviceClient(host).isHpScanDevice();
 }
 
 function getIsDebug(options: ProgramOption, configFile: FileConfig) {
