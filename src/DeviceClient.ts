@@ -58,11 +58,10 @@ export default class DeviceClient {
   ): void {
     const id = String(callId).padStart(4, "0");
     const prefix = id + (isRequest ? " -> " : " <- ");
-    if (typeof msg === "string") {
-      logger.debug({ callId, isRequest }, prefix + msg);
-    } else {
-      logger.debug({ callId, isRequest, msg }, prefix);
-    }
+    // Do not store the detail under `msg`: pino overwrites `msg` with the
+    // message string, so the request/response detail would be lost.
+    const detailKey = isRequest ? "request" : "response";
+    logger.debug({ callId, isRequest, [detailKey]: msg }, prefix);
   }
 
   private async callAxios<T = string>(
