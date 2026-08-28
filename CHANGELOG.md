@@ -23,10 +23,3 @@ All notable changes to this project are documented in this file.
   are never written to logs.
 - Local ESLint rule `pino/correct-args-position` enforcing pino argument order
   (object context before message).
-
-### Fixed
-
-- `dist` / Docker image failed to boot under ESM (`__filename` is a CommonJS
-  global); the logger now resolves module names from `import.meta.url`.
-- Invalid `LOG_LEVEL` values fall back to `info` instead of crashing.
-- Logging was disabled in tests, keeping test/CI output quiet.
