@@ -6,7 +6,7 @@ import pino from './eslint-local/pino.mjs';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**', '*.js', 'test/**/*.js', 'eslint-local/**', "eslint.config.mjs"]
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**', '*.js', 'test/**/*.js', 'eslint-local/**', 'scripts/**/*.mjs', "eslint.config.mjs"]
   },
   {
     plugins: {

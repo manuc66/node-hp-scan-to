@@ -5,7 +5,7 @@ import type DeviceClient from "./DeviceClient.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type { ScanContent } from "./type/ScanContent.js";
 import { InputSource } from "./type/InputSource.js";
-import { postProcessing } from "./postProcessing.js";
+import { postProcessing, type PostProcessingResult } from "./postProcessing.js";
 import { getScanDimensions } from "./scanDimensions.js";
 import type { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers.js";
@@ -241,7 +241,7 @@ export async function singleScan(
   scanConfig: SingleScanConfig,
   deviceCapabilities: DeviceCapabilities,
   date: Date,
-): Promise<void> {
+): Promise<PostProcessingResult> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
   let effectiveFormat = scanConfig.format;
@@ -261,7 +261,7 @@ export async function singleScan(
     logger.warn(
       `Scanner state is not Idle: ${scanStatus.scannerState}, aborting scan attempt...!`,
     );
-    return;
+    return { uploadSucceeded: true, failures: [] };
   }
 
   logger.info(`ADF is: ${scanStatus.adfState}`);
@@ -307,7 +307,7 @@ export async function singleScan(
     `Scan of page(s) completed, total pages: ${scanJobContent.elements.length}:`,
   );
 
-  await postProcessing(
+  return await postProcessing(
     scanConfig,
     folder,
     tempFolder,

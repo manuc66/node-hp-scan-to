@@ -152,7 +152,15 @@ describe("nextcloud", () => {
         .reply(401, "Unauthorized");
       scanJobContent = { elements: [] };
 
-      await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      let threw = false;
+      try {
+        await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      } catch {
+        threw = true;
+      }
+      if (!threw) {
+        throw new Error("Should have thrown");
+      }
     });
 
     it("upload path does not exist", async () => {
@@ -165,7 +173,15 @@ describe("nextcloud", () => {
         .reply(404, "No such file or directory");
       scanJobContent = { elements: [] };
 
-      await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      let threw = false;
+      try {
+        await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      } catch {
+        threw = true;
+      }
+      if (!threw) {
+        throw new Error("Should have thrown");
+      }
     });
 
     it("upload file failed", async () => {
@@ -189,7 +205,15 @@ describe("nextcloud", () => {
 
       scanJobContent.elements.push(scanPage);
 
-      await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      let threw = false;
+      try {
+        await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      } catch {
+        threw = true;
+      }
+      if (!threw) {
+        throw new Error("Should have thrown");
+      }
     });
 
     it("upload file not found", async () => {
@@ -222,14 +246,22 @@ describe("nextcloud", () => {
       };
       scanJobContent.elements.push(scanPage);
 
-      await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      let threw = false;
+      try {
+        await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      } catch {
+        threw = true;
+      }
+      if (!threw) {
+        throw new Error("Should have thrown");
+      }
     });
   });
 
   describe("uploadPdfToNextcloud", () => {
     it("success upload pdf document", async () => {
       const pdfFilePath = await convertToPdf(scanPage, false);
-      const pdfFileName = "sample.pdf";
+      const pdfFileName = path.basename(pdfFilePath ?? "");
 
       nock(nextcloudUrl)
         .intercept(

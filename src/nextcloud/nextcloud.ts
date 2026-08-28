@@ -49,7 +49,7 @@ async function uploadToNextcloud(
     fileBuffer = await fs.readFile(filePath);
   } catch (e) {
     logger.error(e, "Fail to read file");
-    return;
+    throw e;
   }
   const auth = { username, password };
 
@@ -73,6 +73,7 @@ async function uploadToNextcloud(
     );
   } catch (error) {
     logger.error(error, "Fail to upload document");
+    throw error;
   }
 }
 
@@ -82,10 +83,9 @@ async function checkFolderAndUpload(
 ) {
   const folderExists = await checkNextcloudFolderExists(nextcloudConfig);
   if (!folderExists) {
-    logger.error(
-      "Upload folder does not exist or user has no permission; skipping upload",
+    throw new Error(
+      `Upload folder '${nextcloudConfig.uploadFolder}' does not exist or user has no permission`,
     );
-    return;
   }
 
   await uploadFunction();
