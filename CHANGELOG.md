@@ -26,6 +26,9 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- Generated PDFs now embed the scan trigger time in their `/CreationDate`
+  and `/ID` metadata instead of the time the PDF was generated, making the
+  metadata stable for a given scan (and deterministic in tests).
 - The CLI now exits with a non-zero code when the command fails (previously
   errors were logged but the process still exited `0`), so scripts and
   automated tests can detect failures.
