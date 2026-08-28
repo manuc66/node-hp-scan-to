@@ -782,8 +782,9 @@ The printer can be addressed either by a single fixed address or by a list:
 - `ip` — a fixed address. When set, it wins over `name`.
 - `name` — resolved through mDNS when `ip` is absent.
 - `device_addresses` — an *ordered list* of candidate addresses. When `ip`
-  is not set, each entry is tried in order at startup (plain TCP port 80
-  check, **no network scanning**). This is the mode for stateless hosts
+  is not set, each entry is tried in order at startup and the first one that
+  exposes an eSCL scanner (checked against `GET /eSCL/ScannerStatus`) is
+  used — **no network scanning**. This is the mode for stateless hosts
   (Docker, Kubernetes, read-only filesystems): addresses come from the
   config and nothing is written back.
 

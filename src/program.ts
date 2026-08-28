@@ -4,7 +4,6 @@
 "use strict";
 
 import os from "os";
-import net from "net";
 // default-import + destructure: this dependency is CommonJS and some loaders
 // (tsx) do not expose its named exports to ESM consumers
 import bonjourService from "bonjour-service";
@@ -240,17 +239,16 @@ function setupScanParameters(commandName: string) {
 export async function getDeviceIp(
   options: ProgramOption,
   configFile: FileConfig,
-  port = 80,
 ): Promise<string> {
   let ip = getOptConfiguredValue(options.address, configFile.ip);
   const addressList = configFile.device_addresses;
   if (ip === undefined && addressList !== undefined && addressList.length > 0) {
     // stateless mode: a fixed list of candidate addresses from the config;
-    // pick the first one that answers on port 80 (no network scanning)
+    // pick the first one that exposes an eSCL scanner (no network scanning)
     console.log(
       `Trying configured device addresses (${addressList.length})...`,
     );
-    ip = await findFirstUsableIp(addressList, port);
+    ip = await findFirstUsableIp(addressList);
   }
   if (ip === undefined) {
     const name = getConfiguredValue(
@@ -264,33 +262,19 @@ export async function getDeviceIp(
   return ip;
 }
 
-/** return the first address of `candidates` that accepts a TCP connection */
+/** return the first address of `candidates` that exposes an eSCL scanner */
 export async function findFirstUsableIp(
   candidates: string[],
-  port = 80,
 ): Promise<string | undefined> {
   const results = await Promise.all(
-    candidates.map((candidate) => canConnectToPort(candidate, port)),
+    candidates.map((candidate) => isEscScanner(candidate)),
   );
   const index = results.findIndex((usable) => usable);
   return index === -1 ? undefined : candidates[index];
 }
 
-function canConnectToPort(host: string, port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const socket = net.createConnection(port, host, () => {
-      socket.destroy();
-      resolve(true);
-    });
-    socket.setTimeout(1500, () => {
-      socket.destroy();
-      resolve(false);
-    });
-    socket.once("error", () => {
-      socket.destroy();
-      resolve(false);
-    });
-  });
+function isEscScanner(host: string): Promise<boolean> {
+  return new DeviceClient(host).isEscScanner();
 }
 
 function getIsDebug(options: ProgramOption, configFile: FileConfig) {

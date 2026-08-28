@@ -511,6 +511,37 @@ export default class DeviceClient {
     }
   }
 
+  async isEscScanner(): Promise<boolean> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 1500);
+    try {
+      const response = await this.callAxios({
+        baseURL: `http://${this.deviceIP}`,
+        url: "/eSCL/ScannerStatus",
+        method: "GET",
+        responseType: "text",
+        timeout: 1500,
+        signal: controller.signal,
+      });
+      if (response.status !== 200) {
+        return false;
+      }
+      const content = response.data;
+      if (
+        typeof content !== "string" ||
+        !content.includes("ScannerStatus")
+      ) {
+        return false;
+      }
+      await EsclScanStatus.createScanStatus(content);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async delay(t: number): Promise<void> {
     return delay(t);
   }
