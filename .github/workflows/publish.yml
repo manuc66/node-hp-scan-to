@@ -34,6 +34,10 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+      # Trusted publishing (OIDC) requires npm >= 11.5.1; the Node 22
+      # runtime ships npm 10.x, so upgrade here. No NODE_AUTH_TOKEN is set:
+      # npm authenticates via the GitHub OIDC identity instead.
+      - run: npm install -g npm@latest
       - run: npm publish --provenance --access public
 
   binaries:
@@ -248,6 +252,9 @@ jobs:
 
           git clone --depth 1 --branch "${GITHUB_REF_NAME}" \
             "https://github.com/${GITHUB_REPOSITORY}.git" src
+          # AUR does not publish host keys over DNS; accept-new records the
+          # key on first contact (still verified on every later connection).
+          export GIT_SSH_COMMAND="ssh -i /home/builder/.ssh/aur_key -o StrictHostKeyChecking=accept-new"
           git clone "ssh://aur@aur.archlinux.org/${AUR_PACKAGE}.git" aur
 
           VERSION="${GITHUB_REF_NAME#v}"
@@ -265,8 +272,7 @@ jobs:
           git add PKGBUILD .SRCINFO
           git diff --cached --quiet || \
             git commit -m "upstream release ${GITHUB_REF_NAME}"
-          GIT_SSH_COMMAND="ssh -i /home/builder/.ssh/aur_key -o StrictHostKeyChecking=accept-new" \
-            git push origin master
+          git push origin master
           SCRIPT
           chown builder:builder /tmp/update-aur.sh
           su builder -c "bash /tmp/update-aur.sh"
@@ -282,7 +288,8 @@ jobs:
         id: cfg
         shell: pwsh
         run: |
-          "enabled=$([ -n "$env:WINGET_CREATE_TOKEN" ] ? 'true' : 'false')" >> $env:GITHUB_OUTPUT
+          if ($env:WINGET_CREATE_TOKEN) { $enabled = 'true' } else { $enabled = 'false' }
+          "enabled=$enabled" >> $env:GITHUB_OUTPUT
 
       # Requires a one-time manual submission of the package first:
       #   wingetcreate new <installer-url> --submit --token <pat>
