@@ -35,7 +35,7 @@ import EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import PathHelper from "./PathHelper.js";
 
 export default class DeviceClient {
-  deviceIP: string;
+  readonly deviceIP: string;
   readonly debug: boolean;
   private callCount = 0;
 

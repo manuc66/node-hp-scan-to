@@ -237,9 +237,10 @@ function setupScanParameters(commandName: string) {
     );
 }
 
-async function getDeviceIp(
+export async function getDeviceIp(
   options: ProgramOption,
   configFile: FileConfig,
+  port = 80,
 ): Promise<string> {
   let ip = getOptConfiguredValue(options.address, configFile.ip);
   const addressList = configFile.device_addresses;
@@ -249,7 +250,7 @@ async function getDeviceIp(
     console.log(
       `Trying configured device addresses (${addressList.length})...`,
     );
-    ip = await findFirstUsableIp(addressList);
+    ip = await findFirstUsableIp(addressList, port);
   }
   if (ip === undefined) {
     const name = getConfiguredValue(
@@ -264,27 +265,32 @@ async function getDeviceIp(
 }
 
 /** return the first address of `candidates` that accepts a TCP connection */
-async function findFirstUsableIp(candidates: string[]): Promise<string | undefined> {
-  for (const candidate of candidates) {
-    const usable = await new Promise<boolean>((resolve) => {
-      const socket = net.createConnection(80, candidate, () => {
-        socket.destroy();
-        resolve(true);
-      });
-      socket.setTimeout(1500, () => {
-        socket.destroy();
-        resolve(false);
-      });
-      socket.once("error", () => {
-        socket.destroy();
-        resolve(false);
-      });
+export async function findFirstUsableIp(
+  candidates: string[],
+  port = 80,
+): Promise<string | undefined> {
+  const results = await Promise.all(
+    candidates.map((candidate) => canConnectToPort(candidate, port)),
+  );
+  const index = results.findIndex((usable) => usable);
+  return index === -1 ? undefined : candidates[index];
+}
+
+function canConnectToPort(host: string, port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = net.createConnection(port, host, () => {
+      socket.destroy();
+      resolve(true);
     });
-    if (usable) {
-      return candidate;
-    }
-  }
-  return undefined;
+    socket.setTimeout(1500, () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.once("error", () => {
+      socket.destroy();
+      resolve(false);
+    });
+  });
 }
 
 function getIsDebug(options: ProgramOption, configFile: FileConfig) {
@@ -623,7 +629,7 @@ function createListenCliCmd(configFile: FileConfig) {
       const options = cmd.optsWithGlobals();
       const ip = await getDeviceIp(options, configFile);
       const isDebug = getIsDebug(options, configFile);
-        const api = new DeviceClient(ip, isDebug);
+      const api = new DeviceClient(ip, isDebug);
 
       const registrationConfigs: RegistrationConfig[] = [];
 
@@ -720,7 +726,7 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
-        const api = new DeviceClient(ip, isDebug);
+      const api = new DeviceClient(ip, isDebug);
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(
         options,
@@ -793,7 +799,7 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
-        const api = new DeviceClient(ip, isDebug);
+      const api = new DeviceClient(ip, isDebug);
 
       let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
@@ -838,7 +844,7 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
-        const api = new DeviceClient(ip, isDebug);
+      const api = new DeviceClient(ip, isDebug);
 
       let healthCheckSrv: NetServer | null = null;
       const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
@@ -916,7 +922,7 @@ function createProgram() {
     );
 }
 
-type ProgramOption = ReturnType<ReturnType<typeof createProgram>["opts"]>;
+export type ProgramOption = ReturnType<ReturnType<typeof createProgram>["opts"]>;
 
 export function setupProgram(fileConfig: FileConfig) {
   const program = createProgram();
@@ -941,4 +947,3 @@ export function setupProgram(fileConfig: FileConfig) {
   program.addCommand(cmdDiscover);
   return program;
 }
-
