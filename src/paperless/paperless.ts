@@ -23,9 +23,14 @@ export async function uploadImagesAsSeparateDocumentsToPaperless(
 export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
   scanJobContent: ScanContent,
   paperlessConfig: PaperlessConfig,
+  scanDate?: Date,
 ) {
   for (const item of scanJobContent.elements) {
-    const pdfFilePath = await convertToPdf(item, !paperlessConfig.keepFiles);
+    const pdfFilePath = await convertToPdf(
+      item,
+      !paperlessConfig.keepFiles,
+      scanDate,
+    );
     if (pdfFilePath !== null) {
       await uploadToPaperless(pdfFilePath, paperlessConfig);
       await fs.unlink(pdfFilePath);
