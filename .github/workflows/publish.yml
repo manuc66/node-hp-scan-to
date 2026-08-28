@@ -214,6 +214,8 @@ jobs:
   aur:
     name: Update AUR package
     runs-on: ubuntu-latest
+    # The PKGBUILD sources the npm tarball, so npm must publish first.
+    needs: npm
     if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
     container:
       image: archlinux:base-devel
