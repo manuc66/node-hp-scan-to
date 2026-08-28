@@ -36,7 +36,6 @@ InstallDir "$LOCALAPPDATA\Programs\${APPNAME}"
 !include "StrFunc.nsh"
 
 ${StrRep}
-${StrLoc}
 
 
 !ifndef WS_GROUP
@@ -51,23 +50,13 @@ Var RadioUser
 Var RadioSystem
 
 ; device selection page state
-Var DeviceChoice      ; "name" | "ip" | "skip"
-Var DevName
+Var DeviceChoice      ; "skip" | "ip"
 Var DevIp
-Var DeviceRaw         ; raw stdout of the discover run
-Var DeviceCount       ; number of parsed devices
-Var DiscDir           ; LOCALAPPDATA dir hosting the discovery binary
-Var OldOut            ; saved output dir around the discovery extraction
-Var ComboDevice       ; dropdown with discovered printers (when > 0)
-Var EditLogPath       ; read-only text showing the diagnostic log path
-Var LogPath           ; actual path of the diagnostic log file
-Var Status            ; outcome of the discovery, shown at the top of the page
-Var RadioByName
-Var RadioByIp
-Var RadioOther
-Var RadioLater
-Var EditOther
+Var DevLabel
 Var EditIp
+Var EditLabel
+Var RadioLater
+Var RadioLater2
 
 ; startup behaviour
 Var RunArgs           ; arguments passed to node-hp-scan-to at boot
@@ -144,7 +133,6 @@ Function .onInit
     StrCpy $CmdlineSystemMode "1"
   ${EndIf}
   StrCpy $DeviceChoice "skip"
-  StrCpy $DevName ""
   StrCpy $DevIp ""
   StrCpy $RunArgs "listen --health-check"
   ; /ADF switches the startup behaviour in silent installs
@@ -216,10 +204,6 @@ Function ModePageLeave
       Quit
     ${EndIf}
   ${EndIf}
-
-  ; network detection starts now (device page does the blocking work);
-  ; show the banner before the page transition so there is no dead time
-  Banner::show "Searching your network for printers, please wait..."
 FunctionEnd
 
 ; ---------------------------------------------------------------------------
@@ -267,341 +251,73 @@ FunctionEnd
 ; ---------------------------------------------------------------------------
 ; device selection page
 
-!macro _CtrlEnable CTRL ENABLE
-  System::Call "user32::EnableWindow(p${CTRL}, i${ENABLE})"
-!macroend
-
-; The compiled binary listens for mDNS answers, which trips the Windows
-; Firewall "allow access" dialog over the installer UI while nsExec waits -
-; experienced as a freeze, and skipping it silently kills discovery.
-; While elevated, whitelist the scratch copy for a moment; best effort only
-; (a non-elevated user install simply keeps the native prompt).
-!define FW_TEMP_RULE "node-hp-scan-to-setup-discovery"
-
-Function _FwDiscoveryAllow
-  nsExec::Exec 'netsh advfirewall firewall delete rule name="${FW_TEMP_RULE}"'
-  Pop $0
-  nsExec::Exec 'netsh advfirewall firewall add rule name="${FW_TEMP_RULE}" dir=in action=allow program="$DiscDir\node-hp-scan-to.exe" enable=yes profile=private'
-  Pop $0
-FunctionEnd
-
-Function _FwDiscoveryRemove
-  nsExec::Exec 'netsh advfirewall firewall delete rule name="${FW_TEMP_RULE}"'
-  Pop $0
-FunctionEnd
-
-; parse $DeviceRaw ("name\tip" lines, \r\n separated) into
-; $DiscDir\devices.ini ([d] <index> = <ip>|<display>) and set $DeviceCount
-Function _ParseDevices
-  StrCpy $DeviceCount 0
-  Delete "$DiscDir\devices.ini"
-  StrCpy $R2 "$DeviceRaw"
-  ${Do}
-    ${If} "$R2" == ""
-      ${Break}
-    ${EndIf}
-    ; cut the first line off (handle both \n and \r\n endings)
-    ${StrLoc} "$R3" "$R2" "$\n" "0"
-    ${If} "$R3" == ""
-      StrCpy $R1 "$R2"
-      StrCpy $R2 ""
-    ${Else}
-      ${If} $R3 > 0
-        StrCpy $R1 "$R2" $R3
-      ${Else}
-        StrCpy $R1 ""
-      ${EndIf}
-      IntOp $R4 "$R3" + 1
-      StrCpy $R2 "$R2" "" $R4
-    ${EndIf}
-    ${StrRep} "$R1" "$R1" "$\r" ""
-
-    ; split "name<TAB>ip", skip malformed lines
-    StrCpy $R9 0                  ; 1 = valid entry
-    ${StrLoc} "$R5" "$R1" "$\t" "0"
-    ${If} "$R5" != ""
-      ${If} $R5 > 0
-        StrCpy $R9 1
-        StrCpy $R6 "$R1" $R5      ; device name
-        IntOp $R7 "$R5" + 1
-        StrCpy $R8 "$R1" "" $R7   ; ip
-      ${EndIf}
-    ${EndIf}
-
-    ${If} $R9 == 1
-      WriteIniStr "$DiscDir\devices.ini" "d" "$DeviceCount" "$R8|$R6 ($R8)"
-      IntOp $DeviceCount "$DeviceCount" + 1
-    ${EndIf}
-  ${Loop}
-FunctionEnd
-
-Function OnOtherClick
-  ${NSD_GetState} $RadioOther $0
-  ${If} $0 == ${BST_CHECKED}
-    !insertmacro _CtrlEnable $EditOther 1
-  ${Else}
-    !insertmacro _CtrlEnable $EditOther 0
-  ${EndIf}
-FunctionEnd
-
-; -------------------------------------------------------------------
-; device selection page (synchronous discovery)
-
-Function _RunDiscovery
-  ; Extract to LOCALAPPDATA, not PLUGINSDIR (%TEMP%): WDAC/Device Guard
-  ; policies on managed machines typically block execution from Temp but
-  ; allow the user profile, so discovery keeps working on such hosts.
-  StrCpy $DiscDir "$LOCALAPPDATA\node-hp-scan-to-setup"
-  CreateDirectory "$DiscDir"
-  ; File writes to the current output dir; restore it afterwards so later
-  ; install/uninstall File instructions still land in $INSTDIR
-  StrCpy $OldOut "$OUTDIR"
-  SetOutPath "$DiscDir"
-  File "/oname=node-hp-scan-to.exe" "staging\node-hp-scan-to.exe"
-  SetOutPath "$OldOut"
-  Call _FwDiscoveryAllow
-  ; cold mDNS cache: first browse sometimes finds nothing, so retry once
-  ; with a longer window before giving up
-  nsExec::ExecToStack '"$DiscDir\node-hp-scan-to.exe" discover --timeout 5'
-  Pop $R0
-  Pop $DeviceRaw
-  ${If} $R0 != 0
-    nsExec::ExecToStack '"$DiscDir\node-hp-scan-to.exe" discover --timeout 8'
-    Pop $R0
-    Pop $DeviceRaw
-  ${EndIf}
-  Call _FwDiscoveryRemove
-FunctionEnd
+; ---------------------------------------------------------------------------
+; printer configuration page (manual IP entry - no network discovery)
 
 Function DevicePageCreate
   !insertmacro MUI_HEADER_TEXT \
-    "Select your printer" \
-    "The printer can be located by name (recommended) or by fixed IP address."
-
-  Call _RunDiscovery
-  ; $R0 and $DeviceRaw are set by _RunDiscovery (first or retry attempt)
-
-  Banner::destroy
-
-  ; on failure or empty result, persist diagnostics the user can open/copy
-  StrCpy $LogPath "$TEMP\node-hp-scan-to-discovery.log"
-  ${If} $R0 == 0
-    Call _ParseDevices
-  ${Else}
-    StrCpy $DeviceCount 0
-    FileOpen $0 "$LogPath" w
-    FileWrite $0 "exit code: $R0$\r$\n"
-    FileWrite $0 "--- stdout ---$\r$\n"
-    FileWrite $0 "$DeviceRaw$\r$\n"
-    FileWrite $0 "--- end ---$\r$\n"
-    FileClose $0
-  ${EndIf}
+    "Configure your printer" \
+    "IP address + destination name shown on the printer."
 
   nsDialogs::Create 1018
   Pop $0
 
-  ; result / status line
-  ${NSD_CreateLabel} 0 0 100% 16u "placeholder"
-  Pop $Status
-  ${If} $R0 == 0
-    ${If} $DeviceCount == 0
-      ${NSD_SetText} $Status "No scan-capable printer was detected."
-    ${ElseIf} $DeviceCount == 1
-      ${NSD_SetText} $Status "One printer was detected. Choose how to reach it below."
-    ${Else}
-      ${NSD_SetText} $Status "$DeviceCount printers were detected. Pick one in the list below."
-    ${EndIf}
-  ${Else}
-    ${NSD_SetText} $Status \
-      "Printer detection failed (code $R0). You can still configure a printer manually below."
-  ${EndIf}
-
-  ; printer dropdown (only when at least one device was found)
-  ${NSD_CreateLabel} 0 16u 100% 10u "Printer:"
+  ${NSD_CreateLabel} 0 0 100% 14u \
+    "IP address: shown in the printer's Wi-Fi settings.$\nDestination name: displayed on the printer's screen if it has one."
   Pop $0
-  ${NSD_CreateDropList} 0 26u 100% 10u ""
-  Pop $ComboDevice
-  ${If} $DeviceCount > 0
-    ; add every "display" from the parser ini (ip|name (ip))
-    StrCpy $R9 0
-    ${Do}
-      ${If} $R9 >= $DeviceCount
-        ${Break}
-      ${EndIf}
-      ReadIniStr $R8 "$DiscDir\devices.ini" "d" "$R9"
-      ${StrLoc} "$R5" "$R8" "|" "0"
-      ${If} "$R5" != ""
-        IntOp $R7 "$R5" + 1
-        StrCpy $R6 "$R8" "" $R7          ; display part: "name (ip)"
-        StrCpy $R4 "$R6"
-        ${NSD_CB_AddString} $ComboDevice "$R4"
-        ${If} $R9 == 0
-          ${NSD_CB_SelectString} $ComboDevice "$R4"
-        ${EndIf}
-      ${EndIf}
-      IntOp $R9 $R9 + 1
-    ${Loop}
-  ${EndIf}
 
-  ; how to reach the printer
-  ${NSD_CreateRadioButton} 8u 40u 90% 10u \
-    "Use the selected printer by name (recommended)"
-  Pop $RadioByName
-  ${NSD_AddStyle} $RadioByName ${WS_GROUP}
-  ${NSD_SetState} $RadioByName ${BST_CHECKED}
-
-  ${NSD_CreateRadioButton} 8u 51u 55% 10u \
-    "Pin by IP address instead:"
-  Pop $RadioByIp
-  ${NSD_CreateText} 60% 51u 36% 12u ""
-  Pop $EditIp
-
-  ${NSD_CreateRadioButton} 8u 64u 55% 10u \
-    "Enter it manually (name or IP):"
-  Pop $RadioOther
-  ${NSD_OnClick} $RadioOther OnOtherClick
-  ${NSD_CreateText} 60% 64u 36% 12u ""
-  Pop $EditOther
-  !insertmacro _CtrlEnable $EditOther 0
-
-  ${NSD_CreateRadioButton} 8u 77u 90% 10u \
-    "Configure later (you will edit config\\default.json yourself)"
+  ${NSD_CreateRadioButton} 8u 22u 90% 10u \
+    "Enter the printer IP address:"
   Pop $RadioLater
   ${NSD_AddStyle} $RadioLater ${WS_GROUP}
+  ${NSD_SetState} $RadioLater ${BST_CHECKED}
 
-  ; diagnostics: selectable log path + an "open folder" button
-  ${NSD_CreateLabel} 0 89u 100% 8u "Diagnostics (kept only on failure):"
-  Pop $0
-  ${NSD_CreateText} 0 97u 76% 12u ""
-  Pop $EditLogPath
-  ${NSD_AddStyle} $EditLogPath "${ES_READONLY}"
-  ${NSD_SetText} $EditLogPath "$LogPath"
-  ${NSD_CreateButton} 78% 97u 20% 12u "Open folder"
-  Pop $0
-  ${NSD_OnClick} $0 BrowseLogs
+  ${NSD_CreateText} 8u 34u 88% 12u ""
+  Pop $EditIp
 
-  ; compact everything vertically so it fits the wizard pane (~115u tall)
-  ${If} $DeviceCount == 0
-    ; no printers: the dropdown is useless, disable it and "by name"
-    System::Call "user32::EnableWindow(p$ComboDevice, i0)"
-    System::Call "user32::EnableWindow(p$RadioByName, i0)"
-    ${NSD_SetState} $RadioLater ${BST_CHECKED}
-  ${EndIf}
+  ${NSD_CreateLabel} 8u 52u 100% 8u "Destination name:"
+  Pop $0
+  ${NSD_CreateText} 8u 62u 88% 12u ""
+  Pop $EditLabel
+  ; prefill with the computer hostname (the app default)
+  StrCpy $R0 ${NSIS_MAX_STRLEN}
+  System::Call "kernel32::GetComputerNameW(w .r1, *i r0r0) i.r2"
+  ${NSD_SetText} $EditLabel "$R1"
+
+  ${NSD_CreateRadioButton} 8u 80u 90% 10u \
+    "Configure later (edit config\\default.json yourself)"
+  Pop $RadioLater2
+  ${NSD_AddStyle} $RadioLater2 ${WS_GROUP}
 
   nsDialogs::Show
 FunctionEnd
 
-Function BrowseLogs
-  ${If} ${FileExists} "$LogPath"
-    ExecShell "open" "explorer.exe" "/select,$LogPath"
-  ${Else}
-    MessageBox MB_OK|MB_ICONINFORMATION "No diagnostic log was written (discovery succeeded)."
-  ${EndIf}
-FunctionEnd
-
 Function DevicePageLeave
-  ${NSD_GetState} $RadioLater $0
+  ${NSD_GetState} $RadioLater2 $0
   ${If} $0 == ${BST_CHECKED}
     StrCpy $DeviceChoice "skip"
     Return
   ${EndIf}
 
-  ; "Pin by IP" - standalone, no device selection required
-  ${NSD_GetState} $RadioByIp $0
-  ${If} $0 == ${BST_CHECKED}
-    ${NSD_GetText} $EditIp $DevIp
-    ${If} "$DevIp" == ""
-      MessageBox MB_OK|MB_ICONEXCLAMATION \
-        "Please enter the printer's IP address (IPv4 or IPv6)."
-      Abort
-    ${EndIf}
-    ; verify the address answers
-    Push "$DevIp"
-    Call _FwDiscoveryAllow
-    nsExec::ExecToStack '"$DiscDir\node-hp-scan-to.exe" discover --timeout 4 --ip "$DevIp"'
-    Call _FwDiscoveryRemove
-    Pop $0
-    Pop $R1                       ; discard captured stdout
-    ${If} $0 != 0
-      MessageBox MB_OK|MB_ICONEXCLAMATION \
-        "No scan-capable device answered at $\"$DevIp$\".$\nCheck that the printer is powered on and connected to this network."
-      Abort
-    ${EndIf}
-    StrCpy $DeviceChoice "ip"
-    StrCpy $DevName ""            ; no mDNS name
-    Return
+  ${NSD_GetText} $EditIp $DevIp
+  ${If} "$DevIp" == ""
+    MessageBox MB_OK|MB_ICONEXCLAMATION \
+      "Please enter the printer's IP address (for example 192.168.1.53)."
+    Abort
   ${EndIf}
-
-  ; "Enter manually"
-  ${NSD_GetState} $RadioOther $0
-  ${If} $0 == ${BST_CHECKED}
-    ${NSD_GetText} $EditOther $DevName
-    ${If} "$DevName" == ""
-      MessageBox MB_OK|MB_ICONEXCLAMATION \
-        "Please enter a device name or an IP address."
-      Abort
-    ${EndIf}
-
-    ${StrRep} "$1" "$DevName" "." ""
-    ${StrRep} "$1" "$1" "0" ""
-    ${StrRep} "$1" "$1" "1" ""
-    ${StrRep} "$1" "$1" "2" ""
-    ${StrRep} "$1" "$1" "3" ""
-    ${StrRep} "$1" "$1" "4" ""
-    ${StrRep} "$1" "$1" "5" ""
-    ${StrRep} "$1" "$1" "6" ""
-    ${StrRep} "$1" "$1" "7" ""
-    ${StrRep} "$1" "$1" "8" ""
-    ${StrRep} "$1" "$1" "9" ""
-    ${If} "$1" == ""
-      StrCpy $DeviceChoice "ip"
-      StrCpy $DevIp "$DevName"
-      Call _FwDiscoveryAllow
-      nsExec::ExecToStack '"$DiscDir\node-hp-scan-to.exe" discover --timeout 4 --ip "$DevIp"'
-      Call _FwDiscoveryRemove
-    ${Else}
-      StrCpy $DeviceChoice "name"
-      Call _FwDiscoveryAllow
-      nsExec::ExecToStack '"$DiscDir\node-hp-scan-to.exe" discover --timeout 4 --name "$DevName"'
-      Call _FwDiscoveryRemove
-    ${EndIf}
-    Pop $0
-    Pop $R1                       ; discard captured stdout
-    ${If} $0 != 0
-      MessageBox MB_OK|MB_ICONEXCLAMATION \
-        "No scan-capable device answered at $\"$DevName$\".$\nCheck that the printer is powered on and connected to this network."
-      Abort
-    ${EndIf}
-    Return
+  ${NSD_GetText} $EditLabel $DevLabel
+  ${If} "$DevLabel" == ""
+    StrCpy $R0 ${NSIS_MAX_STRLEN}
+    System::Call "kernel32::GetComputerNameW(w .r1, *i r0r0) i.r2"
+    StrCpy $DevLabel "$R1"
   ${EndIf}
-
-  ; default path: the printer picked in the dropdown, by name
-  ${If} $DeviceCount > 0
-    ${NSD_GetText} $ComboDevice $R4     ; display "name (ip)"
-    ; strip the trailing " (ip)"
-    ${StrLoc} "$R5" "$R4" " (" "0"
-    ${If} "$R5" != ""
-      IntOp $R7 "$R5" - 1
-      StrCpy $DevName "$R4" $R7
-    ${Else}
-      StrCpy $DevName "$R4"
-    ${EndIf}
-    StrCpy $DeviceChoice "name"
-    Return
-  ${EndIf}
-
-  MessageBox MB_OK|MB_ICONEXCLAMATION \
-    "Please pick Pin by IP, Other, or Configure later - no printer was detected."
-  Abort
+  StrCpy $DeviceChoice "ip"
 FunctionEnd
 
 ; ---------------------------------------------------------------------------
 ; install
 
 Section "Install"
-  ; belt & braces: drop any discovery firewall rule left by a Back navigation
-  Call _FwDiscoveryRemove
-
   ${If} $Mode == "system"
     SetShellVarContext all
   ${Else}
@@ -621,10 +337,11 @@ Section "Install"
   FileOpen $0 "$ConfigDir\default.json" w
   FileWrite $0 "{$\r$\n"
   FileWrite $0 '  "directory": "$R0",$\r$\n'
-  ${If} $DeviceChoice == "name"
-    FileWrite $0 '  "name": "$DevName",$\r$\n'
-  ${ElseIf} $DeviceChoice == "ip"
+  ${If} $DeviceChoice == "ip"
     FileWrite $0 '  "ip": "$DevIp",$\r$\n'
+  ${EndIf}
+  ${If} "$DevLabel" != ""
+    FileWrite $0 '  "label": "$DevLabel",$\r$\n'
   ${EndIf}
   FileWrite $0 '  "debug": false$\r$\n'
   FileWrite $0 "}$\r$\n"
