@@ -29,3 +29,9 @@ All notable changes to this project are documented in this file.
 - The CLI now exits with a non-zero code when the command fails (previously
   errors were logged but the process still exited `0`), so scripts and
   automated tests can detect failures.
+- Paperless/Nextcloud upload failures are surfaced as a structured status
+  instead of an exception: `single-scan` exits `1` and logs
+  "Scan completed but delivery to paperless/nextcloud failed: …" when a
+  delivery fails, both targets (paperless and nextcloud) are attempted and
+  reported, and temporary files are kept when delivery failed. Long-running
+  `listen`/`adf-autoscan` loops are unaffected and keep running.
