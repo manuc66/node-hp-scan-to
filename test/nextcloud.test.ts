@@ -23,6 +23,7 @@ describe("nextcloud", () => {
   const username = "scanner";
   const password = "pa$$word";
   const uploadFolder = "scan";
+  const scanDate = new Date(2026, 7, 28, 20, 13, 45);
 
   let scanJobContent: ScanContent;
   let scanPage: ScanPage;
@@ -260,7 +261,7 @@ describe("nextcloud", () => {
 
   describe("uploadPdfToNextcloud", () => {
     it("success upload pdf document", async () => {
-      const pdfFilePath = await convertToPdf(scanPage, false);
+      const pdfFilePath = await convertToPdf(scanPage, false, scanDate);
       const pdfFileName = path.basename(pdfFilePath ?? "");
 
       nock(nextcloudUrl)

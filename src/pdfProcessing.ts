@@ -23,7 +23,7 @@ export async function mergeToPdf(
       "pdf",
       date,
     );
-    await createPdfFrom(scanJobContent, pdfFilePath);
+    await createPdfFrom(scanJobContent, pdfFilePath, date);
     if (deleteFiles) {
       await Promise.all(scanJobContent.elements.map((e) => fs.unlink(e.path)));
     }
@@ -36,11 +36,12 @@ export async function mergeToPdf(
 export async function convertToPdf(
   scanPage: ScanPage,
   deleteFile: boolean,
+  date?: Date,
 ): Promise<string | null> {
   const fileName = path.basename(scanPage.path, path.extname(scanPage.path));
   const pdfFilePath = path.join(path.dirname(scanPage.path), `${fileName}.pdf`);
 
-  await createPdfFrom({ elements: [scanPage] }, pdfFilePath);
+  await createPdfFrom({ elements: [scanPage] }, pdfFilePath, date);
   if (deleteFile) {
     await fs.unlink(scanPage.path);
   }
@@ -50,6 +51,7 @@ export async function convertToPdf(
 export async function createPdfFrom(
   scanContent: ScanContent,
   destination: string,
+  date?: Date,
 ) {
   let doc: jsPDF | null = null;
   for (const element of scanContent.elements) {
@@ -59,6 +61,10 @@ export async function createPdfFrom(
 
     if (doc === null) {
       doc = new jsPDF({ unit: "in", floatPrecision: 3, format });
+      if (date !== undefined) {
+        doc.setCreationDate(date);
+        doc.setFileId(dateToFileId(date));
+      }
     } else {
       doc.addPage(format);
     }
@@ -72,4 +78,8 @@ export async function createPdfFrom(
     doc.addImage(imageByteBuffer, "JPEG", 0, 0, widthInInches, heightInInches);
   }
   doc?.save(destination);
+}
+
+function dateToFileId(date: Date): string {
+  return date.getTime().toString(16).padStart(32, "0");
 }

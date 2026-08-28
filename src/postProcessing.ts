@@ -132,6 +132,7 @@ async function handleImagePostProcessing(
           await convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
             scanJobContent,
             paperlessConfig,
+            scanDate,
           );
         } else {
           await uploadImagesAsSeparateDocumentsToPaperless(
