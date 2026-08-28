@@ -16,13 +16,13 @@ function checkCapabilities(
 ) {
   if (!deviceCapabilities.hasAdfDetectPaperLoaded) {
     logger.warn(
-      "WARNING: The automatic scan feature is likely unsupported on this device, as its advertised capabilities do not include this feature.",
+      "The automatic scan feature is likely unsupported on this device, as its advertised capabilities do not include this feature.",
     );
   }
 
   if (adfAutoScanConfig.isDuplex && !deviceCapabilities.hasAdfDuplex) {
     logger.warn(
-      "WARNING: The requested duplex scan method is likely unsupported on this device, as its advertised capabilities do not include this feature.",
+      "The requested duplex scan method is likely unsupported on this device, as its advertised capabilities do not include this feature.",
     );
   }
 }

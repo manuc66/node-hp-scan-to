@@ -2,6 +2,7 @@ import pino, { type Logger } from "pino";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import isDocker from "is-docker";
+import pinoPretty from "pino-pretty";
 
 const inDocker = isDocker();
 const isCli = process.stdout.isTTY && !inDocker;
@@ -29,33 +30,17 @@ const defaultLevel = debugRequested
 const logFormat = process.env["LOG_FORMAT"] ?? "auto";
 const isPretty = logFormat === "pretty" || (logFormat === "auto" && isCli);
 const isPlain = logFormat === "plain" || (logFormat === "auto" && !isCli);
-const transport:
-  | {
-      target: string;
-      options: Record<string, unknown>;
-    }
-  | undefined = isPretty
-  ? {
-      target: "pino-pretty",
-      options: {
-        colorize: isCli,
-        translateTime: "HH:MM:ss.l",
-        ignore: "pid,hostname",
-      },
-    }
-  : isPlain
-    ? {
-        target: "pino-pretty",
-        options: {
-          colorize: false,
-          singleLine: true,
-          ignore: "pid,hostname,time,level,name",
-          messageFormat: "{msg}",
-        },
-      }
-    : undefined;
 
-const baseLogger: Logger = pino({
+const LEVEL_LABELS: Record<number, string> = {
+  10: "trace",
+  20: "debug",
+  30: "info",
+  40: "warn",
+  50: "error",
+  60: "fatal",
+};
+
+const loggerOptions = {
   enabled: !isTest,
   level: defaultLevel,
   redact: {
@@ -94,8 +79,42 @@ const baseLogger: Logger = pino({
       return serialized;
     },
   },
-  ...(transport !== undefined ? { transport } : {}),
-});
+};
+
+const baseLogger: Logger = isPlain
+  ? // In-process pino-pretty (no worker thread): the messageFormat function
+    // cannot cross a worker boundary. Keeps legacy bare info/debug lines and
+    // prefixes warn/error/fatal so humans can tell severity apart.
+    pino(
+      loggerOptions,
+      pinoPretty({
+        colorize: false,
+        singleLine: true,
+        ignore: "pid,hostname,time,level,name",
+        messageFormat: (log: Record<string, unknown>, messageKey: string) => {
+          const msg = log[messageKey] as string;
+          const levelLabel = LEVEL_LABELS[log["level"] as number] ?? "info";
+          return levelLabel === "info" || levelLabel === "debug"
+            ? msg
+            : `${levelLabel.toUpperCase()}: ${msg}`;
+        },
+      }),
+    )
+  : pino({
+      ...loggerOptions,
+      ...(isPretty
+        ? {
+            transport: {
+              target: "pino-pretty",
+              options: {
+                colorize: isCli,
+                translateTime: "HH:MM:ss.l",
+                ignore: "pid,hostname",
+              },
+            },
+          }
+        : {}),
+    });
 
 export function setDebugLevel(isDebug: boolean): void {
   baseLogger.level = isDebug ? "debug" : defaultLevel;
