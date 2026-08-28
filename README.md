@@ -15,11 +15,9 @@
 
 **`node-hp-scan-to`** is a Node.js application that replicates HP's "_Scan to Computer_" functionality by [reverse engineering HP's proprietary protocols](protocol_doc/HP%20Officejet%206500%20E710n-z.md) and supporting the standardized [eSCL protocol](protocol_doc/HP%20PageWide%20Pro%20477dw%20MFP.md), allowing you to scan documents directly from your HP printer's scanner to your Linux, Windows, or macOS computer.
 
-
 Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be run on a bare-metal desktop or server, or in a container on Docker or Kubernetes. It can also be integrated with third-party document management solutions such as [Paperless-ngx](https://docs.paperless-ngx.com/) and [Nextcloud](https://Nextcloud.com/).
 
-**Disclaimer:** _This project is neither endorsed by nor affiliated with Hewlett-Packard (HP). Any mention or reference to HP is purely descriptive and non-commercial. All reverse engineering of HP's official Windows application and its interaction with devices has been performed independently without cooperation from HP. __This software is provided as-is for educational and personal use only__._
-
+**Disclaimer:** _This project is neither endorsed by nor affiliated with Hewlett-Packard (HP). Any mention or reference to HP is purely descriptive and non-commercial. All reverse engineering of HP's official Windows application and its interaction with devices has been performed independently without cooperation from HP. **This software is provided as-is for educational and personal use only**._
 
 <!-- TOC -->
 
@@ -95,19 +93,19 @@ Supports both HP proprietary protocols (WalkupScanToComp, WalkupScan, ScanJob) a
 - **eSCL-only devices** (e.g., HP ScanJet Pro 4500 fn1): Automatically detected and supported ([#1307](https://github.com/manuc66/node-hp-scan-to/issues/1307))
 - **Dual-protocol devices**: Uses HP protocols by default; add `--prefer-eSCL` flag to use eSCL instead
 - See [eSCL protocol documentation](protocol_doc/HP%20PageWide%20Pro%20477dw%20MFP.md) for technical details
- 
+
 ### Emulated Duplex Scanning Feature
 
-The emulated duplex scanning feature allows users to efficiently scan both sides of a document, even on devices that do 
+The emulated duplex scanning feature allows users to efficiently scan both sides of a document, even on devices that do
 not natively support duplex scanning. However, please note that this feature is only available in listen mode and is not supported with ADF-autoscan.
 
-When enabled (as an opt-in feature), it adds an extra entry in the list of scan destinations, labeled with the "duplex" 
+When enabled (as an opt-in feature), it adds an extra entry in the list of scan destinations, labeled with the "duplex"
 suffix. When you select this option for the first time, the device scans the front side of the document.
 
-After the front side is scanned, if you choose the duplex option again, the device will trigger a second scan and 
+After the front side is scanned, if you choose the duplex option again, the device will trigger a second scan and
 produce an assembled output.
 
-If you decide not to scan the back side immediately, the front side scan will be saved in the system and will remain 
+If you decide not to scan the back side immediately, the front side scan will be saved in the system and will remain
 there until you either scan the back side or perform a single side scan instead.
 
 ## Installation
@@ -122,28 +120,28 @@ there until you either scan the back side or perform a single side scan instead.
 
 Each [release](https://github.com/manuc66/node-hp-scan-to/releases/latest) ships self-contained executables (no NodeJS required):
 
-| File | Platform |
-|---|---|
-| `setup-node-hp-scan-to-v*.exe` | Windows 10/11 x64 installer (per-user autostart or system service) |
-| `node-hp-scan-to-v*-windows-x64.zip` | Windows 10/11 x64 portable |
-| `node-hp-scan-to-v*-darwin-arm64.zip` | Apple Silicon |
-| `node-hp-scan-to-v*-darwin-x64.zip` | Intel Mac |
-| `node-hp-scan-to-v*-linux-x64.tar.gz` | Linux x64 |
-| `node-hp-scan-to-v*-linux-arm64.tar.gz` | Linux ARM64 |
+| File                                    | Platform                                                           |
+| --------------------------------------- | ------------------------------------------------------------------ |
+| `setup-node-hp-scan-to-v*.exe`          | Windows 10/11 x64 installer (per-user autostart or system service) |
+| `node-hp-scan-to-v*-windows-x64.zip`    | Windows 10/11 x64 portable                                         |
+| `node-hp-scan-to-v*-darwin-arm64.zip`   | Apple Silicon                                                      |
+| `node-hp-scan-to-v*-darwin-x64.zip`     | Intel Mac                                                          |
+| `node-hp-scan-to-v*-linux-x64.tar.gz`   | Linux x64                                                          |
+| `node-hp-scan-to-v*-linux-arm64.tar.gz` | Linux ARM64                                                        |
 
 Extract the archive anywhere and run `node-hp-scan-to` from its folder. It automatically reads the `config/default.json` shipped next to the binary; edit it to your needs.
 
 The Windows installer offers two modes:
 
-- *For me* (default, no admin rights): installs to `%LOCALAPPDATA%\Programs\node-hp-scan-to`, saves scans to the `hp-scan` folder inside your Documents (follows OneDrive redirection) and starts hidden at login via a scheduled task, with a persistent log in `%APPDATA%\node-hp-scan-to\logs\scan.log`
-- *Windows service for all users*: installs to `Program Files`, runs as a service via [WinSW](https://github.com/winsw/winsw) and saves scans to `C:\ProgramData\node-hp-scan-to\scans`
+- _For me_ (default, no admin rights): installs to `%LOCALAPPDATA%\Programs\node-hp-scan-to`, saves scans to the `hp-scan` folder inside your Documents (follows OneDrive redirection) and starts hidden at login via a scheduled task, with a persistent log in `%APPDATA%\node-hp-scan-to\logs\scan.log`
+- _Windows service for all users_: installs to `Program Files`, runs as a service via [WinSW](https://github.com/winsw/winsw) and saves scans to `C:\ProgramData\node-hp-scan-to\scans`
 
 Both modes also let you pick the startup behaviour: waiting for scan jobs triggered from the printer panel, or scanning automatically each time paper is loaded into the document feeder (`adf-autoscan`).
 
 Notes:
 
-- **Windows**: SmartScreen may warn about an unsigned executable — click *More info* → *Run anyway*
-- **macOS**: the binary is unsigned, so Gatekeeper may block it on first run. Either right-click → *Open*, or clear the quarantine flag with `xattr -cr node-hp-scan-to`
+- **Windows**: SmartScreen may warn about an unsigned executable — click _More info_ → _Run anyway_
+- **macOS**: the binary is unsigned, so Gatekeeper may block it on first run. Either right-click → _Open_, or clear the quarantine flag with `xattr -cr node-hp-scan-to`
 
 ### Using Debian / RPM packages
 
@@ -261,33 +259,33 @@ Options: `--timeout <seconds>` (browsing window, default 5), `--json` (machine-r
 
 Run `npx node-hp-scan-to --help` to see the full list of options below:
 
-| Option                                | Description                                                                                                      | Example/Default                                                   |
-|---------------------------------------|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
-| `-a`, `--address`                     | Printer IP address.                                                                                              | `-a 192.168.0.5` (no default)                                     |
-| `-d`, `--directory`                   | Directory to save scanned documents. Defaults to `/tmp/scan-to-pc<random value>` if not set.                     | `-d /tmp/scan-to-pc1234`                                          |
-| `-D`, `--debug`                       | Enable debug logging.                                                                                            | `-D` (disabled by default)                                        |
-| `-f`, `--image-format`            | Image format for scans (when not PDF).                                                                           | `-f Jpeg` (choices: Jpeg, Bmp)                                    |
-| `-h`, `--height`                      | Scan height in pixels. Defaults to 3507.                                                                         | `-h 3507`                                                         |
-| `-k`, `--keep-files`                  | Retain scanned files after uploading to Paperless-ngx or Nextcloud (disabled by default).                        | `-k` (disabled by default)                                        |
-| `-l`, `--label`                       | The name of the computer running this app. Defaults to the hostname.                                             | `-l <hostname>` (default: system hostname)                        |
-| `-n`, `--name`                        | Printer name (quote if it contains spaces).                                                                      | `-n "Officejet 6500 E710n-z"` (no default)                        |
-| `-o`, `--paperless-token`             | The paperless token. Required unless `----paperless-token-file` is used. Overrides if both are provided.                   | `-o xxxxxxxxxxxx` (no default)                                    |
-| `--paperless-token-file`              | File name that contains the paperless token. Required unless `---paperless-token` is used. Takes precedence if both are provided.| `--paperless-token-file some/path/to/file` (no default)          |
+| Option                                | Description                                                                                                                                                                                                                    | Example/Default                                                   |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| `-a`, `--address`                     | Printer IP address.                                                                                                                                                                                                            | `-a 192.168.0.5` (no default)                                     |
+| `-d`, `--directory`                   | Directory to save scanned documents. Defaults to `/tmp/scan-to-pc<random value>` if not set.                                                                                                                                   | `-d /tmp/scan-to-pc1234`                                          |
+| `-D`, `--debug`                       | Enable debug logging.                                                                                                                                                                                                          | `-D` (disabled by default)                                        |
+| `-f`, `--image-format`                | Image format for scans (when not PDF).                                                                                                                                                                                         | `-f Jpeg` (choices: Jpeg, Bmp)                                    |
+| `-h`, `--height`                      | Scan height in pixels. Defaults to 3507.                                                                                                                                                                                       | `-h 3507`                                                         |
+| `-k`, `--keep-files`                  | Retain scanned files after uploading to Paperless-ngx or Nextcloud (disabled by default).                                                                                                                                      | `-k` (disabled by default)                                        |
+| `-l`, `--label`                       | The name of the computer running this app. Defaults to the hostname.                                                                                                                                                           | `-l <hostname>` (default: system hostname)                        |
+| `-n`, `--name`                        | Printer name (quote if it contains spaces).                                                                                                                                                                                    | `-n "Officejet 6500 E710n-z"` (no default)                        |
+| `-o`, `--paperless-token`             | The paperless token. Required unless `----paperless-token-file` is used. Overrides if both are provided.                                                                                                                       | `-o xxxxxxxxxxxx` (no default)                                    |
+| `--paperless-token-file`              | File name that contains the paperless token. Required unless `---paperless-token` is used. Takes precedence if both are provided.                                                                                              | `--paperless-token-file some/path/to/file` (no default)           |
 | `-p`, `--pattern`                     | Filename pattern (no extension). Use quotes for static text, supports date/time masks (see [dateformat docs](https://www.npmjs.com/package/dateformat#mask-options)). Defaults to `scan<increasing number>_page<page number>`. | `-p scan1_page1`                                                  |
-| `-r`, `--resolution`                  | Scan resolution in DPI. Defaults to 200.                                                                         | `-r 200`                                                          |
-| `--mode <mode> `                      | Selects the scan mode (default: Color) (choices: "Gray", "Color").                                               | `--mode Gray`                                                     |
-| `--paper-size <size>`                 | Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive). Cannot be used with `--paper-dim`. | `--paper-size Letter`                                             |
-| `--paper-orientation <orientation>`   | Paper orientation: portrait (default) or landscape. Applied to `--paper-size` only.                              | `--paper-orientation landscape`                                   |
-| `--paper-dim <dimensions>`            | Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with `--paper-size`. | `--paper-dim 8.5x11in`                                            |
-| `-s`, `--paperless-post-document-url` | Paperless-ngx API URL for uploading documents.                                                             | `-s https://domain.tld/api/documents/post_document/` (no default) |
-| `-t`, `--temp-directory`              | Temporary directory for processing. Defaults to `/tmp/scan-to-pc<random value>` if not set.                      | `-t /tmp/scan-to-pc5678`                                          |
-| `-w`, `--width`                       | Scan width in pixels. Defaults to 2481.                                                                          | `-w 2481`                                                         |
-| `--device-up-polling-interval`        | Polling interval (in milliseconds) to check if the printer is online.                                            | `--device-up-polling-interval 5000` (no default)                  |
-| `--nextcloud-password`                | Nextcloud app password. Required unless `--nextcloud-password-file` is used. Overrides if both are provided.     | `--nextcloud-password mypassword` (no default)                    |
-| `--nextcloud-password-file`           | File containing the Nextcloud app password. Required unless `--nextcloud-password` is used. Takes precedence if both are provided. | `--nextcloud-password-file /path/to/file` (no default)            |
-| `--nextcloud-upload-folder`           | Nextcloud folder for uploads. Defaults to `scan`.                                                                | `--nextcloud-upload-folder scan`                                  |
-| `--nextcloud-url`                     | Nextcloud instance URL.                                                                                          | `--nextcloud-url https://domain.tld` (no default)                 |
-| `--nextcloud-username`                | Nextcloud username with write access to the upload folder.                                                       | `--nextcloud-username user` (no default)                          |
+| `-r`, `--resolution`                  | Scan resolution in DPI. Defaults to 200.                                                                                                                                                                                       | `-r 200`                                                          |
+| `--mode <mode> `                      | Selects the scan mode (default: Color) (choices: "Gray", "Color").                                                                                                                                                             | `--mode Gray`                                                     |
+| `--paper-size <size>`                 | Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive). Cannot be used with `--paper-dim`.                                                                                                          | `--paper-size Letter`                                             |
+| `--paper-orientation <orientation>`   | Paper orientation: portrait (default) or landscape. Applied to `--paper-size` only.                                                                                                                                            | `--paper-orientation landscape`                                   |
+| `--paper-dim <dimensions>`            | Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with `--paper-size`.                                                                                                                  | `--paper-dim 8.5x11in`                                            |
+| `-s`, `--paperless-post-document-url` | Paperless-ngx API URL for uploading documents.                                                                                                                                                                                 | `-s https://domain.tld/api/documents/post_document/` (no default) |
+| `-t`, `--temp-directory`              | Temporary directory for processing. Defaults to `/tmp/scan-to-pc<random value>` if not set.                                                                                                                                    | `-t /tmp/scan-to-pc5678`                                          |
+| `-w`, `--width`                       | Scan width in pixels. Defaults to 2481.                                                                                                                                                                                        | `-w 2481`                                                         |
+| `--device-up-polling-interval`        | Polling interval (in milliseconds) to check if the printer is online.                                                                                                                                                          | `--device-up-polling-interval 5000` (no default)                  |
+| `--nextcloud-password`                | Nextcloud app password. Required unless `--nextcloud-password-file` is used. Overrides if both are provided.                                                                                                                   | `--nextcloud-password mypassword` (no default)                    |
+| `--nextcloud-password-file`           | File containing the Nextcloud app password. Required unless `--nextcloud-password` is used. Takes precedence if both are provided.                                                                                             | `--nextcloud-password-file /path/to/file` (no default)            |
+| `--nextcloud-upload-folder`           | Nextcloud folder for uploads. Defaults to `scan`.                                                                                                                                                                              | `--nextcloud-upload-folder scan`                                  |
+| `--nextcloud-url`                     | Nextcloud instance URL.                                                                                                                                                                                                        | `--nextcloud-url https://domain.tld` (no default)                 |
+| `--nextcloud-username`                | Nextcloud username with write access to the upload folder.                                                                                                                                                                     | `--nextcloud-username user` (no default)                          |
 
 **Notes:**
 
@@ -303,14 +301,14 @@ By default, scans use **A4 paper size** (210×297 mm). You can specify a differe
 
 The following preset sizes are available (case-insensitive):
 
-| Preset | Dimensions | Use Case |
-|--------|-----------|----------|
-| **A4** (default) | 210×297 mm | Standard European paper size |
-| **Letter** | 215.9×279.4 mm | Standard US letter size |
-| **Legal** | 215.9×355.6 mm | Standard US legal size |
-| **A5** | 148×210 mm | Half of A4 size |
-| **B5** | 176×250 mm | Between A4 and A5 |
-| **Max** | Device maximum | Uses the device's maximum scannable area (not auto-detect) |
+| Preset           | Dimensions     | Use Case                                                   |
+| ---------------- | -------------- | ---------------------------------------------------------- |
+| **A4** (default) | 210×297 mm     | Standard European paper size                               |
+| **Letter**       | 215.9×279.4 mm | Standard US letter size                                    |
+| **Legal**        | 215.9×355.6 mm | Standard US legal size                                     |
+| **A5**           | 148×210 mm     | Half of A4 size                                            |
+| **B5**           | 176×250 mm     | Between A4 and A5                                          |
+| **Max**          | Device maximum | Uses the device's maximum scannable area (not auto-detect) |
 
 ##### Custom Sizes
 
@@ -381,8 +379,6 @@ environment:
 }
 ```
 
-
-
 ##### `listen`
 
 By default, this app runs the `listen` command as the default mode. It will listen to the print for new job and trigger based on the selection on the device.
@@ -390,6 +386,7 @@ By default, this app runs the `listen` command as the default mode. It will list
 Run `npx node-hp-scan-to listen --help` to get the full list of command options.
 
 <!-- BEGIN HELP command: listen -->
+
 ```text
 Usage:  listen [options]
 
@@ -442,6 +439,7 @@ Global Options:
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
+
 <!-- END HELP command: listen -->
 
 ##### `adf-autoscan`
@@ -464,9 +462,9 @@ formatted for humans instead.
 Structured JSON lines are available **opt-in** via `LOG_FORMAT=json` — the
 recommended choice for docker log drivers and aggregators such as Loki or ELK.
 
-| Env var      | Values                  | Effect                                                                 |
-|--------------|-------------------------|------------------------------------------------------------------------|
-| `LOG_LEVEL`  | `trace` … `fatal`       | Minimum level to emit (default `info`). `debug` shows HTTP traces too.  |
+| Env var      | Values                            | Effect                                                                                                                                                                                                                                                   |
+| ------------ | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LOG_LEVEL`  | `trace` … `fatal`                 | Minimum level to emit (default `info`). `debug` shows HTTP traces too.                                                                                                                                                                                   |
 | `LOG_FORMAT` | `auto`, `pretty`, `plain`, `json` | `auto` (default): pretty in a terminal, legacy plain message text otherwise. `pretty` forces time/level/module output anywhere (no ANSI in non-TTY). `plain` forces the legacy message-only text anywhere. `json` forces structured JSON lines anywhere. |
 
 Sensitive fields (`password`, `token`, `authToken`, `Authorization`) are
@@ -475,6 +473,7 @@ redacted as `[Redacted]` in every log line.
 Run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help.
 
 <!-- BEGIN HELP command: adf-autoscan -->
+
 ```text
 Usage:  adf-autoscan [options]
 
@@ -529,6 +528,7 @@ Global Options:
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
+
 <!-- END HELP command: adf-autoscan -->
 
 ##### `clear-registrations`
@@ -544,6 +544,7 @@ docker run -e MAIN_COMMAND="clear-registrations" docker.io/manuc66/node-hp-scan-
 ```
 
 <!-- BEGIN HELP command: clear-registrations -->
+
 ```text
 Usage:  clear-registrations [options]
 
@@ -559,6 +560,7 @@ Global Options:
   --health-check                           Start an http health check endpoint
   --health-check-port <health-check-port>  Define the port for the HTTP health check endpoint
 ```
+
 <!-- END HELP command: clear-registrations -->
 
 ##### `single-scan`
@@ -574,6 +576,7 @@ docker run -e MAIN_COMMAND="single-scan" docker.io/manuc66/node-hp-scan-to:lates
 ```
 
 <!-- BEGIN HELP command: single-scan -->
+
 ```text
 Usage:  single-scan [options]
 
@@ -623,6 +626,7 @@ Global Options:
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
+
 <!-- END HELP command: single-scan -->
 
 ### Run with Docker
@@ -632,6 +636,7 @@ Global Options:
 <https://hub.docker.com/repository/docker/manuc66/node-hp-scan-to>
 
 The Docker images follow semantic versioning:
+
 - `latest`: Latest stable release (includes all patch updates)
 - `x.y.z`: Specific version (e.g., `1.2.3`)
 - `x.y`: Latest patch version of a specific minor version (e.g., `1.2`)
@@ -651,7 +656,7 @@ All scanned files are written to the volume `/scan`, the filename can be changed
 List of supported environment variables and their meaning, or correspondence with [command-line flags](#cli-options):
 
 | Environment Variable          | Description                                                                                                   | Corresponding CLI Flag or Notes                                               |
-|-------------------------------|---------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `CMDLINE`                     | Additional command-line flags added at the end of the command                                                 | Set to `-D` to enable debug logs                                              |
 | `DIR`                         | Directory to use                                                                                              | `-d` / `--directory`                                                          |
 | `IP`                          | IP address for the program                                                                                    | `-a` / `--address`                                                            |
@@ -671,7 +676,7 @@ List of supported environment variables and their meaning, or correspondence wit
 | `PGID`                        | ID of the group that will run the program                                                                     |                                                                               |
 | `PUID`                        | ID of the user that will run the program                                                                      |                                                                               |
 | `RESOLUTION`                  | Resolution setting                                                                                            | `-r` / `--resolution`                                                         |
-| `FORMAT`                      | Image format setting                                                                                         | `-f` / `--image-format`                                                       |
+| `FORMAT`                      | Image format setting                                                                                          | `-f` / `--image-format`                                                       |
 | `MODE`                        | Scan mode setting                                                                                             | `--mode`                                                                      |
 | `PAPER_ORIENTATION`           | Paper orientation: portrait (default) or landscape. Applied to `PAPER_SIZE` only.                             | `--paper-orientation`                                                         |
 | `TEMP_DIR`                    | Temporary directory                                                                                           | `-t` / `--temp-directory`                                                     |
@@ -750,20 +755,20 @@ spec:
         - image: manuc66/node-hp-scan-to:master
           name: hp-scan-to
           env:
-          - name: IP
-            value: 192.168.0.5
-          - name: PATTERN
-            value: '"scan"_dd.mm.yyyy_hh:MM:ss'
-          - name: PGID
-            value: "1000"
-          - name: PUID
-            value: "1000"
-          - name: LABEL
-            value: scan
-          - name: DIR
-            value: /scans
-          - name: TZ
-            value: Europe/London
+            - name: IP
+              value: 192.168.0.5
+            - name: PATTERN
+              value: '"scan"_dd.mm.yyyy_hh:MM:ss'
+            - name: PGID
+              value: "1000"
+            - name: PUID
+              value: "1000"
+            - name: LABEL
+              value: scan
+            - name: DIR
+              value: /scans
+            - name: TZ
+              value: Europe/London
           resources:
             limits:
               memory: 256Mi
@@ -796,7 +801,7 @@ cd node-hp-scan-to
 pnpm install
 pnpm build
 # Start the program with the printer's IP address:
-node dist/index.js -a 192.168.1.5 
+node dist/index.js -a 192.168.1.5
 # Or start it with the name of the printer:
 # node dist/index.js -n "Officejet 6500 E710n-z"
 ```

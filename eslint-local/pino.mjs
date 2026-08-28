@@ -69,7 +69,8 @@ function hasInterpolationMarkers(node) {
 
 function isNullish(node) {
   return (
-    (node.type === "Literal" && (node.value === null || node.value === undefined)) ||
+    (node.type === "Literal" &&
+      (node.value === null || node.value === undefined)) ||
     (node.type === "Identifier" && node.name === "undefined")
   );
 }
