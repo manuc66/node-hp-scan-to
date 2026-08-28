@@ -31,7 +31,8 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "test": "npm run typecheck && mocha",
     "test:watch": "mocha --watch",
-    "test:coverage": "c8 --reporter=lcov --reporter=text --exclude=\"test/\" mocha"
+    "test:coverage": "c8 --reporter=lcov --reporter=text --exclude=\"test/\" mocha",
+    "e2e": "bash scripts/live-test.sh"
   },
   "files": [
     "dist",

@@ -45,4 +45,7 @@ async function main() {
   await program.parseAsync(process.argv);
 }
 
-main().catch((err) => logger.error(err));
+main().catch((err) => {
+  logger.error(err);
+  process.exitCode = 1;
+});

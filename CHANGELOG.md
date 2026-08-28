@@ -23,3 +23,9 @@ All notable changes to this project are documented in this file.
   are never written to logs.
 - Local ESLint rule `pino/correct-args-position` enforcing pino argument order
   (object context before message).
+
+### Changed
+
+- The CLI now exits with a non-zero code when the command fails (previously
+  errors were logged but the process still exited `0`), so scripts and
+  automated tests can detect failures.
