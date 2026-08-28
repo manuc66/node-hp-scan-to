@@ -17,6 +17,14 @@ Guidelines for agent contributors working on this repository.
 - All public communication on this repository (issues, PRs, commit messages,
   changelog, documentation) is done in English.
 
+## User data
+
+- NEVER delete, move, or modify files in the user's personal scan output
+  directories or any folder configured by the user. Scans produced during
+  testing belong to the user.
+- Cleanup is limited to temporary artifacts you created yourself under
+  `/tmp` (e.g. `/tmp/scan-to-pc*`).
+
 ## Live end-to-end testing
 
 - Main flows (single-scan, listen, adf-autoscan, clear-registrations,
