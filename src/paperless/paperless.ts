@@ -1,11 +1,14 @@
-import fsSync from "fs";
+import fsSync from "node:fs";
 import FormData from "form-data";
 import axios from "axios";
 import type { ScanContent } from "../type/ScanContent.js";
-import fs from "fs/promises";
+import fs from "node:fs/promises";
 import { convertToPdf, mergeToPdf } from "../pdfProcessing.js";
 import type { PaperlessConfig } from "./PaperlessConfig.js";
 import type { ScanConfig } from "../type/scanConfigs.js";
+import { getLoggerForFile } from "../logger.js";
+
+const logger = getLoggerForFile(import.meta.url);
 
 export async function uploadImagesAsSeparateDocumentsToPaperless(
   scanJobContent: ScanContent,
@@ -27,9 +30,8 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
       await uploadToPaperless(pdfFilePath, paperlessConfig);
       await fs.unlink(pdfFilePath);
     } else {
-      console.log(
-        "Pdf generation has failed, nothing is going to be uploaded to paperless for: " +
-          item.path,
+      logger.error(
+        `Pdf generation has failed, nothing is going to be uploaded to paperless for: ${item.path}`,
       );
     }
   }
@@ -54,11 +56,11 @@ export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
   if (pdfFilePath !== null) {
     await uploadToPaperless(pdfFilePath, paperlessConfig);
     await fs.unlink(pdfFilePath);
-    console.log(
+    logger.info(
       `Pdf document ${pdfFilePath} has been removed from the filesystem`,
     );
   } else {
-    console.log(
+    logger.info(
       "Pdf generation has failed, nothing is going to be uploaded to paperless",
     );
   }
@@ -71,7 +73,7 @@ export async function uploadPdfToPaperless(
   if (pdfFilePath !== null) {
     await uploadToPaperless(pdfFilePath, paperlessConfig);
   } else {
-    console.log(
+    logger.error(
       "Pdf generation has failed, nothing is going to be uploaded to paperless",
     );
   }
@@ -90,7 +92,7 @@ async function uploadToPaperless(
   const form = new FormData();
   form.append("document", fileStream);
 
-  console.log(`Start uploading to paperless: ${filePath}`);
+  logger.info(`Start uploading to paperless: ${filePath}`);
   try {
     const response = await axios.post(url, form, {
       headers: {
@@ -99,9 +101,12 @@ async function uploadToPaperless(
       },
     });
 
-    console.log("Document successfully uploaded to paperless:", response.data);
+    logger.info(
+      { status: response.status },
+      "Document successfully uploaded to paperless",
+    );
   } catch (error) {
-    console.error("Fail to upload document:", error);
+    logger.error(error, "Fail to upload document");
     throw error;
   }
   fileStream.close();

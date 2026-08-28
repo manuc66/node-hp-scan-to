@@ -5,10 +5,7 @@ import { looksLikeHpScanDevice } from "../src/commands/discoverCmd.js";
 describe("discoverCmd", () => {
   describe("looksLikeHpScanDevice", () => {
     it("detects a real HP DiscoveryTree document", async () => {
-      const content = await readFile(
-        "./test/asset/discoveryTree.xml",
-        "utf-8",
-      );
+      const content = await readFile("./test/asset/discoveryTree.xml", "utf-8");
       expect(looksLikeHpScanDevice(content)).to.equal(true);
     });
 
@@ -24,8 +21,9 @@ describe("discoverCmd", () => {
     });
 
     it("rejects arbitrary non HP content", () => {
-      expect(looksLikeHpScanDevice("<html><body>router admin</body></html>")).to
-        .equal(false);
+      expect(
+        looksLikeHpScanDevice("<html><body>router admin</body></html>"),
+      ).to.equal(false);
     });
   });
 });

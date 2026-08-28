@@ -10,6 +10,7 @@ import z from "zod";
 import commitInfo from "./commitInfo.json" with { type: "json" };
 import { configSchema, type FileConfig } from "./type/FileConfig.js";
 import { setupProgram } from "./program.js";
+import logger, { getLoggerForFile } from "./logger.js";
 
 // When running from a bundled executable, look for the configuration
 // directory next to the binary unless NODE_CONFIG_DIR was explicitly set.
@@ -33,6 +34,10 @@ const validateConfig = (config: Config) => {
 };
 
 async function main() {
+  const logger = getLoggerForFile(import.meta.url);
+  logger.info(`Running with Git commit ID: ${commitInfo.commitId}`);
+  logger.debug({ env: process.env["NODE_ENV"] }, "Environment detected");
+
   const fileConfig: FileConfig = validateConfig(config);
 
   const program = setupProgram(fileConfig);
@@ -40,5 +45,7 @@ async function main() {
   await program.parseAsync(process.argv);
 }
 
-console.log(`Running with Git commit ID: ${commitInfo.commitId}`);
-main().catch((err) => console.log(err));
+main().catch((err) => {
+  logger.error(err);
+  process.exitCode = 1;
+});

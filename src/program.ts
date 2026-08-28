@@ -3,7 +3,7 @@
 
 "use strict";
 
-import os from "os";
+import os from "node:os";
 // default-import + destructure: this dependency is CommonJS and some loaders
 // (tsx) do not expose its named exports to ESM consumers
 import bonjourService from "bonjour-service";
@@ -13,7 +13,7 @@ import DeviceClient from "./DeviceClient.js";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import { startHealthCheckServer } from "./healthcheck.js";
-import fs from "fs";
+import fs from "node:fs";
 import { Command, Option } from "@commander-js/extra-typings";
 import type { RegistrationConfig } from "./type/scanTargetDefinitions.js";
 import { listenCmd } from "./commands/listenCmd.js";
@@ -29,21 +29,22 @@ import type {
 import { discoverCmd } from "./commands/discoverCmd.js";
 import type { FileConfig } from "./type/FileConfig.js";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
-import type { Server as NetServer } from "net";
+import type { Server as NetServer } from "node:net";
 import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
+import { getLoggerForFile, setDebugLevel } from "./logger.js";
 
+const logger = getLoggerForFile(import.meta.url);
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
   return new Promise((resolve) => {
     const bonjour = new Bonjour();
-    console.log("Searching device...");
+    logger.info("Searching device...");
     const browser = bonjour.find(
       {
         type: "http",
       },
       (service) => {
-        console.log(".");
         if (
           service.name.startsWith(deviceNamePrefix) &&
           service.port === 80 &&
@@ -52,7 +53,7 @@ function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
         ) {
           browser.stop();
           bonjour.destroy();
-          console.log(`Found: ${service.name}`);
+          logger.info(`Found: ${service.name}`);
           resolve(service.addresses[0]);
         }
       },
@@ -249,16 +250,15 @@ async function getDeviceIp(
     );
     ip = await findOfficejetIp(name);
   }
-  console.log(`Using device at IP: ${ip}`);
+  logger.info(`Using device at IP: ${ip}`);
   return ip;
 }
 
 function getIsDebug(options: ProgramOption, configFile: FileConfig) {
   const debug = getConfiguredValue(options.debug, configFile.debug, false);
 
-  if (debug) {
-    console.log(`IsDebug: ${debug}`);
-  }
+  logger.info(`IsDebug: ${debug}`);
+
   return debug;
 }
 
@@ -310,7 +310,7 @@ function getPaperlessConfig(
       paperlessToken = configPaperlessToken ?? "";
     }
 
-    console.log(
+    logger.info(
       `Paperless configuration provided, post document url: ${paperlessPostDocumentUrl}, the token length: ${paperlessToken.length}, keepFiles: ${configPaperlessKeepFiles}`,
     );
     return {
@@ -374,7 +374,7 @@ function getNextcloudConfig(
 
     const passLength = configNextcloudPassword?.length;
     const usernameLength = configNextcloudUsername.length;
-    console.log(
+    logger.info(
       `Nextcloud configuration provided, url: ${configNextcloudUrl}, username length: ${usernameLength}, password length: ${passLength}, upload folder: ${configNextcloudUploadFolder}, keepFiles: ${configNextcloudKeepFiles}`,
     );
     return {
@@ -642,7 +642,12 @@ function createListenCliCmd(configFile: FileConfig) {
 
       const scanConfig = getScanConfiguration(options, configFile);
 
-      await listenCmd(api, registrationConfigs, scanConfig, deviceUpPollingInterval);
+      await listenCmd(
+        api,
+        registrationConfigs,
+        scanConfig,
+        deviceUpPollingInterval,
+      );
 
       healthCheckSrv?.close();
     });
@@ -826,10 +831,9 @@ function createDiscoverCliCmd() {
       "Discover HP scan-capable devices on the network, one 'name<TAB>ip' pair per line",
     )
     .addOption(
-      new Option(
-        "--timeout <timeout>",
-        "Browsing duration in seconds",
-      ).default("5"),
+      new Option("--timeout <timeout>", "Browsing duration in seconds").default(
+        "5",
+      ),
     )
     .addOption(
       new Option("--json", "Output devices as a JSON array").default(false),
@@ -886,6 +890,15 @@ type ProgramOption = ReturnType<ReturnType<typeof createProgram>["opts"]>;
 
 export function setupProgram(fileConfig: FileConfig) {
   const program = createProgram();
+
+  program.hook("preAction", (thisCommand) => {
+    const isDebug = getConfiguredValue(
+      thisCommand.opts().debug,
+      fileConfig.debug,
+      false,
+    );
+    setDebugLevel(isDebug);
+  });
 
   const cmdListen = createListenCliCmd(fileConfig);
   cmdListen.optsWithGlobals();

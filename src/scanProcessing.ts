@@ -5,7 +5,7 @@ import type DeviceClient from "./DeviceClient.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type { ScanContent } from "./type/ScanContent.js";
 import { InputSource } from "./type/InputSource.js";
-import { postProcessing } from "./postProcessing.js";
+import { postProcessing, type PostProcessingResult } from "./postProcessing.js";
 import { getScanDimensions } from "./scanDimensions.js";
 import type { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers.js";
@@ -21,6 +21,9 @@ import type { IScanStatus } from "./hpModels/IScanStatus.js";
 import { ScannerState } from "./hpModels/ScannerState.js";
 import type { ScanPlexMode } from "./hpModels/ScanPlexMode.js";
 import { createImageFormat, type ImageFormat } from "./imageFormats/index.js";
+import { getLoggerForFile } from "./logger.js";
+
+const logger = getLoggerForFile(import.meta.url);
 
 export interface WalkupDestination {
   get shortcut(): null | KnownShortcut;
@@ -45,15 +48,14 @@ export async function tryGetDestination(
         return destination;
       }
     } else {
-      console.log(`No destination URI found`);
+      logger.warn(`No destination URI found`);
     }
 
-    console.log(`No shortcut yet available, attempt: ${i + 1}/20`);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    logger.info(`No shortcut yet available, attempt: ${i + 1}/20`);
+    await new Promise((resolve) => setTimeout(resolve, 1000)); //wait 1s
   }
 
-  console.log("Failing to detect destination shortcut");
-  console.log(JSON.stringify(destination));
+  logger.error(destination, "Failing to detect destination shortcut");
   return null;
 }
 
@@ -70,7 +72,7 @@ export function isPdf(destination: WalkupDestination): boolean {
   ) {
     return false;
   } else {
-    console.log(
+    logger.warn(
       `Unexpected shortcut received: ${destination.shortcut}, considering it as non pdf target!`,
     );
     return false;
@@ -98,7 +100,7 @@ export async function saveScanFromEvent(
     contentType = "Document";
     destinationFolder = tempFolder;
     filePattern = undefined;
-    console.log(`Converting scan to PDF…`);
+    logger.info(`Converting scan to PDF…`);
     effectiveFormat = ScanFormat.Jpeg;
   } else {
     contentType = "Photo";
@@ -109,13 +111,13 @@ export async function saveScanFromEvent(
   const scanStatus = await deviceCapabilities.getScanStatus();
 
   if (scanStatus.scannerState !== ScannerState.Idle) {
-    console.log(
+    logger.warn(
       `Scanner state is not Idle: ${scanStatus.scannerState}, aborting scan attempt...!`,
     );
     return { elements: [] };
   }
 
-  console.log("ADF status: " + scanStatus.adfState);
+  logger.info(`ADF status: ${scanStatus.adfState}`);
 
   const inputSource = scanStatus.getInputSource();
 
@@ -173,7 +175,7 @@ export async function scanFromAdf(
   if (adfAutoScanConfig.generatePdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
-    console.log(`Converting scan to PDF...`);
+    logger.info(`Converting scan to PDF...`);
     effectiveFormat = ScanFormat.Jpeg;
   } else {
     contentType = "Photo";
@@ -216,7 +218,7 @@ export async function scanFromAdf(
     deviceCapabilities,
   );
 
-  console.log(
+  logger.info(
     `Scan of page(s) completed, total pages: ${scanJobContent.elements.length}:`,
   );
 
@@ -239,14 +241,14 @@ export async function singleScan(
   scanConfig: SingleScanConfig,
   deviceCapabilities: DeviceCapabilities,
   date: Date,
-): Promise<void> {
+): Promise<PostProcessingResult> {
   let destinationFolder: string;
   let contentType: "Document" | "Photo";
   let effectiveFormat = scanConfig.format;
   if (scanConfig.generatePdf) {
     contentType = "Document";
     destinationFolder = tempFolder;
-    console.log(`Converting scan to PDF...`);
+    logger.info(`Converting scan to PDF...`);
     effectiveFormat = ScanFormat.Jpeg;
   } else {
     contentType = "Photo";
@@ -256,13 +258,13 @@ export async function singleScan(
   const scanStatus = await deviceCapabilities.getScanStatus();
 
   if (scanStatus.scannerState !== ScannerState.Idle) {
-    console.log(
+    logger.warn(
       `Scanner state is not Idle: ${scanStatus.scannerState}, aborting scan attempt...!`,
     );
-    return;
+    return { uploadSucceeded: true, failures: [] };
   }
 
-  console.log("ADF is: " + scanStatus.adfState);
+  logger.info(`ADF is: ${scanStatus.adfState}`);
 
   const inputSource = scanStatus.getInputSource();
 
@@ -301,11 +303,11 @@ export async function singleScan(
     deviceCapabilities,
   );
 
-  console.log(
+  logger.info(
     `Scan of page(s) completed, total pages: ${scanJobContent.elements.length}:`,
   );
 
-  await postProcessing(
+  return await postProcessing(
     scanConfig,
     folder,
     tempFolder,
@@ -329,7 +331,7 @@ export async function waitAdfLoaded(
       await api.delay(pollingInterval);
       scanStatus = await getScanStatus();
     }
-    console.log(`ADF load detected`);
+    logger.info(`ADF load detected`);
 
     let loaded = true;
     let counter = 0;
@@ -343,9 +345,9 @@ export async function waitAdfLoaded(
 
     if (loaded && counter >= startScanDelay) {
       ready = true;
-      console.log(`ADF still loaded, proceeding`);
+      logger.info(`ADF still loaded, proceeding`);
     } else {
-      console.log(`ADF not loaded anymore, waiting...`);
+      logger.info(`ADF not loaded anymore, waiting...`);
     }
   }
 }

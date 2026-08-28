@@ -18,7 +18,7 @@ const __dirname = path.dirname(__filename);
 describe("nextcloud", () => {
   // prepare test data
   const fileName = "nextcloud_sample.jpg";
-  const filePath = path.resolve(__dirname, "./asset/" + fileName);
+  const filePath = path.resolve(__dirname, `./asset/${fileName}`);
   const nextcloudUrl = "https://nextcloud.example.test";
   const username = "scanner";
   const password = "pa$$word";
@@ -91,8 +91,8 @@ describe("nextcloud", () => {
     it("success upload multiple images", async () => {
       const fileName1 = "sample1.jpg";
       const fileName2 = "sample2.jpg";
-      const filePath1 = path.resolve(__dirname, "./asset/" + fileName1);
-      const filePath2 = path.resolve(__dirname, "./asset/" + fileName2);
+      const filePath1 = path.resolve(__dirname, `./asset/${fileName1}`);
+      const filePath2 = path.resolve(__dirname, `./asset/${fileName2}`);
 
       nock(nextcloudUrl)
         .intercept(
@@ -152,7 +152,15 @@ describe("nextcloud", () => {
         .reply(401, "Unauthorized");
       scanJobContent = { elements: [] };
 
-      await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      let threw = false;
+      try {
+        await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      } catch {
+        threw = true;
+      }
+      if (!threw) {
+        throw new Error("Should have thrown");
+      }
     });
 
     it("upload path does not exist", async () => {
@@ -165,7 +173,15 @@ describe("nextcloud", () => {
         .reply(404, "No such file or directory");
       scanJobContent = { elements: [] };
 
-      await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      let threw = false;
+      try {
+        await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      } catch {
+        threw = true;
+      }
+      if (!threw) {
+        throw new Error("Should have thrown");
+      }
     });
 
     it("upload file failed", async () => {
@@ -189,7 +205,15 @@ describe("nextcloud", () => {
 
       scanJobContent.elements.push(scanPage);
 
-      await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      let threw = false;
+      try {
+        await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      } catch {
+        threw = true;
+      }
+      if (!threw) {
+        throw new Error("Should have thrown");
+      }
     });
 
     it("upload file not found", async () => {
@@ -222,14 +246,22 @@ describe("nextcloud", () => {
       };
       scanJobContent.elements.push(scanPage);
 
-      await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      let threw = false;
+      try {
+        await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      } catch {
+        threw = true;
+      }
+      if (!threw) {
+        throw new Error("Should have thrown");
+      }
     });
   });
 
   describe("uploadPdfToNextcloud", () => {
     it("success upload pdf document", async () => {
       const pdfFilePath = await convertToPdf(scanPage, false);
-      const pdfFileName = "sample.pdf";
+      const pdfFileName = path.basename(pdfFilePath ?? "");
 
       nock(nextcloudUrl)
         .intercept(

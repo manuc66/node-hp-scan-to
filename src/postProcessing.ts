@@ -15,6 +15,18 @@ import { existsSync } from "node:fs";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import type { ScanConfig } from "./type/scanConfigs.js";
+import { getLoggerForFile } from "./logger.js";
+
+const logger = getLoggerForFile(import.meta.url);
+
+export interface PostProcessingResult {
+  uploadSucceeded: boolean;
+  failures: string[];
+}
+
+function toFailureMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
 
 export async function postProcessing(
   scanConfig: ScanConfig,
@@ -24,9 +36,9 @@ export async function postProcessing(
   scanJobContent: ScanContent,
   scanDate: Date,
   toPdf: boolean,
-) {
+): Promise<PostProcessingResult> {
   if (toPdf) {
-    await handlePdfPostProcessing(
+    return await handlePdfPostProcessing(
       folder,
       tempFolder,
       scanCount,
@@ -34,15 +46,14 @@ export async function postProcessing(
       scanDate,
       scanConfig,
     );
-  } else {
-    await handleImagePostProcessing(
-      folder,
-      scanCount,
-      scanJobContent,
-      scanDate,
-      scanConfig,
-    );
   }
+  return await handleImagePostProcessing(
+    folder,
+    scanCount,
+    scanJobContent,
+    scanDate,
+    scanConfig,
+  );
 }
 
 async function handlePdfPostProcessing(
@@ -52,7 +63,7 @@ async function handlePdfPostProcessing(
   scanJobContent: ScanContent,
   scanDate: Date,
   scanConfig: ScanConfig,
-) {
+): Promise<PostProcessingResult> {
   const paperlessConfig = scanConfig.paperlessConfig;
   const nextcloudConfig = scanConfig.nextcloudConfig;
 
@@ -64,16 +75,33 @@ async function handlePdfPostProcessing(
     scanDate,
     true,
   );
+  const failures: string[] = [];
   if (pdfFilePath !== null) {
     displayPdfScan(pdfFilePath, scanJobContent, scanCount);
     if (paperlessConfig) {
-      await uploadPdfToPaperless(pdfFilePath, paperlessConfig);
+      try {
+        await uploadPdfToPaperless(pdfFilePath, paperlessConfig);
+      } catch (e) {
+        failures.push(toFailureMessage(e));
+      }
     }
     if (nextcloudConfig) {
-      await uploadPdfToNextcloud(pdfFilePath, nextcloudConfig);
+      try {
+        await uploadPdfToNextcloud(pdfFilePath, nextcloudConfig);
+      } catch (e) {
+        failures.push(toFailureMessage(e));
+      }
     }
-    await cleanUpFilesIfNeeded([pdfFilePath], paperlessConfig, nextcloudConfig);
+    // Only clean up if delivery succeeded, otherwise keep the files.
+    if (failures.length === 0) {
+      await cleanUpFilesIfNeeded(
+        [pdfFilePath],
+        paperlessConfig,
+        nextcloudConfig,
+      );
+    }
   }
+  return { uploadSucceeded: failures.length === 0, failures };
 }
 
 async function handleImagePostProcessing(
@@ -82,40 +110,53 @@ async function handleImagePostProcessing(
   scanJobContent: ScanContent,
   scanDate: Date,
   scanConfig: ScanConfig,
-) {
+): Promise<PostProcessingResult> {
   const paperlessConfig = scanConfig.paperlessConfig;
   const nextcloudConfig = scanConfig.nextcloudConfig;
 
   displayImageScan(scanJobContent, scanCount);
+  const failures: string[] = [];
   if (paperlessConfig) {
-    if (paperlessConfig.groupMultiPageScanIntoAPdf) {
-      await mergeToPdfAndUploadAsSingleDocumentToPaperless(
-        folder,
-        scanCount,
-        scanJobContent,
-        scanConfig,
-        scanDate,
-        paperlessConfig,
-      );
-    } else {
-      if (paperlessConfig.alwaysSendAsPdfFile) {
-        await convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
+    try {
+      if (paperlessConfig.groupMultiPageScanIntoAPdf) {
+        await mergeToPdfAndUploadAsSingleDocumentToPaperless(
+          folder,
+          scanCount,
           scanJobContent,
+          scanConfig,
+          scanDate,
           paperlessConfig,
         );
       } else {
-        await uploadImagesAsSeparateDocumentsToPaperless(
-          scanJobContent,
-          paperlessConfig,
-        );
+        if (paperlessConfig.alwaysSendAsPdfFile) {
+          await convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
+            scanJobContent,
+            paperlessConfig,
+          );
+        } else {
+          await uploadImagesAsSeparateDocumentsToPaperless(
+            scanJobContent,
+            paperlessConfig,
+          );
+        }
       }
+    } catch (e) {
+      failures.push(toFailureMessage(e));
     }
   }
   if (nextcloudConfig) {
-    await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+    try {
+      await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+    } catch (e) {
+      failures.push(toFailureMessage(e));
+    }
   }
-  const filePaths = scanJobContent.elements.map((element) => element.path);
-  await cleanUpFilesIfNeeded(filePaths, paperlessConfig, nextcloudConfig);
+  // Only clean up if delivery succeeded, otherwise keep the files.
+  if (failures.length === 0) {
+    const filePaths = scanJobContent.elements.map((element) => element.path);
+    await cleanUpFilesIfNeeded(filePaths, paperlessConfig, nextcloudConfig);
+  }
+  return { uploadSucceeded: failures.length === 0, failures };
 }
 
 function displayPdfScan(
@@ -124,15 +165,15 @@ function displayPdfScan(
   scanCount: number,
 ) {
   if (pdfFilePath === null) {
-    console.log(`Pdf generated has not been generated`);
+    logger.warn(`Pdf generated has not been generated`);
     return;
   }
 
-  console.log(
+  logger.info(
     `Scan #${scanCount} saved as PDF: ${pdfFilePath} with the following pages:`,
   );
   scanJobContent.elements.forEach((e) =>
-    console.log(
+    logger.info(
       `\t- page ${e.pageNumber.toString().padStart(3, " ")} | ${e.width}x${
         e.height
       } | (temp file deleted ${e.path})`,
@@ -141,9 +182,9 @@ function displayPdfScan(
 }
 
 function displayImageScan(scanJobContent: ScanContent, scanCount: number) {
-  console.log(`Scan #${scanCount} completed with the following pages:`);
+  logger.info(`Scan #${scanCount} completed with the following pages:`);
   scanJobContent.elements.forEach((e) =>
-    console.log(
+    logger.info(
       `\t- page ${e.pageNumber.toString().padStart(3, " ")} | ${e.width}x${
         e.height
       } | ${e.path}`,
@@ -163,9 +204,9 @@ async function cleanUpFilesIfNeeded(
       filePaths.map(async (filePath) => {
         if (existsSync(filePath)) {
           await fs.unlink(filePath);
-          console.log(`File ${filePath} has been removed from the filesystem`);
+          logger.info(`File ${filePath} has been removed from the filesystem`);
         } else {
-          console.log(
+          logger.warn(
             `File ${filePath} was already removed from the filesystem`,
           );
         }

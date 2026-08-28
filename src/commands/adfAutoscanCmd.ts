@@ -4,6 +4,9 @@ import { scanFromAdf, waitAdfLoaded } from "../scanProcessing.js";
 import PathHelper from "../PathHelper.js";
 import type { DeviceCapabilities } from "../type/DeviceCapabilities.js";
 import type { AdfAutoScanConfig } from "../type/scanConfigs.js";
+import { getLoggerForFile } from "../logger.js";
+
+const logger = getLoggerForFile(import.meta.url);
 
 let iteration = 0;
 
@@ -12,14 +15,14 @@ function checkCapabilities(
   deviceCapabilities: DeviceCapabilities,
 ) {
   if (!deviceCapabilities.hasAdfDetectPaperLoaded) {
-    console.log(
-      "WARNING: The automatic scan feature is likely unsupported on this device, as its advertised capabilities do not include this feature.",
+    logger.warn(
+      "The automatic scan feature is likely unsupported on this device, as its advertised capabilities do not include this feature.",
     );
   }
 
   if (adfAutoScanConfig.isDuplex && !deviceCapabilities.hasAdfDuplex) {
-    console.log(
-      "WARNING: The requested duplex scan method is likely unsupported on this device, as its advertised capabilities do not include this feature.",
+    logger.warn(
+      "The requested duplex scan method is likely unsupported on this device, as its advertised capabilities do not include this feature.",
     );
   }
 }
@@ -40,7 +43,7 @@ async function executeAutoscanIteration(
       deviceCapabilities.getScanStatus,
     );
 
-    console.log(`Scan event captured, saving scan #${scanCount}`);
+    logger.info(`Scan event captured, saving scan #${scanCount}`);
 
     await scanFromAdf(
       api,
@@ -53,11 +56,7 @@ async function executeAutoscanIteration(
     );
     return { success: true, isDeviceAlive: true };
   } catch (e) {
-    if (e instanceof Error) {
-      console.log(e.message);
-    } else {
-      console.log(e);
-    }
+    logger.error(e);
     const isAlive = await api.isAlive();
     return { success: false, isDeviceAlive: isAlive };
   }
@@ -108,7 +107,7 @@ export async function adfAutoscanCmd(
 
   while (keepActive) {
     iteration++;
-    console.log(`Iteration ${iteration} (Errors so far: ${errorCount})`);
+    logger.info(`Iteration ${iteration} (Errors so far: ${errorCount})`);
 
     const result = await executeAutoscanIteration(
       api,

@@ -3,6 +3,9 @@ import os from "node:os";
 import fs, { promises as Fs } from "node:fs";
 import dateformat from "dateformat";
 import { customAlphabet } from "nanoid";
+import { getLoggerForFile } from "./logger.js";
+
+const logger = getLoggerForFile(import.meta.url);
 
 const nanoid = customAlphabet(
   "23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ",
@@ -45,16 +48,14 @@ export default class PathHelper {
     const files = await Fs.readdir(folder);
     for (let i = currentScanCount + 1; i < Number.MAX_SAFE_INTEGER; i++) {
       const currentScanCountProbe = `scan${i}`;
-      if (
-        !(
-          files.some((x) => x.startsWith(currentScanCountProbe)) &&
-          files.some(
-            (x) =>
-              x.startsWith(currentScanCountProbe + "_") ||
-              files.some((x) => x.startsWith(currentScanCountProbe + ".")),
-          )
+      if (!(
+        files.some((x) => x.startsWith(currentScanCountProbe)) &&
+        files.some(
+          (x) =>
+            x.startsWith(`${currentScanCountProbe}_`) ||
+            files.some((x) => x.startsWith(`${currentScanCountProbe}.`)),
         )
-      ) {
+      )) {
         return i;
       }
     }
@@ -152,14 +153,14 @@ export default class PathHelper {
 
   static async getTargetFolder(directory: string | undefined): Promise<string> {
     const folder = await PathHelper.getOutputFolder(directory);
-    console.log(`Output folder: ${folder}`);
+    logger.info(`Output folder: ${folder}`);
     await this.checkIfFolderIsWritable(folder);
     return folder;
   }
 
   static async getTempFolder(directory: string | undefined): Promise<string> {
     const tempFolder = await PathHelper.getOutputFolder(directory);
-    console.log(`Temporary folder: ${tempFolder}`);
+    logger.info(`Temporary folder: ${tempFolder}`);
     await this.checkIfFolderIsWritable(tempFolder);
     return tempFolder;
   }

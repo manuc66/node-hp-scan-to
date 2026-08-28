@@ -3,6 +3,9 @@ import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
 import { singleScan } from "../scanProcessing.js";
 import type { SingleScanConfig } from "../type/scanConfigs.js";
 import PathHelper from "../PathHelper.js";
+import { getLoggerForFile } from "../logger.js";
+
+const logger = getLoggerForFile(import.meta.url);
 
 export async function singleScanCmd(
   api: DeviceClient,
@@ -24,17 +27,20 @@ export async function singleScanCmd(
     singleScanConfig.preferEscl,
   );
 
-  try {
-    await singleScan(
-      api,
-      0,
-      folder,
-      tempFolder,
-      singleScanConfig,
-      deviceCapabilities,
-      new Date(),
+  const result = await singleScan(
+    api,
+    0,
+    folder,
+    tempFolder,
+    singleScanConfig,
+    deviceCapabilities,
+    new Date(),
+  );
+
+  if (!result.uploadSucceeded) {
+    logger.warn(
+      `Scan completed but delivery to paperless/nextcloud failed: ${result.failures.join("; ")}`,
     );
-  } catch (e) {
-    console.log(e);
+    process.exitCode = 1;
   }
 }

@@ -1,8 +1,11 @@
 import type { ScanContent, ScanPage } from "./type/ScanContent.js";
 import PathHelper from "./PathHelper.js";
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { jsPDF } from "jspdf";
+import { getLoggerForFile } from "./logger.js";
+
+const logger = getLoggerForFile(import.meta.url);
 
 export async function mergeToPdf(
   folder: string,
@@ -26,7 +29,7 @@ export async function mergeToPdf(
     }
     return pdfFilePath;
   }
-  console.log(`No page available to build a pdf file`);
+  logger.warn(`No page available to build a pdf file`);
   return null;
 }
 

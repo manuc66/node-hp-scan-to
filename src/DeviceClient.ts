@@ -1,7 +1,7 @@
 "use strict";
 
-import { promisify } from "util";
-import fs from "fs";
+import { promisify } from "node:util";
+import fs from "node:fs";
 import axios, {
   AxiosError,
   type AxiosRequestConfig,
@@ -33,6 +33,9 @@ import EsclScanStatus from "./hpModels/EsclScanStatus.js";
 import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
 import EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import PathHelper from "./PathHelper.js";
+import { getLoggerForFile } from "./logger.js";
+
+const logger = getLoggerForFile(import.meta.url);
 
 export default class DeviceClient {
   readonly deviceIP: string;
@@ -53,11 +56,12 @@ export default class DeviceClient {
     isRequest: boolean,
     msg: object | string,
   ): void {
-    if (this.debug) {
-      const id = String(callId).padStart(4, "0");
-      const content = typeof msg === "string" ? msg : JSON.stringify(msg);
-      console.log(id + (isRequest ? " -> " : " <- ") + content);
-    }
+    const id = String(callId).padStart(4, "0");
+    const prefix = id + (isRequest ? " -> " : " <- ");
+    // Do not store the detail under `msg`: pino overwrites `msg` with the
+    // message string, so the request/response detail would be lost.
+    const detailKey = isRequest ? "request" : "response";
+    logger.debug({ callId, isRequest, [detailKey]: msg }, prefix);
   }
 
   private async callAxios<T = string>(
@@ -119,7 +123,7 @@ export default class DeviceClient {
     let first = true;
     while (!(await this.isAlive())) {
       if (first) {
-        console.log(
+        logger.info(
           `Device ip: ${this.deviceIP} is down! [${new Date().toISOString()}]`,
         );
       }
@@ -127,7 +131,7 @@ export default class DeviceClient {
       await delay(deviceUpPollingInterval);
     }
     if (!first) {
-      console.log(
+      logger.info(
         `Device ip: ${this.deviceIP} is up again! [${new Date().toISOString()}]`,
       );
     }
@@ -231,9 +235,7 @@ export default class DeviceClient {
     }
   }
 
-  async getEsclScanJobManifest(
-    uri: string,
-  ): Promise<EsclScanJobManifest> {
+  async getEsclScanJobManifest(uri: string): Promise<EsclScanJobManifest> {
     const response = await this.callAxios({
       baseURL: `http://${this.deviceIP}`,
       url: uri,
@@ -278,9 +280,7 @@ export default class DeviceClient {
     }
   }
 
-  async getWalkupScanToCompCaps(
-    uri: string,
-  ): Promise<WalkupScanToCompCaps> {
+  async getWalkupScanToCompCaps(uri: string): Promise<WalkupScanToCompCaps> {
     const response = await this.callAxios({
       baseURL: `http://${this.deviceIP}`,
       url: uri,
@@ -388,11 +388,11 @@ export default class DeviceClient {
     }
   }
 
-  async getEvents(
-    etag = "",
-    decisecondTimeout = 0,
-  ): Promise<EtagEventTable> {
-    const url = DeviceClient.appendTimeout("/EventMgmt/EventTable", decisecondTimeout);
+  async getEvents(etag = "", decisecondTimeout = 0): Promise<EtagEventTable> {
+    const url = DeviceClient.appendTimeout(
+      "/EventMgmt/EventTable",
+      decisecondTimeout,
+    );
 
     const headers = DeviceClient.placeETagHeader(etag, {});
 
@@ -444,7 +444,7 @@ export default class DeviceClient {
   static appendTimeout(url: string, timeout: number | null = null): string {
     timeout ??= 1200;
     if (timeout > 0) {
-      url += "?timeout=" + timeout;
+      url += `?timeout=${timeout}`;
     }
     return url;
   }
@@ -638,7 +638,7 @@ export default class DeviceClient {
         return await fn();
       } catch (error) {
         if (error instanceof AxiosError && error.status === 503) {
-          console.log("Waiting, device is busy");
+          logger.info("Waiting, device is busy");
           await this.delay(1000);
           continue;
         }
@@ -654,20 +654,18 @@ export default class DeviceClient {
   ): Promise<{ path: string; contentType: string | undefined }> {
     return await this.esclWaitDeviceBusy(async () => {
       return await this.downloadPageWithMeta(
-        jobUri + "/NextDocument",
+        `${jobUri}/NextDocument`,
         destination,
         60_000,
       );
     });
   }
 
-  async getEsclScanImageInfo(
-    jobUri: string,
-  ): Promise<EsclScanImageInfo> {
+  async getEsclScanImageInfo(jobUri: string): Promise<EsclScanImageInfo> {
     return await this.esclWaitDeviceBusy(async () => {
       const response = await this.callAxios({
         baseURL: `http://${this.deviceIP}`,
-        url: jobUri + "/ScanImageInfo",
+        url: `${jobUri}/ScanImageInfo`,
         method: "GET",
         responseType: "text",
       });

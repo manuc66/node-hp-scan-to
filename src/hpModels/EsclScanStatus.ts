@@ -6,6 +6,9 @@ import { ScannerState } from "./ScannerState.js";
 import { AdfState } from "./AdfState.js";
 import { EnumUtils } from "./EnumUtils.js";
 import PathHelper from "../PathHelper.js";
+import { getLoggerForFile } from "../logger.js";
+
+const logger = getLoggerForFile(import.meta.url);
 
 export enum JobStateReason {
   JobCompletedSuccessfully = "JobCompletedSuccessfully",
@@ -113,7 +116,7 @@ export default class EsclScanStatus implements IScanStatus {
       } else if (adfState === "ScannerAdfLoaded") {
         return AdfState.Loaded;
       } else {
-        console.error(
+        logger.error(
           `"${adfState}" is not a know AdfState value, you would be kind as a reader of this message to fill an issue to help at better state handling.`,
         );
       }
@@ -135,7 +138,7 @@ export default class EsclScanStatus implements IScanStatus {
     return this.getJobInfos().find(
       (x) =>
         jobLocation === PathHelper.getPathFromHttpLocation(x.getJobUri()) ||
-        jobLocation === PathHelper.getPathFromHttpLocation(x.getJobUri()) + "/",
+        jobLocation === `${PathHelper.getPathFromHttpLocation(x.getJobUri())}/`,
     );
   }
 
