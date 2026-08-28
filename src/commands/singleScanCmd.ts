@@ -3,9 +3,6 @@ import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
 import { singleScan } from "../scanProcessing.js";
 import type { SingleScanConfig } from "../type/scanConfigs.js";
 import PathHelper from "../PathHelper.js";
-import { getLoggerForFile } from "../logger.js";
-
-const logger = getLoggerForFile(import.meta.url);
 
 export async function singleScanCmd(
   api: DeviceClient,
@@ -27,17 +24,13 @@ export async function singleScanCmd(
     singleScanConfig.preferEscl,
   );
 
-  try {
-    await singleScan(
-      api,
-      0,
-      folder,
-      tempFolder,
-      singleScanConfig,
-      deviceCapabilities,
-      new Date(),
-    );
-  } catch (e) {
-    logger.error(e);
-  }
+  await singleScan(
+    api,
+    0,
+    folder,
+    tempFolder,
+    singleScanConfig,
+    deviceCapabilities,
+    new Date(),
+  );
 }

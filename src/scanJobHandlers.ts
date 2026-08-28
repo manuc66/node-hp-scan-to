@@ -508,7 +508,29 @@ export async function executeScanJob(
 ): Promise<JobState> {
   const jobUrl = await deviceCapabilities.submitScanJob(scanJobSettings);
 
-  logger.info(`Creating job with settings: ${JSON.stringify(scanJobSettings)}`);
+  // Build a clean summary: the settings instance exposes private fields
+  // (e.g. `_format`) that are not useful in logs.
+  const rawSettings = scanJobSettings as unknown as {
+    inputSource: string;
+    contentType: string;
+    resolution: number;
+    width: number | null;
+    height: number | null;
+    isDuplex: boolean;
+  };
+  logger.info(
+    {
+      inputSource: rawSettings.inputSource,
+      contentType: rawSettings.contentType,
+      resolution: rawSettings.resolution,
+      mode: scanJobSettings.mode,
+      format: scanJobSettings.format.getExtension(),
+      width: rawSettings.width,
+      height: rawSettings.height,
+      isDuplex: rawSettings.isDuplex,
+    },
+    "Creating job with settings",
+  );
 
   logger.info(`New job created: ${jobUrl}`);
 

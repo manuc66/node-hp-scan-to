@@ -26,3 +26,15 @@ Guidelines for agent contributors working on this repository.
   (`--destructive` also runs `clear-registrations`).
 - Any feature that touches a main flow should extend this script so the
   flows stay covered for this and future changes.
+
+## Upload / credential testing
+
+- `scripts/upload-stub.mjs` mimics paperless (multipart POST) and Nextcloud
+  WebDAV (PROPFIND + PUT) to test upload and credential flows without real
+  services. `STUB_FAIL=1` makes every endpoint fail.
+- Example against a real scanner:
+  `STUB_FAIL=0 node scripts/upload-stub.mjs &`
+  `node dist/index.js --address <printer> single-scan --pdf -k \
+    --paperless-post-document-url http://localhost:3998/api/documents/post_document/ \
+    --paperless-token <token>`
+  (replace with `--nextcloud-url/--nextcloud-username/--nextcloud-password`).
