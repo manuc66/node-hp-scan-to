@@ -1,7 +1,9 @@
 import axios from "axios";
 // default-import + destructure: this dependency is CommonJS and some loaders
 // (tsx) do not expose its named exports to ESM consumers
-import bonjourService from "bonjour-service";
+import bonjourService, {
+  type Browser as BonjourBrowser,
+} from "bonjour-service";
 
 const { Bonjour } = bonjourService;
 
@@ -63,7 +65,21 @@ function browseCandidates(timeoutMs: number): Promise<DiscoveredDevice[]> {
       bonjour.destroy();
       resolve([...candidates.values()]);
     };
-    const timer = setTimeout(finish, timeoutMs);
+
+    const browsers: BonjourBrowser[] = [];
+    const startAll = () => {
+      for (const browser of browsers) {
+        browser.start();
+      }
+    };
+    const stopAllThenRestart = () => {
+      // cold mDNS caches / sleeping devices often miss the very first
+      // multicast query; re-issuing it midway makes discovery reliable
+      for (const browser of browsers) {
+        browser.stop();
+      }
+      startAll();
+    };
 
     for (const type of MDNS_SERVICE_TYPES) {
       const browser = bonjour.find({ type }, (service) => {
@@ -77,9 +93,14 @@ function browseCandidates(timeoutMs: number): Promise<DiscoveredDevice[]> {
           candidates.set(ipv4, { name: service.name, ip: ipv4 });
         }
       });
-      browser.start();
+      browsers.push(browser);
     }
 
+    startAll();
+    const requeryAt = Math.min(timeoutMs / 2, 3000);
+    const requeryTimer = setTimeout(stopAllThenRestart, requeryAt);
+    requeryTimer.unref();
+    const timer = setTimeout(finish, timeoutMs);
     timer.unref();
   });
 }

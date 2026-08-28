@@ -13,8 +13,10 @@ RequestExecutionLevel highest
 SetCompressor /SOLID lzma
 
 !define APPNAME "node-hp-scan-to"
-!define DISPLAY "HP Scan to Computer"
-!define PUBLISHER "Emmanuel Counasse"
+; no branding beyond the project name: "HP ..." would look like an
+; HP Inc. product - nominative/descriptive use only stays safe
+!define DISPLAY "${APPNAME}"
+!define PUBLISHER "manuc66"
 
 !ifndef VERSION
   !define VERSION "0.0.0-dev"
@@ -34,7 +36,7 @@ InstallDir "$LOCALAPPDATA\Programs\${APPNAME}"
 !include "StrFunc.nsh"
 
 ${StrRep}
-${StrLoc}
+
 
 !ifndef WS_GROUP
   !define WS_GROUP 0x00020000
@@ -48,19 +50,13 @@ Var RadioUser
 Var RadioSystem
 
 ; device selection page state
-Var DeviceChoice      ; "name" | "ip" | "skip"
-Var DevName
+Var DeviceChoice      ; "skip" | "ip"
 Var DevIp
-Var DeviceRaw         ; raw stdout of the discover run
-Var DeviceCount       ; number of parsed devices
-Var DeviceShown       ; number of rendered device radios
-Var RadioTmp          ; scratch handle holder for NSD_GetState
-Var YPos              ; dynamic vertical layout cursor
-Var RadioByName
-Var RadioByIp
-Var RadioOther
+Var DevLabel
+Var EditIp
+Var EditLabel
 Var RadioLater
-Var EditOther
+Var RadioLater2
 
 ; startup behaviour
 Var RunArgs           ; arguments passed to node-hp-scan-to at boot
@@ -69,7 +65,29 @@ Var RadioAdf
 
 !define MUI_ABORTWARNING
 
+; documentation opened from the Finish page (swap for a dedicated docs site when available)
+!define DOC_URL "https://manuc66.github.io/node-hp-scan-to/"
+
+; non-endorsement / trademark / license notice, shown on the welcome page
+!define MUI_WELCOMEPAGE_TEXT \
+  "This wizard installs node-hp-scan-to, a free (MIT) community tool$\n\
+   that scans documents from your network printer to this computer.$\n$\n\
+   This is an independent project: it is NOT built by, endorsed by or$\n\
+   affiliated with HP Inc. $\"HP$\" and related marks are trademarks of their$\n\
+   respective owners, referenced here descriptively only.$\n$\n\
+   By continuing you accept the MIT license terms shown next."
+
 !insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "..\..\LICENSE"
+
+; Finish page: link to the docs plus an optional "edit the config" shortcut
+; (notepad.exe is used as a plain text editor, safe everywhere)
+!define MUI_FINISHPAGE_LINK "Open the node-hp-scan-to documentation"
+!define MUI_FINISHPAGE_LINK_LOCATION "${DOC_URL}"
+!define MUI_FINISHPAGE_RUN "notepad.exe"
+!define MUI_FINISHPAGE_RUN_PARAMETERS "$\"$ConfigDir\default.json$\""
+!define MUI_FINISHPAGE_RUN_TEXT "Open the configuration file for editing"
+!define MUI_FINISHPAGE_RUN_CHECKED
 Page custom ModePageCreate ModePageLeave
 Page custom DevicePageCreate DevicePageLeave
 Page custom StartupPageCreate StartupPageLeave
@@ -115,7 +133,6 @@ Function .onInit
     StrCpy $CmdlineSystemMode "1"
   ${EndIf}
   StrCpy $DeviceChoice "skip"
-  StrCpy $DevName ""
   StrCpy $DevIp ""
   StrCpy $RunArgs "listen --health-check"
   ; /ADF switches the startup behaviour in silent installs
@@ -141,7 +158,7 @@ Function ModePageCreate
 
   !insertmacro MUI_HEADER_TEXT \
     "Choose installation type" \
-    "How should HP Scan to Computer be installed?"
+    "How should node-hp-scan-to be installed?"
 
   nsDialogs::Create 1018
   Pop $0
@@ -234,248 +251,67 @@ FunctionEnd
 ; ---------------------------------------------------------------------------
 ; device selection page
 
-!macro _CtrlEnable CTRL ENABLE
-  System::Call "user32::EnableWindow(p${CTRL}, i${ENABLE})"
-!macroend
-
-; parse $DeviceRaw ("name\tip" lines, \r\n separated) into
-; $PLUGINSDIR\devices.ini ([d] <index> = <ip>|<display>) and set $DeviceCount
-Function _ParseDevices
-  StrCpy $DeviceCount 0
-  Delete "$PLUGINSDIR\devices.ini"
-  StrCpy $R2 "$DeviceRaw"
-  ${Do}
-    ${If} "$R2" == ""
-      ${Break}
-    ${EndIf}
-
-    ; cut the first line off (handle both \n and \r\n endings)
-    ${StrLoc} "$R3" "$R2" "$\n" "0"
-    ${If} "$R3" == ""
-      StrCpy $R1 "$R2"
-      StrCpy $R2 ""
-    ${Else}
-      ${If} $R3 > 0
-        StrCpy $R1 "$R2" $R3
-      ${Else}
-        StrCpy $R1 ""
-      ${EndIf}
-      IntOp $R4 "$R3" + 1
-      StrCpy $R2 "$R2" "" $R4
-    ${EndIf}
-    ${StrRep} "$R1" "$R1" "$\r" ""
-
-    ; split "name<TAB>ip", skip malformed lines
-    StrCpy $R9 0                  ; 1 = valid entry
-    ${StrLoc} "$R5" "$R1" "$\t" "0"
-    ${If} "$R5" != ""
-      ${If} $R5 > 0
-        StrCpy $R9 1
-        StrCpy $R6 "$R1" $R5      ; device name
-        IntOp $R7 "$R5" + 1
-        StrCpy $R8 "$R1" "" $R7   ; ip
-      ${EndIf}
-    ${EndIf}
-
-    ${If} $R9 == 1
-      WriteIniStr "$PLUGINSDIR\devices.ini" "d" "$DeviceCount" "$R8|$R6 ($R8)"
-      IntOp $DeviceCount "$DeviceCount" + 1
-    ${EndIf}
-  ${Loop}
-FunctionEnd
-
-Function OnOtherClick
-  ${NSD_GetState} $RadioOther $0
-  ${If} $0 == ${BST_CHECKED}
-    !insertmacro _CtrlEnable $EditOther 1
-  ${Else}
-    !insertmacro _CtrlEnable $EditOther 0
-  ${EndIf}
-FunctionEnd
+; ---------------------------------------------------------------------------
+; printer configuration page (manual IP entry - no network discovery)
 
 Function DevicePageCreate
   !insertmacro MUI_HEADER_TEXT \
-    "Select your printer" \
-    "The printer can be located by name (recommended) or by fixed IP address."
-
-  ; run discovery from a temporary copy of the binary
-  File "/oname=$PLUGINSDIR\node-hp-scan-to.exe" "staging\node-hp-scan-to.exe"
-  nsExec::ExecToStack '"$PLUGINSDIR\node-hp-scan-to.exe" discover --timeout 5'
-  Pop $R0                       ; exit code
-  Pop $DeviceRaw                ; stdout
+    "Configure your printer" \
+    "IP address + destination name shown on the printer."
 
   nsDialogs::Create 1018
   Pop $0
 
-  ${NSD_CreateLabel} 0 0 100% 20u \
-    "Detected devices are listed below. Locating the printer by name keeps working even when its IP address changes."
+  ${NSD_CreateLabel} 0 0 100% 14u \
+    "IP address: shown in the printer's Wi-Fi settings.$\nDestination name: displayed on the printer's screen if it has one."
   Pop $0
 
-  ${If} $R0 == 0
-    Call _ParseDevices
-  ${Else}
-    StrCpy $DeviceCount 0
-  ${EndIf}
-
-  ; one radio button per discovered device (first six), using only the
-  ; basic nsDialogs macros - distro builds lack the LB_/CB_ helpers
-  StrCpy $DeviceShown 0
-  StrCpy $R9 0
-  ${Do}
-    ${If} $R9 >= $DeviceCount
-      ${Break}
-    ${EndIf}
-    ${If} $R9 >= 6
-      ${Break}
-    ${EndIf}
-    ReadIniStr $R8 "$PLUGINSDIR\devices.ini" "d" "$R9"
-    ${StrLoc} "$R5" "$R8" "|" "0"
-    ${If} "$R5" != ""
-      IntOp $R7 "$R5" + 1
-      StrCpy $R6 "$R8" "" $R7          ; display part
-      IntOp $0 "$R9" * 10
-      IntOp $0 "$0" + 26               ; vertical position in dialog units
-      StrCpy $1 "$0"
-      StrCpy $1 "$1u"
-      ${NSD_CreateRadioButton} 8u "$1" 90% 10u "$R6"
-      Pop $RadioTmp
-      WriteIniStr "$PLUGINSDIR\devices.ini" "h" "$R9" "$RadioTmp"
-      ${If} $R9 == 0
-        ${NSD_AddStyle} $RadioTmp ${WS_GROUP}
-        ${NSD_SetState} $RadioTmp ${BST_CHECKED}
-      ${EndIf}
-      IntOp $DeviceShown "$DeviceShown" + 1
-    ${EndIf}
-    IntOp $R9 "$R9" + 1
-  ${Loop}
-
-  ; fixed controls below the dynamic list
-  IntOp $YPos "$DeviceShown" * 10
-  IntOp $YPos "$YPos" + 28
-
-  StrCpy $1 "$YPos"
-  StrCpy $1 "$1u"
-  ${NSD_CreateRadioButton} 8u "$1" 90% 10u \
-    "Use the selected printer by name (recommended)"
-  Pop $RadioByName
-
-  IntOp $YPos "$YPos" + 12
-  StrCpy $1 "$YPos"
-  StrCpy $1 "$1u"
-  ${NSD_CreateRadioButton} 8u "$1" 90% 10u \
-    "Pin this printer by IP address (only if name lookup fails on your network)"
-  Pop $RadioByIp
-
-  IntOp $YPos "$YPos" + 14
-  StrCpy $1 "$YPos"
-  StrCpy $1 "$1u"
-  ${NSD_CreateRadioButton} 8u "$1" 90% 10u \
-    "Other - enter it manually:"
-  Pop $RadioOther
-  ${NSD_OnClick} $RadioOther OnOtherClick
-
-  IntOp $YPos "$YPos" + 11
-  StrCpy $1 "$YPos"
-  StrCpy $1 "$1u"
-  ${NSD_CreateText} 24u "$1" 74% 12u ""
-  Pop $EditOther
-  !insertmacro _CtrlEnable $EditOther 0
-
-  IntOp $YPos "$YPos" + 18
-  StrCpy $1 "$YPos"
-  StrCpy $1 "$1u"
-  ${NSD_CreateRadioButton} 8u "$1" 90% 10u \
-    "Configure later (you will have to edit config\\default.json yourself)"
+  ${NSD_CreateRadioButton} 8u 22u 90% 10u \
+    "Enter the printer IP address:"
   Pop $RadioLater
   ${NSD_AddStyle} $RadioLater ${WS_GROUP}
+  ${NSD_SetState} $RadioLater ${BST_CHECKED}
 
-  ${If} $DeviceShown == 0
-    ${NSD_SetState} $RadioLater ${BST_CHECKED}
-  ${EndIf}
+  ${NSD_CreateText} 8u 34u 88% 12u ""
+  Pop $EditIp
+
+  ${NSD_CreateLabel} 8u 52u 100% 8u "Destination name:"
+  Pop $0
+  ${NSD_CreateText} 8u 62u 88% 12u ""
+  Pop $EditLabel
+  ; prefill with the computer hostname (the app default)
+  StrCpy $R0 ${NSIS_MAX_STRLEN}
+  System::Call "kernel32::GetComputerNameW(w .r1, *i r0r0) i.r2"
+  ${NSD_SetText} $EditLabel "$R1"
+
+  ${NSD_CreateRadioButton} 8u 80u 90% 10u \
+    "Configure later (edit config\\default.json yourself)"
+  Pop $RadioLater2
+  ${NSD_AddStyle} $RadioLater2 ${WS_GROUP}
 
   nsDialogs::Show
 FunctionEnd
 
 Function DevicePageLeave
-  ${NSD_GetState} $RadioLater $0
+  ${NSD_GetState} $RadioLater2 $0
   ${If} $0 == ${BST_CHECKED}
     StrCpy $DeviceChoice "skip"
     Return
   ${EndIf}
 
-  ${NSD_GetState} $RadioOther $0
-  ${If} $0 == ${BST_CHECKED}
-    ${NSD_GetText} $EditOther $DevName
-    ${If} "$DevName" == ""
-      MessageBox MB_OK|MB_ICONEXCLAMATION \
-        "Please enter a device name or an IP address."
-      Abort
-    ${EndIf}
-
-    ${StrRep} "$1" "$DevName" "." ""
-    ${StrRep} "$1" "$1" "0" ""
-    ${StrRep} "$1" "$1" "1" ""
-    ${StrRep} "$1" "$1" "2" ""
-    ${StrRep} "$1" "$1" "3" ""
-    ${StrRep} "$1" "$1" "4" ""
-    ${StrRep} "$1" "$1" "5" ""
-    ${StrRep} "$1" "$1" "6" ""
-    ${StrRep} "$1" "$1" "7" ""
-    ${StrRep} "$1" "$1" "8" ""
-    ${StrRep} "$1" "$1" "9" ""
-    ${If} "$1" == ""
-      StrCpy $DeviceChoice "ip"
-      StrCpy $DevIp "$DevName"
-      nsExec::ExecToStack '"$PLUGINSDIR\node-hp-scan-to.exe" discover --timeout 4 --ip "$DevIp"'
-    ${Else}
-      StrCpy $DeviceChoice "name"
-      nsExec::ExecToStack '"$PLUGINSDIR\node-hp-scan-to.exe" discover --timeout 4 --name "$DevName"'
-    ${EndIf}
-    Pop $0
-    Pop $R1                       ; discard captured stdout
-    ${If} $0 != 0
-      MessageBox MB_OK|MB_ICONEXCLAMATION \
-        "No HP scan-capable device answered at $\"$DevName$\".$\nCheck that the printer is powered on and connected to this network."
-      Abort
-    ${EndIf}
-    Return
+  ${NSD_GetText} $EditIp $DevIp
+  ${If} "$DevIp" == ""
+    MessageBox MB_OK|MB_ICONEXCLAMATION \
+      "Please enter the printer's IP address (for example 192.168.1.53)."
+    Abort
   ${EndIf}
-
-  ; a discovered device radio is checked -> resolve it through the ini
-  StrCpy $R9 0
-  ${Do}
-    ${If} $R9 >= $DeviceShown
-      ${Break}
-    ${EndIf}
-    ReadIniStr $RadioTmp "$PLUGINSDIR\devices.ini" "h" "$R9"
-    ${NSD_GetState} $RadioTmp $0
-    ${If} $0 == ${BST_CHECKED}
-      ReadIniStr $R8 "$PLUGINSDIR\devices.ini" "d" "$R9"   ; ip|display
-      ${StrLoc} "$R5" "$R8" "|" "0"
-      ${If} "$R5" == ""
-        MessageBox MB_OK|MB_ICONEXCLAMATION "Internal error: malformed device entry."
-        Abort
-      ${EndIf}
-      StrCpy $R6 "$R8" $R5                                 ; ip
-      IntOp $R7 "$R5" + 1
-      StrCpy $R4 "$R8" "" $R7                              ; display
-      StrCpy $DevIp "$R6"
-      ${NSD_GetState} $RadioByIp $0
-      ${If} $0 == ${BST_CHECKED}
-        StrCpy $DeviceChoice "ip"
-        StrCpy $DevName "$R4"
-      ${Else}
-        StrCpy $DeviceChoice "name"
-        ${StrRep} "$DevName" "$R4" " ($R6)" ""             ; strip " (ip)"
-      ${EndIf}
-      Return
-    ${EndIf}
-    IntOp $R9 "$R9" + 1
-  ${Loop}
-
-  MessageBox MB_OK|MB_ICONEXCLAMATION \
-    "Please select a detected printer, choose Other, or pick Configure later."
-  Abort
+  ${NSD_GetText} $EditLabel $DevLabel
+  ${If} "$DevLabel" == ""
+    StrCpy $R0 ${NSIS_MAX_STRLEN}
+    System::Call "kernel32::GetComputerNameW(w .r1, *i r0r0) i.r2"
+    StrCpy $DevLabel "$R1"
+  ${EndIf}
+  StrCpy $DeviceChoice "ip"
 FunctionEnd
 
 ; ---------------------------------------------------------------------------
@@ -487,6 +323,25 @@ Section "Install"
   ${Else}
     SetShellVarContext current
   ${EndIf}
+
+  ; stop any running instance before overwriting the binary: the scheduled
+  ; task / service holds a lock on node-hp-scan-to.exe and would otherwise
+  ; make the File instruction fail with "Error opening file for writing"
+  ${If} $Mode == "system"
+    ; stop the existing WinSW service (if present) so the binary is released;
+    ; the service is re-created below on `install`
+    nsExec::ExecToLog '"$INSTDIR\${APPNAME}-service.exe" stop'
+    Pop $0
+  ${Else}
+    nsExec::ExecToLog 'schtasks /End /TN "${APPNAME}"'
+    Pop $0
+  ${EndIf}
+  ${If} ${FileExists} "$INSTDIR\${APPNAME}.exe"
+    nsExec::ExecToLog 'taskkill /F /IM "${APPNAME}.exe"'
+    Pop $0
+  ${EndIf}
+  ; give the OS a moment to release the handle
+  Sleep 1500
 
   SetOutPath "$INSTDIR"
   File "/oname=${APPNAME}.exe" "staging\node-hp-scan-to.exe"
@@ -501,10 +356,11 @@ Section "Install"
   FileOpen $0 "$ConfigDir\default.json" w
   FileWrite $0 "{$\r$\n"
   FileWrite $0 '  "directory": "$R0",$\r$\n'
-  ${If} $DeviceChoice == "name"
-    FileWrite $0 '  "name": "$DevName",$\r$\n'
-  ${ElseIf} $DeviceChoice == "ip"
+  ${If} $DeviceChoice == "ip"
     FileWrite $0 '  "ip": "$DevIp",$\r$\n'
+  ${EndIf}
+  ${If} "$DevLabel" != ""
+    FileWrite $0 '  "label": "$DevLabel",$\r$\n'
   ${EndIf}
   FileWrite $0 '  "debug": false$\r$\n'
   FileWrite $0 "}$\r$\n"
@@ -555,6 +411,12 @@ Section "Install"
     FileWrite $0 '".\node-hp-scan-to.exe" $RunArgs >> "%LOG%" 2>&1$\r$\n'
     FileClose $0
 
+    ; hidden-console helper for the fallback task below: wscript hosts no
+    ; window of its own and Run(...,0) hides the batch console entirely
+    FileOpen $0 "$INSTDIR\run-hidden.vbs" w
+    FileWrite $0 'CreateObject("WScript.Shell").Run """$INSTDIR\run.cmd""", 0$\r$\n'
+    FileClose $0
+
     ; S4U task: session 0 (no window), restart-on-failure, no time limit.
     ; $$ keeps PowerShell variables away from NSIS expansion; quadrupled
     ; quotes survive argv+PS so Task Scheduler stores /c ""path"".
@@ -562,7 +424,7 @@ Section "Install"
     Pop $0
     ${If} $0 != 0
       DetailPrint "Scheduled task registration failed ($0) - falling back to simple ONLOGON task."
-      nsExec::ExecToLog 'schtasks /Create /F /TN "${APPNAME}" /SC ONLOGON /RL LIMITED /TR "\"$INSTDIR\run.cmd\""'
+      nsExec::ExecToLog 'schtasks /Create /F /TN "${APPNAME}" /SC ONLOGON /RL LIMITED /TR "\"$WINDIR\System32\wscript.exe\" \"$INSTDIR\run-hidden.vbs\""'
     ${EndIf}
 
     nsExec::ExecToLog 'schtasks /Run /TN "${APPNAME}"'
@@ -573,7 +435,7 @@ Section "Install"
     FileWrite $0 "<service>$\r$\n"
     FileWrite $0 "  <id>${APPNAME}</id>$\r$\n"
     FileWrite $0 "  <name>${DISPLAY}</name>$\r$\n"
-    FileWrite $0 "  <description>Scan document to Computer for HP All-in-One Printers</description>$\r$\n"
+    FileWrite $0 "  <description>Scan from the printer's panel to this computer - independent community tool, not affiliated with HP Inc.</description>$\r$\n"
     FileWrite $0 "  <executable>$INSTDIR\${APPNAME}.exe</executable>$\r$\n"
     FileWrite $0 "  <arguments>$RunArgs</arguments>$\r$\n"
     FileWrite $0 "  <workingdirectory>$INSTDIR</workingdirectory>$\r$\n"
