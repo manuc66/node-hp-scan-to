@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 > **Note:** all public communication on this repository is done in English.
 
-## [1.11.0] - Unreleased
+## [1.11.0] - 2026-08-29
 
 ### Added
 
