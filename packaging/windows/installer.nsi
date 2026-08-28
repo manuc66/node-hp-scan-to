@@ -324,6 +324,25 @@ Section "Install"
     SetShellVarContext current
   ${EndIf}
 
+  ; stop any running instance before overwriting the binary: the scheduled
+  ; task / service holds a lock on node-hp-scan-to.exe and would otherwise
+  ; make the File instruction fail with "Error opening file for writing"
+  ${If} $Mode == "system"
+    ; stop the existing WinSW service (if present) so the binary is released;
+    ; the service is re-created below on `install`
+    nsExec::ExecToLog '"$INSTDIR\${APPNAME}-service.exe" stop'
+    Pop $0
+  ${Else}
+    nsExec::ExecToLog 'schtasks /End /TN "${APPNAME}"'
+    Pop $0
+  ${EndIf}
+  ${If} ${FileExists} "$INSTDIR\${APPNAME}.exe"
+    nsExec::ExecToLog 'taskkill /F /IM "${APPNAME}.exe"'
+    Pop $0
+  ${EndIf}
+  ; give the OS a moment to release the handle
+  Sleep 1500
+
   SetOutPath "$INSTDIR"
   File "/oname=${APPNAME}.exe" "staging\node-hp-scan-to.exe"
 
