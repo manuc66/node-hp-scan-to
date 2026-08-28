@@ -20,12 +20,40 @@ const defaultLevel = debugRequested
     ? requestedLevel
     : "info";
 
-// "auto" (default): pretty in a terminal, JSON otherwise (docker/pipe).
-// "pretty": force human-readable output even outside of a terminal.
-// "json": force JSON output even in a terminal.
+// "auto" (default): pretty in a terminal, plain message-only text otherwise.
+// The plain mode reproduces the legacy console.log output line-for-line, so
+// integrators parsing stdout are NOT broken. Structured JSON is opt-in.
+// "pretty": force human-readable output (time/level/module) anywhere.
+// "plain":  force plain message-only text anywhere.
+// "json":   force JSON lines anywhere.
 const logFormat = process.env["LOG_FORMAT"] ?? "auto";
-const usePrettyTransport =
-  logFormat === "pretty" || (logFormat !== "json" && isCli);
+const isPretty = logFormat === "pretty" || (logFormat === "auto" && isCli);
+const isPlain = logFormat === "plain" || (logFormat === "auto" && !isCli);
+const transport:
+  | {
+      target: string;
+      options: Record<string, unknown>;
+    }
+  | undefined = isPretty
+  ? {
+      target: "pino-pretty",
+      options: {
+        colorize: isCli,
+        translateTime: "HH:MM:ss.l",
+        ignore: "pid,hostname",
+      },
+    }
+  : isPlain
+    ? {
+        target: "pino-pretty",
+        options: {
+          colorize: false,
+          singleLine: true,
+          ignore: "pid,hostname,time,level,name",
+          messageFormat: "{msg}",
+        },
+      }
+    : undefined;
 
 const baseLogger: Logger = pino({
   enabled: !isTest,
@@ -66,18 +94,7 @@ const baseLogger: Logger = pino({
       return serialized;
     },
   },
-  ...(usePrettyTransport
-    ? {
-        transport: {
-          target: "pino-pretty",
-          options: {
-            colorize: isCli,
-            translateTime: "HH:MM:ss.l",
-            ignore: "pid,hostname",
-          },
-        },
-      }
-    : {}),
+  ...(transport !== undefined ? { transport } : {}),
 });
 
 export function setDebugLevel(isDebug: boolean): void {

@@ -456,14 +456,18 @@ docker run -e MAIN_COMMAND="adf-autoscan" -e CMDLINE=--debug docker.io/manuc66/n
 
 ###### Logging
 
-Logs go to stdout as machine-readable JSON lines by default (one per event), which
-docker log drivers and aggregators such as Loki or ELK can parse directly. In an
-interactive terminal they are formatted for humans instead.
+Logs go to stdout. The default output is **backward compatible** with the
+previous plain-text messages (one message per line), so existing scripts that
+parse stdout keep working unchanged. In an interactive terminal they are
+formatted for humans instead.
+
+Structured JSON lines are available **opt-in** via `LOG_FORMAT=json` — the
+recommended choice for docker log drivers and aggregators such as Loki or ELK.
 
 | Env var      | Values                  | Effect                                                                 |
 |--------------|-------------------------|------------------------------------------------------------------------|
 | `LOG_LEVEL`  | `trace` … `fatal`       | Minimum level to emit (default `info`). `debug` shows HTTP traces too.  |
-| `LOG_FORMAT` | `auto`, `pretty`, `json`| `auto` (default): pretty in a terminal, JSON otherwise. `pretty` forces human-readable output outside a terminal (no ANSI colors). `json` forces JSON even in a terminal. |
+| `LOG_FORMAT` | `auto`, `pretty`, `plain`, `json` | `auto` (default): pretty in a terminal, legacy plain message text otherwise. `pretty` forces time/level/module output anywhere (no ANSI in non-TTY). `plain` forces the legacy message-only text anywhere. `json` forces structured JSON lines anywhere. |
 
 Sensitive fields (`password`, `token`, `authToken`, `Authorization`) are
 redacted as `[Redacted]` in every log line.
