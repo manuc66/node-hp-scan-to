@@ -158,7 +158,7 @@ Function ModePageCreate
 
   !insertmacro MUI_HEADER_TEXT \
     "Choose installation type" \
-    "How should HP Scan to Computer be installed?"
+    "How should node-hp-scan-to be installed?"
 
   nsDialogs::Create 1018
   Pop $0

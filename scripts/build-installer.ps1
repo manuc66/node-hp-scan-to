@@ -52,11 +52,18 @@ try {
         Write-Host "==> compiling binary with bun ($bunExe)"
         New-Item -ItemType Directory -Force -Path packaging\windows\staging | Out-Null
         $ver = $Version.TrimStart("v")
+        # bun's --windows-version expects a numeric 4-part version; suffixes
+        # such as "-local" are silently dropped by bun, so normalize to
+        # major.minor.patch.0 up front.
+        $winVer = "0.0.0.0"
+        if ($ver -match '^(\d+)\.(\d+)\.(\d+)') {
+            $winVer = "$($matches[1]).$($matches[2]).$($matches[3]).0"
+        }
         & $bunExe build --compile --target=bun-windows-x64 `
             --windows-icon (Join-Path $repoRoot "assets\icon.ico") `
             --windows-title "node-hp-scan-to" `
             --windows-publisher "manuc66" `
-            --windows-version "$ver.0" `
+            --windows-version "$winVer" `
             --windows-description "Scan document to Computer from your printer" `
             --windows-copyright "Copyright 2026 manuc66" `
             --outfile packaging\windows\staging\node-hp-scan-to.exe src/index.ts

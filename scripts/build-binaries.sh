@@ -21,6 +21,22 @@ VERSION="${VERSION#v}"
 TARGETS=(${TARGETS:-bun-windows-x64 bun-darwin-x64 bun-darwin-arm64 bun-linux-x64 bun-linux-arm64 bun-linux-x64-musl bun-linux-arm64-musl})
 OUT_DIR="${OUT_DIR:-release}"
 
+# The --windows-* metadata flags only work when bun itself runs on a
+# Windows host; on any other host they make the build abort, so they are
+# only applied for a native bun-windows-x64 build.
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) HOST_IS_WINDOWS=1 ;;
+  *) HOST_IS_WINDOWS=0 ;;
+esac
+
+# bun's --windows-version expects a numeric 4-part version. Versions such
+# as "1.10.0-local" or "0.0.0-dispatch" would be silently truncated by bun,
+# so normalize to major.minor.patch.0 up front.
+WIN_VERSION="0.0.0.0"
+if [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+  WIN_VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.0"
+fi
+
 command -v bun >/dev/null 2>&1 || { echo "error: bun is not installed" >&2; exit 1; }
 
 node getCommitId.js
@@ -46,12 +62,12 @@ for target in "${TARGETS[@]}"; do
 
   mkdir -p "$stage"
   WINDOWS_EXTRA=()
-  if [ "$os" = windows ]; then
+  if [ "$os" = windows ] && [ "$HOST_IS_WINDOWS" = 1 ]; then
     WINDOWS_EXTRA+=(
       --windows-icon="assets/icon.ico"
       --windows-title="node-hp-scan-to"
       --windows-publisher="manuc66"
-      --windows-version="$VERSION.0"
+      --windows-version="$WIN_VERSION"
       --windows-description="Scan document to Computer from your printer"
       --windows-copyright="Copyright 2026 manuc66"
     )
