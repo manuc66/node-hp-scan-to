@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 > **Note:** all public communication on this repository is done in English.
 
+## [Unreleased]
+
+### Added
+
+- **Nix flake** (`flake.nix` + `packaging/nix/package.nix`): installs the
+  self-contained Linux binary shipped with each release (x86_64/aarch64) and
+  provides a default configuration under
+  `$out/etc/node-hp-scan-to/default.json` via `NODE_CONFIG_DIR`. Usable with
+  `nix run github:manuc66/node-hp-scan-to` or `nix profile install`.
+
 ## [1.11.0] - 2026-08-29
 
 ### Added
