@@ -15,6 +15,13 @@ All notable changes to this project are documented in this file.
   in-process (the same path already used for the plain/service mode);
   Node.js keeps the worker transport.
 
+### Added
+
+- Tests guarding the Bun pretty-mode regression: a unit test for the
+  in-process/worker decision plus an integration test that compiles a real
+  Bun executable and runs it in `LOG_FORMAT=pretty` (skipped when bun is not
+  installed).
+
 ## [1.11.0] - 2026-08-29
 
 ### Added

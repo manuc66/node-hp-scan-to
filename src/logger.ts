@@ -86,9 +86,15 @@ const loggerOptions = {
 // pino-pretty in-process there (the messageFormat below cannot cross a
 // worker boundary anyway). Node.js keeps the worker transport.
 // process.isBun is only defined under Bun, so it is not part of @types/node.
-const isBun =
-  typeof (process as { isBun?: boolean }).isBun === "boolean" &&
-  (process as { isBun?: boolean }).isBun;
+const isBun = (process as { isBun?: boolean }).isBun === true;
+
+export function shouldUseInProcessPinoPretty(
+  isPlain: boolean,
+  isPretty: boolean,
+  isBun: boolean,
+): boolean {
+  return isPlain || (isPretty && isBun);
+}
 
 const prettyOptions = isPlain
   ? {
@@ -112,24 +118,23 @@ const prettyOptions = isPlain
       ignore: "pid,hostname",
     };
 
-const baseLogger: Logger =
-  isPlain || (isPretty && isBun)
-    ? pino(loggerOptions, pinoPretty(prettyOptions))
-    : pino({
-        ...loggerOptions,
-        ...(isPretty
-          ? {
-              transport: {
-                target: "pino-pretty",
-                options: {
-                  colorize: isCli,
-                  translateTime: "HH:MM:ss.l",
-                  ignore: "pid,hostname",
-                },
+const baseLogger: Logger = shouldUseInProcessPinoPretty(isPlain, isPretty, isBun)
+  ? pino(loggerOptions, pinoPretty(prettyOptions))
+  : pino({
+      ...loggerOptions,
+      ...(isPretty
+        ? {
+            transport: {
+              target: "pino-pretty",
+              options: {
+                colorize: isCli,
+                translateTime: "HH:MM:ss.l",
+                ignore: "pid,hostname",
               },
-            }
-          : {}),
-      });
+            },
+          }
+        : {}),
+    });
 
 export function setDebugLevel(isDebug: boolean): void {
   baseLogger.level = isDebug ? "debug" : defaultLevel;
