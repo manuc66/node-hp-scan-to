@@ -35,6 +35,16 @@ Guidelines for agent contributors working on this repository.
 - Any feature that touches a main flow should extend this script so the
   flows stay covered for this and future changes.
 
+## Releasing
+
+- The release process is documented in `RELEASING.md` (steps to create the
+  version commit + tag, either via the `Release` workflow or `release.sh`).
+- Release notes (hand-written, replacing the auto-generated commit list) must
+  be concise: state the consumer-visible problem factually, then the fix, and
+  say what did not change. Internal-only changes go in a short "Under the
+  hood" section naming the touched area. See `RELEASING.md` for the full
+  style rules and an example.
+
 ## Upload / credential testing
 
 - `scripts/upload-stub.mjs` mimics paperless (multipart POST) and Nextcloud
