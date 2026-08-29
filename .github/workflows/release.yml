@@ -105,3 +105,4 @@ jobs:
           else
             echo "- Push: **not performed** (set RELEASE_PAT to automate)" >> "$GITHUB_STEP_SUMMARY"
           fi
+          echo "- Write the release note: see RELEASING.md (the Publish workflow generates a bare commit list — replace it by hand)" >> "$GITHUB_STEP_SUMMARY"

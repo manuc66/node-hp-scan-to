@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 > **Note:** all public communication on this repository is done in English.
 
+## [Unreleased]
+
+### Added
+
+- **Release guide** (`RELEASING.md`): documents the release process and the
+  release-note style (concise, consumer-visible problem + fix, "Under the
+  hood" section). Referenced from the `Release` workflow summary.
+
 ## [1.11.1] - 2026-08-29
 
 ### Fixed
