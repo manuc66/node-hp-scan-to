@@ -124,8 +124,10 @@ Each [release](https://github.com/manuc66/node-hp-scan-to/releases/latest) ships
 | --------------------------------------- | ------------------------------------------------------------------ |
 | `setup-node-hp-scan-to-v*.exe`          | Windows 10/11 x64 installer (per-user autostart or system service) |
 | `node-hp-scan-to-v*-windows-x64.zip`    | Windows 10/11 x64 portable                                         |
-| `node-hp-scan-to-v*-darwin-arm64.zip`   | Apple Silicon                                                      |
-| `node-hp-scan-to-v*-darwin-x64.zip`     | Intel Mac                                                          |
+| `node-hp-scan-to-v*-macos.pkg`          | macOS 11+ universal installer (Intel & Apple Silicon)              |
+| `node-hp-scan-to-v*-macos.dmg`          | macOS 11+ universal drag-and-drop app bundle                       |
+| `node-hp-scan-to-v*-darwin-arm64.zip`   | Apple Silicon portable binary                                      |
+| `node-hp-scan-to-v*-darwin-x64.zip`     | Intel Mac portable binary                                          |
 | `node-hp-scan-to-v*-linux-x64.tar.gz`   | Linux x64                                                          |
 | `node-hp-scan-to-v*-linux-arm64.tar.gz` | Linux ARM64                                                        |
 
@@ -138,10 +140,17 @@ The Windows installer offers two modes:
 
 Both modes also let you pick the startup behaviour: waiting for scan jobs triggered from the printer panel, or scanning automatically each time paper is loaded into the document feeder (`adf-autoscan`).
 
+The macOS installer (`.pkg`) installs `node-hp-scan-to.app` into `/Applications`; the `.dmg` offers the same bundle for drag-and-drop installation. The bundled app is a universal2 binary (Intel + Apple Silicon), runs in the background and waits for scan jobs started from the printer panel. To start it at login, install the shipped LaunchAgent (edit the paths first, see `packaging/io.github.manuc66.node-hp-scan-to.plist`):
+
+```bash
+cp /Applications/node-hp-scan-to.app/Contents/Resources/io.github.manuc66.node-hp-scan-to.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/io.github.manuc66.node-hp-scan-to.plist
+```
+
 Notes:
 
 - **Windows**: SmartScreen may warn about an unsigned executable — click _More info_ → _Run anyway_
-- **macOS**: the binary is unsigned, so Gatekeeper may block it on first run. Either right-click → _Open_, or clear the quarantine flag with `xattr -cr node-hp-scan-to`
+- **macOS**: the app is unsigned and un-notarized, so Gatekeeper may block it on first run. Either right-click → _Open_, or clear the quarantine flag with `xattr -cr /Applications/node-hp-scan-to.app`
 
 ### Using Debian / RPM packages
 

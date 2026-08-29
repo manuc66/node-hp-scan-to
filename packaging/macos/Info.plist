@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Info.plist for the node-hp-scan-to macOS app bundle.
+
+  Version placeholders (__VERSION__ / __SHORT_VERSION__) are substituted by
+  scripts/build-macos-packages.sh.
+-->
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+
+  <key>CFBundleDisplayName</key>
+  <string>node-hp-scan-to</string>
+
+  <key>CFBundleExecutable</key>
+  <string>node-hp-scan-to</string>
+
+  <key>CFBundleIconFile</key>
+  <string>icon</string>
+
+  <key>CFBundleIdentifier</key>
+  <string>io.github.manuc66.node-hp-scan-to</string>
+
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+
+  <key>CFBundleName</key>
+  <string>node-hp-scan-to</string>
+
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+
+  <key>CFBundleShortVersionString</key>
+  <string>__SHORT_VERSION__</string>
+
+  <key>CFBundleVersion</key>
+  <string>__VERSION__</string>
+
+  <!-- CLI/daemon-style tool: no Dock icon, no app menu. -->
+  <key>LSUIElement</key>
+  <true/>
+
+  <key>LSMinimumSystemVersion</key>
+  <string>11.0</string>
+
+  <key>NSHighResolutionCapable</key>
+  <true/>
+
+  <key>NSHumanReadableCopyright</key>
+  <string>Copyright (c) 2026 Emmanuel Counasse. MIT licensed. Independent project, not affiliated with HP Inc.</string>
+</dict>
+</plist>

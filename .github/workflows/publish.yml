@@ -137,19 +137,163 @@ jobs:
         run: |
           mv release-signed/setup-node-hp-scan-to-*.exe release/
 
+      - name: Upload darwin x64 binary for the macOS job
+        # The .app/.pkg/.dmg are built natively on a macOS runner, but the
+        # binaries themselves are cross-compiled here with bun.
+        uses: actions/upload-artifact@v4
+        with:
+          name: darwin-x64
+          path: release/.staging/darwin-x64/node-hp-scan-to
+          if-no-files-found: error
+
+      - name: Upload darwin arm64 binary for the macOS job
+        uses: actions/upload-artifact@v4
+        with:
+          name: darwin-arm64
+          path: release/.staging/darwin-arm64/node-hp-scan-to
+          if-no-files-found: error
+
+      - name: Upload release artifacts for the release job
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-binaries
+          path: |
+            release/*.zip
+            release/*.tar.gz
+            release/*.deb
+            release/*.apk
+            release/*.rpm
+            release/*.exe
+          if-no-files-found: error
+
+  macos:
+    name: macOS .app, .pkg and .dmg
+    runs-on: macos-latest
+    needs: binaries
+    env:
+      MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+      MACOS_INSTALLER_IDENTITY: ${{ secrets.MACOS_INSTALLER_IDENTITY }}
+      MACOS_CERT_BASE64: ${{ secrets.MACOS_CERT_BASE64 }}
+      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+      MACOS_NOTARY_APPLE_PASSWORD: ${{ secrets.MACOS_NOTARY_APPLE_PASSWORD }}
+      MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute version
+        id: ver
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="0.0.0-dispatch"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download darwin x64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: darwin-x64
+          path: release/.staging/darwin-x64
+
+      - name: Download darwin arm64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: darwin-arm64
+          path: release/.staging/darwin-arm64
+
+      - name: Import signing certificate
+        # macOS code signing needs the certificate in a keychain. No
+        # certificate is needed for unsigned builds (the default).
+        if: env.MACOS_CERT_BASE64 != ''
+        run: |
+          echo "$MACOS_CERT_BASE64" | base64 --decode > "$RUNNER_TEMP/signing.p12"
+          KEYCHAIN="$RUNNER_TEMP/build.keychain"
+          security create-keychain -p "" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/signing.p12" \
+            -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
+
+      - name: Build macOS packages
+        run: |
+          if [ -n "$MACOS_SIGNING_IDENTITY" ] || [ -n "$MACOS_CERT_BASE64" ]; then
+            if [ -z "$MACOS_SIGNING_IDENTITY" ] && [ -n "$MACOS_CERT_BASE64" ]; then
+              MACOS_SIGNING_IDENTITY="$(security find-identity -v -p codesigning \
+                | awk -F'"' '/Developer ID Application/{print $2; exit}')"
+            fi
+            if [ -z "$MACOS_INSTALLER_IDENTITY" ] && [ -n "$MACOS_CERT_BASE64" ]; then
+              MACOS_INSTALLER_IDENTITY="$(security find-identity -v -p basic \
+                | awk -F'"' '/Developer ID Installer/{print $2; exit}')"
+            fi
+            export MACOS_SIGNING_IDENTITY
+            if [ -n "$MACOS_INSTALLER_IDENTITY" ]; then
+              export MACOS_INSTALLER_IDENTITY
+            fi
+          fi
+          ./scripts/build-macos-packages.sh "v${{ steps.ver.outputs.version }}"
+
+      - name: Upload macOS artifacts for the release job
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: |
+            release/*.pkg
+            release/*.dmg
+          if-no-files-found: error
+
+  release:
+    name: Assemble, sign checks and attach release assets
+    runs-on: ubuntu-latest
+    needs: [binaries, macos]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: release-binaries
+          path: release
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-artifacts
+          path: release
+
+      - name: Compute version
+        id: ver
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="0.0.0-dispatch"
+          fi
+          PRERELEASE=false
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE=true
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
       - name: Generate checksums
         run: |
           cd release
           find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\0' |
             xargs -0 sha256sum > SHA256SUMS.txt
 
-      - name: Upload installer for manual testing
+      - name: Upload artifacts for manual testing
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@v4
         with:
-          name: windows-installer-test
+          name: release-test
           path: |
             release/setup-node-hp-scan-to-*.exe
+            release/node-hp-scan-to-*-macos.pkg
+            release/node-hp-scan-to-*-macos.dmg
             release/SHA256SUMS.txt
           if-no-files-found: error
 
@@ -170,6 +314,8 @@ jobs:
             release/*.apk
             release/*.rpm
             release/*.exe
+            release/*.pkg
+            release/*.dmg
             release/*.sbom.json
             release/SHA256SUMS.txt
 
@@ -186,6 +332,8 @@ jobs:
             GLOBS="release/*.zip
                    release/*.tar.gz
                    release/*.exe
+                   release/*.pkg
+                   release/*.dmg
                    release/*.sbom.json
                    release/SHA256SUMS.txt"
           else
@@ -195,6 +343,8 @@ jobs:
                    release/*.apk
                    release/*.rpm
                    release/*.exe
+                   release/*.pkg
+                   release/*.dmg
                    release/*.sbom.json
                    release/SHA256SUMS.txt"
           fi
@@ -282,6 +432,7 @@ jobs:
   winget:
     name: Submit to winget
     runs-on: windows-latest
+    needs: release
     if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
     env:
       WINGET_CREATE_TOKEN: ${{ secrets.WINGET_CREATE_TOKEN }}
@@ -306,4 +457,3 @@ jobs:
           ./wingetcreate update manuc66.node-hp-scan-to `
             --version $version --urls $url `
             --submit --token "$env:WINGET_CREATE_TOKEN"
-
