@@ -81,25 +81,45 @@ const loggerOptions = {
   },
 };
 
-const baseLogger: Logger = isPlain
-  ? // In-process pino-pretty (no worker thread): the messageFormat function
-    // cannot cross a worker boundary. Keeps legacy bare info/debug lines and
-    // prefixes warn/error/fatal so humans can tell severity apart.
-    pino(
-      loggerOptions,
-      pinoPretty({
-        colorize: false,
-        singleLine: true,
-        ignore: "pid,hostname,time,level,name",
-        messageFormat: (log: Record<string, unknown>, messageKey: string) => {
-          const msg = log[messageKey] as string;
-          const levelLabel = LEVEL_LABELS[log["level"] as number] ?? "info";
-          return levelLabel === "info" || levelLabel === "debug"
-            ? msg
-            : `${levelLabel.toUpperCase()}: ${msg}`;
-        },
-      }),
-    )
+// Bun-compiled executables bundle every module, so a pino worker-thread
+// transport cannot resolve its "pino-pretty" target at runtime. Run
+// pino-pretty in-process there (the messageFormat below cannot cross a
+// worker boundary anyway). Node.js keeps the worker transport.
+// process.isBun is only defined under Bun, so it is not part of @types/node.
+const isBun = (process as { isBun?: boolean }).isBun === true;
+
+export function shouldUseInProcessPinoPretty(
+  isPlain: boolean,
+  isPretty: boolean,
+  isBun: boolean,
+): boolean {
+  return isPlain || (isPretty && isBun);
+}
+
+const prettyOptions = isPlain
+  ? {
+      // Keeps legacy bare info/debug lines and prefixes warn/error/fatal so
+      // humans can tell severity apart.
+      colorize: false,
+      singleLine: true,
+      ignore: "pid,hostname,time,level,name",
+      messageFormat: (log: Record<string, unknown>, messageKey: string) => {
+        const msg = log[messageKey] as string;
+        const levelLabel = LEVEL_LABELS[log["level"] as number] ?? "info";
+        return levelLabel === "info" || levelLabel === "debug"
+          ? msg
+          : `${levelLabel.toUpperCase()}: ${msg}`;
+      },
+    }
+  : {
+      colorize: isCli,
+      singleLine: true,
+      translateTime: "HH:MM:ss.l",
+      ignore: "pid,hostname",
+    };
+
+const baseLogger: Logger = shouldUseInProcessPinoPretty(isPlain, isPretty, isBun)
+  ? pino(loggerOptions, pinoPretty(prettyOptions))
   : pino({
       ...loggerOptions,
       ...(isPretty

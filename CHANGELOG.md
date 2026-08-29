@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file.
 
 > **Note:** all public communication on this repository is done in English.
 
+## [Unreleased]
+
+### Fixed
+
+- **Standalone executables**: in interactive terminals the `pretty` log mode
+  crashed with `unable to determine transport target for "pino-pretty"`. A
+  compiled Bun binary bundles every module, so the pino worker-thread
+  transport cannot resolve its target at runtime. Bun now runs pino-pretty
+  in-process (the same path already used for the plain/service mode);
+  Node.js keeps the worker transport.
+
+### Added
+
+- Tests guarding the Bun pretty-mode regression: a unit test for the
+  in-process/worker decision plus an integration test that compiles a real
+  Bun executable and runs it in `LOG_FORMAT=pretty` (skipped when bun is not
+  installed).
+
 ## [1.11.0] - 2026-08-29
 
 ### Added
