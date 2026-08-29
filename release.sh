@@ -98,6 +98,6 @@ fi
 echo ""
 echo "On tag push, GitHub Actions will automatically:"
 echo "- publish to npm"
-echo "- build Windows/macOS/Linux binaries and .deb/.rpm packages, then attach them to the release"
+echo "- build Windows/macOS/Linux binaries and .deb/.rpm/.apk packages, the Windows installer and the macOS .pkg/.dmg, then attach them to the release"
 echo "- update the AUR package (once the AUR_SSH_KEY secret is configured, see packaging/arch/PKGBUILD)"
 echo "----------------------------------------"

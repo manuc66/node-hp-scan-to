@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 > **Note:** all public communication on this repository is done in English.
 
+## [Unreleased]
+
+### Added
+
+- **macOS packages**: each release now also ships a universal2 (Intel &
+  Apple Silicon) `.pkg` installer and `.dmg` disk image built natively on a
+  dedicated macOS CI job. They wrap the app in a proper
+  `node-hp-scan-to.app` bundle (icon, `Info.plist`, bundled `default.json`,
+  LaunchAgent reference). Code signing and Apple notarization are wired into
+  the pipeline behind secrets and are skipped when none are configured, so
+  releases keep working without an Apple Developer account.
+- **Homebrew cask** (`packaging/homebrew/node-hp-scan-to.rb`): installs the
+  universal `.dmg` on both Intel and Apple Silicon Macs.
+
 ## [1.11.0] - 2026-08-29
 
 ### Added
