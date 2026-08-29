@@ -1,103 +1,73 @@
 #!/bin/bash
+#
+# Prepare a release locally: bump the version, date the changelog, run the
+# tests, commit ("chore: release vX.Y.Z") and create an annotated tag.
+#
+# Usage:
+#   ./release.sh [patch|minor|major]
+#
+# Then push to trigger the Publish workflow:
+#   git push origin master --follow-tags
+#
+# For a fully automated release (no manual push), use the GitHub Actions
+# "Release" workflow (workflow_dispatch) instead.
+set -euo pipefail
 
-# Script to automate the release process for node-hp-scan-to (pnpm + GitHub releases)
-
-set -e
-
-echo "Starting release process..."
-
-# Ensure we are on main or master
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 if [[ "$BRANCH" != "main" && "$BRANCH" != "master" ]]; then
-  echo "Error: You must be on 'main' or 'master' branch."
+  echo "Error: You must be on 'main' or 'master' branch." >&2
   exit 1
 fi
 
-# Check for uncommitted changes
 if [ -n "$(git status --porcelain)" ]; then
-  echo "Warning: There are uncommitted changes."
-  read -p "Do you want to continue anyway? (y/n): " CONTINUE
-  if [[ "$CONTINUE" != "y" ]]; then
-    echo "Aborting."
-    exit 1
-  fi
+  echo "Error: Working tree is not clean. Commit or stash your changes first." >&2
+  exit 1
 fi
 
-# Get current version
+VERSION_TYPE="${1:?usage: release.sh [patch|minor|major]}"
+case "$VERSION_TYPE" in
+  patch|minor|major) ;;
+  *) echo "Error: invalid version type '$VERSION_TYPE' (expected patch|minor|major)" >&2; exit 1 ;;
+esac
+
 CURRENT_VERSION=$(node -p "require('./package.json').version")
 echo "Current version: $CURRENT_VERSION"
 
-# Ask for version bump type
-echo "Select version bump type:"
-select VERSION_TYPE in "patch" "minor" "major"; do
-  case $VERSION_TYPE in
-    patch|minor|major)
-      break
-      ;;
-    *)
-      echo "Invalid choice"
-      ;;
-  esac
-done
-
-# Compute new version (pnpm way)
-echo "Bumping version..."
-pnpm version $VERSION_TYPE
+echo "Bumping version (no git tag yet)..."
+pnpm version "$VERSION_TYPE" --no-git-tag-version
 NEW_VERSION=$(node -p "require('./package.json').version")
 echo "New version: $NEW_VERSION"
 
-# Ensure tag does not already exist
 if git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; then
-  echo "Error: Tag v$NEW_VERSION already exists."
+  echo "Error: Tag v$NEW_VERSION already exists." >&2
   exit 1
 fi
 
-# Install dependencies cleanly
-echo "Installing dependencies (clean)..."
-rm -rf node_modules
-pnpm install
+echo "Dating the changelog for this release..."
+TODAY=$(date -u +%Y-%m-%d)
+sed -i "0,/^## \[Unreleased\]/s//## [$NEW_VERSION] - $TODAY/" CHANGELOG.md
 
-# Run tests
 echo "Running tests..."
 pnpm test
 
-# Generate commit info
 echo "Updating commitInfo.json..."
 node getCommitId.js
 
-# Commit changes (if any files were modified by getCommitId or pnpm version)
-git add package.json pnpm-lock.yaml src/commitInfo.json
-if ! git diff --cached --quiet; then
-  git commit -m "chore: release v$NEW_VERSION"
-fi
+echo "Committing the release..."
+git add package.json pnpm-lock.yaml src/commitInfo.json CHANGELOG.md
+git commit -m "chore: release v$NEW_VERSION"
 
-# Create tag (pnpm version might have created one, let's check)
-if ! git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; then
-  git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
-fi
+echo "Creating annotated tag..."
+git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
 
 echo "----------------------------------------"
 echo "Release v$NEW_VERSION is ready locally."
 echo ""
-
-# Push step
-read -p "Do you want to push changes and tags now? (y/n): " PUSH
-if [[ "$PUSH" == "y" ]]; then
-  git push origin "$BRANCH" --tags
-  echo "Changes pushed."
-
-  echo ""
-  echo "Next step:"
-  echo "→ Go to GitHub and create a release from tag v$NEW_VERSION"
-  echo "→ Use 'Generate release notes' button"
-else
-  echo "You can push later with:"
-  echo "git push origin $BRANCH --tags"
-fi
-
+echo "Push to trigger the Publish workflow (npm, binaries, packages, winget):"
+echo "  git push origin $BRANCH --follow-tags"
 echo ""
-echo "On tag push, GitHub Actions will automatically:"
+echo "The Publish workflow will:"
 echo "- publish to npm"
-echo "- build Windows/macOS/Linux binaries and .deb/.rpm packages, then attach them to the release"
+echo "- build Windows/macOS/Linux binaries and .deb/.rpm/.apk packages, then attach them to the release"
 echo "- update the AUR package (once the AUR_SSH_KEY secret is configured, see packaging/arch/PKGBUILD)"
 echo "----------------------------------------"

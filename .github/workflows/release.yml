@@ -1,0 +1,107 @@
+name: Release
+
+# Creates the release commit + tag for a version bump, then pushes both so
+# the Publish workflow (triggered by tag pushes) runs.
+#
+# IMPORTANT: pushing with the default GITHUB_TOKEN does not trigger other
+# workflows (GitHub prevents recursion). To have the tag push actually start
+# the Publish workflow, set the RELEASE_PAT secret (a PAT with `contents:
+# write` scope on this repo). Without it, the workflow still creates the
+# commit and tag locally in the workflow run but cannot push in a way that
+# cascades — the Publish workflow must then be started manually (or the tag
+# pushed manually with an authenticated git).
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version bump type
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Bump, commit and tag vX.Y.Z
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9.5.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Configure git identity
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+
+      - name: Bump version (package.json only, no commit/tag yet)
+        run: pnpm version "${{ inputs.version }}" --no-git-tag-version
+
+      - name: Show resulting version
+        id: ver
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Date the changelog for this release
+        run: |
+          TODAY="$(date -u +%Y-%m-%d)"
+          sed -i "0,/^## \[Unreleased\]/s//## [${{ steps.ver.outputs.version }}] - ${TODAY}/" CHANGELOG.md
+
+      - name: Generate commit info
+        run: node getCommitId.js
+
+      - name: Commit the release
+        run: |
+          git add package.json pnpm-lock.yaml src/commitInfo.json CHANGELOG.md
+          git commit -m "chore: release v${{ steps.ver.outputs.version }}"
+
+      - name: Create annotated tag
+        run: |
+          git tag -a "v${{ steps.ver.outputs.version }}" \
+            -m "Release v${{ steps.ver.outputs.version }}"
+
+      - name: Push branch and tag
+        run: |
+          if [ -n "$RELEASE_PAT" ]; then
+            git push "https://x-access-token:${RELEASE_PAT}@github.com/${GITHUB_REPOSITORY}.git" \
+              HEAD:master --follow-tags
+            echo "Pushed master + tag v${{ steps.ver.outputs.version }} with RELEASE_PAT."
+            echo "The Publish workflow is now running for v${{ steps.ver.outputs.version }}."
+          else
+            echo "::warning::RELEASE_PAT is not configured. The commit and tag were created"
+            echo "in this run but NOT pushed in a way that cascades (GITHUB_TOKEN pushes do"
+            echo "not trigger other workflows). Push manually to start Publish:"
+            echo "  git push origin master --follow-tags"
+          fi
+
+      - name: Summary
+        run: |
+          echo "### Release v${{ steps.ver.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`chore: release v${{ steps.ver.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tag: \`v${{ steps.ver.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$RELEASE_PAT" ]; then
+            echo "- Push: master + tag (Publish workflow triggered)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- Push: **not performed** (set RELEASE_PAT to automate)" >> "$GITHUB_STEP_SUMMARY"
+          fi

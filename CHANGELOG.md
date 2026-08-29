@@ -21,6 +21,11 @@ All notable changes to this project are documented in this file.
   in-process/worker decision plus an integration test that compiles a real
   Bun executable and runs it in `LOG_FORMAT=pretty` (skipped when bun is not
   installed).
+- **Automated releases**: a `Release` GitHub Actions workflow
+  (`.github/workflows/release.yml`) that bumps the version, dates the
+  changelog, commits and tags in one step (manual `workflow_dispatch`).
+  `release.sh` was rewritten to be non-interactive and to match that flow
+  (single commit + annotated tag).
 
 ## [1.11.0] - 2026-08-29
 
