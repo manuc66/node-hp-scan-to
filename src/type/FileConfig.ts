@@ -117,6 +117,7 @@ export const configSchema = z
     /// Common to external destination (paperless & nextcloud)
     ///
     keep_files: z.boolean().optional(), // Keep scanned files locally after upload
+    post_command: z.string().optional(), // External command template run on every generated file
 
     ///
     /// Health Check

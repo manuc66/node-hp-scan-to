@@ -1,4 +1,5 @@
 import { describe, it, beforeEach } from "mocha";
+import { expect } from "chai";
 import { postProcessing } from "../src/postProcessing.js";
 import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import type { ScanConfig } from "../src/type/scanConfigs.js";
@@ -16,6 +17,9 @@ describe("postProcessing", () => {
   const tempFolder = path.resolve(__dirname, "./tmp");
   const assetDir = path.resolve(__dirname, "./asset");
   const filePath = path.join(assetDir, fileName);
+
+  const appendTemplate =
+    'node -e "require(\'fs\').appendFileSync(process.argv[1],\'X\')" "{input}"';
 
   let scanJobContent: ScanContent;
   let scanPage: ScanPage;
@@ -82,5 +86,50 @@ describe("postProcessing", () => {
       new Date(),
       true,
     );
+  });
+
+  it("should apply the post-command to delivered images", async () => {
+    scanConfig = {
+      ...scanConfig,
+      postCommand: appendTemplate,
+    };
+    await postProcessing(
+      scanConfig,
+      tempFolder,
+      tempFolder,
+      1,
+      scanJobContent,
+      new Date(),
+      false,
+    );
+    expect((await fs.readFile(filePath, "utf8")).endsWith("X")).to.be.true;
+  });
+
+  it("should apply the post-command to the generated PDF", async () => {
+    const pdfFolder = path.join(tempFolder, "pdf-hook-test");
+    await fs.mkdir(pdfFolder, { recursive: true });
+    scanConfig = {
+      ...scanConfig,
+      postCommand: appendTemplate,
+    };
+    await postProcessing(
+      scanConfig,
+      pdfFolder,
+      tempFolder,
+      1,
+      scanJobContent,
+      new Date(),
+      true,
+    );
+    const pdfFiles = (await fs.readdir(pdfFolder)).filter((f) =>
+      f.endsWith(".pdf"),
+    );
+    expect(pdfFiles).to.have.lengthOf(1);
+    expect(
+      (await fs.readFile(path.join(pdfFolder, pdfFiles[0]), "utf8")).endsWith(
+        "X",
+      ),
+    ).to.be.true;
+    await fs.rm(pdfFolder, { recursive: true, force: true });
   });
 });
