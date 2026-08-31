@@ -208,6 +208,12 @@ function setupScanParameters(commandName: string) {
     )
     .addOption(
       new Option(
+        "--post-command <template>",
+        "Command template run on every generated file ({input} is the file path; when the template contains {output} the command output file replaces it, e.g. a Ghostscript PDF/A conversion).",
+      ).helpGroup(HelpGroupsHeadings.ouput),
+    )
+    .addOption(
+      new Option(
         "--nextcloud-url <nextcloud_url>",
         "The nextcloud url (example: https://domain.tld)",
       ).helpGroup(HelpGroupsHeadings.nextcloud),
@@ -552,6 +558,7 @@ function getScanConfiguration(
     paperlessConfig,
     nextcloudConfig,
     preferEscl,
+    postCommand: getOptConfiguredValue(options.postCommand, fileConfig.post_command),
   };
   return scanConfig;
 }

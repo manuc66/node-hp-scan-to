@@ -15,6 +15,7 @@ import { existsSync } from "node:fs";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import type { ScanConfig } from "./type/scanConfigs.js";
+import { runFilePostProcessing } from "./filePostProcessing.js";
 import { getLoggerForFile } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -74,6 +75,7 @@ async function handlePdfPostProcessing(
     scanConfig.directoryConfig.filePattern,
     scanDate,
     true,
+    scanConfig.postCommand,
   );
   const failures: string[] = [];
   if (pdfFilePath !== null) {
@@ -116,6 +118,21 @@ async function handleImagePostProcessing(
 
   displayImageScan(scanJobContent, scanCount);
   const failures: string[] = [];
+
+  // Only apply the post-processing command to files that are delivered as
+  // images: when the only delivery is a conversion to PDF, the command
+  // already runs on the generated PDF instead.
+  const pdfConversionOnly =
+    paperlessConfig !== undefined &&
+    nextcloudConfig === undefined &&
+    (paperlessConfig.groupMultiPageScanIntoAPdf ||
+      paperlessConfig.alwaysSendAsPdfFile);
+  if (!pdfConversionOnly && scanConfig.postCommand !== undefined) {
+    for (const element of scanJobContent.elements) {
+      await runFilePostProcessing(scanConfig.postCommand, element.path);
+    }
+  }
+
   if (paperlessConfig) {
     try {
       if (paperlessConfig.groupMultiPageScanIntoAPdf) {
@@ -133,6 +150,7 @@ async function handleImagePostProcessing(
             scanJobContent,
             paperlessConfig,
             scanDate,
+            scanConfig.postCommand,
           );
         } else {
           await uploadImagesAsSeparateDocumentsToPaperless(

@@ -67,6 +67,7 @@ const scanConfig: ScanConfig = {
   paperSize: undefined,
   paperDim: undefined,
   paperOrientation: undefined,
+  postCommand: undefined,
 };
 
 describe("scanProcessing", () => {

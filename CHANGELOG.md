@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Post-processing command**: `--post-command <template>` (or `post_command`
+  in the config file) runs an external command over every generated scan file
+  (PDFs and delivered images) before it is uploaded or cleaned up, e.g. to
+  produce PDF/A archives, sign documents, inject metadata or watermark
+  images, without bundling or maintaining any of those tools in the project.
+  The template supports `{input}` (the file path) and `{output}` (a temp file
+  that atomically replaces the file on success); without `{output}` the
+  command is expected to modify the file in place. Commands that fail never
+  block the flow: the original file is kept and the error is logged.
+
 ### Changed
 
 - **Early validation of file patterns**: the `--pattern` / `pattern` value is
