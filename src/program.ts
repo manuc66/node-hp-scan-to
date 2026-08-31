@@ -454,7 +454,7 @@ function getScanConfiguration(
   };
 
   if (directoryConfig.filePattern !== undefined) {
-    // Fail early: a pattern producing an OS-invalid file name would otherwise
+    // Fail early: a pattern producing an invalid file name would otherwise
     // crash at scan time.
     validateFilePatternForPlatform(directoryConfig.filePattern);
   }

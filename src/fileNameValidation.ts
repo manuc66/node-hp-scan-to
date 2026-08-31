@@ -1,21 +1,23 @@
 import dateformat from "dateformat";
-import filenameReservedRegex, {
-  windowsReservedNameRegex,
-} from "filename-reserved-regex";
+import sanitizeFilename from "sanitize-filename";
 
-// POSIX file systems only forbid "/" and the NUL byte; Windows forbids a
-// whole class of characters plus reserved device names. The Windows rules
-// come from the `filename-reserved-regex` package (reserved characters incl.
-// control bytes, trailing dot/space, and reserved device names), so they are
-// not maintained by hand here.
+// Each platform has its own file name rules, and applying the Windows rules
+// everywhere would break existing POSIX usages (a `:` in a name, e.g. from an
+// `HH:MM:ss` pattern, is perfectly valid on ext4/APFS). So:
+// - Windows: a name is invalid when `sanitize-filename` would change it. The
+//   package applies a conservative Windows rule set (forbidden characters
+//   `/\?<>\\:*|"`, control codes, reserved device names, trailing dots and
+//   spaces, 255-byte cap), and its rules are OS-independent, which also keeps
+//   the check testable on any host.
+// - POSIX (Linux, macOS): only `/` and the NUL byte are forbidden.
 const POSIX_INVALID_CHARACTERS = ["/", "\0"];
 
 export function getFileNameValidationErrors(
   fileName: string,
   platform: NodeJS.Platform = process.platform,
 ): string[] {
-  const errors: string[] = [];
   if (platform !== "win32") {
+    const errors: string[] = [];
     for (const character of POSIX_INVALID_CHARACTERS) {
       if (fileName.includes(character)) {
         errors.push(
@@ -26,21 +28,15 @@ export function getFileNameValidationErrors(
     return errors;
   }
 
-  const matches = fileName.match(filenameReservedRegex()) ?? [];
-  for (const match of new Set(matches)) {
-    if (match === "." && fileName.endsWith(".")) {
-      errors.push("a trailing dot");
-    } else if (match === " " && fileName.endsWith(" ")) {
-      errors.push("a trailing space");
-    } else {
-      errors.push(match === "\0" ? "the NUL byte" : `the character "${match}"`);
-    }
+  const sanitized = sanitizeFilename(fileName);
+  if (sanitized === fileName) {
+    return [];
   }
-  if (windowsReservedNameRegex().test(fileName)) {
-    const baseName = fileName.split(".")[0].trim().toUpperCase();
-    errors.push(`the reserved device name "${baseName}"`);
-  }
-  return errors;
+  return [
+    sanitized === ""
+      ? "the resulting name would be empty"
+      : `the resulting name would be sanitized to "${sanitized}"`,
+  ];
 }
 
 // A fixed date (02 January 2020, 03:04:05) makes the check deterministic:

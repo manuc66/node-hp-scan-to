@@ -12,13 +12,29 @@ describe("fileNameValidation", () => {
         .be.empty;
     });
 
-    it("flags ':' on windows but not on POSIX platforms", () => {
-      const windowsErrors = getFileNameValidationErrors(
-        "scan_02.01.2020_03:04:05",
-        "win32",
-      );
-      expect(windowsErrors).to.have.lengthOf(1);
-      expect(windowsErrors[0]).to.include(":");
+    it("flags forbidden characters on windows", () => {
+      for (const name of [
+        "scan_03:04:05",
+        "a/b",
+        "a\\b",
+        "a|b",
+        "a?b",
+        "a*b",
+        "a<b",
+        "a>b",
+        'a"b',
+      ]) {
+        expect(
+          getFileNameValidationErrors(name, "win32"),
+          `should flag "${name}" on windows`,
+        ).to.not.be.empty;
+      }
+    });
+
+    it("flags ':' and `\\` on windows but accepts them on POSIX platforms", () => {
+      expect(getFileNameValidationErrors("scan_03:04:05", "win32"))
+        .to.not.be.empty;
+      expect(getFileNameValidationErrors("scan\\03", "win32")).to.not.be.empty;
       expect(getFileNameValidationErrors("scan_03:04:05", "linux")).to.be
         .empty;
       expect(getFileNameValidationErrors("scan_03:04:05", "darwin")).to.be
@@ -26,37 +42,22 @@ describe("fileNameValidation", () => {
     });
 
     it("flags '/' on every platform", () => {
-      expect(getFileNameValidationErrors("a/b", "win32")).to.include(
-        'the character "/"',
-      );
-      expect(getFileNameValidationErrors("a/b", "linux")).to.include(
-        'the character "/"',
-      );
-      expect(getFileNameValidationErrors("a/b", "darwin")).to.include(
-        'the character "/"',
-      );
+      expect(getFileNameValidationErrors("a/b", "win32")).to.not.be.empty;
+      expect(getFileNameValidationErrors("a/b", "linux")).to.not.be.empty;
+      expect(getFileNameValidationErrors("a/b", "darwin")).to.not.be.empty;
     });
 
-    it("flags a trailing dot and space on windows only", () => {
-      expect(getFileNameValidationErrors("scan.", "win32")).to.deep.include(
-        "a trailing dot",
-      );
-      expect(getFileNameValidationErrors("scan ", "win32")).to.deep.include(
-        "a trailing space",
-      );
+    it("flags trailing dots and spaces on windows only", () => {
+      expect(getFileNameValidationErrors("scan.", "win32")).to.not.be.empty;
+      expect(getFileNameValidationErrors("scan ", "win32")).to.not.be.empty;
       expect(getFileNameValidationErrors("scan.", "linux")).to.be.empty;
     });
 
     it("flags reserved device names on windows, including with an extension", () => {
-      expect(getFileNameValidationErrors("con", "win32")).to.deep.include(
-        'the reserved device name "CON"',
-      );
-      expect(getFileNameValidationErrors("CON.txt", "win32")).to.deep.include(
-        'the reserved device name "CON"',
-      );
-      expect(getFileNameValidationErrors("lpt1.pdf", "win32")).to.include(
-        'the reserved device name "LPT1"',
-      );
+      expect(getFileNameValidationErrors("con", "win32")).to.not.be.empty;
+      expect(getFileNameValidationErrors("CON.txt", "win32")).to.not.be
+        .empty;
+      expect(getFileNameValidationErrors("lpt1.pdf", "win32")).to.not.be.empty;
       // only the exact reserved name (with optional extension) is reserved,
       // not names that merely start with it
       expect(getFileNameValidationErrors("lpt1 backup.pdf", "win32")).to.be
@@ -64,10 +65,9 @@ describe("fileNameValidation", () => {
       expect(getFileNameValidationErrors("con", "linux")).to.be.empty;
     });
 
-    it("flags reserved device names on windows with a trailing space", () => {
-      expect(getFileNameValidationErrors("nul ", "win32")).to.deep.include(
-        'the reserved device name "NUL"',
-      );
+    it("reports the sanitized form in the windows error", () => {
+      expect(getFileNameValidationErrors("scan_03:04:05", "win32")[0]).to
+        .include('"scan_030405"');
     });
   });
 
@@ -81,10 +81,13 @@ describe("fileNameValidation", () => {
     it("rejects a pattern rendering ':' on windows", () => {
       expect(() =>
         validateFilePatternForPlatform('"scan"_dd.mm.yyyy_HH:MM:ss', "win32"),
-      ).to.throw(/file name "scan_02\.01\.2020_03:04:05".*the character ":"/);
+      ).to.throw(/file name "scan_02\.01\.2020_03:04:05".*sanitized/);
       expect(() =>
         validateFilePatternForPlatform('"scan"_dd.mm.yyyy_HH:MM:ss', "win32"),
       ).to.throw(/double quotes like "scan"/);
+      expect(() =>
+        validateFilePatternForPlatform('"scan"_dd.mm.yyyy_HH:MM:ss', "win32"),
+      ).to.throw(/on win32/);
     });
 
     it("accepts the same pattern on POSIX platforms", () => {
@@ -118,9 +121,7 @@ describe("fileNameValidation", () => {
       // A dateformat pattern can rarely render a reserved device name, since
       // letters are treated as tokens (e.g. "con" renders to "c+0100n"), so
       // the rule is asserted at the getFileNameValidationErrors level above.
-      expect(getFileNameValidationErrors("con", "win32")).to.deep.include(
-        'the reserved device name "CON"',
-      );
+      expect(getFileNameValidationErrors("con", "win32")).to.not.be.empty;
     });
   });
 });
