@@ -40,6 +40,21 @@ else
   bad "no jpeg produced"
 fi
 
+echo "--- single-scan --pdf with pdf post-command"
+mkdir -p "$WORK/pdf"
+PDFS=0
+if timeout 60 $BIN --address "$IP" single-scan -d "$WORK/pdf" --pdf \
+  --post-command 'cp "{input}" "{output}"' >"$WORK/pdf.log" 2>&1; then
+  PDFS="$(find "$WORK/pdf" -name '*.pdf' 2>/dev/null | wc -l)"
+  if [ "$PDFS" -ge 1 ]; then
+    ok "$PDFS pdf(s) produced and post-processed"
+  else
+    bad "no pdf produced by --pdf flow (see $WORK/pdf.log)"
+  fi
+else
+  bad "single-scan --pdf failed (see $WORK/pdf.log)"
+fi
+
 echo "--- discover"
 found=0
 for _ in 1 2 3; do

@@ -17,6 +17,7 @@ import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import type { S3Config } from "./s3/S3Config.js";
 import type { ScanConfig } from "./type/scanConfigs.js";
+import { runFilePostProcessing } from "./filePostProcessing.js";
 import { getLoggerForFile } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -77,6 +78,7 @@ async function handlePdfPostProcessing(
     scanConfig.directoryConfig.filePattern,
     scanDate,
     true,
+    scanConfig.postCommand,
   );
   const failures: string[] = [];
   if (pdfFilePath !== null) {
@@ -115,6 +117,30 @@ async function handlePdfPostProcessing(
   return { uploadSucceeded: failures.length === 0, failures };
 }
 
+/**
+ * Applies the post-processing command to delivered images, unless the only
+ * delivery is a conversion to a single PDF: in that case the command already
+ * runs on the generated PDF instead.
+ */
+async function applyPostCommandToImages(
+  scanConfig: ScanConfig,
+  scanJobContent: ScanContent,
+): Promise<void> {
+  const paperlessConfig = scanConfig.paperlessConfig;
+  const nextcloudConfig = scanConfig.nextcloudConfig;
+  const pdfConversionOnly =
+    paperlessConfig !== undefined &&
+    nextcloudConfig === undefined &&
+    (paperlessConfig.groupMultiPageScanIntoAPdf ||
+      paperlessConfig.alwaysSendAsPdfFile);
+  if (pdfConversionOnly || scanConfig.postCommand === undefined) {
+    return;
+  }
+  for (const element of scanJobContent.elements) {
+    await runFilePostProcessing(scanConfig.postCommand, element.path);
+  }
+}
+
 async function handleImagePostProcessing(
   folder: string,
   scanCount: number,
@@ -128,6 +154,9 @@ async function handleImagePostProcessing(
 
   displayImageScan(scanJobContent, scanCount);
   const failures: string[] = [];
+
+  await applyPostCommandToImages(scanConfig, scanJobContent);
+
   if (paperlessConfig) {
     try {
       if (paperlessConfig.groupMultiPageScanIntoAPdf) {
@@ -145,6 +174,7 @@ async function handleImagePostProcessing(
             scanJobContent,
             paperlessConfig,
             scanDate,
+            scanConfig.postCommand,
           );
         } else {
           await uploadImagesAsSeparateDocumentsToPaperless(

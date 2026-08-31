@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
 import { getLoggerForFile } from "./logger.js";
+import { runFilePostProcessing } from "./filePostProcessing.js";
 
 const logger = getLoggerForFile(import.meta.url);
 
@@ -14,6 +15,7 @@ export async function mergeToPdf(
   filePattern: string | undefined,
   date: Date,
   deleteFiles: boolean,
+  postCommand?: string,
 ): Promise<string | null> {
   if (scanJobContent.elements.length > 0) {
     const pdfFilePath: string = await PathHelper.getFileForScan(
@@ -23,7 +25,7 @@ export async function mergeToPdf(
       "pdf",
       date,
     );
-    await createPdfFrom(scanJobContent, pdfFilePath, date);
+    await createPdfFrom(scanJobContent, pdfFilePath, date, postCommand);
     if (deleteFiles) {
       await Promise.all(scanJobContent.elements.map((e) => fs.unlink(e.path)));
     }
@@ -37,11 +39,12 @@ export async function convertToPdf(
   scanPage: ScanPage,
   deleteFile: boolean,
   date?: Date,
+  postCommand?: string,
 ): Promise<string | null> {
   const fileName = path.basename(scanPage.path, path.extname(scanPage.path));
   const pdfFilePath = path.join(path.dirname(scanPage.path), `${fileName}.pdf`);
 
-  await createPdfFrom({ elements: [scanPage] }, pdfFilePath, date);
+  await createPdfFrom({ elements: [scanPage] }, pdfFilePath, date, postCommand);
   if (deleteFile) {
     await fs.unlink(scanPage.path);
   }
@@ -52,12 +55,16 @@ export async function createPdfFrom(
   scanContent: ScanContent,
   destination: string,
   date?: Date,
+  postCommand?: string,
 ) {
   await runPdfMerge({
     pages: scanContent.elements,
     destination,
     date: date?.toISOString(),
   });
+  if (postCommand !== undefined) {
+    await runFilePostProcessing(postCommand, destination);
+  }
 }
 
 interface PdfMergeJobInput {

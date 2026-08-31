@@ -56,6 +56,7 @@ describe("singleScanCmd", () => {
       paperSize: undefined,
       paperDim: undefined,
       paperOrientation: undefined,
+      postCommand: undefined,
       isDuplex: false,
       generatePdf: false,
     };
