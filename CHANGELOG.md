@@ -16,7 +16,9 @@ All notable changes to this project are documented in this file.
   (APFS) only forbid `/` and the NUL byte. The Windows rules reuse the small
   zero-dependency `filename-reserved-regex` package. A pattern like
   `"scan"_dd.mm.yyyy_HH:MM:ss`, which produces a `:` in the name, is now
-  rejected on Windows with an actionable message.
+  rejected on Windows with an actionable message. The documented pattern
+  example (`--pattern` help, README) was updated to the `:`-free
+  `"scan"_dd.mm.yyyy_HHMMss` form.
 
 ## [1.11.1] - 2026-08-29
 
