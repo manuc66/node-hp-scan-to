@@ -23,6 +23,9 @@ describe("postProcessing", () => {
     "http://paperless.example.test/api/documents/post_document/";
   const nextcloudUrl = "https://nextcloud.example.test";
 
+  const appendTemplate =
+    'node -e "require(\'fs\').appendFileSync(process.argv[1],\'X\')" "{input}"';
+
   let scanJobContent: ScanContent;
   let scanPage: ScanPage;
   let scanConfig: ScanConfig;
@@ -318,4 +321,50 @@ describe("postProcessing", () => {
       expect(existsSync(filePath)).to.equal(true);
     });
   });
+
+  it("should apply the post-command to delivered images", async () => {
+    scanConfig = {
+      ...scanConfig,
+      postCommand: appendTemplate,
+    };
+    await postProcessing(
+      scanConfig,
+      tempFolder,
+      tempFolder,
+      1,
+      scanJobContent,
+      new Date(),
+      false,
+    );
+    expect((await fs.readFile(filePath, "utf8")).endsWith("X")).to.be.true;
+  });
+
+  it("should apply the post-command to the generated PDF", async () => {
+    const pdfFolder = path.join(tempFolder, "pdf-hook-test");
+    await fs.mkdir(pdfFolder, { recursive: true });
+    scanConfig = {
+      ...scanConfig,
+      postCommand: appendTemplate,
+    };
+    await postProcessing(
+      scanConfig,
+      pdfFolder,
+      tempFolder,
+      1,
+      scanJobContent,
+      new Date(),
+      true,
+    );
+    const pdfFiles = (await fs.readdir(pdfFolder)).filter((f) =>
+      f.endsWith(".pdf"),
+    );
+    expect(pdfFiles).to.have.lengthOf(1);
+    expect(
+      (await fs.readFile(path.join(pdfFolder, pdfFiles[0]), "utf8")).endsWith(
+        "X",
+      ),
+    ).to.be.true;
+    await fs.rm(pdfFolder, { recursive: true, force: true });
+  });
 });
+
