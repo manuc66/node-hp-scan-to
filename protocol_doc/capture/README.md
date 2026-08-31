@@ -25,7 +25,7 @@ restore).
 Run the driver under Wine in an isolated Docker container; an `LD_PRELOAD`
 shim enables `SSLKEYLOGFILE` on Wine's GnuTLS stack, and tshark decrypts the
 pcap (no certificate installation, no MITM). Tools in `protocol_doc/capture/tools/`
-(Dockerfile, `prepare.sh`, `sslkeylog-gnutls.c`, `winhttp-get.c`).
+(Dockerfile, `prepare.sh`, `sslkeylog-gnutls.c.txt`, `winhttp-get.c.txt`).
 
 ## Getting your bearings first (all methods)
 

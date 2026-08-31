@@ -6,7 +6,7 @@
 # on the host network or host certificate store is touched.
 #
 # Method: Wine's schannel is built on GnuTLS. A small LD_PRELOAD shim
-# (sslkeylog-gnutls.c) enables gnutls_session_set_keylog_function(), which
+# (sslkeylog-gnutls.c.txt) enables gnutls_session_set_keylog_function(), which
 # Wine never calls itself. Combined with tcpdump + tshark, the HTTPS traffic
 # of the Windows driver is decrypted in the clear.
 FROM debian:bookworm-slim

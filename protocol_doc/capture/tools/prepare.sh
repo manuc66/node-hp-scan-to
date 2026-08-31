@@ -75,8 +75,8 @@ docker exec "$C" bash -c 'test -d /home/wineuser/.wine/drive_c/windows/mono || (
 echo "==> Wine prefix ready (mono installed)"
 
 # --- keylog shim (GnuTLS SSLKEYLOGFILE) -----------------------------------
-docker exec "$C" bash -c 'cp /repo/protocol_doc/capture/tools/sslkeylog-gnutls.c /opt/ 2>/dev/null
-gcc -shared -fPIC -o /opt/sslkeylog-gnutls.so /opt/sslkeylog-gnutls.c -ldl -lgnutls 2>/dev/null || true'
+docker exec "$C" bash -c 'cp /repo/protocol_doc/capture/tools/sslkeylog-gnutls.c.txt /opt/ 2>/dev/null
+gcc -shared -fPIC -x c -o /opt/sslkeylog-gnutls.so /opt/sslkeylog-gnutls.c.txt -ldl -lgnutls 2>/dev/null || true'
 echo "==> keylog shim built: /opt/sslkeylog-gnutls.so"
 
 # --- Xvfb ----------------------------------------------------------------
