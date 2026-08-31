@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 > **Note:** all public communication on this repository is done in English.
 
+## [Unreleased]
+
+### Changed
+
+- **Early validation of file patterns**: the `--pattern` / `pattern` value is
+  now checked at startup against the file name rules of the **running
+  platform** instead of failing when the scan file is written, so existing
+  patterns stay valid where they already work. Windows rejects a name that
+  the `sanitize-filename` package would change (forbidden characters such as
+  `:`, reserved device names, trailing dots/spaces), while Linux and macOS
+  (APFS) only reject `/`; a pattern like `"scan"_dd.mm.yyyy_HH:MM:ss` is
+  thus rejected on Windows but still fine on POSIX systems. The documented
+  pattern example (`--pattern` help, README) was updated to the `: `-free
+  `"scan"_dd.mm.yyyy_HHMMss` form, which works everywhere.
+
 ## [1.11.1] - 2026-08-29
 
 ### Fixed
