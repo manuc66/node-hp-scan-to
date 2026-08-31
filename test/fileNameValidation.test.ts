@@ -1,36 +1,11 @@
 import { describe, it } from "mocha";
 import { expect } from "chai";
 import {
-  getFileNameRules,
   getFileNameValidationErrors,
   validateFilePatternForPlatform,
 } from "../src/fileNameValidation.js";
 
 describe("fileNameValidation", () => {
-  describe("getFileNameRules per platform", () => {
-    it("windows rules forbid its full character set", () => {
-      const rules = getFileNameRules("win32");
-      for (const c of [`<`, `>`, `:`, `"`, `/`, `\\`, `|`, `?`, `*`]) {
-        expect(rules.invalidCharacters).to.include(c);
-      }
-      expect(rules.reservedBaseNames).to.include("CON");
-      expect(rules.reservedBaseNames).to.include("COM1");
-      expect(rules.forbidTrailingDotOrSpace).to.be.true;
-    });
-
-    it("darwin rules only forbid the POSIX characters", () => {
-      const rules = getFileNameRules("darwin");
-      expect(rules.invalidCharacters).to.deep.equal([`/`, "\0"]);
-      expect(rules.reservedBaseNames).to.be.undefined;
-      expect(rules.forbidTrailingDotOrSpace).to.be.undefined;
-    });
-
-    it("linux rules only forbid the POSIX characters", () => {
-      const rules = getFileNameRules("linux");
-      expect(rules.invalidCharacters).to.deep.equal([`/`, "\0"]);
-    });
-  });
-
   describe("getFileNameValidationErrors", () => {
     it("accepts a scan file name on windows", () => {
       expect(getFileNameValidationErrors("scan_02.01.2020_030405", "win32")).to
@@ -38,11 +13,12 @@ describe("fileNameValidation", () => {
     });
 
     it("flags ':' on windows but not on POSIX platforms", () => {
-      expect(getFileNameValidationErrors("scan_02.01.2020_03:04:05", "win32"))
-        .to.have.lengthOf(1);
-      expect(
-        getFileNameValidationErrors("scan_02.01.2020_03:04:05", "win32")[0],
-      ).to.include(":");
+      const windowsErrors = getFileNameValidationErrors(
+        "scan_02.01.2020_03:04:05",
+        "win32",
+      );
+      expect(windowsErrors).to.have.lengthOf(1);
+      expect(windowsErrors[0]).to.include(":");
       expect(getFileNameValidationErrors("scan_03:04:05", "linux")).to.be
         .empty;
       expect(getFileNameValidationErrors("scan_03:04:05", "darwin")).to.be
@@ -78,7 +54,20 @@ describe("fileNameValidation", () => {
       expect(getFileNameValidationErrors("CON.txt", "win32")).to.deep.include(
         'the reserved device name "CON"',
       );
+      expect(getFileNameValidationErrors("lpt1.pdf", "win32")).to.include(
+        'the reserved device name "LPT1"',
+      );
+      // only the exact reserved name (with optional extension) is reserved,
+      // not names that merely start with it
+      expect(getFileNameValidationErrors("lpt1 backup.pdf", "win32")).to.be
+        .empty;
       expect(getFileNameValidationErrors("con", "linux")).to.be.empty;
+    });
+
+    it("flags reserved device names on windows with a trailing space", () => {
+      expect(getFileNameValidationErrors("nul ", "win32")).to.deep.include(
+        'the reserved device name "NUL"',
+      );
     });
   });
 
@@ -114,10 +103,12 @@ describe("fileNameValidation", () => {
     });
 
     it("rejects a pattern rendering a '/' everywhere", () => {
-      expect(() => validateFilePatternForPlatform("scan/dd.mm.yyyy", "win32"))
-        .to.throw();
-      expect(() => validateFilePatternForPlatform("scan/dd.mm.yyyy", "linux"))
-        .to.throw();
+      expect(() =>
+        validateFilePatternForPlatform("scan/dd.mm.yyyy", "win32"),
+      ).to.throw();
+      expect(() =>
+        validateFilePatternForPlatform("scan/dd.mm.yyyy", "linux"),
+      ).to.throw();
       expect(() =>
         validateFilePatternForPlatform("scan/dd.mm.yyyy", "darwin"),
       ).to.throw();

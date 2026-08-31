@@ -13,7 +13,8 @@ All notable changes to this project are documented in this file.
   instead of failing when the scan file is written. Each platform has its own
   restrictions: Windows forbids `< > : " / \ | ? *`, reserved device names
   (CON, PRN, AUX, NUL, COMx/LPTx) and trailing dots/spaces; Linux and macOS
-  (APFS) only forbid `/` and the NUL byte. A pattern like
+  (APFS) only forbid `/` and the NUL byte. The Windows rules reuse the small
+  zero-dependency `filename-reserved-regex` package. A pattern like
   `"scan"_dd.mm.yyyy_HH:MM:ss`, which produces a `:` in the name, is now
   rejected on Windows with an actionable message.
 

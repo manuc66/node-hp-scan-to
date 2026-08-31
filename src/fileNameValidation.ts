@@ -1,94 +1,44 @@
 import dateformat from "dateformat";
+import filenameReservedRegex, {
+  windowsReservedNameRegex,
+} from "filename-reserved-regex";
 
-const WINDOWS_INVALID_CHARACTERS = [`<`, `>`, `:`, `"`, `/`, `\\`, `|`, `?`, `*`];
-const POSIX_INVALID_CHARACTERS = [`/`, "\0"];
-
-const WINDOWS_RESERVED_BASE_NAMES = new Set([
-  "CON",
-  "PRN",
-  "AUX",
-  "NUL",
-  "COM1",
-  "COM2",
-  "COM3",
-  "COM4",
-  "COM5",
-  "COM6",
-  "COM7",
-  "COM8",
-  "COM9",
-  "LPT1",
-  "LPT2",
-  "LPT3",
-  "LPT4",
-  "LPT5",
-  "LPT6",
-  "LPT7",
-  "LPT8",
-  "LPT9",
-  "CONIN$",
-  "CONOUT$",
-]);
-
-interface FileNameRules {
-  invalidCharacters: string[];
-  reservedBaseNames?: ReadonlySet<string>;
-  forbidTrailingDotOrSpace?: boolean;
-}
-
-/**
- * One file name is checked against the rules of the platform it will be
- * created on. Every platform has its own constraints:
- *
- * - Windows: `<>:"/\|?*` and control characters are forbidden, the name
- *   cannot end with a dot or a space, and reserved device names (CON, PRN,
- *   AUX, NUL, COM1-9, LPT1-9…) are not allowed.
- * - POSIX (Linux): only `/` and the NUL byte are forbidden.
- * - macOS: same as POSIX on the modern APFS volume (`:` was reserved on the
- *   legacy HFS+ filesystem but is allowed on current macOS installs).
- */
-export function getFileNameRules(
-  platform: NodeJS.Platform = process.platform,
-): FileNameRules {
-  switch (platform) {
-    case "win32":
-      return {
-        invalidCharacters: WINDOWS_INVALID_CHARACTERS,
-        reservedBaseNames: WINDOWS_RESERVED_BASE_NAMES,
-        forbidTrailingDotOrSpace: true,
-      };
-    case "darwin":
-    default:
-      return { invalidCharacters: POSIX_INVALID_CHARACTERS };
-  }
-}
+// POSIX file systems only forbid "/" and the NUL byte; Windows forbids a
+// whole class of characters plus reserved device names. The Windows rules
+// come from the `filename-reserved-regex` package (reserved characters incl.
+// control bytes, trailing dot/space, and reserved device names), so they are
+// not maintained by hand here.
+const POSIX_INVALID_CHARACTERS = ["/", "\0"];
 
 export function getFileNameValidationErrors(
   fileName: string,
   platform: NodeJS.Platform = process.platform,
 ): string[] {
-  const rules = getFileNameRules(platform);
   const errors: string[] = [];
-  for (const character of rules.invalidCharacters) {
-    if (fileName.includes(character)) {
-      errors.push(
-        character === "\0" ? "the NUL byte" : `the character "${character}"`,
-      );
+  if (platform !== "win32") {
+    for (const character of POSIX_INVALID_CHARACTERS) {
+      if (fileName.includes(character)) {
+        errors.push(
+          character === "\0" ? "the NUL byte" : `the character "${character}"`,
+        );
+      }
     }
+    return errors;
   }
-  if (rules.forbidTrailingDotOrSpace) {
-    if (fileName.endsWith(".")) {
+
+  const matches = fileName.match(filenameReservedRegex()) ?? [];
+  for (const match of new Set(matches)) {
+    if (match === "." && fileName.endsWith(".")) {
       errors.push("a trailing dot");
-    }
-    if (fileName.endsWith(" ")) {
+    } else if (match === " " && fileName.endsWith(" ")) {
       errors.push("a trailing space");
+    } else {
+      errors.push(match === "\0" ? "the NUL byte" : `the character "${match}"`);
     }
   }
-  if (rules.reservedBaseNames !== undefined) {
-    const baseName = fileName.split(".")[0].toUpperCase();
-    if (rules.reservedBaseNames.has(baseName)) {
-      errors.push(`the reserved device name "${baseName}"`);
-    }
+  if (windowsReservedNameRegex().test(fileName)) {
+    const baseName = fileName.split(".")[0].trim().toUpperCase();
+    errors.push(`the reserved device name "${baseName}"`);
   }
   return errors;
 }
