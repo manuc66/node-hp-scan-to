@@ -1,0 +1,88 @@
+/*
+ * sslkeylog-gnutls.c — LD_PRELOAD shim that enables SSLKEYLOGFILE for any
+ * process using GnuTLS (including Wine's schannel, which uses GnuTLS as its
+ * TLS backend but never calls gnutls_session_set_keylog_function()).
+ *
+ * Usage:
+ *   SSLKEYLOGFILE=/capture/keys.log LD_PRELOAD=/opt/sslkeylog-gnutls.so wine app.exe
+ *
+ * The resulting key log can be fed to Wireshark (Edit → Preferences →
+ * Protocols → TLS → (Pre)-Master-Secret log filename) together with a pcap
+ * captured on the interface, to see the plaintext HTTP requests.
+ *
+ * Compile:
+ *   gcc -shared -fPIC -o sslkeylog-gnutls.so sslkeylog-gnutls.c -ldl -lgnutls
+ */
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <dlfcn.h>
+#include <gnutls/gnutls.h>
+
+static FILE *keylog_fp = NULL;
+
+/* Format one hex nibble helper */
+static void hex(const unsigned char *data, size_t len, char *out)
+{
+    static const char digits[] = "0123456789abcdef";
+    size_t i;
+    for (i = 0; i < len; i++) {
+        out[i * 2]     = digits[(data[i] >> 4) & 0x0f];
+        out[i * 2 + 1] = digits[data[i] & 0x0f];
+    }
+    out[len * 2] = '\0';
+}
+
+/* gnutls_keylog_function callback (returns int in modern GnuTLS) */
+static int keylog_cb(gnutls_session_t session, const char *label,
+                     const gnutls_datum_t *secret)
+{
+    if (!keylog_fp || !session || !label || !secret)
+        return 0;
+
+    gnutls_datum_t client_random, server_random;
+    gnutls_session_get_random(session, &client_random, &server_random);
+    if (!client_random.data)
+        return 0;
+
+    char cr[2 * client_random.size + 1];
+    char sec[2 * secret->size + 1];
+    hex(client_random.data, client_random.size, cr);
+    hex(secret->data, secret->size, sec);
+
+    fprintf(keylog_fp, "%s %s %s\n", label, cr, sec);
+    fflush(keylog_fp);
+    fprintf(stderr, "[sslkeylog-gnutls pid=%d] logged %s client_random=%s\n",
+            (int)getpid(), label, cr);
+    return 0;
+}
+
+/* Intercept gnutls_init so we can install the keylog function on every
+ * new TLS session the process creates. */
+int gnutls_init(gnutls_session_t *session, unsigned int flags)
+{
+    static int (*real_gnutls_init)(gnutls_session_t *, unsigned int) = NULL;
+    if (!real_gnutls_init)
+        real_gnutls_init = dlsym(RTLD_NEXT, "gnutls_init");
+
+    int ret = real_gnutls_init(session, flags);
+    if (ret < 0)
+        return ret;
+
+    /* First call: open the keylog file from the environment. */
+    if (!keylog_fp) {
+        const char *path = getenv("SSLKEYLOGFILE");
+        if (path && *path) {
+            keylog_fp = fopen(path, "a");
+            if (keylog_fp)
+                fprintf(stderr, "[sslkeylog-gnutls pid=%d] logging keys to %s\n", (int)getpid(), path);
+            else
+                fprintf(stderr, "[sslkeylog-gnutls pid=%d] cannot open %s\n", (int)getpid(), path);
+        }
+    }
+    if (keylog_fp)
+        gnutls_session_set_keylog_function(*session, keylog_cb);
+    return ret;
+}

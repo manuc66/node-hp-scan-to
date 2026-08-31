@@ -17,3 +17,5 @@ packaging/windows/staging/
 /test/asset/sample2.jpg
 /.yarn/install-state.gz
 /rust-version/
+/protocol_doc/capture/tools/driver-store/
+/protocol_doc/capture/tools/hp-mitm-capture/

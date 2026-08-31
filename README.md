@@ -43,6 +43,7 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
   - [Configure](#Configure)
 - [Build Source Code](#build-source-code)
   - [Debugging](#debugging)
+- [Reverse Engineering](#reverse-engineering)
 - [💖 Support this project](#-support-this-project)
 - [🙏 Special Thanks](#-special-thanks)
 - [License](#license)
@@ -811,6 +812,12 @@ node dist/index.js -a 192.168.1.5
 I'm using Visual Studio Code to debug this application, so instead of running `tsx`, just run `code .` and press F5 to start debugging.
 
 You may want to set your printers ip or name in `.vscode/launch.json`
+
+## Reverse Engineering
+
+- [Capturing the HP driver network traffic in the clear](protocol_doc/capture/README.md) — how the driver/printer exchanges (including HTTPS) are reverse-engineered: native Windows with mitmproxy (IP redirection) and Linux/Wine with the GnuTLS keylog.
+- [Protocol documentation](protocol_doc/HP%20Officejet%206500%20E710n-z.md) — the reverse-engineered proprietary HP protocols.
+- [eSCL protocol documentation](protocol_doc/HP%20PageWide%20Pro%20477dw%20MFP.md).
 
 ## 💖 Support this project
 
