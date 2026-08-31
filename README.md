@@ -734,6 +734,8 @@ You could however use Docker's [macvlan](https://docs.docker.com/engine/network/
 
 All scanned files are written to the volume `/scan`, the filename can be changed with the `PATTERN` environment variable. For the correct permissions to the volume set the environment variables `PUID` and `PGID` to that of the user running the container (usually `PUID=1000` and `PGID=1000`).
 
+Webhook events are persisted in an **outbox** directory before being delivered (default `~/.node-hp-scan-to/outbox`). `docker restart` of the same container keeps the outbox (the writable layer persists), but a **container re-creation** (`docker compose up --force-recreate`, `docker rm`, image update) discards it. To make pending events survive, mount a volume on the outbox directory and point `WEBHOOK_OUTBOX_DIR` at it (see the [Docker Compose example](#example-for-docker-compose)).
+
 #### Docker Environment Variables
 
 List of supported environment variables and their meaning, or correspondence with [command-line flags](#cli-options):
@@ -763,6 +765,25 @@ List of supported environment variables and their meaning, or correspondence wit
 | `MODE`                        | Scan mode setting                                                                                             | `--mode`                                                                      |
 | `PAPER_ORIENTATION`           | Paper orientation: portrait (default) or landscape. Applied to `PAPER_SIZE` only.                             | `--paper-orientation`                                                         |
 | `TEMP_DIR`                    | Temporary directory                                                                                           | `-t` / `--temp-directory`                                                     |
+| `S3_URL`                      | S3-compatible endpoint URL                                                                                    | `--s3-url`                                                                    |
+| `S3_REGION`                   | S3 region used for request signing (default `us-east-1`)                                                      | `--s3-region`                                                                 |
+| `S3_ACCESS_KEY_ID`            | S3 access key id                                                                                              | `--s3-access-key-id`                                                          |
+| `S3_SECRET_ACCESS_KEY`        | S3 secret access key (either this or `S3_SECRET_ACCESS_KEY_FILE` is required; file takes precedence)          |                                                                               |
+| `S3_SECRET_ACCESS_KEY_FILE`   | File containing the S3 secret access key (preferred for Docker Compose secrets)                               | Example: `./s3_secret.secret`                                                 |
+| `S3_BUCKET`                   | S3 bucket to upload scans into                                                                                | `--s3-bucket`                                                                 |
+| `S3_PREFIX`                   | Folder (prefix) inside the bucket (default bucket root)                                                       | `--s3-prefix`                                                                 |
+| `S3_FORCE_PATH_STYLE`         | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)                                    | `--s3-force-path-style`                                                       |
+| `S3_SESSION_TOKEN`            | S3 session token for temporary credentials                                                                    | `--s3-session-token`                                                          |
+| `WEBHOOK_URL`                 | Webhook URL to POST scan events to (JSON, idempotency-key header, outbox retries)                             | `--webhook-url`                                                               |
+| `WEBHOOK_AUTH`                | Auth scheme: `none`, `hmac`, `bearer` or `basic` (default: inferred from the credentials)                     | `--webhook-auth`                                                              |
+| `WEBHOOK_AUTH_HEADER`         | Header name carrying the HMAC signature (default `x-webhook-signature`)                                       | `--webhook-auth-header`                                                       |
+| `WEBHOOK_SECRET`              | HMAC-SHA256 signing secret (either this or `WEBHOOK_SECRET_FILE` is required; file takes precedence)          |                                                                               |
+| `WEBHOOK_SECRET_FILE`         | File containing the signing secret (preferred for Docker Compose secrets)                                     | Example: `./webhook_secret.secret`                                            |
+| `WEBHOOK_TOKEN`               | Bearer token sent as `Authorization: Bearer`                                                                  | `--webhook-token`                                                             |
+| `WEBHOOK_USERNAME`            | Basic auth username sent as `Authorization: Basic`                                                            | `--webhook-username`                                                          |
+| `WEBHOOK_PASSWORD`            | Basic auth password for `WEBHOOK_USERNAME`                                                                    | `--webhook-password`                                                          |
+| `WEBHOOK_OUTBOX_DIR`          | Durable directory for pending events; **mount a volume here to survive container re-creation**                | `--webhook-outbox-dir`                                                        |
+| `WEBHOOK_MAX_ATTEMPTS`        | Max delivery attempts before an event is dead-lettered (default `5`)                                          | `--webhook-max-attempts`                                                      |
 
 **Additional Notes:**
 
@@ -810,8 +831,20 @@ services:
       # If using Paperless-ngx, you can use its API to upload files:
       # - PAPERLESS_POST_DOCUMENT_URL=http://<paperless-host>:<port>/api/documents/post_document/
       # - PAPERLESS_TOKEN= xxxxxxxxxxxx...
+      # Optional - upload to S3-compatible storage (AWS S3, MinIO, Cloudflare R2, Wasabi...):
+      # - S3_URL=https://s3.us-east-1.amazonaws.com
+      # - S3_BUCKET=scans
+      # - S3_ACCESS_KEY_ID=...
+      # - S3_SECRET_ACCESS_KEY=...
+      # Optional - notify a webhook (n8n/Zapier) with scan events:
+      # - WEBHOOK_URL=https://n8n.example/webhook/scan
+      # - WEBHOOK_AUTH=hmac
+      # - WEBHOOK_SECRET=s3cr3t
+      # - WEBHOOK_OUTBOX_DIR=/var/lib/node-hp-scan-to/outbox
     volumes:
       - ./scan:/scan
+      # Optional - persist the webhook outbox across container re-creation:
+      # - ./outbox:/var/lib/node-hp-scan-to/outbox
 ```
 
 Then run `docker-compose up -d`
