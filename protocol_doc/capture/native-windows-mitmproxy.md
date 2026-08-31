@@ -14,7 +14,7 @@ classic forward proxy does not help.
 
 > Native Windows **SChannel does not support `SSLKEYLOGFILE`**, which is why
 > this MITM approach is required on Windows. Under Linux/Wine, the
-> `LD_PRELOAD` GnuTLS shim from this repo (`sslkeylog-gnutls.c`) is the
+> `LD_PRELOAD` GnuTLS shim from this repo (`sslkeylog-gnutls.c.txt`) is the
 > alternative — no certificate install needed.
 
 ## Reference observations (HP Smart Tank Plus 570 — one device)
