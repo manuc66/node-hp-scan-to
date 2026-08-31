@@ -113,7 +113,8 @@ export function validateFilePatternForPlatform(
   if (errors.length > 0) {
     throw new Error(
       `The file pattern "${filePattern}" would produce the file name "${renderedFileName}", which is not allowed on ${platform}: ${errors.join(", ")}. ` +
-        `Remove those characters from the pattern (e.g. replace ":" with "-").`,
+        `Remove those characters from the pattern (e.g. replace ":" with "-"). ` +
+        `Bare letters are date tokens; wrap literal text in double quotes like "scan".`,
     );
   }
 }

@@ -93,6 +93,9 @@ describe("fileNameValidation", () => {
       expect(() =>
         validateFilePatternForPlatform('"scan"_dd.mm.yyyy_HH:MM:ss', "win32"),
       ).to.throw(/file name "scan_02\.01\.2020_03:04:05".*the character ":"/);
+      expect(() =>
+        validateFilePatternForPlatform('"scan"_dd.mm.yyyy_HH:MM:ss', "win32"),
+      ).to.throw(/double quotes like "scan"/);
     });
 
     it("accepts the same pattern on POSIX platforms", () => {
