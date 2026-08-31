@@ -19,6 +19,23 @@ All notable changes to this project are documented in this file.
   pattern example (`--pattern` help, README) was updated to the `: `-free
   `"scan"_dd.mm.yyyy_HHMMss` form, which works everywhere.
 
+### Fixed
+
+- **Tests on Windows**: the suite now runs green again on Windows. The README
+  help snapshot test compares line endings that git may convert to CRLF, the
+  `~` home expansion produced mixed path separators, and the read-only folder
+  checks relied on `chmod`, which has no effect on directories on Windows.
+  - README snapshot normalization: `test/readme.test.ts` no longer fails on a
+    CRLF checkout.
+  - `PathHelper.getOutputFolder`: `~` expansion now goes through
+    `path.join`, so paths use the platform separator consistently.
+  - `PathHelper.checkIfFolderIsWritable` now performs a real temporary write
+    (create + delete) instead of `fs.access(W_OK)`, which does not honor ACLs
+    or the read-only attribute on Windows; the writability tests use an
+    `icacls` deny on Windows (ACLs) and keep the `chmod` approach on POSIX.
+  - Timestamp patterns containing `:` cannot produce a valid file name on
+    Windows; that formatting case is skipped there.
+
 ## [1.11.1] - 2026-08-29
 
 ### Fixed
