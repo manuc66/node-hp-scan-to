@@ -10,10 +10,18 @@ import {
   uploadPdfToNextcloud,
   uploadImagesToNextcloud,
 } from "./nextcloud/nextcloud.js";
+import { uploadPdfToS3, uploadImagesToS3 } from "./s3/s3.js";
+import {
+  sendScanEvent,
+  type WebhookDeliveryTarget,
+} from "./webhook/webhook.js";
+import type { WebhookConfig } from "./webhook/WebhookConfig.js";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
+import path from "node:path";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
+import type { S3Config } from "./s3/S3Config.js";
 import type { ScanConfig } from "./type/scanConfigs.js";
 import { getLoggerForFile } from "./logger.js";
 
@@ -26,6 +34,22 @@ export interface PostProcessingResult {
 
 function toFailureMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
+}
+
+async function recordDelivery(
+  delivery: WebhookDeliveryTarget[],
+  failures: string[],
+  target: string,
+  action: () => Promise<void>,
+): Promise<void> {
+  try {
+    await action();
+    delivery.push({ target, status: "success", error: undefined });
+  } catch (e) {
+    const message = toFailureMessage(e);
+    failures.push(message);
+    delivery.push({ target, status: "failed", error: message });
+  }
 }
 
 export async function postProcessing(
@@ -66,6 +90,8 @@ async function handlePdfPostProcessing(
 ): Promise<PostProcessingResult> {
   const paperlessConfig = scanConfig.paperlessConfig;
   const nextcloudConfig = scanConfig.nextcloudConfig;
+  const s3Config = scanConfig.s3Config;
+  const webhookConfig = scanConfig.webhookConfig;
 
   const pdfFilePath = await mergeToPdf(
     paperlessConfig ? tempFolder : folder,
@@ -76,30 +102,52 @@ async function handlePdfPostProcessing(
     true,
   );
   const failures: string[] = [];
+  const delivery: WebhookDeliveryTarget[] = [];
   if (pdfFilePath !== null) {
+    delivery.push({ target: "pdf", status: "success", error: undefined });
     displayPdfScan(pdfFilePath, scanJobContent, scanCount);
     if (paperlessConfig) {
-      try {
-        await uploadPdfToPaperless(pdfFilePath, paperlessConfig);
-      } catch (e) {
-        failures.push(toFailureMessage(e));
-      }
-    }
-    if (nextcloudConfig) {
-      try {
-        await uploadPdfToNextcloud(pdfFilePath, nextcloudConfig);
-      } catch (e) {
-        failures.push(toFailureMessage(e));
-      }
-    }
-    // Only clean up if delivery succeeded, otherwise keep the files.
-    if (failures.length === 0) {
-      await cleanUpFilesIfNeeded(
-        [pdfFilePath],
-        paperlessConfig,
-        nextcloudConfig,
+      await recordDelivery(delivery, failures, "paperless", () =>
+        uploadPdfToPaperless(pdfFilePath, paperlessConfig),
       );
     }
+    if (nextcloudConfig) {
+      await recordDelivery(delivery, failures, "nextcloud", () =>
+        uploadPdfToNextcloud(pdfFilePath, nextcloudConfig),
+      );
+    }
+    if (s3Config) {
+      await recordDelivery(delivery, failures, "s3", () =>
+        uploadPdfToS3(pdfFilePath, s3Config),
+      );
+    }
+  } else {
+    delivery.push({
+      target: "pdf",
+      status: "failed",
+      error: "PDF generation failed, nothing was uploaded",
+    });
+  }
+  if (webhookConfig) {
+    await sendScanEvent(
+      scanJobContent,
+      pdfFilePath !== null
+        ? [{ path: pdfFilePath, contentType: "application/pdf" }]
+        : [],
+      delivery,
+      webhookConfig,
+    );
+  }
+  await logScanMetadata(scanJobContent, scanDate);
+  // Only clean up if delivery succeeded, otherwise keep the files.
+  if (failures.length === 0 && pdfFilePath !== null) {
+    await cleanUpFilesIfNeeded(
+      [pdfFilePath],
+      paperlessConfig,
+      nextcloudConfig,
+      s3Config,
+      webhookConfig,
+    );
   }
   return { uploadSucceeded: failures.length === 0, failures };
 }
@@ -113,51 +161,137 @@ async function handleImagePostProcessing(
 ): Promise<PostProcessingResult> {
   const paperlessConfig = scanConfig.paperlessConfig;
   const nextcloudConfig = scanConfig.nextcloudConfig;
+  const s3Config = scanConfig.s3Config;
+  const webhookConfig = scanConfig.webhookConfig;
 
   displayImageScan(scanJobContent, scanCount);
   const failures: string[] = [];
+  const delivery: WebhookDeliveryTarget[] = [];
   if (paperlessConfig) {
-    try {
-      if (paperlessConfig.groupMultiPageScanIntoAPdf) {
-        await mergeToPdfAndUploadAsSingleDocumentToPaperless(
-          folder,
-          scanCount,
-          scanJobContent,
-          scanConfig,
-          scanDate,
-          paperlessConfig,
-        );
-      } else {
-        if (paperlessConfig.alwaysSendAsPdfFile) {
-          await convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
-            scanJobContent,
-            paperlessConfig,
-            scanDate,
-          );
-        } else {
-          await uploadImagesAsSeparateDocumentsToPaperless(
-            scanJobContent,
-            paperlessConfig,
-          );
-        }
-      }
-    } catch (e) {
-      failures.push(toFailureMessage(e));
-    }
+    await recordDelivery(delivery, failures, "paperless", () =>
+      handlePaperlessImageDelivery(
+        folder,
+        scanCount,
+        scanJobContent,
+        scanConfig,
+        scanDate,
+        paperlessConfig,
+      ),
+    );
   }
   if (nextcloudConfig) {
-    try {
-      await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
-    } catch (e) {
-      failures.push(toFailureMessage(e));
-    }
+    await recordDelivery(delivery, failures, "nextcloud", () =>
+      uploadImagesToNextcloud(scanJobContent, nextcloudConfig),
+    );
   }
+  if (s3Config) {
+    await recordDelivery(delivery, failures, "s3", () =>
+      uploadImagesToS3(scanJobContent, s3Config),
+    );
+  }
+  if (webhookConfig) {
+    await sendScanEvent(
+      scanJobContent,
+      scanJobContent.elements.map((element) => ({
+        path: element.path,
+        ...(element.contentType !== undefined
+          ? { contentType: element.contentType }
+          : {}),
+      })),
+      delivery,
+      webhookConfig,
+    );
+  }
+  await logScanMetadata(scanJobContent, scanDate);
   // Only clean up if delivery succeeded, otherwise keep the files.
   if (failures.length === 0) {
     const filePaths = scanJobContent.elements.map((element) => element.path);
-    await cleanUpFilesIfNeeded(filePaths, paperlessConfig, nextcloudConfig);
+    await cleanUpFilesIfNeeded(
+      filePaths,
+      paperlessConfig,
+      nextcloudConfig,
+      s3Config,
+      webhookConfig,
+    );
   }
   return { uploadSucceeded: failures.length === 0, failures };
+}
+
+async function handlePaperlessImageDelivery(
+  folder: string,
+  scanCount: number,
+  scanJobContent: ScanContent,
+  scanConfig: ScanConfig,
+  scanDate: Date,
+  paperlessConfig: PaperlessConfig,
+): Promise<void> {
+  if (paperlessConfig.groupMultiPageScanIntoAPdf) {
+    await mergeToPdfAndUploadAsSingleDocumentToPaperless(
+      folder,
+      scanCount,
+      scanJobContent,
+      scanConfig,
+      scanDate,
+      paperlessConfig,
+    );
+  } else {
+    if (paperlessConfig.alwaysSendAsPdfFile) {
+      await convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
+        scanJobContent,
+        paperlessConfig,
+        scanDate,
+      );
+    } else {
+      await uploadImagesAsSeparateDocumentsToPaperless(
+        scanJobContent,
+        paperlessConfig,
+      );
+    }
+  }
+}
+
+async function logScanMetadata(
+  scanJobContent: ScanContent,
+  scanDate: Date,
+): Promise<void> {
+  const meta = scanJobContent.meta;
+  if (meta === undefined) {
+    return;
+  }
+  const pages = await Promise.all(
+    scanJobContent.elements.map(async (element) => {
+      let sizeBytes: number | undefined;
+      try {
+        sizeBytes = (await fs.stat(element.path)).size;
+      } catch {
+        sizeBytes = undefined;
+      }
+      return {
+        pageNumber: element.pageNumber,
+        path: element.path,
+        format: path.extname(element.path).replace(/^\./, ""),
+        width: element.width,
+        height: element.height,
+        xResolution: element.xResolution,
+        yResolution: element.yResolution,
+        sizeBytes,
+        capturedAt: element.capturedAt,
+        durationMs: element.durationMs,
+        contentType: element.contentType,
+      };
+    }),
+  );
+  logger.info(
+    {
+      metadata: {
+        ...meta,
+        endedAt: new Date().toISOString(),
+        durationMs: Date.now() - scanDate.getTime(),
+      },
+      pages,
+    },
+    "Scan completed",
+  );
 }
 
 function displayPdfScan(
@@ -197,9 +331,15 @@ async function cleanUpFilesIfNeeded(
   filePaths: string[],
   paperlessConfig: PaperlessConfig | undefined,
   nextcloudConfig: NextcloudConfig | undefined,
+  s3Config: S3Config | undefined,
+  webhookConfig: WebhookConfig | undefined,
 ) {
   const keepFiles: boolean =
-    paperlessConfig?.keepFiles ?? nextcloudConfig?.keepFiles ?? true;
+    paperlessConfig?.keepFiles ??
+    nextcloudConfig?.keepFiles ??
+    s3Config?.keepFiles ??
+    webhookConfig?.keepFiles ??
+    true;
   if (!keepFiles) {
     await Promise.all(
       filePaths.map(async (filePath) => {

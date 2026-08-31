@@ -16,14 +16,106 @@ import type {
   SingleScanConfig,
 } from "./type/scanConfigs.js";
 import { ScanFormat } from "./type/scanFormat.js";
+import { ScanMode } from "./type/scanMode.js";
 import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
 import type { IScanStatus } from "./hpModels/IScanStatus.js";
 import { ScannerState } from "./hpModels/ScannerState.js";
 import type { ScanPlexMode } from "./hpModels/ScanPlexMode.js";
 import { createImageFormat, type ImageFormat } from "./imageFormats/index.js";
+import { nanoid } from "nanoid";
+import type {
+  ScanCommand,
+  ScanMetadata,
+  ScanTargetInfo,
+} from "./type/ScanMetadata.js";
 import { getLoggerForFile } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
+
+const instanceId = nanoid();
+const instanceStartedAt = new Date().toISOString();
+
+function buildInstanceInfo() {
+  return {
+    id: instanceId,
+    startedAt: instanceStartedAt,
+    uptimeMs: Math.round(process.uptime() * 1000),
+  };
+}
+
+interface ScanMetadataInput {
+  command: ScanCommand;
+  scanCount: number;
+  api: DeviceClient;
+  deviceCapabilities: DeviceCapabilities;
+  scanConfig: ScanConfig;
+  inputSource: InputSource;
+  contentType: "Document" | "Photo";
+  format: ImageFormat;
+  isPdf: boolean;
+  scanWidth: number | null;
+  scanHeight: number | null;
+  isDuplex: boolean;
+  pageCountingStrategy: PageCountingStrategy;
+  target?: SelectedScanTarget;
+}
+
+function buildScanMetadataInputTarget(
+  target: SelectedScanTarget,
+): ScanTargetInfo {
+  return {
+    label: target.label,
+    resourceURI: target.resourceURI,
+    destinationURI: target.event.destinationURI,
+    agingStamp: target.event.agingStamp,
+    compEventURI: target.event.compEventURI,
+  };
+}
+
+function colorDepthFor(mode: ScanMode): { colorDepth: number; channels: number } {
+  if (mode === ScanMode.Color) {
+    return { colorDepth: 8, channels: 3 };
+  }
+  if (mode === ScanMode.Gray) {
+    return { colorDepth: 8, channels: 1 };
+  }
+  return { colorDepth: 1, channels: 1 };
+}
+
+function buildScanMetadata(input: ScanMetadataInput): ScanMetadata {
+  const { format: imageFormat } = input;
+  return {
+    command: input.command,
+    scanCount: input.scanCount,
+    device: {
+      ip: input.api.deviceIP,
+      isEscl: input.deviceCapabilities.isEscl,
+    },
+    target: input.target
+      ? buildScanMetadataInputTarget(input.target)
+      : undefined,
+    settings: {
+      inputSource: input.inputSource,
+      contentType: input.contentType,
+      format: input.isPdf ? "pdf" : imageFormat.getExtension(),
+      sourceFormat: imageFormat.getExtension(),
+      mode: input.scanConfig.mode,
+      colorDepth: colorDepthFor(input.scanConfig.mode).colorDepth,
+      channels: colorDepthFor(input.scanConfig.mode).channels,
+      resolution: input.scanConfig.resolution,
+      width: input.scanWidth,
+      height: input.scanHeight,
+      isDuplex: input.isDuplex,
+      pageCountingStrategy: input.pageCountingStrategy,
+      filePattern: input.scanConfig.directoryConfig.filePattern,
+      paperSize: input.scanConfig.paperSize,
+      paperDim: input.scanConfig.paperDim,
+      paperOrientation: input.scanConfig.paperOrientation,
+    },
+    startedAt: new Date().toISOString(),
+    instance: buildInstanceInfo(),
+  };
+}
 
 export interface WalkupDestination {
   get shortcut(): null | KnownShortcut;
@@ -141,7 +233,25 @@ export async function saveScanFromEvent(
     isDuplex,
   );
 
-  const scanJobContent: ScanContent = { elements: [] };
+  const scanJobContent: ScanContent = {
+    elements: [],
+    meta: buildScanMetadata({
+      command: "listen",
+      scanCount,
+      api,
+      deviceCapabilities,
+      scanConfig,
+      inputSource,
+      contentType,
+      format: imageFormat,
+      isPdf,
+      scanWidth,
+      scanHeight,
+      isDuplex,
+      pageCountingStrategy,
+      target: selectedScanTarget,
+    }),
+  };
 
   await executeScanJobs(
     api,
@@ -203,7 +313,24 @@ export async function scanFromAdf(
     adfAutoScanConfig.isDuplex,
   );
 
-  const scanJobContent: ScanContent = { elements: [] };
+  const scanJobContent: ScanContent = {
+    elements: [],
+    meta: buildScanMetadata({
+      command: "adf-autoscan",
+      scanCount,
+      api,
+      deviceCapabilities,
+      scanConfig: adfAutoScanConfig,
+      inputSource: InputSource.Adf,
+      contentType,
+      format: imageFormat,
+      isPdf: adfAutoScanConfig.generatePdf,
+      scanWidth: effectiveScanWidth,
+      scanHeight: effectiveScanHeight,
+      isDuplex: adfAutoScanConfig.isDuplex,
+      pageCountingStrategy: PageCountingStrategy.Normal,
+    }),
+  };
 
   await executeScanJob(
     api,
@@ -288,7 +415,24 @@ export async function singleScan(
     scanConfig.isDuplex,
   );
 
-  const scanJobContent: ScanContent = { elements: [] };
+  const scanJobContent: ScanContent = {
+    elements: [],
+    meta: buildScanMetadata({
+      command: "single-scan",
+      scanCount,
+      api,
+      deviceCapabilities,
+      scanConfig,
+      inputSource,
+      contentType,
+      format: imageFormat,
+      isPdf: scanConfig.generatePdf,
+      scanWidth,
+      scanHeight,
+      isDuplex: scanConfig.isDuplex,
+      pageCountingStrategy: PageCountingStrategy.Normal,
+    }),
+  };
 
   await executeScanJob(
     api,

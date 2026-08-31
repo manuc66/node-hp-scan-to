@@ -47,9 +47,10 @@ Guidelines for agent contributors working on this repository.
 
 ## Upload / credential testing
 
-- `scripts/upload-stub.mjs` mimics paperless (multipart POST) and Nextcloud
-  WebDAV (PROPFIND + PUT) to test upload and credential flows without real
-  services. `STUB_FAIL=1` makes every endpoint fail.
+- `scripts/upload-stub.mjs` mimics paperless (multipart POST), Nextcloud
+  WebDAV (PROPFIND + PUT), S3 (SigV4 PUT) and webhooks (POST) to test upload
+  and credential flows without real services. `STUB_FAIL=1` makes every
+  endpoint fail.
 - Example against a real scanner:
   `STUB_FAIL=0 node scripts/upload-stub.mjs &`
   `node dist/index.js --address <printer> single-scan --pdf -k \

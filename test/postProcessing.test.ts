@@ -52,6 +52,8 @@ describe("postProcessing", () => {
       },
       paperlessConfig: undefined,
       nextcloudConfig: undefined,
+      s3Config: undefined,
+      webhookConfig: undefined,
     } as unknown as ScanConfig;
   });
 
