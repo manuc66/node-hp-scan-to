@@ -33,6 +33,7 @@ import type { Server as NetServer } from "node:net";
 import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
+import { validateFilePatternForPlatform } from "./fileNameValidation.js";
 import { getLoggerForFile, setDebugLevel } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -73,7 +74,7 @@ function setupScanParameters(commandName: string) {
     .addOption(
       new Option(
         "-p, --pattern <pattern>",
-        'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes',
+        'Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows',
       ).helpGroup(HelpGroupsHeadings.ouput),
     )
     .addOption(
@@ -457,6 +458,12 @@ function getScanConfiguration(
     ),
     filePattern: getOptConfiguredValue(options.pattern, fileConfig.pattern),
   };
+
+  if (directoryConfig.filePattern !== undefined) {
+    // Fail early: a pattern producing an invalid file name would otherwise
+    // crash at scan time.
+    validateFilePatternForPlatform(directoryConfig.filePattern);
+  }
 
   const paperlessConfig = getPaperlessConfig(options, fileConfig);
   const nextcloudConfig = getNextcloudConfig(options, fileConfig);

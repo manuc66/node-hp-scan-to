@@ -83,12 +83,12 @@ host store.
 
 ## Components
 
-### 1. LD_PRELOAD shim (`sslkeylog-gnutls.c`)
+### 1. LD_PRELOAD shim (`sslkeylog-gnutls.c.txt`)
 
-See `protocol_doc/capture/tools/sslkeylog-gnutls.c` for the full source. Compile:
+See `protocol_doc/capture/tools/sslkeylog-gnutls.c.txt` for the full source. Compile:
 
 ```bash
-gcc -shared -fPIC -o sslkeylog-gnutls.so sslkeylog-gnutls.c -ldl -lgnutls
+gcc -shared -fPIC -x c -o sslkeylog-gnutls.so sslkeylog-gnutls.c.txt -ldl -lgnutls
 ```
 
 > Note: the `wrong ELF class` warning at startup (the 32-bit Wine process
@@ -114,7 +114,7 @@ docker run -d --name wine-capture --network bridge --cap-add=NET_ADMIN \
 
 The HP driver uses WinHTTP/WinINet. To validate the method without a full
 install (the complete driver needs an interactive installer), a minimal
-WinHTTP client is enough (`protocol_doc/capture/tools/winhttp-get.c`). Important
+WinHTTP client is enough (`protocol_doc/capture/tools/winhttp-get.c.txt`). Important
 points:
 
 - certificate validation must be **disabled** in the client
@@ -166,8 +166,8 @@ driver cannot locate the printer that way. Two options:
 | `prepare.sh` | **Full rebuild recipe**: creates the macvlan+bridge networks, the container, the Wine prefix (mono), the GnuTLS shim, and copies the HP driver + printer config (Windows source path passed as an argument). |
 | `drive-installer.sh` | Drives the interactive HP webpack installer under Wine (OCR + xdotool): clicks "Continue", checks the EULA checkbox, clicks "Accept". Experimental — the WebView EULA checkbox is fragile. |
 | `fetch-driver.sh` | Copies a complete HP **DriverStore** (driver DLLs) from a Windows install (path as argument) into `driver-store/` (git-ignored). |
-| `sslkeylog-gnutls.c` | `LD_PRELOAD` shim enabling `SSLKEYLOGFILE` for GnuTLS (Wine's schannel backend) — the key to decrypt the driver's HTTPS. |
-| `winhttp-get.c` | Minimal WinHTTP client (certificate validation disabled) to validate the decryption chain without installing the complete driver. |
+| `sslkeylog-gnutls.c.txt` | `LD_PRELOAD` shim enabling `SSLKEYLOGFILE` for GnuTLS (Wine's schannel backend) — the key to decrypt the driver's HTTPS. |
+| `winhttp-get.c.txt` | Minimal WinHTTP client (certificate validation disabled) to validate the decryption chain without installing the complete driver. |
 
 Rebuild + driving the installer:
 
