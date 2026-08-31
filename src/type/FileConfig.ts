@@ -130,7 +130,15 @@ export const configSchema = z
     /// Webhook Integration
     ///
     webhook_url: z.string().optional(), // Webhook URL to POST scan events to
-    webhook_secret: z.string().optional(), // Optional HMAC-SHA256 signing secret
+    webhook_auth: z
+      .enum(["none", "hmac", "bearer", "basic"])
+      .optional(), // Auth scheme for the webhook request
+    webhook_auth_header: z.string().optional(), // Header name carrying the HMAC signature
+    webhook_secret: z.string().optional(), // HMAC-SHA256 signing secret
+    webhook_secret_file: z.string().optional(), // Path to file containing the signing secret
+    webhook_token: z.string().optional(), // Bearer token
+    webhook_username: z.string().optional(), // Basic auth username
+    webhook_password: z.string().optional(), // Basic auth password
     webhook_outbox_dir: z.string().optional(), // Durable directory for pending events
     webhook_max_attempts: z.number().int().positive().optional(), // Max delivery attempts
 

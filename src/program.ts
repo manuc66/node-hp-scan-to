@@ -14,7 +14,7 @@ import DeviceClient from "./DeviceClient.js";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import type { S3Config } from "./s3/S3Config.js";
-import type { WebhookConfig } from "./webhook/WebhookConfig.js";
+import type { WebhookConfig, WebhookAuthType } from "./webhook/WebhookConfig.js";
 import { startHealthCheckServer } from "./healthcheck.js";
 import fs from "node:fs";
 import { Command, Option } from "@commander-js/extra-typings";
@@ -301,8 +301,46 @@ function setupScanParameters(commandName: string) {
     )
     .addOption(
       new Option(
+        "--webhook-auth <webhook_auth>",
+        "Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials)",
+      )
+        .choices(["none", "hmac", "bearer", "basic"])
+        .helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-auth-header <webhook_auth_header>",
+        "Header name carrying the HMAC signature (default: x-webhook-signature)",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
         "--webhook-secret <webhook_secret>",
-        "Optional secret used to sign the payload (HMAC-SHA256 sent in X-Webhook-Signature)",
+        "Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-secret-file <webhook_secret_file>",
+        "File name that contains the webhook signing secret. Either this or webhook-secret.",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-token <webhook_token>",
+        "Bearer token sent as Authorization: Bearer <token>",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-username <webhook_username>",
+        "Basic auth username sent as Authorization: Basic",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-password <webhook_password>",
+        "Basic auth password for webhook-username",
       ).helpGroup(HelpGroupsHeadings.webhook),
     )
     .addOption(
@@ -587,22 +625,82 @@ function getWebhookConfig(
     fileConfig.keep_files,
     false,
   );
-  const secret = getOptConfiguredValue(
+  const authHeader = getConfiguredValue(
+    options.webhookAuthHeader,
+    fileConfig.webhook_auth_header,
+    "x-webhook-signature",
+  );
+
+  const configSecret = getOptConfiguredValue(
     options.webhookSecret,
     fileConfig.webhook_secret,
   );
+  const configSecretFile = getOptConfiguredValue(
+    options.webhookSecretFile,
+    fileConfig.webhook_secret_file,
+  );
+  const webhookToken = getOptConfiguredValue(
+    options.webhookToken,
+    fileConfig.webhook_token,
+  );
+  const webhookUsername = getOptConfiguredValue(
+    options.webhookUsername,
+    fileConfig.webhook_username,
+  );
+  const webhookPassword = getOptConfiguredValue(
+    options.webhookPassword,
+    fileConfig.webhook_password,
+  );
+
+  let secret: string | undefined;
+  if (configSecretFile !== undefined) {
+    secret = fs.readFileSync(configSecretFile, "utf8").trimEnd();
+  } else {
+    secret = configSecret;
+  }
+
+  const explicitAuth = getOptConfiguredValue(
+    options.webhookAuth,
+    fileConfig.webhook_auth,
+  );
+  let auth: WebhookAuthType;
+  if (explicitAuth !== undefined) {
+    auth = explicitAuth;
+  } else if (secret !== undefined) {
+    auth = "hmac";
+  } else if (webhookToken !== undefined) {
+    auth = "bearer";
+  } else if (
+    webhookUsername !== undefined &&
+    webhookPassword !== undefined
+  ) {
+    auth = "basic";
+  } else {
+    auth = "none";
+  }
 
   logger.info(
-    `Webhook configuration provided, url: ${webhookUrl}, outbox: ${outboxDir}, maxAttempts: ${maxAttempts}, keepFiles: ${keepFiles}`,
+    `Webhook configuration provided, url: ${webhookUrl}, auth: ${auth}, authHeader: ${authHeader}, outbox: ${outboxDir}, maxAttempts: ${maxAttempts}, keepFiles: ${keepFiles}`,
   );
   const webhookConfig: WebhookConfig = {
     url: webhookUrl,
+    auth,
+    authHeader,
     outboxDir,
     maxAttempts,
     keepFiles,
   };
   if (secret !== undefined) {
     webhookConfig.secret = secret;
+  }
+  if (webhookToken !== undefined) {
+    webhookConfig.token = webhookToken;
+  }
+  if (webhookUsername !== undefined) {
+    webhookConfig.username = webhookUsername;
+  }
+  if (webhookPassword !== undefined) {
+    webhookConfig.password = webhookPassword;
   }
   return webhookConfig;
 }

@@ -57,6 +57,29 @@ function signPayload(body: Buffer, secret: string): string {
   return createHmac("sha256", secret).update(body).digest("hex");
 }
 
+function applyAuth(
+  webhookConfig: WebhookConfig,
+  body: Buffer,
+  headers: Record<string, string>,
+): void {
+  if (webhookConfig.auth === "hmac" && webhookConfig.secret !== undefined) {
+    headers[webhookConfig.authHeader] = signPayload(body, webhookConfig.secret);
+    return;
+  }
+  if (webhookConfig.auth === "bearer" && webhookConfig.token !== undefined) {
+    headers["authorization"] = `Bearer ${webhookConfig.token}`;
+    return;
+  }
+  if (
+    webhookConfig.auth === "basic" &&
+    webhookConfig.username !== undefined &&
+    webhookConfig.password !== undefined
+  ) {
+    const credentials = `${webhookConfig.username}:${webhookConfig.password}`;
+    headers["authorization"] = `Basic ${Buffer.from(credentials).toString("base64")}`;
+  }
+}
+
 function outboxEntryPath(outboxDir: string, id: string): string {
   return path.join(outboxDir, `${id}.json`);
 }
@@ -122,9 +145,7 @@ async function deliverEvent(
     "user-agent": "node-hp-scan-to",
     "idempotency-key": entry.id,
   };
-  if (webhookConfig.secret !== undefined) {
-    headers["x-webhook-signature"] = signPayload(body, webhookConfig.secret);
-  }
+  applyAuth(webhookConfig, body, headers);
 
   try {
     // validateStatus accepts every status so 429/408/5xx can be inspected

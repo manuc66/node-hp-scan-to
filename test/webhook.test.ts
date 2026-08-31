@@ -108,6 +108,8 @@ describe("webhook", () => {
     await fsPromises.writeFile(filePath, "fake-pdf-content");
     config = {
       url: "http://127.0.0.1:1",
+      auth: "none",
+      authHeader: "x-webhook-signature",
       outboxDir: tempDir,
       maxAttempts: 5,
       keepFiles: false,
@@ -152,14 +154,93 @@ describe("webhook", () => {
       const srv = await startServer([200]);
       config.url = `http://127.0.0.1:${srv.port}`;
       config.secret = "s3cr3t";
+      config.auth = "hmac";
 
-      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+      await sendScanEvent(
+        scanContent,
+        [{ path: filePath }],
+        [],
+        config,
+      );
 
       const req = srv.requests[0];
       const expected = createHmac("sha256", "s3cr3t")
         .update(req.body)
         .digest("hex");
       expect(req.headers["x-webhook-signature"]).to.equal(expected);
+    });
+
+    it("uses the configured HMAC header name", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+      config.secret = "s3cr3t";
+      config.auth = "hmac";
+      config.authHeader = "x-n8n-signature";
+
+      await sendScanEvent(
+        scanContent,
+        [{ path: filePath }],
+        [],
+        config,
+      );
+
+      const req = srv.requests[0];
+      expect(req.headers["x-n8n-signature"]).to.be.a("string");
+      expect(req.headers["x-webhook-signature"]).to.be.undefined;
+    });
+
+    it("sends a bearer token when auth is bearer", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+      config.auth = "bearer";
+      config.token = "tok123";
+
+      await sendScanEvent(
+        scanContent,
+        [{ path: filePath }],
+        [],
+        config,
+      );
+
+      const req = srv.requests[0];
+      expect(req.headers.authorization).to.equal("Bearer tok123");
+    });
+
+    it("sends basic auth when auth is basic", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+      config.auth = "basic";
+      config.username = "scanner";
+      config.password = "pw";
+
+      await sendScanEvent(
+        scanContent,
+        [{ path: filePath }],
+        [],
+        config,
+      );
+
+      const req = srv.requests[0];
+      const expected = Buffer.from("scanner:pw").toString("base64");
+      expect(req.headers.authorization).to.equal(`Basic ${expected}`);
+    });
+
+    it("does not sign the payload when auth is none", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+      config.auth = "none";
+      config.secret = "s3cr3t";
+
+      await sendScanEvent(
+        scanContent,
+        [{ path: filePath }],
+        [],
+        config,
+      );
+
+      const req = srv.requests[0];
+      expect(req.headers["x-webhook-signature"]).to.be.undefined;
+      expect(req.headers.authorization).to.be.undefined;
     });
 
     it("does not send anything when there is no metadata", async () => {

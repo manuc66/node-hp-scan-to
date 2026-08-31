@@ -300,7 +300,12 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `--s3-force-path-style`               | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...).                                                                                                                                                    | `--s3-force-path-style` (disabled by default)                     |
 | `--s3-session-token`                  | S3 session token for temporary credentials.                                                                                                                                                                                    | `--s3-session-token ...` (no default)                             |
 | `--webhook-url`                       | Webhook URL to POST scan events to (JSON with idempotency-key header, outbox retries, dead-letter).                                                                                                                              | `--webhook-url https://n8n.example/webhook/scan` (no default)      |
-| `--webhook-secret`                    | Optional secret used to sign the payload (HMAC-SHA256 sent in `X-Webhook-Signature`).                                                                                                                                            | `--webhook-secret s3cr3t` (no default)                             |
+| `--webhook-auth`                      | Auth scheme for the webhook request: `none`, `hmac`, `bearer` or `basic` (default: inferred from the configured credentials).                                                                                                    | `--webhook-auth hmac` (auto)                                       |
+| `--webhook-auth-header`               | Header name carrying the HMAC signature.                                                                                                                                                                                         | `x-webhook-signature` (default)                                    |
+| `--webhook-secret`                    | HMAC-SHA256 signing secret (hex) sent in the auth header. Required unless `--webhook-secret-file` is used. Overrides if both are provided.                                                                                       | `--webhook-secret s3cr3t` (no default)                             |
+| `--webhook-secret-file`               | File containing the HMAC signing secret. Required unless `--webhook-secret` is used. Takes precedence if both are provided.                                                                                                      | `--webhook-secret-file /path/to/file` (no default)                 |
+| `--webhook-token`                     | Bearer token sent as `Authorization: Bearer <token>`.                                                                                                                                                                            | `--webhook-token tok...` (no default)                              |
+| `--webhook-username` / `--webhook-password` | Basic auth credentials sent as `Authorization: Basic`.                                                                                                                                                                     | `--webhook-username scanner --webhook-password ...` (no default)   |
 | `--webhook-outbox-dir`                | Durable directory where pending events survive restarts until delivered.                                                                                                                                                         | `~/.node-hp-scan-to/outbox`                                        |
 | `--webhook-max-attempts`              | Max delivery attempts before an event is dead-lettered.                                                                                                                                                                          | `--webhook-max-attempts 5` (default 5)                             |
 
@@ -456,7 +461,13 @@ S3 Options:
 
 Webhook Options:
   --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)
-  --webhook-secret <webhook_secret>                                Optional secret used to sign the payload (HMAC-SHA256 sent in X-Webhook-Signature)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
   --webhook-outbox-dir <webhook_outbox_dir>                        Directory where pending events are stored until delivered (default: ~/.node-hp-scan-to/outbox)
   --webhook-max-attempts <webhook_max_attempts>                    Max delivery attempts before dead-lettering an event (default: 5)
 
@@ -561,7 +572,13 @@ S3 Options:
 
 Webhook Options:
   --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)
-  --webhook-secret <webhook_secret>                                Optional secret used to sign the payload (HMAC-SHA256 sent in X-Webhook-Signature)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
   --webhook-outbox-dir <webhook_outbox_dir>                        Directory where pending events are stored until delivered (default: ~/.node-hp-scan-to/outbox)
   --webhook-max-attempts <webhook_max_attempts>                    Max delivery attempts before dead-lettering an event (default: 5)
 
@@ -676,7 +693,13 @@ S3 Options:
 
 Webhook Options:
   --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)
-  --webhook-secret <webhook_secret>                                Optional secret used to sign the payload (HMAC-SHA256 sent in X-Webhook-Signature)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
   --webhook-outbox-dir <webhook_outbox_dir>                        Directory where pending events are stored until delivered (default: ~/.node-hp-scan-to/outbox)
   --webhook-max-attempts <webhook_max_attempts>                    Max delivery attempts before dead-lettering an event (default: 5)
 
