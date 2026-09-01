@@ -54,19 +54,29 @@ async function recordDelivery(
   }
 }
 
+function deliverySucceeded(
+  delivery: WebhookDeliveryTarget[],
+  target: string,
+): boolean {
+  return delivery.some((d) => d.target === target && d.status === "success");
+}
+
 function buildWebhookFileSource(
   file: { path: string; contentType?: string },
   s3Config: S3Config | undefined,
   nextcloudConfig: NextcloudConfig | undefined,
+  delivery: WebhookDeliveryTarget[],
 ): WebhookFileSource {
   const source: WebhookFileSource = { path: file.path };
   if (file.contentType !== undefined) {
     source.contentType = file.contentType;
   }
-  if (s3Config) {
+  // Only advertise a remote location the file was actually delivered to,
+  // otherwise consumers would be pointed at objects that do not exist.
+  if (s3Config && deliverySucceeded(delivery, "s3")) {
     source.store = "s3";
     source.location = s3ObjectLocation(s3Config, path.basename(file.path));
-  } else if (nextcloudConfig) {
+  } else if (nextcloudConfig && deliverySucceeded(delivery, "nextcloud")) {
     source.store = "nextcloud";
     source.location = {
       webdavUrl: nextcloudWebdavFileUrl(
@@ -163,6 +173,7 @@ async function handlePdfPostProcessing(
               { path: pdfFilePath, contentType: "application/pdf" },
               s3Config,
               nextcloudConfig,
+              delivery,
             ),
           ]
         : [],
@@ -234,6 +245,7 @@ async function handleImagePostProcessing(
           },
           s3Config,
           nextcloudConfig,
+          delivery,
         ),
       ),
       delivery,
