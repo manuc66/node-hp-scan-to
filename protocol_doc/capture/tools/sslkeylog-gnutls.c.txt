@@ -1,5 +1,5 @@
 /*
- * sslkeylog-gnutls.c — LD_PRELOAD shim that enables SSLKEYLOGFILE for any
+ * sslkeylog-gnutls.c.txt — LD_PRELOAD shim that enables SSLKEYLOGFILE for any
  * process using GnuTLS (including Wine's schannel, which uses GnuTLS as its
  * TLS backend but never calls gnutls_session_set_keylog_function()).
  *
@@ -11,7 +11,7 @@
  * captured on the interface, to see the plaintext HTTP requests.
  *
  * Compile:
- *   gcc -shared -fPIC -o sslkeylog-gnutls.so sslkeylog-gnutls.c -ldl -lgnutls
+ *   gcc -shared -fPIC -x c -o sslkeylog-gnutls.so sslkeylog-gnutls.c.txt -ldl -lgnutls
  */
 #define _GNU_SOURCE
 #include <stdio.h>
