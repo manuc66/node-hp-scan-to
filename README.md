@@ -853,6 +853,23 @@ services:
 
 Then run `docker-compose up -d`
 
+#### Testing against real services
+
+The delivery targets (S3, Nextcloud, Paperless-ngx, webhook) can be validated
+against **real** services — MinIO, Nextcloud, Paperless-ngx and n8n, all
+started by `docker-compose.test.yml` — instead of only the self-consistent
+`scripts/upload-stub.mjs`:
+
+```sh
+pnpm build
+./scripts/real-services-test.sh                       # deliveries only
+SCANNER_IP=192.168.1.10 ./scripts/real-services-test.sh --scanner   # + real printer
+```
+
+Set `N8N_API_KEY` (owner + API key created in the n8n UI) to also verify the
+webhook event is received by a real n8n workflow (HMAC auth on the webhook node
+remains a manual final step). See `AGENTS.md`.
+
 ### Run with Kubernetes
 
 Apply the following manifest (the `PersistentVolumeClaim` must also be deployed beforehand):
