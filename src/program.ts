@@ -15,6 +15,7 @@ import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import type { S3Config } from "./s3/S3Config.js";
 import type { WebhookConfig, WebhookAuthType } from "./webhook/WebhookConfig.js";
+import { assertWebhookAuthCredentials } from "./webhook/WebhookConfig.js";
 import { startHealthCheckServer } from "./healthcheck.js";
 import fs from "node:fs";
 import { Command, Option } from "@commander-js/extra-typings";
@@ -599,7 +600,7 @@ function getS3Config(
   }
 }
 
-function getWebhookConfig(
+export function getWebhookConfig(
   options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   fileConfig: FileConfig,
 ): WebhookConfig | undefined {
@@ -703,6 +704,7 @@ function getWebhookConfig(
   if (webhookPassword !== undefined) {
     webhookConfig.password = webhookPassword;
   }
+  assertWebhookAuthCredentials(webhookConfig);
   return webhookConfig;
 }
 
@@ -887,7 +889,7 @@ function getDeviceUpPollingInterval(
   );
 }
 
-type ListenOptions = ReturnType<ReturnType<typeof createListenCliCmd>["opts"]>;
+export type ListenOptions = ReturnType<ReturnType<typeof createListenCliCmd>["opts"]>;
 
 function createListenCliCmd(configFile: FileConfig) {
   return setupScanParameters("listen")
@@ -984,7 +986,7 @@ function createListenCliCmd(configFile: FileConfig) {
     });
 }
 
-type AdfAutoscanOptions = ReturnType<
+export type AdfAutoscanOptions = ReturnType<
   ReturnType<typeof createAdfAutoscanCliCmd>["opts"]
 >;
 
@@ -1075,7 +1077,7 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
     });
 }
 
-type SingleScanOptions = ReturnType<
+export type SingleScanOptions = ReturnType<
   ReturnType<typeof createSingleScanCliCmd>["opts"]
 >;
 

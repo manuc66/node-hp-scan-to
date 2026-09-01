@@ -225,6 +225,32 @@ describe("webhook", () => {
       expect(req.headers.authorization).to.equal(`Basic ${expected}`);
     });
 
+    it("refuses to deliver an event whose auth scheme is missing its credentials", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+
+      const invalidConfigs: WebhookConfig[] = [
+        { ...config, auth: "hmac" }, // no secret
+        { ...config, auth: "bearer" }, // no token
+        { ...config, auth: "basic", username: "scanner" }, // no password
+      ];
+
+      for (const invalidConfig of invalidConfigs) {
+        let threw: unknown;
+        try {
+          await sendScanEvent(scanContent, [{ path: filePath }], [], invalidConfig);
+        } catch (e) {
+          threw = e;
+        }
+        expect(
+          threw,
+          `auth "${invalidConfig.auth}" without its credentials should be rejected`,
+        ).to.exist;
+      }
+
+      expect(srv.requests).to.have.length(0);
+    });
+
     it("does not sign the payload when auth is none", async () => {
       const srv = await startServer([200]);
       config.url = `http://127.0.0.1:${srv.port}`;

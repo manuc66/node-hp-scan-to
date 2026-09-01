@@ -6,6 +6,7 @@ import { existsSync } from "node:fs";
 import type { ScanContent } from "../type/ScanContent.js";
 import type { ScanMetadata } from "../type/ScanMetadata.js";
 import type { WebhookConfig } from "./WebhookConfig.js";
+import { assertWebhookAuthCredentials } from "./WebhookConfig.js";
 import { getLoggerForFile } from "../logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -83,6 +84,7 @@ function applyAuth(
   body: Buffer,
   headers: Record<string, string>,
 ): void {
+  assertWebhookAuthCredentials(webhookConfig);
   if (webhookConfig.auth === "hmac" && webhookConfig.secret !== undefined) {
     headers[webhookConfig.authHeader] = signPayload(body, webhookConfig.secret);
     return;
