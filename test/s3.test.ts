@@ -1,4 +1,5 @@
 import { describe } from "mocha";
+import { expect } from "chai";
 import path from "node:path";
 import { createHash, createHmac } from "node:crypto";
 import http from "node:http";
@@ -6,7 +7,7 @@ import type { AddressInfo } from "node:net";
 import nock from "nock";
 import os from "node:os";
 import fsPromises from "node:fs/promises";
-import { uploadImagesToS3, uploadPdfToS3 } from "../src/s3/s3.js";
+import { uploadImagesToS3, uploadPdfToS3, s3ObjectLocation } from "../src/s3/s3.js";
 import type { S3Config } from "../src/s3/S3Config.js";
 import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import { convertToPdf } from "../src/pdfProcessing.js";
@@ -103,6 +104,16 @@ function buildS3Config(endpointUrl: string, forcePathStyle: boolean): S3Config {
 }
 
 describe("s3", () => {
+  describe("s3ObjectLocation", () => {
+    it("builds the bucket and key with the configured prefix", () => {
+      const s3Config = buildS3Config("http://127.0.0.1:1", true);
+      expect(s3ObjectLocation(s3Config, "scan.pdf")).to.deep.equal({
+        bucket: "scans",
+        key: "2026/08/scan.pdf",
+      });
+    });
+  });
+
   const fileName = "s3_sample.jpg";
   const scanDate = new Date(2026, 7, 28, 20, 13, 45);
 

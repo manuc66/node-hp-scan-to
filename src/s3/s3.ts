@@ -75,6 +75,16 @@ function encodePath(pathKey: string): string {
   return out;
 }
 
+export function s3ObjectLocation(
+  s3Config: S3Config,
+  fileName: string,
+): { bucket: string; key: string } {
+  return {
+    bucket: s3Config.bucket,
+    key: buildObjectKey(s3Config.prefix, fileName),
+  };
+}
+
 function buildObjectKey(prefix: string | undefined, fileName: string): string {
   const cleanPrefix = (prefix ?? "").replace(/^\/+|\/+$/g, "");
   return cleanPrefix === "" ? fileName : `${cleanPrefix}/${fileName}`;

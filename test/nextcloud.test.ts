@@ -1,9 +1,11 @@
 import { describe } from "mocha";
+import { expect } from "chai";
 import path from "node:path";
 import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import {
   uploadImagesToNextcloud,
   uploadPdfToNextcloud,
+  nextcloudWebdavFileUrl,
 } from "../src/nextcloud/nextcloud.js";
 import type { NextcloudConfig } from "../src/nextcloud/NextcloudConfig.js";
 import { convertToPdf } from "../src/pdfProcessing.js";
@@ -16,6 +18,24 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 describe("nextcloud", () => {
+  describe("nextcloudWebdavFileUrl", () => {
+    it("builds the WebDAV url of an uploaded file", () => {
+      expect(
+        nextcloudWebdavFileUrl(
+          {
+            baseUrl: nextcloudUrl,
+            username,
+            password,
+            uploadFolder,
+            keepFiles: false,
+          },
+          "scan.pdf",
+        ),
+      ).to.equal(
+        `https://nextcloud.example.test/remote.php/dav/files/scanner/scan/scan.pdf`,
+      );
+    });
+  });
   // prepare test data
   const fileName = "nextcloud_sample.jpg";
   const filePath = path.resolve(__dirname, `./asset/${fileName}`);

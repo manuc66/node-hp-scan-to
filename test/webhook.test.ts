@@ -252,6 +252,33 @@ describe("webhook", () => {
       expect(srv.requests).to.have.length(0);
     });
 
+    it("embeds the store location of the file when provided", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+
+      await sendScanEvent(
+        scanContent,
+        [
+          {
+            path: filePath,
+            store: "s3",
+            location: { bucket: "scans", key: "2026/08/scan.pdf" },
+          },
+        ],
+        [],
+        config,
+      );
+
+      const payload = JSON.parse(srv.requests[0].body.toString("utf8")) as {
+        files: { store: string; location: { bucket: string; key: string } }[];
+      };
+      expect(payload.files[0].store).to.equal("s3");
+      expect(payload.files[0].location).to.deep.equal({
+        bucket: "scans",
+        key: "2026/08/scan.pdf",
+      });
+    });
+
     it("publishes a scan-delivery-failed event when a delivery target failed", async () => {
       const srv = await startServer([200]);
       config.url = `http://127.0.0.1:${srv.port}`;

@@ -9,11 +9,13 @@ import {
 import {
   uploadPdfToNextcloud,
   uploadImagesToNextcloud,
+  nextcloudWebdavFileUrl,
 } from "./nextcloud/nextcloud.js";
-import { uploadPdfToS3, uploadImagesToS3 } from "./s3/s3.js";
+import { uploadPdfToS3, uploadImagesToS3, s3ObjectLocation } from "./s3/s3.js";
 import {
   sendScanEvent,
   type WebhookDeliveryTarget,
+  type WebhookFileSource,
 } from "./webhook/webhook.js";
 import type { WebhookConfig } from "./webhook/WebhookConfig.js";
 import fs from "node:fs/promises";
@@ -50,6 +52,30 @@ async function recordDelivery(
     failures.push(message);
     delivery.push({ target, status: "failed", error: message });
   }
+}
+
+function buildWebhookFileSource(
+  file: { path: string; contentType?: string },
+  s3Config: S3Config | undefined,
+  nextcloudConfig: NextcloudConfig | undefined,
+): WebhookFileSource {
+  const source: WebhookFileSource = { path: file.path };
+  if (file.contentType !== undefined) {
+    source.contentType = file.contentType;
+  }
+  if (s3Config) {
+    source.store = "s3";
+    source.location = s3ObjectLocation(s3Config, path.basename(file.path));
+  } else if (nextcloudConfig) {
+    source.store = "nextcloud";
+    source.location = {
+      webdavUrl: nextcloudWebdavFileUrl(
+        nextcloudConfig,
+        path.basename(file.path),
+      ),
+    };
+  }
+  return source;
 }
 
 export async function postProcessing(
@@ -132,7 +158,13 @@ async function handlePdfPostProcessing(
     await sendScanEvent(
       scanJobContent,
       pdfFilePath !== null
-        ? [{ path: pdfFilePath, contentType: "application/pdf" }]
+        ? [
+            buildWebhookFileSource(
+              { path: pdfFilePath, contentType: "application/pdf" },
+              s3Config,
+              nextcloudConfig,
+            ),
+          ]
         : [],
       delivery,
       webhookConfig,
@@ -192,12 +224,18 @@ async function handleImagePostProcessing(
   if (webhookConfig) {
     await sendScanEvent(
       scanJobContent,
-      scanJobContent.elements.map((element) => ({
-        path: element.path,
-        ...(element.contentType !== undefined
-          ? { contentType: element.contentType }
-          : {}),
-      })),
+      scanJobContent.elements.map((element) =>
+        buildWebhookFileSource(
+          {
+            path: element.path,
+            ...(element.contentType !== undefined
+              ? { contentType: element.contentType }
+              : {}),
+          },
+          s3Config,
+          nextcloudConfig,
+        ),
+      ),
       delivery,
       webhookConfig,
     );

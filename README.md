@@ -88,7 +88,11 @@ There is a good chance it also works on other unlisted HP All-in-One Printer.
   - [Nextcloud WebDAV](https://docs.Nextcloud.com/server/latest/user_manual/en/files/access_webdav.html) upload
   - S3-compatible (AWS S3, MinIO, Cloudflare R2, Wasabi...) upload
   - Webhook notification (JSON event with idempotency key, outbox retries and
-    dead-letter; `scan-completed` / `scan-delivery-failed` event types)
+    dead-letter; `scan-completed` / `scan-delivery-failed` event types). Each
+    file carries `size`/`sha256` plus its location (`local` path, S3
+    `bucket`/`key` or Nextcloud WebDAV URL); the event is a metadata
+    notification, so with `--keep-files` disabled the local `path` may be
+    cleaned up after a successful delivery.
 
 ### Protocol Support
 

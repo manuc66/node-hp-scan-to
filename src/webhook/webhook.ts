@@ -13,13 +13,34 @@ const logger = getLoggerForFile(import.meta.url);
 const EVENT_TYPE = "scan-completed";
 const EVENT_DELIVERY_FAILED = "scan-delivery-failed";
 
+export interface WebhookFileLocation {
+  /** S3 bucket (when store is "s3"). */
+  bucket?: string;
+  /** S3 object key (when store is "s3"). */
+  key?: string;
+  /** WebDAV URL of the file (when store is "nextcloud"). */
+  webdavUrl?: string;
+}
+
 export interface WebhookFileDescriptor {
   name: string;
+  /** Local path at the time the event was created (may be cleaned up later). */
   path: string;
   size: number;
   sha256: string;
   format: string;
   contentType?: string;
+  /** Where the file actually lives: "local" (only path), "s3" or "nextcloud". */
+  store?: "local" | "s3" | "nextcloud";
+  /** How to reach the object (always set when store is not "local"). */
+  location?: WebhookFileLocation;
+}
+
+export interface WebhookFileSource {
+  path: string;
+  contentType?: string;
+  store?: "local" | "s3" | "nextcloud";
+  location?: WebhookFileLocation;
 }
 
 export interface WebhookDeliveryTarget {
@@ -274,7 +295,7 @@ export async function flushOutbox(
  */
 export async function sendScanEvent(
   scanContent: ScanContent,
-  files: { path: string; contentType?: string }[],
+  files: WebhookFileSource[],
   delivery: WebhookDeliveryTarget[],
   webhookConfig: WebhookConfig,
 ): Promise<void> {
@@ -295,6 +316,8 @@ export async function sendScanEvent(
       ...(file.contentType !== undefined
         ? { contentType: file.contentType }
         : {}),
+      ...(file.store !== undefined ? { store: file.store } : {}),
+      ...(file.location !== undefined ? { location: file.location } : {}),
     });
   }
 
