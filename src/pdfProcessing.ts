@@ -76,8 +76,18 @@ export async function createPdfFrom(
     }
     const imageByteBuffer = await fs.readFile(element.path);
     doc.addImage(imageByteBuffer, "JPEG", 0, 0, widthInInches, heightInInches);
+
+    // jspdf work is synchronous in-process CPU: give the event loop a window
+    // between pages so pending requests (printer polls, health checks) are
+    // handled even while a large scan is being merged.
+    await yieldToEventLoop();
   }
   doc?.save(destination);
+  await yieldToEventLoop();
+}
+
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
 }
 
 function dateToFileId(date: Date): string {
