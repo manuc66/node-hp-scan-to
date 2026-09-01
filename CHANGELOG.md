@@ -4,6 +4,27 @@ All notable changes to this project are documented in this file.
 
 > **Note:** all public communication on this repository is done in English.
 
+## [Unreleased]
+
+### Added
+
+- **Reactive scan processing**: in `listen` and `adf-autoscan` mode, captured
+  scans are now delivered on a background FIFO queue and the PDF merge runs in
+  a worker thread, so the loop keeps polling the printer while uploads or
+  post-processing are still running. Previously a long delivery (large upload,
+  slow destination, heavy PDF merge) could make the loop miss the next scan
+  event or trip the printer's `userActionTimeout` / `waitScanNewPageRequest`
+  timeouts. Scan order is preserved (scans are processed in the order they
+  were captured) and `single-scan` still waits for delivery before exiting.
+  Details on
+  [processing-pipeline.md](docs/processing-pipeline.md).
+- Durability of pending scans is intentionally **not** part of this change:
+  the queue is in memory, so a process crash mid-job leaves the captured files
+  on disk (cleanup only runs once delivery finished) and delivery can be
+  redone by hand — no worse than the previous synchronous behavior. A
+  conditional durable inbox (relevant only when a network destination is
+  configured) is planned; no new Docker volume or constraint is required.
+
 ## [1.11.1] - 2026-08-29
 
 ### Fixed
