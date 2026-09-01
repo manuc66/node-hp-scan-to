@@ -17,6 +17,23 @@ Guidelines for agent contributors working on this repository.
 - All public communication on this repository (issues, PRs, commit messages,
   changelog, documentation) is done in English.
 
+## Code quality gates (SonarCloud)
+
+- SonarCloud runs on every CI build (`docker-image.yml` → SonarCloud Scan)
+  and enforces a quality gate on **new code**: coverage of new/changed lines
+  must stay **at or above 80%** (`new_coverage`). A red gate blocks the
+  project overview at https://sonarcloud.io/project/overview?id=node-hp-scan-to
+  until fixed.
+- Any change to `src/` must ship with tests that execute the new code paths.
+  Check locally with `pnpm test:coverage` before pushing; after CI runs,
+  check the SonarCloud PR decoration / project dashboard.
+- Do not introduce new SonarCloud issues (bugs, code smells, security
+  hotspots) or new CodeQL alerts. Fix them instead of suppressing them:
+  `// NOSONAR`, `eslint-disable`, `@ts-ignore`, `# noqa`-style markers are
+  only acceptable with a short written justification in a comment.
+- When refactoring, avoid moving uncovered code around: relocated lines keep
+  counting as "new code" on SonarCloud and will drag the gate down.
+
 ## User data
 
 - NEVER delete, move, or modify files in the user's personal scan output
