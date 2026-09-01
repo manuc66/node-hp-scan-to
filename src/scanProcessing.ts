@@ -5,7 +5,11 @@ import type DeviceClient from "./DeviceClient.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type { ScanContent } from "./type/ScanContent.js";
 import { InputSource } from "./type/InputSource.js";
-import { postProcessing, type PostProcessingResult } from "./postProcessing.js";
+import {
+  enqueueScanProcessing,
+  processScanProcessingJob,
+} from "./queue/processingQueue.js";
+import type { PostProcessingResult } from "./postProcessing.js";
 import { getScanDimensions } from "./scanDimensions.js";
 import type { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers.js";
@@ -349,15 +353,15 @@ export async function scanFromAdf(
     `Scan of page(s) completed, total pages: ${scanJobContent.elements.length}:`,
   );
 
-  await postProcessing(
-    adfAutoScanConfig,
+  enqueueScanProcessing({
+    scanConfig: adfAutoScanConfig,
     folder,
     tempFolder,
     scanCount,
     scanJobContent,
-    date,
-    adfAutoScanConfig.generatePdf,
-  );
+    scanDate: date,
+    toPdf: adfAutoScanConfig.generatePdf,
+  });
 }
 
 export async function singleScan(
@@ -451,15 +455,15 @@ export async function singleScan(
     `Scan of page(s) completed, total pages: ${scanJobContent.elements.length}:`,
   );
 
-  return await postProcessing(
+  return await processScanProcessingJob({
     scanConfig,
     folder,
     tempFolder,
     scanCount,
     scanJobContent,
-    date,
-    scanConfig.generatePdf,
-  );
+    scanDate: date,
+    toPdf: scanConfig.generatePdf,
+  });
 }
 
 export async function waitAdfLoaded(
