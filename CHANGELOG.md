@@ -6,6 +6,32 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **S3-compatible upload target**: scans (individual images or merged PDFs)
+  can be uploaded to AWS S3, MinIO, Cloudflare R2, Wasabi and other
+  S3-compatible stores, with SigV4 request signing, bucket prefix, path-style
+  addressing and optional STS session tokens. Configured with the new
+  `--s3-*` CLI options, the matching `s3_*` config file keys or the
+  `S3_*` environment variables (Docker).
+- **Webhook notifications**: every completed scan POSTs a JSON event
+  (`scan-completed`, or `scan-delivery-failed` when a delivery target failed)
+  to a configurable URL, carrying the scan metadata, the outcome of each
+  delivery target and one descriptor per file (name, size, SHA-256 and where
+  to fetch it: local path, S3 `bucket`/`key` or Nextcloud WebDAV URL — only
+  advertised when the upload actually succeeded). Events are signed with
+  HMAC-SHA256 (custom header supported) or authenticated with bearer/basic
+  auth, sent with an `idempotency-key` header and durably queued in an
+  outbox: delivery failures (5xx, 429, timeouts) are retried at startup and
+  after each scan, and events that keep failing are dead-lettered to
+  `<id>.failed.json` instead of being lost. Configured with the new
+  `--webhook-*` CLI options, the matching `webhook_*` config file keys or the
+  `WEBHOOK_*` environment variables (Docker).
+- A test harness validating the delivery targets against real services
+  (MinIO, Nextcloud, Paperless-ngx, n8n) via `docker-compose.test.yml` and
+  `scripts/real-services-test.sh`; the upload stub also mimics S3 and
+  webhooks now.
+
 ### Changed
 
 - **Early validation of file patterns**: the `--pattern` / `pattern` value is
