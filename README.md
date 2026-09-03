@@ -92,7 +92,8 @@ There is a good chance it also works on other unlisted HP All-in-One Printer.
     file carries `size`/`sha256` plus its location (`local` path, S3
     `bucket`/`key` or Nextcloud WebDAV URL); the event is a metadata
     notification, so with `--keep-files` disabled the local `path` may be
-    cleaned up after a successful delivery.
+    cleaned up after a successful delivery. OpenAPI contract:
+    [`protocol_doc/webhook/openapi.yaml`](protocol_doc/webhook/openapi.yaml).
 
 ### Protocol Support
 
