@@ -136,7 +136,7 @@ async function atomicallyWrite(
 async function enqueueEvent(
   webhookConfig: WebhookConfig,
   payload: WebhookEvent,
-): Promise<string> {
+): Promise<void> {
   const entry: EnqueuedEventFile = {
     id: payload.id,
     eventType: payload.type,
@@ -149,7 +149,6 @@ async function enqueueEvent(
     outboxEntryPath(webhookConfig.outboxDir, payload.id),
     JSON.stringify(entry),
   );
-  return payload.id;
 }
 
 /**
@@ -216,10 +215,9 @@ async function deadLetterEntry(
     const failedPath = deadLetterPath(outboxDir, id);
     if (existsSync(entryPath)) {
       const content = await fs.readFile(entryPath, "utf8");
-      await fs.writeFile(
+      await atomicallyWrite(
         failedPath,
         JSON.stringify({ ...JSON.parse(content), deadLetteredWith: reason }),
-        "utf8",
       );
       await fs.rm(entryPath, { force: true });
     }

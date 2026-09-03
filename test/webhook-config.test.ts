@@ -1,5 +1,8 @@
 import { describe, it } from "mocha";
 import { expect } from "chai";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { getWebhookConfig } from "../src/program.js";
 import type { ListenOptions } from "../src/program.js";
 import type { FileConfig } from "../src/type/FileConfig.js";
@@ -89,6 +92,46 @@ describe("webhook config resolution", () => {
         {},
       ),
     ).to.exist;
+  });
+
+  it("rejects an inferred basic auth with only a username", () => {
+    const error = expectConfigError(
+      buildOptions({ ...url, webhookUsername: "scanner" }),
+      {},
+    );
+    expect(error.message).to.include("basic");
+  });
+
+  it("rejects an inferred basic auth with only a password", () => {
+    const error = expectConfigError(
+      buildOptions({ ...url, webhookPassword: "secret" }),
+      {},
+    );
+    expect(error.message).to.include("basic");
+  });
+
+  it("treats a blank secret as no secret at all", () => {
+    expect(
+      getWebhookConfig(buildOptions({ ...url, webhookSecret: "   " }), {})
+        ?.auth,
+    ).to.equal("none");
+    const error = expectConfigError(
+      buildOptions({ ...url, webhookAuth: "hmac", webhookSecret: "" }),
+      {},
+    );
+    expect(error.message).to.include("hmac");
+  });
+
+  it("treats a blank secret file as no secret at all", () => {
+    const secretFile = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), "webhook-secret-")),
+      "secret",
+    );
+    fs.writeFileSync(secretFile, "\n");
+    expect(
+      getWebhookConfig(buildOptions({ ...url, webhookSecretFile: secretFile }), {})
+        ?.auth,
+    ).to.equal("none");
   });
 
   it("still infers the auth scheme from the credentials", () => {

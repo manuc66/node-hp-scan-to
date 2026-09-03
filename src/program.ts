@@ -318,7 +318,7 @@ function setupScanParameters(commandName: string) {
     .addOption(
       new Option(
         "--webhook-secret <webhook_secret>",
-        "Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.",
+        "Secret used to sign the payload with HMAC-SHA256; the signature is sent as hex in the webhook-auth-header. The secret itself is used as-is (not hex-decoded). Either this or webhook-secret-file.",
       ).helpGroup(HelpGroupsHeadings.webhook),
     )
     .addOption(
@@ -660,6 +660,9 @@ export function getWebhookConfig(
   } else {
     secret = configSecret;
   }
+  if (secret !== undefined && secret.trim() === "") {
+    secret = undefined;
+  }
 
   const explicitAuth = getOptConfiguredValue(
     options.webhookAuth,
@@ -673,9 +676,12 @@ export function getWebhookConfig(
   } else if (webhookToken !== undefined) {
     auth = "bearer";
   } else if (
-    webhookUsername !== undefined &&
+    webhookUsername !== undefined ||
     webhookPassword !== undefined
   ) {
+    // Either half of the basic credentials is enough to infer basic auth:
+    // assertWebhookAuthCredentials below then rejects the incomplete pair
+    // instead of silently sending the event unauthenticated.
     auth = "basic";
   } else {
     auth = "none";

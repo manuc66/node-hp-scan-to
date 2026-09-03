@@ -219,6 +219,30 @@ describe("s3", () => {
     });
   });
 
+  describe("endpoint with a path prefix (nock)", () => {
+    it("keeps the prefix and the separator in path-style URLs", async () => {
+      nock("https://gw.example.test")
+        .put("/s3/scans/2026/08/s3_sample.jpg", Buffer.from("fake-jpg-content"))
+        .reply(200);
+
+      const s3Config = buildS3Config("https://gw.example.test/s3/", true);
+      scanJobContent.elements.push(scanPage);
+
+      await uploadImagesToS3(scanJobContent, s3Config);
+    });
+
+    it("keeps the prefix and the separator in virtual-host style URLs", async () => {
+      nock("https://scans.s3.example.test")
+        .put("/gateway/2026/08/s3_sample.jpg", Buffer.from("fake-jpg-content"))
+        .reply(200);
+
+      const s3Config = buildS3Config("https://s3.example.test/gateway", false);
+      scanJobContent.elements.push(scanPage);
+
+      await uploadImagesToS3(scanJobContent, s3Config);
+    });
+  });
+
   describe("uploadPdfToS3", () => {
     it("success upload pdf document", async () => {
       const server = await startVerifyingServer();

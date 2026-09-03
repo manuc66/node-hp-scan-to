@@ -92,12 +92,12 @@ function buildObjectKey(prefix: string | undefined, fileName: string): string {
 
 function buildObjectUrl(s3Config: S3Config, encodedKey: string): URL {
   const base = new URL(s3Config.endpointUrl);
-  base.pathname = base.pathname.replace(/\/+$/, "") || "/";
+  const basePath = base.pathname.replace(/\/+$/, "");
   if (s3Config.forcePathStyle) {
-    base.pathname = `${base.pathname}${s3Config.bucket}/${encodedKey}`;
+    base.pathname = `${basePath}/${s3Config.bucket}/${encodedKey}`;
   } else {
     base.hostname = `${s3Config.bucket}.${base.hostname}`;
-    base.pathname = `${base.pathname}${encodedKey}`;
+    base.pathname = `${basePath}/${encodedKey}`;
   }
   return base;
 }

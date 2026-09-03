@@ -307,7 +307,7 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `--webhook-url`                       | Webhook URL to POST scan events to (JSON with idempotency-key header, outbox retries, dead-letter).                                                                                                                              | `--webhook-url https://n8n.example/webhook/scan` (no default)      |
 | `--webhook-auth`                      | Auth scheme for the webhook request: `none`, `hmac`, `bearer` or `basic` (default: inferred from the configured credentials).                                                                                                    | `--webhook-auth hmac` (auto)                                       |
 | `--webhook-auth-header`               | Header name carrying the HMAC signature.                                                                                                                                                                                         | `x-webhook-signature` (default)                                    |
-| `--webhook-secret`                    | HMAC-SHA256 signing secret (hex) sent in the auth header. Required unless `--webhook-secret-file` is used. Overrides if both are provided.                                                                                       | `--webhook-secret s3cr3t` (no default)                             |
+| `--webhook-secret`                    | HMAC-SHA256 signing secret, used as-is (not hex-decoded); the resulting signature is sent as hex in the auth header. Required unless `--webhook-secret-file` is used. Overrides if both are provided.                            | `--webhook-secret s3cr3t` (no default)                             |
 | `--webhook-secret-file`               | File containing the HMAC signing secret. Required unless `--webhook-secret` is used. Takes precedence if both are provided.                                                                                                      | `--webhook-secret-file /path/to/file` (no default)                 |
 | `--webhook-token`                     | Bearer token sent as `Authorization: Bearer <token>`.                                                                                                                                                                            | `--webhook-token tok...` (no default)                              |
 | `--webhook-username` / `--webhook-password` | Basic auth credentials sent as `Authorization: Basic`.                                                                                                                                                                     | `--webhook-username scanner --webhook-password ...` (no default)   |
@@ -468,7 +468,7 @@ Webhook Options:
   --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)
   --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
   --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
-  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload with HMAC-SHA256; the signature is sent as hex in the webhook-auth-header. The secret itself is used as-is (not hex-decoded). Either this or webhook-secret-file.
   --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
   --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
   --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
@@ -579,7 +579,7 @@ Webhook Options:
   --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)
   --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
   --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
-  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload with HMAC-SHA256; the signature is sent as hex in the webhook-auth-header. The secret itself is used as-is (not hex-decoded). Either this or webhook-secret-file.
   --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
   --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
   --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
@@ -700,7 +700,7 @@ Webhook Options:
   --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)
   --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
   --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
-  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload with HMAC-SHA256; the signature is sent as hex in the webhook-auth-header. The secret itself is used as-is (not hex-decoded). Either this or webhook-secret-file.
   --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
   --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
   --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
