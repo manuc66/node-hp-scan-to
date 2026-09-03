@@ -40,6 +40,40 @@ const LEVEL_LABELS: Record<number, string> = {
   60: "fatal",
 };
 
+// axios Error objects carry the full request config (headers with auth
+// tokens) and the request/response payloads: never serialize those.
+export function serializeError(err: unknown): unknown {
+  if (!err) {
+    return err;
+  }
+  const serialized = pino.stdSerializers.err(err as Error);
+  const response = (
+    err as { response?: { status?: number; statusText?: string } }
+  ).response;
+  if (response !== undefined) {
+    serialized["response"] = {
+      status: response.status,
+      statusText: response.statusText,
+    };
+  }
+  delete serialized["config"];
+  delete serialized["request"];
+  return serialized;
+}
+
+// Keeps legacy bare info/debug lines and prefixes warn/error/fatal so
+// humans can tell severity apart.
+export function formatPlainLogMessage(
+  log: Record<string, unknown>,
+  messageKey: string,
+): string {
+  const msg = log[messageKey] as string;
+  const levelLabel = LEVEL_LABELS[log["level"] as number] ?? "info";
+  return levelLabel === "info" || levelLabel === "debug"
+    ? msg
+    : `${levelLabel.toUpperCase()}: ${msg}`;
+}
+
 const loggerOptions = {
   enabled: !isTest,
   level: defaultLevel,
@@ -58,26 +92,7 @@ const loggerOptions = {
     censor: "[Redacted]",
   },
   serializers: {
-    // axios Error objects carry the full request config (headers with auth
-    // tokens) and the request/response payloads: never serialize those.
-    err: (err: unknown) => {
-      if (!err) {
-        return err;
-      }
-      const serialized = pino.stdSerializers.err(err as Error);
-      const response = (
-        err as { response?: { status?: number; statusText?: string } }
-      ).response;
-      if (response !== undefined) {
-        serialized["response"] = {
-          status: response.status,
-          statusText: response.statusText,
-        };
-      }
-      delete serialized["config"];
-      delete serialized["request"];
-      return serialized;
-    },
+    err: (err: unknown) => serializeError(err),
   },
 };
 
@@ -98,18 +113,10 @@ export function shouldUseInProcessPinoPretty(
 
 const prettyOptions = isPlain
   ? {
-      // Keeps legacy bare info/debug lines and prefixes warn/error/fatal so
-      // humans can tell severity apart.
       colorize: false,
       singleLine: true,
       ignore: "pid,hostname,time,level,name",
-      messageFormat: (log: Record<string, unknown>, messageKey: string) => {
-        const msg = log[messageKey] as string;
-        const levelLabel = LEVEL_LABELS[log["level"] as number] ?? "info";
-        return levelLabel === "info" || levelLabel === "debug"
-          ? msg
-          : `${levelLabel.toUpperCase()}: ${msg}`;
-      },
+      messageFormat: formatPlainLogMessage,
     }
   : {
       colorize: isCli,
