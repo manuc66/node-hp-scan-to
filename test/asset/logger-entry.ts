@@ -12,4 +12,4 @@ log.info(
 );
 
 // give async transports (pino worker under pretty mode) time to flush
-setTimeout(() => {}, 500);
+await new Promise<void>((resolve) => setTimeout(resolve, 500));

@@ -57,7 +57,7 @@ describe("logger rendered output", () => {
     expect(lines[1]["msg"]).to.equal("warn message");
     expect(lines[1]["level"]).to.equal(40);
 
-    const secrets = lines[2] as Record<string, unknown>;
+    const secrets = lines[2];
     expect(secrets["msg"]).to.equal("with secrets");
     expect(secrets["token"]).to.equal("[Redacted]");
     expect((secrets["nested"] as Record<string, unknown>)["password"]).to.equal(

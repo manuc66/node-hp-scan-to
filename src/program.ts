@@ -660,7 +660,7 @@ export function getWebhookConfig(
   } else {
     secret = configSecret;
   }
-  if (secret !== undefined && secret.trim() === "") {
+  if (secret?.trim() === "") {
     secret = undefined;
   }
 
