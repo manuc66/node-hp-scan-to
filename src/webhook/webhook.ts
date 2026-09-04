@@ -152,11 +152,11 @@ async function enqueueEvent(
 }
 
 /**
- * Sends the event once. Returns "success", "dead-letter" or "retry".
- * "success": 2xx (and other non-error statuses). "dead-letter": permanent 4xx
- * (except 429/408 which are transient). "retry": 408/429/5xx, timeout or
- * network failure — the entry stays in the outbox for a later attempt.
- */
+* Sends the event once. Returns "success", "dead-letter" or "retry".
+  * "success": 2xx (and other non-error statuses). "dead-letter": permanent 4xx
+  * (except 429/408 which are transient). "retry": 408/429/5xx, redirects (3xx),
+  * timeout or network failure — the entry stays in the outbox for a later attempt.
+  */
 async function deliverEvent(
   webhookConfig: WebhookConfig,
   entry: EnqueuedEventFile,
@@ -172,12 +172,16 @@ async function deliverEvent(
   try {
     // validateStatus accepts every status so 429/408/5xx can be inspected
     // instead of being thrown as errors (and dead-lettered by mistake).
+    // Redirects are not followed: following a 301/302 would downgrade the POST
+    // to an empty GET (follow-redirects), silently losing the payload while
+    // the final 2xx still acknowledged delivery.
     const response = await axios({
       method: "POST",
       url: webhookConfig.url,
       headers,
       data: body,
       timeout: 10_000,
+      maxRedirects: 0,
       validateStatus: () => true,
     });
     const status = response.status;
@@ -185,7 +189,7 @@ async function deliverEvent(
       logger.info(`Webhook acknowledged event ${entry.id}`);
       return "success";
     }
-    if (status === 408 || status === 429 || status >= 500) {
+    if ((status >= 300 && status < 400) || status === 408 || status === 429 || status >= 500) {
       logger.warn(
         `Webhook responded ${status}, event will be retried`,
       );

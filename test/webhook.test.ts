@@ -150,6 +150,30 @@ describe("webhook", () => {
       expect(remaining.filter((f) => f.endsWith(".json"))).to.deep.equal([]);
     });
 
+    it("keeps the event in the outbox when the endpoint redirects (3xx)", async () => {
+      let finalHit = false;
+      const server = http.createServer((req, res) => {
+        if (req.url === "/start") {
+          res.writeHead(301, { location: "/final" });
+          res.end();
+          return;
+        }
+        finalHit = true;
+        res.writeHead(200);
+        res.end();
+      });
+      openServers.push(server);
+      await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+      const port = (server.address() as AddressInfo).port;
+      config.url = `http://127.0.0.1:${port}/start`;
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+
+      expect(finalHit).to.equal(false);
+      const remaining = await fsPromises.readdir(tempDir);
+      expect(remaining.filter((f) => f.endsWith(".json"))).to.have.length(1);
+    });
+
     it("signs the payload with the secret when configured", async () => {
       const srv = await startServer([200]);
       config.url = `http://127.0.0.1:${srv.port}`;
