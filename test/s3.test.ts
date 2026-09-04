@@ -228,6 +228,19 @@ describe("s3", () => {
     });
   });
 
+  describe("IP endpoint forces path-style (nock)", () => {
+    it("uses path-style addressing for an IP endpoint without forcePathStyle", async () => {
+      nock("http://192.168.1.100:9000")
+        .put("/scans/2026/08/s3_sample.jpg", Buffer.from("fake-jpg-content"))
+        .reply(200);
+
+      const s3Config = buildS3Config("http://192.168.1.100:9000", false);
+      scanJobContent.elements.push(scanPage);
+
+      await uploadImagesToS3(scanJobContent, s3Config);
+    });
+  });
+
   describe("session token", () => {
     it("treats an empty session token as absent (no header, standard signature)", async () => {
       nock("https://s3.example.test")

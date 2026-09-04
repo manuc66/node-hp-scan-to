@@ -92,10 +92,16 @@ function buildObjectKey(prefix: string | undefined, fileName: string): string {
   return cleanPrefix === "" ? fileName : `${cleanPrefix}/${fileName}`;
 }
 
+function isIpAddress(host: string): boolean {
+  const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
+  return ipv4.test(host) || host.startsWith("[");
+}
+
 function buildObjectUrl(s3Config: S3Config, encodedKey: string): URL {
   const base = new URL(s3Config.endpointUrl);
   const basePath = base.pathname.replace(/\/+$/, "");
-  if (s3Config.forcePathStyle) {
+  const pathStyle = s3Config.forcePathStyle || isIpAddress(base.hostname);
+  if (pathStyle) {
     base.pathname = `${basePath}/${s3Config.bucket}/${encodedKey}`;
   } else {
     base.hostname = `${s3Config.bucket}.${base.hostname}`;
