@@ -86,7 +86,9 @@ export function s3ObjectLocation(
 }
 
 function buildObjectKey(prefix: string | undefined, fileName: string): string {
-  const cleanPrefix = (prefix ?? "").replace(/^\/+|\/+$/g, "");
+  const cleanPrefix = (prefix ?? "")
+    .replace(/\\/g, "/")
+    .replace(/^\/+|\/+$/g, "");
   return cleanPrefix === "" ? fileName : `${cleanPrefix}/${fileName}`;
 }
 

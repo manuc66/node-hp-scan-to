@@ -112,6 +112,15 @@ describe("s3", () => {
         key: "2026/08/scan.pdf",
       });
     });
+
+    it("normalizes Windows-style backslashes in the prefix", () => {
+      const s3Config = buildS3Config("http://127.0.0.1:1", true);
+      s3Config.prefix = "2026\\08";
+      expect(s3ObjectLocation(s3Config, "scan.pdf")).to.deep.equal({
+        bucket: "scans",
+        key: "2026/08/scan.pdf",
+      });
+    });
   });
 
   const fileName = "s3_sample.jpg";
