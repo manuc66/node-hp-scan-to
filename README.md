@@ -490,6 +490,8 @@ Global Options:
 ```
 <!-- END HELP command: listen -->
 
+In `listen` (and `adf-autoscan`) mode, scans are delivered on a background queue and the PDF merge runs in a worker thread, so the loop keeps responding to the printer while processing — see the [processing pipeline](docs/processing-pipeline.md) page.
+
 ##### `adf-autoscan`
 
 Running `npx node-hp-scan-to adf-autoscan` will automatically trigger a scan job as soon as the ADF (automatic document feeder) on the printer's scanner is loaded with paper.
