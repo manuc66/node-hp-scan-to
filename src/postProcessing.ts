@@ -222,7 +222,7 @@ async function webhookStage(ctx: ProcessingStageContext): Promise<void> {
               { path: pdfFilePath, contentType: "application/pdf" },
               s3Config,
               nextcloudConfig,
-              delivery,
+              ctx.delivery,
             ),
           ]
         : [],
@@ -242,7 +242,7 @@ async function webhookStage(ctx: ProcessingStageContext): Promise<void> {
           },
           s3Config,
           nextcloudConfig,
-          delivery,
+          ctx.delivery,
         ),
       ),
       ctx.delivery,
