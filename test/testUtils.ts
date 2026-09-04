@@ -21,6 +21,7 @@ export function createDefaultScanConfig(): ScanConfig {
     },
     paperlessConfig: undefined,
     nextcloudConfig: undefined,
+    s3Config: undefined,
     preferEscl: false,
     paperOrientation: "portrait",
     format: ScanFormat.Jpeg,
