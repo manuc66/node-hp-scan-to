@@ -228,6 +228,24 @@ describe("s3", () => {
     });
   });
 
+  describe("session token", () => {
+    it("treats an empty session token as absent (no header, standard signature)", async () => {
+      nock("https://s3.example.test")
+        .matchHeader(
+          "x-amz-security-token",
+          (value) => value === undefined,
+        )
+        .put("/scans/2026/08/s3_sample.jpg", Buffer.from("fake-jpg-content"))
+        .reply(200);
+
+      const s3Config = buildS3Config("https://s3.example.test", true);
+      s3Config.sessionToken = "";
+      scanJobContent.elements.push(scanPage);
+
+      await uploadImagesToS3(scanJobContent, s3Config);
+    });
+  });
+
   describe("endpoint with a path prefix (nock)", () => {
     it("keeps the prefix and the separator in path-style URLs", async () => {
       nock("https://gw.example.test")

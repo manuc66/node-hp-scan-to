@@ -104,6 +104,11 @@ function buildObjectUrl(s3Config: S3Config, encodedKey: string): URL {
   return base;
 }
 
+function effectiveSessionToken(s3Config: S3Config): string | undefined {
+  const token = s3Config.sessionToken;
+  return token !== undefined && token.trim() !== "" ? token : undefined;
+}
+
 function signV4Put(
   url: URL,
   body: Buffer,
@@ -118,8 +123,9 @@ function signV4Put(
     `x-amz-date:${amzDate}`,
   ];
   const signedHeadersParts = ["host", "x-amz-content-sha256", "x-amz-date"];
-  if (s3Config.sessionToken !== undefined) {
-    canonicalHeadersParts.push(`x-amz-security-token:${s3Config.sessionToken}`);
+  const sessionToken = effectiveSessionToken(s3Config);
+  if (sessionToken !== undefined) {
+    canonicalHeadersParts.push(`x-amz-security-token:${sessionToken}`);
     signedHeadersParts.push("x-amz-security-token");
   }
   const canonicalHeaders = `${canonicalHeadersParts.join("\n")}\n`;
@@ -213,8 +219,9 @@ async function uploadToS3(filePath: string, s3Config: S3Config): Promise<void> {
         path.extname(fileName).replace(/^\./, "").toLowerCase(),
       ),
     };
-    if (s3Config.sessionToken !== undefined) {
-      headers["x-amz-security-token"] = s3Config.sessionToken;
+    const sessionToken = effectiveSessionToken(s3Config);
+    if (sessionToken !== undefined) {
+      headers["x-amz-security-token"] = sessionToken;
     }
 
     await axios({
