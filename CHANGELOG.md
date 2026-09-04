@@ -6,6 +6,48 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **S3-compatible upload target**: scans (individual images or merged PDFs)
+  can be uploaded to AWS S3, MinIO, Cloudflare R2, Wasabi and other
+  S3-compatible stores, with SigV4 request signing, bucket prefix, path-style
+  addressing and optional STS session tokens. Configured with the new
+  `--s3-*` CLI options, the matching `s3_*` config file keys or the
+  `S3_*` environment variables (Docker).
+- **Webhook notifications**: every completed scan POSTs a JSON event
+  (`scan-completed`, or `scan-delivery-failed` when a delivery target failed)
+  to a configurable URL, carrying the scan metadata, the outcome of each
+  delivery target and one descriptor per file (name, size, SHA-256 and where
+  to fetch it: local path, S3 `bucket`/`key` or Nextcloud WebDAV URL — only
+  advertised when the upload actually succeeded). Events are signed with
+  HMAC-SHA256 (custom header supported) or authenticated with bearer/basic
+  auth, sent with an `idempotency-key` header and durably queued in an
+  outbox: delivery failures (5xx, 429, timeouts) are retried at startup and
+  after each scan, and events that keep failing are dead-lettered to
+  `<id>.failed.json` instead of being lost. Configured with the new
+  `--webhook-*` CLI options, the matching `webhook_*` config file keys or the
+  `WEBHOOK_*` environment variables (Docker).
+- A test harness validating the delivery targets against real services
+  (MinIO, Nextcloud, Paperless-ngx, n8n) via `docker-compose.test.yml` and
+  `scripts/real-services-test.sh`; the upload stub also mimics S3 and
+  webhooks now.
+- **Reactive scan processing**: in `listen` and `adf-autoscan` mode, captured
+  scans are now delivered on a background FIFO queue and the PDF merge runs in
+  a worker thread, so the loop keeps polling the printer while uploads or
+  post-processing are still running. Previously a long delivery (large upload,
+  slow destination, heavy PDF merge) could make the loop miss the next scan
+  event or trip the printer's `userActionTimeout` / `waitScanNewPageRequest`
+  timeouts. Scan order is preserved (scans are processed in the order they
+  were captured) and `single-scan` still waits for delivery before exiting.
+  Details on
+  [processing-pipeline.md](docs/processing-pipeline.md).
+- Durability of pending scans is intentionally **not** part of this change:
+  the queue is in memory, so a process crash mid-job leaves the captured files
+  on disk (cleanup only runs once delivery finished) and delivery can be
+  redone by hand — no worse than the previous synchronous behavior. A
+  conditional durable inbox (relevant only when a network destination is
+  configured) is planned; no new Docker volume or constraint is required.
+
 ### Changed
 
 - **Early validation of file patterns**: the `--pattern` / `pattern` value is

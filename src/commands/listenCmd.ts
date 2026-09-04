@@ -12,7 +12,7 @@ import {
   tryGetDestination,
   type WalkupDestination,
 } from "../scanProcessing.js";
-import { postProcessing } from "../postProcessing.js";
+import { enqueueScanProcessing } from "../queue/processingQueue.js";
 import PathHelper from "../PathHelper.js";
 
 import { DuplexMode } from "../type/duplexMode.js";
@@ -159,7 +159,7 @@ export async function processScanWithDestination(
     lastDuplexMode === DuplexMode.FrontOfDoubleSided &&
     (duplexMode === DuplexMode.Simplex || duplexMode === DuplexMode.Duplex)
   ) {
-    await processFinishedPartialDuplexScan(
+    processFinishedPartialDuplexScan(
       lastScanTarget,
       selectedScanTarget,
       scanCount,
@@ -198,7 +198,16 @@ export async function processScanWithDestination(
     pageCountingStrategy,
   );
 
-  frontOfDoubleSidedScanContext = await handleScanResult(
+  if (scanJobContent.meta) {
+    scanJobContent.meta.settings.duplexMode = duplexMode;
+    scanJobContent.meta.settings.targetDuplexMode = targetDuplexMode;
+    if (selectedScanTarget.duplexAssemblyMode !== undefined) {
+      scanJobContent.meta.settings.duplexAssemblyMode =
+        selectedScanTarget.duplexAssemblyMode;
+    }
+  }
+
+  frontOfDoubleSidedScanContext = handleScanResult(
     duplexMode,
     frontOfDoubleSidedScanContext,
     scanConfig,
@@ -213,7 +222,7 @@ export async function processScanWithDestination(
   return { scanCount, frontOfDoubleSidedScanContext, duplexMode };
 }
 
-export async function handleScanResult(
+export function handleScanResult(
   duplexMode: DuplexMode,
   frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null,
   scanConfig: ScanConfig,
@@ -224,7 +233,7 @@ export async function handleScanResult(
   scanDate: Date,
   scanToPdf: boolean,
   duplexAssemblyMode: DuplexAssemblyMode,
-) {
+): FrontOfDoubleSidedScanContext | null {
   if (duplexMode === DuplexMode.FrontOfDoubleSided) {
     frontOfDoubleSidedScanContext = {
       scanConfig,
@@ -253,15 +262,15 @@ export async function handleScanResult(
       finalScanJobContent = scanJobContent;
     }
 
-    await postProcessing(
+    enqueueScanProcessing({
       scanConfig,
       folder,
       tempFolder,
       scanCount,
-      finalScanJobContent,
+      scanJobContent: finalScanJobContent,
       scanDate,
-      scanToPdf,
-    );
+      toPdf: scanToPdf,
+    });
   }
   return frontOfDoubleSidedScanContext;
 }
@@ -331,7 +340,21 @@ export function assembleDuplexScan(
       break;
   }
 
-  const duplexScan: ScanContent = { elements: [] };
+  const meta = frontScan.meta ?? backScan.meta;
+  if (meta !== undefined) {
+    meta.settings.duplexMode = DuplexMode.Duplex;
+    const frontJobs = frontScan.meta?.job?.jobs ?? [];
+    const backJobs = backScan.meta?.job?.jobs ?? [];
+    const jobs = [...frontJobs, ...backJobs];
+    if (jobs.length > 0) {
+      const state = jobs[jobs.length - 1].state;
+      meta.job = { state, count: jobs.length, jobs };
+    }
+  }
+  const duplexScan: ScanContent =
+    meta === undefined
+      ? { elements: [] }
+      : { elements: [], meta };
   const maxLength = Math.max(frontContent.length, backContent.length);
 
   // Interleave pages, tolerating missing last back page gracefully
@@ -416,25 +439,25 @@ export async function setupScanParameters(
   return { pageCountingStrategy, scanToPdf, scanDate, scanCount };
 }
 
-export async function processFinishedPartialDuplexScan(
+export function processFinishedPartialDuplexScan(
   lastScanTarget: SelectedScanTarget,
   selectedScanTarget: SelectedScanTarget,
   scanCount: number,
   frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext,
-) {
+): void {
   logger.info(
     `Scan target changed from ${lastScanTarget.label} to ${selectedScanTarget.label}, saving scan #${scanCount} before processing`,
   );
 
-  await postProcessing(
-    frontOfDoubleSidedScanContext.scanConfig,
-    frontOfDoubleSidedScanContext.folder,
-    frontOfDoubleSidedScanContext.tempFolder,
-    frontOfDoubleSidedScanContext.scanCount,
-    frontOfDoubleSidedScanContext.scanJobContent,
-    frontOfDoubleSidedScanContext.scanDate,
-    frontOfDoubleSidedScanContext.scanToPdf,
-  );
+  enqueueScanProcessing({
+    scanConfig: frontOfDoubleSidedScanContext.scanConfig,
+    folder: frontOfDoubleSidedScanContext.folder,
+    tempFolder: frontOfDoubleSidedScanContext.tempFolder,
+    scanCount: frontOfDoubleSidedScanContext.scanCount,
+    scanJobContent: frontOfDoubleSidedScanContext.scanJobContent,
+    scanDate: frontOfDoubleSidedScanContext.scanDate,
+    toPdf: frontOfDoubleSidedScanContext.scanToPdf,
+  });
 }
 
 export interface FrontOfDoubleSidedScanContext {

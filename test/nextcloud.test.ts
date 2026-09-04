@@ -1,9 +1,12 @@
 import { describe } from "mocha";
+import { expect } from "chai";
 import path from "node:path";
+import os from "node:os";
 import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import {
   uploadImagesToNextcloud,
   uploadPdfToNextcloud,
+  nextcloudWebdavFileUrl,
 } from "../src/nextcloud/nextcloud.js";
 import type { NextcloudConfig } from "../src/nextcloud/NextcloudConfig.js";
 import { convertToPdf } from "../src/pdfProcessing.js";
@@ -16,6 +19,24 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 describe("nextcloud", () => {
+  describe("nextcloudWebdavFileUrl", () => {
+    it("builds the WebDAV url of an uploaded file", () => {
+      expect(
+        nextcloudWebdavFileUrl(
+          {
+            baseUrl: nextcloudUrl,
+            username,
+            password,
+            uploadFolder,
+            keepFiles: false,
+          },
+          "scan.pdf",
+        ),
+      ).to.equal(
+        `https://nextcloud.example.test/remote.php/dav/files/scanner/scan/scan.pdf`,
+      );
+    });
+  });
   // prepare test data
   const fileName = "nextcloud_sample.jpg";
   const filePath = path.resolve(__dirname, `./asset/${fileName}`);
@@ -261,7 +282,19 @@ describe("nextcloud", () => {
 
   describe("uploadPdfToNextcloud", () => {
     it("success upload pdf document", async () => {
-      const pdfFilePath = await convertToPdf(scanPage, false, scanDate);
+      // Generate the PDF in a temp dir instead of test/asset: convertToPdf
+      // writes next to the source page, and jspdf embeds a timestamp, so
+      // writing into the tracked asset dir would dirty it on every run.
+      const tempDir = await fsPromises.mkdtemp(
+        path.join(os.tmpdir(), "nextcloud-pdf-"),
+      );
+      const tempJpg = path.join(tempDir, "nextcloud_sample.jpg");
+      await fsPromises.copyFile(filePath, tempJpg);
+      const pdfFilePath = await convertToPdf(
+        { ...scanPage, path: tempJpg },
+        false,
+        scanDate,
+      );
       const pdfFileName = path.basename(pdfFilePath ?? "");
 
       nock(nextcloudUrl)
@@ -283,6 +316,7 @@ describe("nextcloud", () => {
         .reply(201);
 
       await uploadPdfToNextcloud(pdfFilePath, nextcloudConfig);
+      await fsPromises.rm(tempDir, { recursive: true, force: true });
     });
 
     it("pdf document not set", async () => {

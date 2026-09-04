@@ -10,6 +10,8 @@
 // Paperless: POST  /api/documents/post_document/
 // Nextcloud: PROPFIND /remote.php/dav/files/<user>/<folder>
 //            PUT    /remote.php/dav/files/<user>/<folder>/<file>
+// S3:        PUT    any path, detected via the x-amz-content-sha256 header
+// Webhook:   POST   any path starting with /webhook
 
 import http from "node:http";
 
@@ -44,6 +46,20 @@ const server = http.createServer((req, res) => {
       console.log(`[webdav] PUT ${req.url} auth=${auth} FAIL=${FAIL}`);
       res.statusCode = FAIL ? 500 : 201;
       res.end(FAIL ? "fail" : "");
+      return;
+    }
+    if (req.method === "PUT" && req.headers["x-amz-content-sha256"]) {
+      console.log(`[s3] PUT ${req.url} auth=${auth} FAIL=${FAIL}`);
+      res.statusCode = FAIL ? 500 : 200;
+      res.end(FAIL ? "fail" : "");
+      return;
+    }
+    if (req.method === "POST" && req.url.startsWith("/webhook")) {
+      console.log(
+        `[webhook] POST ${req.url} auth=${auth} idem=${req.headers["idempotency-key"] || ""} sign=${req.headers["x-webhook-signature"] || ""} FAIL=${FAIL}`,
+      );
+      res.statusCode = FAIL ? 500 : 200;
+      res.end(FAIL ? "Internal Server Error" : "OK");
       return;
     }
     console.log(`[other] ${req.method} ${req.url}`);

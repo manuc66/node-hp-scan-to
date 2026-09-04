@@ -64,9 +64,18 @@ Guidelines for agent contributors working on this repository.
 
 ## Upload / credential testing
 
-- `scripts/upload-stub.mjs` mimics paperless (multipart POST) and Nextcloud
-  WebDAV (PROPFIND + PUT) to test upload and credential flows without real
-  services. `STUB_FAIL=1` makes every endpoint fail.
+- `scripts/upload-stub.mjs` mimics paperless (multipart POST), Nextcloud
+  WebDAV (PROPFIND + PUT), S3 (SigV4 PUT) and webhooks (POST) to test upload
+  and credential flows without real services. `STUB_FAIL=1` makes every
+  endpoint fail.
+- `docker-compose.test.yml` + `scripts/real-services-test.sh` validate the
+  delivery modules against **real services** (MinIO, Nextcloud, Paperless-ngx,
+  n8n): the stub only proves self-consistency, not real-world compatibility.
+  Run with `pnpm build && ./scripts/real-services-test.sh`; add
+  `SCANNER_IP=<ip> --scanner` to also run a full single-scan with all targets
+  against a physical printer. `N8N_API_KEY` enables the n8n webhook-receipt
+  check (workflow created via the public API; HMAC auth on the node is a
+  documented manual step).
 - Example against a real scanner:
   `STUB_FAIL=0 node scripts/upload-stub.mjs &`
   `node dist/index.js --address <printer> single-scan --pdf -k \

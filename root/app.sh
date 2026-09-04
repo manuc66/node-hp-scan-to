@@ -101,6 +101,78 @@ elif [ -n "$NEXTCLOUD_PASSWORD" ]; then
     ARGS+=("--nextcloud-password" "$NEXTCLOUD_PASSWORD")
 fi
 
+if [ -n "$S3_URL" ]; then
+    ARGS+=("--s3-url" "$S3_URL")
+fi
+
+if [ -n "$S3_REGION" ]; then
+    ARGS+=("--s3-region" "$S3_REGION")
+fi
+
+if [ -n "$S3_ACCESS_KEY_ID" ]; then
+    ARGS+=("--s3-access-key-id" "$S3_ACCESS_KEY_ID")
+fi
+
+if [ -n "$S3_SECRET_ACCESS_KEY_FILE" ]; then
+    ARGS+=("--s3-secret-access-key-file" "$S3_SECRET_ACCESS_KEY_FILE")
+elif [ -n "$S3_SECRET_ACCESS_KEY" ]; then
+    ARGS+=("--s3-secret-access-key" "$S3_SECRET_ACCESS_KEY")
+fi
+
+if [ -n "$S3_BUCKET" ]; then
+    ARGS+=("--s3-bucket" "$S3_BUCKET")
+fi
+
+if [ -n "$S3_PREFIX" ]; then
+    ARGS+=("--s3-prefix" "$S3_PREFIX")
+fi
+
+if [ -v S3_FORCE_PATH_STYLE ]; then
+    ARGS+=("--s3-force-path-style")
+fi
+
+if [ -n "$S3_SESSION_TOKEN" ]; then
+    ARGS+=("--s3-session-token" "$S3_SESSION_TOKEN")
+fi
+
+if [ -n "$WEBHOOK_URL" ]; then
+    ARGS+=("--webhook-url" "$WEBHOOK_URL")
+fi
+
+if [ -n "$WEBHOOK_AUTH" ]; then
+    ARGS+=("--webhook-auth" "$WEBHOOK_AUTH")
+fi
+
+if [ -n "$WEBHOOK_AUTH_HEADER" ]; then
+    ARGS+=("--webhook-auth-header" "$WEBHOOK_AUTH_HEADER")
+fi
+
+if [ -n "$WEBHOOK_SECRET_FILE" ]; then
+    ARGS+=("--webhook-secret-file" "$WEBHOOK_SECRET_FILE")
+elif [ -n "$WEBHOOK_SECRET" ]; then
+    ARGS+=("--webhook-secret" "$WEBHOOK_SECRET")
+fi
+
+if [ -n "$WEBHOOK_TOKEN" ]; then
+    ARGS+=("--webhook-token" "$WEBHOOK_TOKEN")
+fi
+
+if [ -n "$WEBHOOK_USERNAME" ]; then
+    ARGS+=("--webhook-username" "$WEBHOOK_USERNAME")
+fi
+
+if [ -n "$WEBHOOK_PASSWORD" ]; then
+    ARGS+=("--webhook-password" "$WEBHOOK_PASSWORD")
+fi
+
+if [ -n "$WEBHOOK_OUTBOX_DIR" ]; then
+    ARGS+=("--webhook-outbox-dir" "$WEBHOOK_OUTBOX_DIR")
+fi
+
+if [ -n "$WEBHOOK_MAX_ATTEMPTS" ]; then
+    ARGS+=("--webhook-max-attempts" "$WEBHOOK_MAX_ATTEMPTS")
+fi
+
 if [ -n "$CMDLINE" ]; then
     # Split CMDLINE into words and add to ARGS
     set -- $CMDLINE
