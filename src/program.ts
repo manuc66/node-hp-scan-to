@@ -4,6 +4,7 @@
 "use strict";
 
 import os from "node:os";
+import path from "node:path";
 // default-import + destructure: this dependency is CommonJS and some loaders
 // (tsx) do not expose its named exports to ESM consumers
 import bonjourService from "bonjour-service";
@@ -12,6 +13,9 @@ const { Bonjour } = bonjourService;
 import DeviceClient from "./DeviceClient.js";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
+import type { S3Config } from "./s3/S3Config.js";
+import { assertWebhookAuthCredentials } from "./webhook/WebhookConfig.js";
+import type { WebhookConfig, WebhookAuthType } from "./webhook/WebhookConfig.js";
 import { startHealthCheckServer } from "./healthcheck.js";
 import fs from "node:fs";
 import { Command, Option } from "@commander-js/extra-typings";
@@ -33,8 +37,8 @@ import type { Server as NetServer } from "node:net";
 import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
-import { validateFilePatternForPlatform } from "./fileNameValidation.js";
 import { getLoggerForFile, setDebugLevel } from "./logger.js";
+import { flushOutbox } from "./webhook/webhook.js";
 
 const logger = getLoggerForFile(import.meta.url);
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
@@ -74,7 +78,7 @@ function setupScanParameters(commandName: string) {
     .addOption(
       new Option(
         "-p, --pattern <pattern>",
-        'Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows',
+        'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes',
       ).helpGroup(HelpGroupsHeadings.ouput),
     )
     .addOption(
@@ -235,6 +239,130 @@ function setupScanParameters(commandName: string) {
         "--nextcloud-upload-folder <nextcloud_upload_folder>",
         "The upload folder where documents or images are uploaded (default: scan)",
       ).helpGroup(HelpGroupsHeadings.nextcloud),
+    )
+    .addOption(
+      new Option(
+        "--s3-url <s3_url>",
+        "The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-region <s3_region>",
+        "The S3 region used for request signing (default: us-east-1)",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-access-key-id <s3_access_key_id>",
+        "The S3 access key id",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-secret-access-key <s3_secret_access_key>",
+        "The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-secret-access-key-file <s3_secret_access_key_file>",
+        "File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-bucket <s3_bucket>",
+        "The S3 bucket where scans are uploaded",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-prefix <s3_prefix>",
+        "The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-force-path-style",
+        "Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-session-token <s3_session_token>",
+        "The S3 session token for temporary credentials (optional)",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--webhook-url <webhook_url>",
+        "The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-auth <webhook_auth>",
+        "Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials)",
+      )
+        .choices(["none", "hmac", "bearer", "basic"])
+        .helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-auth-header <webhook_auth_header>",
+        "Header name carrying the HMAC signature (default: x-webhook-signature)",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-secret <webhook_secret>",
+        "Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-secret-file <webhook_secret_file>",
+        "File name that contains the webhook signing secret. Either this or webhook-secret.",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-token <webhook_token>",
+        "Bearer token sent as Authorization: Bearer <token>",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-username <webhook_username>",
+        "Basic auth username sent as Authorization: Basic",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-password <webhook_password>",
+        "Basic auth password for webhook-username",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-outbox-dir <webhook_outbox_dir>",
+        "Directory where pending events are stored until delivered (default: ~/.node-hp-scan-to/outbox)",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-max-attempts <webhook_max_attempts>",
+        "Max delivery attempts before dead-lettering an event (default: 5)",
+      )
+        .argParser((value) => {
+          const parsed = Number.parseInt(value, 10);
+          if (!Number.isInteger(parsed) || parsed <= 0) {
+            throw new Error("webhook-max-attempts must be a positive integer");
+          }
+          return parsed;
+        })
+        .helpGroup(HelpGroupsHeadings.webhook),
     );
 }
 
@@ -390,6 +518,201 @@ function getNextcloudConfig(
   }
 }
 
+function getS3Config(
+  options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
+  fileConfig: FileConfig,
+): S3Config | undefined {
+  const configS3Url = getOptConfiguredValue(options.s3Url, fileConfig.s3_url);
+  const configS3Bucket = getOptConfiguredValue(
+    options.s3Bucket,
+    fileConfig.s3_bucket,
+  );
+  const configS3AccessKeyId = getOptConfiguredValue(
+    options.s3AccessKeyId,
+    fileConfig.s3_access_key_id,
+  );
+  const configS3SecretAccessKey = getOptConfiguredValue(
+    options.s3SecretAccessKey,
+    fileConfig.s3_secret_access_key,
+  );
+  const configS3SecretAccessKeyFile = getOptConfiguredValue(
+    options.s3SecretAccessKeyFile,
+    fileConfig.s3_secret_access_key_file,
+  );
+
+  if (
+    configS3Url !== undefined &&
+    configS3Bucket !== undefined &&
+    configS3AccessKeyId !== undefined &&
+    (configS3SecretAccessKey !== undefined ||
+      configS3SecretAccessKeyFile !== undefined)
+  ) {
+    const region = getConfiguredValue(
+      options.s3Region,
+      fileConfig.s3_region,
+      "us-east-1",
+    );
+    const prefix = getConfiguredValue(options.s3Prefix, fileConfig.s3_prefix, "");
+    const forcePathStyle = getConfiguredValue(
+      options.s3ForcePathStyle,
+      fileConfig.s3_force_path_style,
+      false,
+    );
+    const keepFiles: boolean = getConfiguredValue(
+      options.keepFiles,
+      fileConfig.keep_files,
+      false,
+    );
+    const sessionToken = getOptConfiguredValue(
+      options.s3SessionToken,
+      fileConfig.s3_session_token,
+    );
+
+    let secretAccessKey: string;
+    if (configS3SecretAccessKeyFile !== undefined) {
+      secretAccessKey = fs
+        .readFileSync(configS3SecretAccessKeyFile, "utf8")
+        .trimEnd();
+    } else {
+      secretAccessKey = configS3SecretAccessKey ?? "";
+    }
+
+    logger.info(
+      `S3 configuration provided, endpoint: ${configS3Url}, bucket: ${configS3Bucket}, region: ${region}, prefix: ${prefix}, forcePathStyle: ${forcePathStyle}, keepFiles: ${keepFiles}`,
+    );
+    const s3Config: S3Config = {
+      endpointUrl: configS3Url,
+      region,
+      bucket: configS3Bucket,
+      accessKeyId: configS3AccessKeyId,
+      secretAccessKey,
+      prefix,
+      forcePathStyle,
+      keepFiles,
+    };
+    if (sessionToken !== undefined) {
+      s3Config.sessionToken = sessionToken;
+    }
+    return s3Config;
+  } else {
+    return undefined;
+  }
+}
+
+export function getWebhookConfig(
+  options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
+  fileConfig: FileConfig,
+): WebhookConfig | undefined {
+  const webhookUrl = getOptConfiguredValue(
+    options.webhookUrl,
+    fileConfig.webhook_url,
+  );
+  if (webhookUrl === undefined) {
+    return undefined;
+  }
+
+  const outboxDir = getConfiguredValue(
+    options.webhookOutboxDir,
+    fileConfig.webhook_outbox_dir,
+    path.join(os.homedir(), ".node-hp-scan-to", "outbox"),
+  );
+  const maxAttempts = getConfiguredValue(
+    options.webhookMaxAttempts,
+    fileConfig.webhook_max_attempts,
+    5,
+  );
+  const keepFiles: boolean = getConfiguredValue(
+    options.keepFiles,
+    fileConfig.keep_files,
+    false,
+  );
+  const authHeader = getConfiguredValue(
+    options.webhookAuthHeader,
+    fileConfig.webhook_auth_header,
+    "x-webhook-signature",
+  );
+
+  const configSecret = getOptConfiguredValue(
+    options.webhookSecret,
+    fileConfig.webhook_secret,
+  );
+  const configSecretFile = getOptConfiguredValue(
+    options.webhookSecretFile,
+    fileConfig.webhook_secret_file,
+  );
+  const webhookToken = getOptConfiguredValue(
+    options.webhookToken,
+    fileConfig.webhook_token,
+  );
+  const webhookUsername = getOptConfiguredValue(
+    options.webhookUsername,
+    fileConfig.webhook_username,
+  );
+  const webhookPassword = getOptConfiguredValue(
+    options.webhookPassword,
+    fileConfig.webhook_password,
+  );
+
+  let secret: string | undefined;
+  if (configSecretFile !== undefined) {
+    secret = fs.readFileSync(configSecretFile, "utf8").trimEnd();
+  } else {
+    secret = configSecret;
+  }
+  if (secret?.trim() === "") {
+    secret = undefined;
+  }
+
+  const explicitAuth = getOptConfiguredValue(
+    options.webhookAuth,
+    fileConfig.webhook_auth,
+  );
+  let auth: WebhookAuthType;
+  if (explicitAuth !== undefined) {
+    auth = explicitAuth;
+  } else if (secret !== undefined) {
+    auth = "hmac";
+  } else if (webhookToken !== undefined) {
+    auth = "bearer";
+  } else if (
+    webhookUsername !== undefined ||
+    webhookPassword !== undefined
+  ) {
+    // Either half of the basic credentials is enough to infer basic auth:
+    // assertWebhookAuthCredentials below then rejects the incomplete pair
+    // instead of silently sending the event unauthenticated.
+    auth = "basic";
+  } else {
+    auth = "none";
+  }
+
+  logger.info(
+    `Webhook configuration provided, url: ${webhookUrl}, auth: ${auth}, authHeader: ${authHeader}, outbox: ${outboxDir}, maxAttempts: ${maxAttempts}, keepFiles: ${keepFiles}`,
+  );
+  const webhookConfig: WebhookConfig = {
+    url: webhookUrl,
+    auth,
+    authHeader,
+    outboxDir,
+    maxAttempts,
+    keepFiles,
+  };
+  if (secret !== undefined) {
+    webhookConfig.secret = secret;
+  }
+  if (webhookToken !== undefined) {
+    webhookConfig.token = webhookToken;
+  }
+  if (webhookUsername !== undefined) {
+    webhookConfig.username = webhookUsername;
+  }
+  if (webhookPassword !== undefined) {
+    webhookConfig.password = webhookPassword;
+  }
+  assertWebhookAuthCredentials(webhookConfig);
+  return webhookConfig;
+}
+
 /**
  * Retrieves the configured value based on the provided options.
  * This function prioritizes the configuration from the command line if it is provided.
@@ -453,14 +776,10 @@ function getScanConfiguration(
     filePattern: getOptConfiguredValue(options.pattern, fileConfig.pattern),
   };
 
-  if (directoryConfig.filePattern !== undefined) {
-    // Fail early: a pattern producing an invalid file name would otherwise
-    // crash at scan time.
-    validateFilePatternForPlatform(directoryConfig.filePattern);
-  }
-
   const paperlessConfig = getPaperlessConfig(options, fileConfig);
   const nextcloudConfig = getNextcloudConfig(options, fileConfig);
+  const s3Config = getS3Config(options, fileConfig);
+  const webhookConfig = getWebhookConfig(options, fileConfig);
 
   const resolution = parseInt(
     getConfiguredValue(
@@ -551,6 +870,8 @@ function getScanConfiguration(
     directoryConfig,
     paperlessConfig,
     nextcloudConfig,
+    s3Config,
+    webhookConfig,
     preferEscl,
   };
   return scanConfig;
@@ -567,7 +888,7 @@ function getDeviceUpPollingInterval(
   );
 }
 
-type ListenOptions = ReturnType<ReturnType<typeof createListenCliCmd>["opts"]>;
+export type ListenOptions = ReturnType<ReturnType<typeof createListenCliCmd>["opts"]>;
 
 function createListenCliCmd(configFile: FileConfig) {
   return setupScanParameters("listen")
@@ -649,6 +970,10 @@ function createListenCliCmd(configFile: FileConfig) {
 
       const scanConfig = getScanConfiguration(options, configFile);
 
+      if (scanConfig.webhookConfig) {
+        await flushOutbox(scanConfig.webhookConfig);
+      }
+
       await listenCmd(
         api,
         registrationConfigs,
@@ -660,7 +985,7 @@ function createListenCliCmd(configFile: FileConfig) {
     });
 }
 
-type AdfAutoscanOptions = ReturnType<
+export type AdfAutoscanOptions = ReturnType<
   ReturnType<typeof createAdfAutoscanCliCmd>["opts"]
 >;
 
@@ -715,6 +1040,10 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
 
       const scanConfig = getScanConfiguration(options, fileConfig);
 
+      if (scanConfig.webhookConfig) {
+        await flushOutbox(scanConfig.webhookConfig);
+      }
+
       const adfScanConfig: AdfAutoScanConfig = {
         ...scanConfig,
         isDuplex: getConfiguredValue(
@@ -747,7 +1076,7 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
     });
 }
 
-type SingleScanOptions = ReturnType<
+export type SingleScanOptions = ReturnType<
   ReturnType<typeof createSingleScanCliCmd>["opts"]
 >;
 
@@ -787,6 +1116,10 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
       );
 
       const scanConfig = getScanConfiguration(options, fileConfig);
+
+      if (scanConfig.webhookConfig) {
+        await flushOutbox(scanConfig.webhookConfig);
+      }
 
       const singleScanConfig: SingleScanConfig = {
         ...scanConfig,

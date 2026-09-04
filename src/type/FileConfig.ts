@@ -114,6 +114,35 @@ export const configSchema = z
     nextcloud_upload_folder: z.string().optional(), // Upload folder path on Nextcloud
 
     ///
+    /// S3 Integration
+    ///
+    s3_url: z.string().optional(), // S3-compatible endpoint URL
+    s3_region: z.string().optional(), // S3 region used for signing
+    s3_access_key_id: z.string().optional(), // S3 access key id
+    s3_secret_access_key: z.string().optional(), // S3 secret access key
+    s3_secret_access_key_file: z.string().optional(), // Path to file containing the S3 secret access key
+    s3_bucket: z.string().optional(), // S3 bucket to upload scans into
+    s3_prefix: z.string().optional(), // Folder (prefix) inside the bucket
+    s3_force_path_style: z.boolean().optional(), // Force path-style addressing (MinIO/R2/Wasabi...)
+    s3_session_token: z.string().optional(), // Session token for temporary credentials
+
+    ///
+    /// Webhook Integration
+    ///
+    webhook_url: z.string().optional(), // Webhook URL to POST scan events to
+    webhook_auth: z
+      .enum(["none", "hmac", "bearer", "basic"])
+      .optional(), // Auth scheme for the webhook request
+    webhook_auth_header: z.string().optional(), // Header name carrying the HMAC signature
+    webhook_secret: z.string().optional(), // HMAC-SHA256 signing secret
+    webhook_secret_file: z.string().optional(), // Path to file containing the signing secret
+    webhook_token: z.string().optional(), // Bearer token
+    webhook_username: z.string().optional(), // Basic auth username
+    webhook_password: z.string().optional(), // Basic auth password
+    webhook_outbox_dir: z.string().optional(), // Durable directory for pending events
+    webhook_max_attempts: z.number().int().positive().optional(), // Max delivery attempts
+
+    ///
     /// Common to external destination (paperless & nextcloud)
     ///
     keep_files: z.boolean().optional(), // Keep scanned files locally after upload

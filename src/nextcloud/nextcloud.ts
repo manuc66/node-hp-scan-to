@@ -34,6 +34,18 @@ export async function uploadPdfToNextcloud(
   });
 }
 
+export function nextcloudWebdavFileUrl(
+  nextcloudConfig: NextcloudConfig,
+  fileName: string,
+): string {
+  const folderUrl = buildFolderUrl(
+    nextcloudConfig.baseUrl,
+    nextcloudConfig.username,
+    nextcloudConfig.uploadFolder,
+  );
+  return buildUrl(folderUrl, [fileName]);
+}
+
 async function uploadToNextcloud(
   filePath: string,
   nextcloudConfig: NextcloudConfig,
