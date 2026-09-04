@@ -1,6 +1,10 @@
 import { describe, it } from "mocha";
 import { expect } from "chai";
-import { spawnSync } from "node:child_process";
+import {
+  spawnSync,
+  type SpawnSyncOptionsWithStringEncoding,
+  type SpawnSyncReturns,
+} from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,14 +21,15 @@ const entry = path.join(repoRoot, "test", "asset", "logger-entry.ts");
 function runLogger(
   args: string[] = [],
   envOverrides: Record<string, string | undefined> = {},
-): ReturnType<typeof spawnSync> {
+): SpawnSyncReturns<string> {
   const env: Record<string, string | undefined> = { ...process.env };
   delete env["LOG_FORMAT"];
   delete env["LOG_LEVEL"];
-  return spawnSync(process.execPath, ["--import", "tsx", entry, ...args], {
+  const options: SpawnSyncOptionsWithStringEncoding = {
     encoding: "utf8",
     env: { ...env, NODE_ENV: "production", ...envOverrides },
-  });
+  };
+  return spawnSync(process.execPath, ["--import", "tsx", entry, ...args], options);
 }
 
 function nonEmptyLines(stdout: string): string[] {
@@ -52,7 +57,7 @@ describe("logger rendered output", () => {
     expect(lines[1]["msg"]).to.equal("warn message");
     expect(lines[1]["level"]).to.equal(40);
 
-    const secrets = lines[2] as Record<string, unknown>;
+    const secrets = lines[2];
     expect(secrets["msg"]).to.equal("with secrets");
     expect(secrets["token"]).to.equal("[Redacted]");
     expect((secrets["nested"] as Record<string, unknown>)["password"]).to.equal(

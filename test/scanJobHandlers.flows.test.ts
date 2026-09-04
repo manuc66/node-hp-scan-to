@@ -17,6 +17,7 @@ import { InputSource } from "../src/type/InputSource.js";
 import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
 import type { IScanJobSettings } from "../src/hpModels/IScanJobSettings.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
+import type { ScanContent } from "../src/type/ScanContent.js";
 import { createImageFormat } from "../src/imageFormats/index.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
 
@@ -85,7 +86,7 @@ describe("scanJobHandlers flows", () => {
         );
 
       const api = new DeviceClient("127.0.0.1", false);
-      const scanJobContent = { elements: [] };
+      const scanJobContent: ScanContent = { elements: [] };
 
       const jobState = await executeScanJob(
         api,
@@ -118,7 +119,7 @@ describe("scanJobHandlers flows", () => {
         .reply(200, await readAsset("eSCL_ScannerStatus_empty.xml"));
 
       const api = new DeviceClient("127.0.0.1", false);
-      const scanJobContent = { elements: [] };
+      const scanJobContent: ScanContent = { elements: [] };
 
       const jobState = await executeScanJob(
         api,
@@ -156,7 +157,7 @@ describe("scanJobHandlers flows", () => {
         isEscl: false,
         submitScanJob: async () => "http://127.0.0.1/Scan/Jobs/1",
       } as unknown as DeviceCapabilities;
-      const scanJobContent = { elements: [] };
+      const scanJobContent: ScanContent = { elements: [] };
 
       const jobState = await executeScanJob(
         api,
