@@ -15,6 +15,7 @@ describe("healthcheck", () => {
 
   afterEach(() => {
     nock.restore();
+    nock.activate();
     nock.cleanAll();
     nock.enableNetConnect();
     if (server) {

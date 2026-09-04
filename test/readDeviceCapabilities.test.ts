@@ -21,6 +21,7 @@ describe("readDeviceCapabilities", () => {
   afterEach(() => {
     nock.cleanAll();
     nock.restore();
+    nock.activate();
   });
 
   it("reads device capabilities for a simple device (no eSCL, no WalkupScan)", async () => {
