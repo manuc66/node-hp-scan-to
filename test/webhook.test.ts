@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import fsPromises from "node:fs/promises";
 import { createHash, createHmac } from "node:crypto";
-import { sendScanEvent } from "../src/webhook/webhook.js";
+import { flushOutbox, sendScanEvent } from "../src/webhook/webhook.js";
 import type { WebhookConfig } from "../src/webhook/WebhookConfig.js";
 import type { ScanContent } from "../src/type/ScanContent.js";
 import type { ScanMetadata } from "../src/type/ScanMetadata.js";
@@ -105,6 +105,9 @@ describe("webhook", () => {
       url: "http://127.0.0.1:1",
       auth: "none",
       authHeader: "x-webhook-signature",
+      outboxDir: tempDir,
+      maxAttempts: 5,
+      durableOutbox: true,
       keepFiles: false,
     };
     scanContent = { elements: [], meta: buildMetadata() };
@@ -118,7 +121,7 @@ describe("webhook", () => {
   });
 
   describe("sendScanEvent", () => {
-    it("delivers the event and does not persist anything", async () => {
+    it("delivers the event and removes the outbox entry", async () => {
       const srv = await startServer([200]);
       config.url = `http://127.0.0.1:${srv.port}`;
 
@@ -199,7 +202,7 @@ describe("webhook", () => {
       expect(payload.pages[0]).to.not.have.property("path");
     });
 
-    it("does not follow a redirect from the endpoint (3xx)", async () => {
+    it("keeps the event in the outbox when the endpoint redirects (3xx)", async () => {
       let finalHit = false;
       const server = http.createServer((req, res) => {
         if (req.url === "/start") {
@@ -218,16 +221,34 @@ describe("webhook", () => {
 
       await sendScanEvent(scanContent, [{ path: filePath }], [], config);
 
-      // The 301 must not be followed as an empty GET that would acknowledge
-      // the event without its payload.
       expect(finalHit).to.equal(false);
+      const remaining = await fsPromises.readdir(tempDir);
+      expect(remaining.filter((f) => f.endsWith(".json"))).to.have.length(1);
     });
 
-    it("sends once and persists nothing on failure", async () => {
+    it("writes outbox entries with restrictive permissions (0600)", async () => {
       const srv = await startServer([500]);
       config.url = `http://127.0.0.1:${srv.port}`;
 
       await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+
+      const entries = (await fsPromises.readdir(tempDir)).filter((f) =>
+        f.endsWith(".json"),
+      );
+      expect(entries).to.have.length(1);
+      const stat = await fsPromises.stat(path.join(tempDir, entries[0]));
+      expect(stat.mode & 0o777).to.equal(0o600);
+    });
+
+    it("best-effort mode sends once and persists nothing on failure", async () => {
+      const srv = await startServer([500]);
+      const simpleConfig: WebhookConfig = {
+        ...config,
+        url: `http://127.0.0.1:${srv.port}`,
+        durableOutbox: false,
+      };
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], simpleConfig);
 
       expect(srv.requests).to.have.length(1);
       const remaining = await fsPromises.readdir(tempDir);
@@ -424,4 +445,146 @@ describe("webhook", () => {
     });
   });
 
+  describe("retry and idempotency", () => {
+    it("keeps the entry after a 5xx and delivers on a later flush with the same id", async () => {
+      const srv = await startServer([500, 200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+
+      let files = await fsPromises.readdir(tempDir);
+      const pending = files.find((f) => f.endsWith(".json"));
+      expect(pending).to.not.be.undefined;
+      expect(files.some((f) => f.endsWith(".failed.json"))).to.be.false;
+
+      // Re-schedule the retry as a later boot would, then flush again.
+      const entryPath = path.join(tempDir, pending!);
+      const entry = JSON.parse(await fsPromises.readFile(entryPath, "utf8")) as {
+        id: string;
+        attempts: number;
+        nextAttemptAt: string;
+      };
+      expect(entry.attempts).to.equal(1);
+      entry.nextAttemptAt = new Date(Date.now() - 1000).toISOString();
+      await fsPromises.writeFile(entryPath, JSON.stringify(entry), "utf8");
+
+      await flushOutbox(config);
+
+      expect(srv.requests).to.have.length(2);
+      expect(srv.requests[0].headers["idempotency-key"]).to.equal(
+        srv.requests[1].headers["idempotency-key"],
+      );
+      files = await fsPromises.readdir(tempDir);
+      expect(files.filter((f) => f.endsWith(".json"))).to.deep.equal([]);
+    });
+
+    it("dead-letters on a 4xx response", async () => {
+      const srv = await startServer([400]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+
+      const files = await fsPromises.readdir(tempDir);
+      expect(files.some((f) => f.endsWith(".failed.json"))).to.be.true;
+      expect(files.some((f) => f.endsWith(".json") && !f.endsWith(".failed.json"))).to.be
+        .false;
+    });
+
+    it("retries on 429 instead of dead-lettering", async () => {
+      const srv = await startServer([429, 200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+
+      let files = await fsPromises.readdir(tempDir);
+      expect(files.some((f) => f.endsWith(".json") && !f.endsWith(".failed.json")))
+        .to.be.true;
+      expect(files.some((f) => f.endsWith(".failed.json"))).to.be.false;
+
+      const entryFile = files.find(
+        (f) => f.endsWith(".json") && !f.endsWith(".failed.json"),
+      )!;
+      const entry = JSON.parse(
+        await fsPromises.readFile(path.join(tempDir, entryFile), "utf8"),
+      ) as { nextAttemptAt: string };
+      entry.nextAttemptAt = new Date(Date.now() - 1000).toISOString();
+      await fsPromises.writeFile(
+        path.join(tempDir, entryFile),
+        JSON.stringify(entry),
+        "utf8",
+      );
+
+      await flushOutbox(config);
+
+      expect(srv.requests).to.have.length(2);
+      files = await fsPromises.readdir(tempDir);
+      expect(files.filter((f) => f.endsWith(".json"))).to.deep.equal([]);
+    });
+
+    it("dead-letters after max attempts", async () => {
+      config.maxAttempts = 2;
+      const srv = await startServer([500, 500]);
+      const cfg = { ...config, url: `http://127.0.0.1:${srv.port}` };
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], cfg);
+
+      let pending = await fsPromises.readdir(tempDir);
+      const entryFile = pending.find(
+        (f) => f.endsWith(".json") && !f.endsWith(".failed.json"),
+      );
+      expect(entryFile).to.not.be.undefined;
+
+      const entryPath = path.join(tempDir, entryFile!);
+      const entry = JSON.parse(await fsPromises.readFile(entryPath, "utf8")) as {
+        nextAttemptAt: string;
+      };
+      entry.nextAttemptAt = new Date(Date.now() - 1000).toISOString();
+      await fsPromises.writeFile(entryPath, JSON.stringify(entry), "utf8");
+
+      await flushOutbox(cfg);
+
+      pending = await fsPromises.readdir(tempDir);
+      expect(pending.some((f) => f.endsWith(".failed.json"))).to.be.true;
+      expect(
+        pending.some((f) => f.endsWith(".json") && !f.endsWith(".failed.json")),
+      ).to.be.false;
+    });
+  });
+
+  describe("restart survival", () => {
+    it("keeps a pending entry across processes and flushes it on the next boot", async () => {
+      // First process: the webhook is unreachable, the event stays pending with a
+      // future retry.
+      config.url = "http://127.0.0.1:1";
+      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+
+      const files = await fsPromises.readdir(tempDir);
+      expect(
+        files.some((f) => f.endsWith(".json") && !f.endsWith(".failed.json")),
+      ).to.be.true;
+
+      // Time passes: the retry becomes due before the "next boot".
+      const pendingFile = files.find(
+        (f) => f.endsWith(".json") && !f.endsWith(".failed.json"),
+      )!;
+      const entry = JSON.parse(
+        await fsPromises.readFile(path.join(tempDir, pendingFile), "utf8"),
+      ) as { nextAttemptAt: string };
+      entry.nextAttemptAt = new Date(Date.now() - 1000).toISOString();
+      await fsPromises.writeFile(
+        path.join(tempDir, pendingFile),
+        JSON.stringify(entry),
+        "utf8",
+      );
+
+      // "Restart": a new process boots, webhook is now reachable, flushes.
+      const srv = await startServer([200]);
+      const restarted = { ...config, url: `http://127.0.0.1:${srv.port}` };
+      await flushOutbox(restarted);
+
+      expect(srv.requests).to.have.length(1);
+      const after = await fsPromises.readdir(tempDir);
+      expect(after.filter((f) => f.endsWith(".json"))).to.deep.equal([]);
+    });
+  });
 });

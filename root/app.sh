@@ -131,8 +131,17 @@ if [ -n "$WEBHOOK_PASSWORD" ]; then
     ARGS+=("--webhook-password" "$WEBHOOK_PASSWORD")
 fi
 
+if [ -n "$WEBHOOK_OUTBOX_DIR" ]; then
+    ARGS+=("--webhook-outbox-dir" "$WEBHOOK_OUTBOX_DIR")
+fi
 
+if [ -n "$WEBHOOK_MAX_ATTEMPTS" ]; then
+    ARGS+=("--webhook-max-attempts" "$WEBHOOK_MAX_ATTEMPTS")
+fi
 
+if [ -n "${WEBHOOK_DURABLE_OUTBOX+x}" ] && [ "$WEBHOOK_DURABLE_OUTBOX" != "false" ] && [ "$WEBHOOK_DURABLE_OUTBOX" != "0" ]; then
+    ARGS+=("--webhook-durable-outbox")
+fi
 
 if [ -n "$CMDLINE" ]; then
     # Split CMDLINE into words and add to ARGS

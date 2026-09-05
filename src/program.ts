@@ -4,6 +4,7 @@
 "use strict";
 
 import os from "node:os";
+import path from "node:path";
 // default-import + destructure: this dependency is CommonJS and some loaders
 // (tsx) do not expose its named exports to ESM consumers
 import bonjourService from "bonjour-service";
@@ -37,6 +38,7 @@ import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
 import { getLoggerForFile, setDebugLevel } from "./logger.js";
+import { flushOutbox } from "./webhook/webhook.js";
 
 const logger = getLoggerForFile(import.meta.url);
 function findOfficejetIp(deviceNamePrefix: string): Promise<string> {
@@ -341,6 +343,32 @@ function setupScanParameters(commandName: string) {
         "--webhook-password <webhook_password>",
         "Basic auth password for webhook-username",
       ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-outbox-dir <webhook_outbox_dir>",
+        "Directory where pending events are stored until delivered (default: ~/.node-hp-scan-to/outbox)",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-max-attempts <webhook_max_attempts>",
+        "Max delivery attempts before dead-lettering an event (default: 5)",
+      )
+        .argParser((value) => {
+          const parsed = Number.parseInt(value, 10);
+          if (!Number.isInteger(parsed) || parsed <= 0) {
+            throw new Error("webhook-max-attempts must be a positive integer");
+          }
+          return parsed;
+        })
+        .helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-durable-outbox",
+        "Persist undelivered events in the outbox and retry them at startup and after each scan. Disabled by default: events are sent once and failures are only logged.",
+      ).helpGroup(HelpGroupsHeadings.webhook),
     );
 }
 
@@ -589,6 +617,16 @@ export function getWebhookConfig(
     return undefined;
   }
 
+  const outboxDir = getConfiguredValue(
+    options.webhookOutboxDir,
+    fileConfig.webhook_outbox_dir,
+    path.join(os.homedir(), ".node-hp-scan-to", "outbox"),
+  );
+  const maxAttempts = getConfiguredValue(
+    options.webhookMaxAttempts,
+    fileConfig.webhook_max_attempts,
+    5,
+  );
   const keepFiles: boolean = getConfiguredValue(
     options.keepFiles,
     fileConfig.keep_files,
@@ -654,13 +692,22 @@ export function getWebhookConfig(
     auth = "none";
   }
 
+  const durableOutbox: boolean = getConfiguredValue(
+    options.webhookDurableOutbox,
+    fileConfig.webhook_durable_outbox,
+    false,
+  );
+
   logger.info(
-    `Webhook configuration provided, url: ${webhookUrl}, auth: ${auth}, authHeader: ${authHeader}, keepFiles: ${keepFiles}`,
+    `Webhook configuration provided, url: ${webhookUrl}, auth: ${auth}, authHeader: ${authHeader}, durableOutbox: ${durableOutbox}, outbox: ${outboxDir}, maxAttempts: ${maxAttempts}, keepFiles: ${keepFiles}`,
   );
   const webhookConfig: WebhookConfig = {
     url: webhookUrl,
     auth,
     authHeader,
+    outboxDir,
+    maxAttempts,
+    durableOutbox,
     keepFiles,
   };
   if (secret !== undefined) {
@@ -936,6 +983,9 @@ function createListenCliCmd(configFile: FileConfig) {
 
       const scanConfig = getScanConfiguration(options, configFile);
 
+      if (scanConfig.webhookConfig) {
+        await flushOutbox(scanConfig.webhookConfig);
+      }
 
       await listenCmd(
         api,
@@ -1003,6 +1053,9 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
 
       const scanConfig = getScanConfiguration(options, fileConfig);
 
+      if (scanConfig.webhookConfig) {
+        await flushOutbox(scanConfig.webhookConfig);
+      }
 
       const adfScanConfig: AdfAutoScanConfig = {
         ...scanConfig,
@@ -1077,6 +1130,9 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
 
       const scanConfig = getScanConfiguration(options, fileConfig);
 
+      if (scanConfig.webhookConfig) {
+        await flushOutbox(scanConfig.webhookConfig);
+      }
 
       const singleScanConfig: SingleScanConfig = {
         ...scanConfig,
