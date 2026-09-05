@@ -26,7 +26,13 @@ export interface ScanSettingsInfo {
   contentType: "Document" | "Photo";
   /** Format delivered to the caller, e.g. "pdf" or "jpg". */
   format: string;
+  /** Format requested to the device, e.g. "jpg" (may differ after compression). */
+  sourceFormat: string;
   mode: ScanMode;
+  /** Bits per channel (8 for Color/Gray, 1 for Lineart). */
+  colorDepth: number;
+  /** Number of color channels (3 for Color, 1 otherwise). */
+  channels: number;
   resolution: number;
   isDuplex: boolean;
   /** Resolved duplex mode for the scan (set by listen, e.g. emulated duplex). */
@@ -37,6 +43,8 @@ export interface ScanSettingsInfo {
   duplexAssemblyMode?: DuplexAssemblyMode;
   pageCountingStrategy: PageCountingStrategy;
   paperSize: string | undefined;
+  /** Explicit paper dimensions when known (e.g. "21x29.7cm"). */
+  paperDim: string | undefined;
 }
 
 export interface ScanInstanceInfo {

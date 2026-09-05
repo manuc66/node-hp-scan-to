@@ -16,6 +16,7 @@ import type {
   SingleScanConfig,
 } from "./type/scanConfigs.js";
 import { ScanFormat } from "./type/scanFormat.js";
+import { ScanMode } from "./type/scanMode.js";
 import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
 import type { IScanStatus } from "./hpModels/IScanStatus.js";
 import { ScannerState } from "./hpModels/ScannerState.js";
@@ -67,6 +68,16 @@ function buildScanMetadataInputTarget(
   };
 }
 
+function colorDepthFor(mode: ScanMode): { colorDepth: number; channels: number } {
+  if (mode === ScanMode.Color) {
+    return { colorDepth: 8, channels: 3 };
+  }
+  if (mode === ScanMode.Gray) {
+    return { colorDepth: 8, channels: 1 };
+  }
+  return { colorDepth: 1, channels: 1 };
+}
+
 function buildScanMetadata(input: ScanMetadataInput): ScanMetadata {
   const { format: imageFormat } = input;
   return {
@@ -83,11 +94,15 @@ function buildScanMetadata(input: ScanMetadataInput): ScanMetadata {
       inputSource: input.inputSource,
       contentType: input.contentType,
       format: input.isPdf ? "pdf" : imageFormat.getExtension(),
+      sourceFormat: imageFormat.getExtension(),
       mode: input.scanConfig.mode,
+      colorDepth: colorDepthFor(input.scanConfig.mode).colorDepth,
+      channels: colorDepthFor(input.scanConfig.mode).channels,
       resolution: input.scanConfig.resolution,
       isDuplex: input.isDuplex,
       pageCountingStrategy: input.pageCountingStrategy,
       paperSize: input.scanConfig.paperSize,
+      paperDim: input.scanConfig.paperDim,
     },
     startedAt: new Date().toISOString(),
     instance: buildInstanceInfo(),

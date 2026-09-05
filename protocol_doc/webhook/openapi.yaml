@@ -181,7 +181,10 @@ components:
         - inputSource
         - contentType
         - format
+        - sourceFormat
         - mode
+        - colorDepth
+        - channels
         - resolution
         - isDuplex
         - pageCountingStrategy
@@ -195,9 +198,18 @@ components:
         format:
           type: string
           description: Format delivered to the target, e.g. `pdf` or `jpg`.
+        sourceFormat:
+          type: string
+          description: Format requested to the device, e.g. `jpg` (may differ after compression).
         mode:
           type: string
           enum: [Gray, Color, Lineart]
+        colorDepth:
+          type: integer
+          description: Bits per channel (8 for Color/Gray, 1 for Lineart).
+        channels:
+          type: integer
+          description: 3 for Color, 1 otherwise.
         resolution:
           type: integer
           description: DPI.
@@ -218,6 +230,10 @@ components:
         paperSize:
           type: string
           nullable: true
+        paperDim:
+          type: string
+          nullable: true
+          description: Explicit paper dimensions when known, e.g. `21x29.7cm`.
     ScanInstanceInfo:
       type: object
       required: [id, startedAt]
