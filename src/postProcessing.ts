@@ -38,6 +38,24 @@ function toFailureMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
+/**
+ * Notify the webhook without letting a failure abort the rest of the
+ * post-processing: a broken outbox (disk full, unwritable dir) must not stop
+ * metadata logging or the cleanup of the scanned files.
+ */
+async function notifyWebhook(
+  scanJobContent: ScanContent,
+  files: WebhookFileSource[],
+  delivery: WebhookDeliveryTarget[],
+  webhookConfig: WebhookConfig,
+): Promise<void> {
+  try {
+    await sendScanEvent(scanJobContent, files, delivery, webhookConfig);
+  } catch (e) {
+    logger.warn(e, "Failed to send the scan webhook event, continuing");
+  }
+}
+
 async function recordDelivery(
   delivery: WebhookDeliveryTarget[],
   failures: string[],
@@ -155,7 +173,7 @@ async function handlePdfPostProcessing(
     });
   }
   if (webhookConfig) {
-    await sendScanEvent(
+    await notifyWebhook(
       scanJobContent,
       pdfFilePath !== null
         ? [
@@ -222,7 +240,7 @@ async function handleImagePostProcessing(
     );
   }
   if (webhookConfig) {
-    await sendScanEvent(
+    await notifyWebhook(
       scanJobContent,
       scanJobContent.elements.map((element) =>
         buildWebhookFileSource(

@@ -5,6 +5,9 @@ import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import type { ScanConfig } from "../src/type/scanConfigs.js";
 import type { PaperlessConfig } from "../src/paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "../src/nextcloud/NextcloudConfig.js";
+import { InputSource } from "../src/type/InputSource.js";
+import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
+import { ScanMode } from "../src/type/scanMode.js";
 import nock from "nock";
 import path from "node:path";
 import { fileURLToPath } from "url";
@@ -163,6 +166,74 @@ describe("postProcessing", () => {
         f.endsWith(".pdf"),
       );
       expect(remaining).to.deep.equal([]);
+    });
+
+    it("keeps going when the webhook outbox write fails", async () => {
+      scanConfig.paperlessConfig = paperlessConfig();
+      mockPaperlessSuccess();
+      scanJobContent.meta = {
+        command: "listen",
+        scanCount: 1,
+        device: { ip: "127.0.0.1", isEscl: false },
+        target: undefined,
+        settings: {
+          inputSource: InputSource.Adf,
+          contentType: "Document",
+          format: "pdf",
+          sourceFormat: "jpg",
+          mode: ScanMode.Color,
+          colorDepth: 8,
+          channels: 3,
+          resolution: 200,
+          width: null,
+          height: null,
+          isDuplex: false,
+          pageCountingStrategy: PageCountingStrategy.Normal,
+          filePattern: undefined,
+          paperSize: undefined,
+          paperDim: undefined,
+          paperOrientation: undefined,
+        },
+        startedAt: new Date().toISOString(),
+        instance: {
+          id: "test",
+          startedAt: new Date().toISOString(),
+          uptimeMs: 1,
+        },
+      };
+      // outboxDir points at a regular file: writing an entry fails (ENOTDIR).
+      const blockingFile = path.join(tempFolder, "blocker");
+      await fs.writeFile(blockingFile, "not a directory");
+      try {
+        scanConfig.webhookConfig = {
+          url: "http://webhook.example.test",
+          auth: "none",
+          authHeader: "x-webhook-signature",
+          outboxDir: blockingFile,
+          maxAttempts: 5,
+          keepFiles: false,
+        };
+
+        const result = await postProcessing(
+          scanConfig,
+          tempFolder,
+          tempFolder,
+          1,
+          scanJobContent,
+          new Date(),
+          true,
+        );
+
+        expect(result.uploadSucceeded).to.equal(true);
+        // The pdf is still cleaned up despite the webhook failure.
+        const remaining = (await fs.readdir(tempFolder)).filter((f) =>
+          f.endsWith(".pdf"),
+        );
+        expect(remaining).to.deep.equal([]);
+      } finally {
+        await fs.rm(blockingFile, { force: true });
+        scanConfig.webhookConfig = undefined;
+      }
     });
 
     it("reports the failure and keeps the pdf when paperless rejects the upload", async () => {
