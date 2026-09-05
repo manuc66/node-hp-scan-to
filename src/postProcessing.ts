@@ -171,6 +171,21 @@ async function handlePdfPostProcessing(
       status: "failed",
       error: "PDF generation failed, nothing was uploaded",
     });
+    // Report the configured-but-skipped targets so the consumer can tell a
+    // "never attempted" target from a failed one.
+    for (const target of ["paperless", "nextcloud", "s3"] as const) {
+      if (
+        (target === "paperless" && paperlessConfig) ||
+        (target === "nextcloud" && nextcloudConfig) ||
+        (target === "s3" && s3Config)
+      ) {
+        delivery.push({
+          target,
+          status: "failed",
+          error: "Skipped: PDF generation failed",
+        });
+      }
+    }
   }
   if (webhookConfig) {
     await notifyWebhook(
