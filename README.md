@@ -312,7 +312,8 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `--webhook-token`                     | Bearer token sent as `Authorization: Bearer <token>`.                                                                                                                                                                            | `--webhook-token tok...` (no default)                              |
 | `--webhook-username` / `--webhook-password` | Basic auth credentials sent as `Authorization: Basic`.                                                                                                                                                                     | `--webhook-username scanner --webhook-password ...` (no default)   |
 | `--webhook-outbox-dir`                | Directory where pending webhook events are stored until delivered. Only used when `--webhook-url` is set; default is enough on the host, mount a volume on Docker if you want events to survive container re-creation.           | `~/.node-hp-scan-to/outbox`                                        |
-| `--webhook-max-attempts`              | Max delivery attempts before an event is dead-lettered.                                                                                                                                                                          | `--webhook-max-attempts 5` (default 5)                             |
+| `--webhook-max-attempts`              | Max delivery attempts before an event is dead-lettered (only with `--webhook-durable-outbox`).                                                                                                                                  | `--webhook-max-attempts 5` (default 5)                             |
+| `--webhook-durable-outbox`            | Persist undelivered events in the outbox and retry them at startup and after each scan. Disabled by default: events are sent once and failures are only logged.                                                                 | `--webhook-durable-outbox` (disabled by default)                   |
 
 **Notes:**
 
@@ -475,6 +476,7 @@ Webhook Options:
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
   --webhook-outbox-dir <webhook_outbox_dir>                        Directory where pending events are stored until delivered (default: ~/.node-hp-scan-to/outbox)
   --webhook-max-attempts <webhook_max_attempts>                    Max delivery attempts before dead-lettering an event (default: 5)
+  --webhook-durable-outbox                                         Persist undelivered events in the outbox and retry them at startup and after each scan. Disabled by default: events are sent once and failures are only logged.
 
 Device Control Screen Options:
   -l, --label <label>                                              The label to display on the device (the default is the hostname)
@@ -586,6 +588,7 @@ Webhook Options:
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
   --webhook-outbox-dir <webhook_outbox_dir>                        Directory where pending events are stored until delivered (default: ~/.node-hp-scan-to/outbox)
   --webhook-max-attempts <webhook_max_attempts>                    Max delivery attempts before dead-lettering an event (default: 5)
+  --webhook-durable-outbox                                         Persist undelivered events in the outbox and retry them at startup and after each scan. Disabled by default: events are sent once and failures are only logged.
 
 Auto-scan Options:
   --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
@@ -707,6 +710,7 @@ Webhook Options:
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
   --webhook-outbox-dir <webhook_outbox_dir>                        Directory where pending events are stored until delivered (default: ~/.node-hp-scan-to/outbox)
   --webhook-max-attempts <webhook_max_attempts>                    Max delivery attempts before dead-lettering an event (default: 5)
+  --webhook-durable-outbox                                         Persist undelivered events in the outbox and retry them at startup and after each scan. Disabled by default: events are sent once and failures are only logged.
 
 Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
@@ -739,7 +743,7 @@ You could however use Docker's [macvlan](https://docs.docker.com/engine/network/
 
 All scanned files are written to the volume `/scan`, the filename can be changed with the `PATTERN` environment variable. For the correct permissions to the volume set the environment variables `PUID` and `PGID` to that of the user running the container (usually `PUID=1000` and `PGID=1000`).
 
-When `WEBHOOK_URL` is set, scan events are written to an **outbox** before delivery (default `~/.node-hp-scan-to/outbox` inside the container), so a briefly unreachable receiver (n8n down, 429, timeout) does not drop the event: it is retried at startup and after each later scan. That directory lives on the container writable layer, so `docker restart` keeps it, but **re-creating** the container (image update, `docker compose up --force-recreate`, `docker rm`) discards pending events. Mounting a volume and setting `WEBHOOK_OUTBOX_DIR` to that path is recommended for **new webhook usage** if you want retries to survive those recreates.
+When `WEBHOOK_URL` is set, scan events are sent best-effort by default: a single POST, and failures are logged. With `--webhook-durable-outbox` (or `WEBHOOK_DURABLE_OUTBOX`), events are written to an **outbox** before delivery (default `~/.node-hp-scan-to/outbox` inside the container), so a briefly unreachable receiver (n8n down, 429, timeout) does not drop the event: it is retried at startup and after each later scan, then dead-lettered to `<id>.failed.json`. That directory lives on the container writable layer, so `docker restart` keeps it, but **re-creating** the container (image update, `docker compose up --force-recreate`, `docker rm`) discards pending events. Mounting a volume and setting `WEBHOOK_OUTBOX_DIR` to that path is recommended if you want retries to survive those recreates.
 
 #### Docker Environment Variables
 
@@ -788,7 +792,8 @@ List of supported environment variables and their meaning, or correspondence wit
 | `WEBHOOK_USERNAME`            | Basic auth username sent as `Authorization: Basic`                                                            | `--webhook-username`                                                          |
 | `WEBHOOK_PASSWORD`            | Basic auth password for `WEBHOOK_USERNAME`                                                                    | `--webhook-password`                                                          |
 | `WEBHOOK_OUTBOX_DIR`          | Outbox directory (only when `WEBHOOK_URL` is set). Optional volume: recommended for new webhook usage so pending events survive image updates; existing setups without webhooks need none | `--webhook-outbox-dir`                                                        |
-| `WEBHOOK_MAX_ATTEMPTS`        | Max delivery attempts before an event is dead-lettered (default `5`)                                          | `--webhook-max-attempts`                                                      |
+| `WEBHOOK_MAX_ATTEMPTS`        | Max delivery attempts before an event is dead-lettered (only with `WEBHOOK_DURABLE_OUTBOX`; default `5`)     | `--webhook-max-attempts`                                                      |
+| `WEBHOOK_DURABLE_OUTBOX`      | Persist undelivered events and retry them (disabled by default)                                              | `--webhook-durable-outbox`                                                   |
 
 **Additional Notes:**
 

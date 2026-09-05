@@ -112,6 +112,7 @@ describe("webhook", () => {
       authHeader: "x-webhook-signature",
       outboxDir: tempDir,
       maxAttempts: 5,
+      durableOutbox: true,
       keepFiles: false,
     };
     scanContent = { elements: [], meta: buildMetadata() };
@@ -211,6 +212,21 @@ describe("webhook", () => {
       expect(entries).to.have.length(1);
       const stat = await fsPromises.stat(path.join(tempDir, entries[0]));
       expect(stat.mode & 0o777).to.equal(0o600);
+    });
+
+    it("best-effort mode sends once and persists nothing on failure", async () => {
+      const srv = await startServer([500]);
+      const simpleConfig: WebhookConfig = {
+        ...config,
+        url: `http://127.0.0.1:${srv.port}`,
+        durableOutbox: false,
+      };
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], simpleConfig);
+
+      expect(srv.requests).to.have.length(1);
+      const remaining = await fsPromises.readdir(tempDir);
+      expect(remaining.filter((f) => f.endsWith(".json"))).to.deep.equal([]);
     });
 
     it("signs the payload with the secret when configured", async () => {

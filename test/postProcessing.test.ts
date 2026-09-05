@@ -211,6 +211,7 @@ describe("postProcessing", () => {
           authHeader: "x-webhook-signature",
           outboxDir: blockingFile,
           maxAttempts: 5,
+          durableOutbox: true,
           keepFiles: false,
         };
 

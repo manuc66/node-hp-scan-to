@@ -363,6 +363,12 @@ function setupScanParameters(commandName: string) {
           return parsed;
         })
         .helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-durable-outbox",
+        "Persist undelivered events in the outbox and retry them at startup and after each scan. Disabled by default: events are sent once and failures are only logged.",
+      ).helpGroup(HelpGroupsHeadings.webhook),
     );
 }
 
@@ -686,8 +692,14 @@ export function getWebhookConfig(
     auth = "none";
   }
 
+  const durableOutbox: boolean = getConfiguredValue(
+    options.webhookDurableOutbox,
+    fileConfig.webhook_durable_outbox,
+    false,
+  );
+
   logger.info(
-    `Webhook configuration provided, url: ${webhookUrl}, auth: ${auth}, authHeader: ${authHeader}, outbox: ${outboxDir}, maxAttempts: ${maxAttempts}, keepFiles: ${keepFiles}`,
+    `Webhook configuration provided, url: ${webhookUrl}, auth: ${auth}, authHeader: ${authHeader}, durableOutbox: ${durableOutbox}, outbox: ${outboxDir}, maxAttempts: ${maxAttempts}, keepFiles: ${keepFiles}`,
   );
   const webhookConfig: WebhookConfig = {
     url: webhookUrl,
@@ -695,6 +707,7 @@ export function getWebhookConfig(
     authHeader,
     outboxDir,
     maxAttempts,
+    durableOutbox,
     keepFiles,
   };
   if (secret !== undefined) {

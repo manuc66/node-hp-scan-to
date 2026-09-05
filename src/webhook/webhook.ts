@@ -176,7 +176,7 @@ async function enqueueEvent(
 }
 
 /**
-* Sends the event once. Returns "success", "dead-letter" or "retry".
+ * Sends the event once. Returns "success", "dead-letter" or "retry".
   * "success": 2xx (and other non-error statuses). "dead-letter": permanent 4xx
   * (except 429/408 which are transient). "retry": 408/429/5xx, redirects (3xx),
   * timeout or network failure — the entry stays in the outbox for a later attempt.
@@ -185,38 +185,19 @@ async function deliverEvent(
   webhookConfig: WebhookConfig,
   entry: EnqueuedEventFile,
 ): Promise<"success" | "dead-letter" | "retry"> {
-  const body = Buffer.from(JSON.stringify(entry.payload), "utf8");
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-    "user-agent": "node-hp-scan-to",
-    "idempotency-key": entry.id,
-  };
-  applyAuth(webhookConfig, body, headers);
-
   try {
-    // validateStatus accepts every status so 429/408/5xx can be inspected
-    // instead of being thrown as errors (and dead-lettered by mistake).
-    // Redirects are not followed: following a 301/302 would downgrade the POST
-    // to an empty GET (follow-redirects), silently losing the payload while
-    // the final 2xx still acknowledged delivery.
-    const response = await axios({
-      method: "POST",
-      url: webhookConfig.url,
-      headers,
-      data: body,
-      timeout: 10_000,
-      maxRedirects: 0,
-      validateStatus: () => true,
-    });
-    const status = response.status;
+    const status = await sendEventOnce(webhookConfig, entry.id, entry.payload);
     if (status >= 200 && status < 300) {
       logger.info(`Webhook acknowledged event ${entry.id}`);
       return "success";
     }
-    if ((status >= 300 && status < 400) || status === 408 || status === 429 || status >= 500) {
-      logger.warn(
-        `Webhook responded ${status}, event will be retried`,
-      );
+    if (
+      (status >= 300 && status < 400) ||
+      status === 408 ||
+      status === 429 ||
+      status >= 500
+    ) {
+      logger.warn(`Webhook responded ${status}, event will be retried`);
       return "retry";
     }
     logger.warn(
@@ -227,6 +208,59 @@ async function deliverEvent(
     logger.error(error, `Webhook delivery failed for event ${entry.id}`);
     return "retry";
   }
+}
+
+/**
+ * Best-effort delivery used when the durable outbox is disabled: a single
+ * POST, logged on failure, nothing persisted.
+ */
+async function deliverBestEffort(
+  webhookConfig: WebhookConfig,
+  payload: WebhookEvent,
+): Promise<void> {
+  try {
+    const status = await sendEventOnce(webhookConfig, payload.id, payload);
+    if (status >= 200 && status < 300) {
+      logger.info(`Webhook acknowledged event ${payload.id}`);
+    } else {
+      logger.warn(`Webhook responded ${status} for event ${payload.id}`);
+    }
+  } catch (error) {
+    logger.error(error, `Webhook delivery failed for event ${payload.id}`);
+  }
+}
+
+/**
+ * Performs the POST. Redirects are not followed: following a 301/302 would
+ * downgrade the POST to an empty GET (follow-redirects), silently losing the
+ * payload while the final 2xx still acknowledged delivery. Returns the HTTP
+ * status, or throws on a network/timeout failure.
+ */
+async function sendEventOnce(
+  webhookConfig: WebhookConfig,
+  eventId: string,
+  payload: WebhookEvent,
+): Promise<number> {
+  const body = Buffer.from(JSON.stringify(payload), "utf8");
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    "user-agent": "node-hp-scan-to",
+    "idempotency-key": eventId,
+  };
+  applyAuth(webhookConfig, body, headers);
+
+  // validateStatus accepts every status so 429/408/5xx can be inspected
+  // instead of being thrown as errors (and dead-lettered by mistake).
+  const response = await axios({
+    method: "POST",
+    url: webhookConfig.url,
+    headers,
+    data: body,
+    timeout: 10_000,
+    maxRedirects: 0,
+    validateStatus: () => true,
+  });
+  return response.status;
 }
 
 async function removeOutboxEntry(outboxDir: string, id: string): Promise<void> {
@@ -330,6 +364,9 @@ export async function sendScanEvent(
   if (scanContent.meta === undefined) {
     return;
   }
+  // Fail loudly on an invalid auth config instead of silently retrying a
+  // request that can never authenticate.
+  assertWebhookAuthCredentials(webhookConfig);
 
   const deliveryFailed = delivery.some((d) => d.status === "failed");
   const fileDescriptors: WebhookFileDescriptor[] = [];
@@ -362,7 +399,10 @@ export async function sendScanEvent(
     files: fileDescriptors,
   };
 
-  const id = await enqueueEvent(webhookConfig, events);
-  await flushOutbox(webhookConfig);
-  void id;
+  if (webhookConfig.durableOutbox) {
+    await enqueueEvent(webhookConfig, events);
+    await flushOutbox(webhookConfig);
+  } else {
+    await deliverBestEffort(webhookConfig, events);
+  }
 }

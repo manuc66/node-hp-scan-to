@@ -141,6 +141,7 @@ export const configSchema = z
     webhook_password: z.string().optional(), // Basic auth password
     webhook_outbox_dir: z.string().optional(), // Durable directory for pending events
     webhook_max_attempts: z.number().int().positive().optional(), // Max delivery attempts
+    webhook_durable_outbox: z.boolean().optional(), // Persist undelivered events and retry them
 
     ///
     /// Common to external destination (paperless & nextcloud)
