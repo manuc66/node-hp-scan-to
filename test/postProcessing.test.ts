@@ -5,8 +5,13 @@ import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import type { ScanConfig } from "../src/type/scanConfigs.js";
 import type { PaperlessConfig } from "../src/paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "../src/nextcloud/NextcloudConfig.js";
+import { InputSource } from "../src/type/InputSource.js";
+import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
+import { ScanMode } from "../src/type/scanMode.js";
 import nock from "nock";
 import path from "node:path";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "url";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -165,6 +170,97 @@ describe("postProcessing", () => {
       expect(remaining).to.deep.equal([]);
     });
 
+    it("reports configured delivery targets as skipped when no PDF can be built", async () => {
+      scanConfig.paperlessConfig = paperlessConfig();
+      scanConfig.nextcloudConfig = nextcloudConfig();
+      scanConfig.s3Config = {
+        endpointUrl: "https://s3.example.test",
+        region: "eu-west-1",
+        bucket: "scans",
+        accessKeyId: "AKIA",
+        secretAccessKey: "secret",
+        forcePathStyle: true,
+        keepFiles: false,
+      };
+
+      const bodies: Buffer[] = [];
+      const server = http.createServer((req, res) => {
+        const chunks: Buffer[] = [];
+        req.on("data", (c: Buffer) => chunks.push(c));
+        req.on("end", () => {
+          bodies.push(Buffer.concat(chunks));
+          res.writeHead(200);
+          res.end();
+        });
+      });
+      await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+      const port = (server.address() as AddressInfo).port;
+      scanConfig.webhookConfig = {
+        url: `http://127.0.0.1:${port}/scan`,
+        auth: "none",
+        authHeader: "x-webhook-signature",
+        keepFiles: false,
+      };
+
+      const emptyScan: ScanContent = {
+        elements: [],
+        meta: {
+          command: "listen",
+          scanCount: 1,
+          device: { ip: "127.0.0.1", isEscl: false },
+          target: undefined,
+          settings: {
+            inputSource: InputSource.Adf,
+            contentType: "Document",
+            format: "pdf",
+            sourceFormat: "jpg",
+            mode: ScanMode.Color,
+            colorDepth: 8,
+            channels: 3,
+            resolution: 200,
+            isDuplex: false,
+            pageCountingStrategy: PageCountingStrategy.Normal,
+            paperSize: undefined,
+            paperDim: undefined,
+          },
+          startedAt: new Date().toISOString(),
+          instance: { id: "test", startedAt: new Date().toISOString() },
+        },
+      };
+
+      try {
+        nock.enableNetConnect((host: string) => host.startsWith("127.0.0.1"));
+        await postProcessing(
+          scanConfig,
+          tempFolder,
+          tempFolder,
+          1,
+          emptyScan,
+          new Date(),
+          true,
+        );
+
+        expect(bodies).to.have.length(1);
+        const payload = JSON.parse(bodies[0].toString("utf8")) as {
+          delivery: { target: string; status: string }[];
+        };
+        const targets = payload.delivery.map((d) => d.target);
+        expect(targets).to.include("pdf");
+        expect(targets).to.include("paperless");
+        expect(targets).to.include("nextcloud");
+        expect(targets).to.include("s3");
+        for (const d of payload.delivery) {
+          expect(d.status).to.equal("failed");
+        }
+      } finally {
+        server.close();
+        scanConfig.webhookConfig = undefined;
+        scanConfig.s3Config = undefined;
+        scanConfig.nextcloudConfig = undefined;
+        scanConfig.paperlessConfig = undefined;
+      }
+    });
+
     it("reports the failure and keeps the pdf when paperless rejects the upload", async () => {
       scanConfig.paperlessConfig = paperlessConfig();
       nock("http://paperless.example.test")
@@ -226,6 +322,65 @@ describe("postProcessing", () => {
       expect(result.uploadSucceeded).to.equal(true);
       expect(result.failures).to.deep.equal([]);
       expect(existsSync(filePath)).to.equal(false);
+    });
+
+    it("keeps going when the webhook cannot read the scan file", async () => {
+      scanJobContent.meta = {
+        command: "listen",
+        scanCount: 1,
+        device: { ip: "127.0.0.1", isEscl: false },
+        target: undefined,
+        settings: {
+          inputSource: InputSource.Adf,
+          contentType: "Photo",
+          format: "jpg",
+          sourceFormat: "jpg",
+          mode: ScanMode.Color,
+          colorDepth: 8,
+          channels: 3,
+          resolution: 200,
+          isDuplex: false,
+          pageCountingStrategy: PageCountingStrategy.Normal,
+          paperSize: undefined,
+          paperDim: undefined,
+        },
+        startedAt: new Date().toISOString(),
+        instance: { id: "test", startedAt: new Date().toISOString() },
+      };
+      // The element path does not exist: sendScanEvent throws while reading
+      // it. The scan itself must still complete (nothing was delivered).
+      scanJobContent = {
+        elements: [
+          {
+            pageNumber: 1,
+            path: path.join(tempFolder, "missing.jpg"),
+            width: 100,
+            height: 100,
+            xResolution: 96,
+            yResolution: 96,
+          },
+        ],
+        meta: scanJobContent.meta,
+      };
+      scanConfig.webhookConfig = {
+        url: "http://webhook.example.test",
+        auth: "none",
+        authHeader: "x-webhook-signature",
+        keepFiles: false,
+      };
+
+      const result = await postProcessing(
+        scanConfig,
+        tempFolder,
+        tempFolder,
+        1,
+        scanJobContent,
+        new Date(),
+        false,
+      );
+
+      expect(result.uploadSucceeded).to.equal(true);
+      scanConfig.webhookConfig = undefined;
     });
 
     it("groups multi-page scans into a single pdf for paperless", async () => {

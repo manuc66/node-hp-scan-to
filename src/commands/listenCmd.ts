@@ -17,6 +17,7 @@ import PathHelper from "../PathHelper.js";
 
 import { DuplexMode } from "../type/duplexMode.js";
 import { TargetDuplexMode } from "../type/targetDuplexMode.js";
+import { JobState } from "../hpModels/Job.js";
 import type { ScanConfig } from "../type/scanConfigs.js";
 import { PageCountingStrategy } from "../type/pageCountingStrategy.js";
 import { ScanPlexMode } from "../hpModels/ScanPlexMode.js";
@@ -198,6 +199,15 @@ export async function processScanWithDestination(
     pageCountingStrategy,
   );
 
+  if (scanJobContent.meta) {
+    scanJobContent.meta.settings.duplexMode = duplexMode;
+    scanJobContent.meta.settings.targetDuplexMode = targetDuplexMode;
+    if (selectedScanTarget.duplexAssemblyMode !== undefined) {
+      scanJobContent.meta.settings.duplexAssemblyMode =
+        selectedScanTarget.duplexAssemblyMode;
+    }
+  }
+
   frontOfDoubleSidedScanContext = await handleScanResult(
     duplexMode,
     frontOfDoubleSidedScanContext,
@@ -331,7 +341,24 @@ export function assembleDuplexScan(
       break;
   }
 
-  const duplexScan: ScanContent = { elements: [] };
+  const meta = frontScan.meta ?? backScan.meta;
+  if (meta !== undefined) {
+    meta.settings.duplexMode = DuplexMode.Duplex;
+    const frontCount = frontScan.meta?.job?.count ?? 0;
+    const backCount = backScan.meta?.job?.count ?? 0;
+    const count = frontCount + backCount;
+    if (count > 0) {
+      const state =
+        backScan.meta?.job?.state ??
+        frontScan.meta?.job?.state ??
+        JobState.Completed;
+      meta.job = { state, count };
+    }
+  }
+  const duplexScan: ScanContent =
+    meta === undefined
+      ? { elements: [] }
+      : { elements: [], meta };
   const maxLength = Math.max(frontContent.length, backContent.length);
 
   // Interleave pages, tolerating missing last back page gracefully

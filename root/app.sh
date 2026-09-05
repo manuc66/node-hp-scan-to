@@ -101,6 +101,39 @@ elif [ -n "$NEXTCLOUD_PASSWORD" ]; then
     ARGS+=("--nextcloud-password" "$NEXTCLOUD_PASSWORD")
 fi
 
+if [ -n "$WEBHOOK_URL" ]; then
+    ARGS+=("--webhook-url" "$WEBHOOK_URL")
+fi
+
+if [ -n "$WEBHOOK_AUTH" ]; then
+    ARGS+=("--webhook-auth" "$WEBHOOK_AUTH")
+fi
+
+if [ -n "$WEBHOOK_AUTH_HEADER" ]; then
+    ARGS+=("--webhook-auth-header" "$WEBHOOK_AUTH_HEADER")
+fi
+
+if [ -n "$WEBHOOK_SECRET_FILE" ]; then
+    ARGS+=("--webhook-secret-file" "$WEBHOOK_SECRET_FILE")
+elif [ -n "$WEBHOOK_SECRET" ]; then
+    ARGS+=("--webhook-secret" "$WEBHOOK_SECRET")
+fi
+
+if [ -n "$WEBHOOK_TOKEN" ]; then
+    ARGS+=("--webhook-token" "$WEBHOOK_TOKEN")
+fi
+
+if [ -n "$WEBHOOK_USERNAME" ]; then
+    ARGS+=("--webhook-username" "$WEBHOOK_USERNAME")
+fi
+
+if [ -n "$WEBHOOK_PASSWORD" ]; then
+    ARGS+=("--webhook-password" "$WEBHOOK_PASSWORD")
+fi
+
+
+
+
 if [ -n "$CMDLINE" ]; then
     # Split CMDLINE into words and add to ARGS
     set -- $CMDLINE

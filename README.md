@@ -86,6 +86,14 @@ There is a good chance it also works on other unlisted HP All-in-One Printer.
   - Local folders
   - [Paperless-ngx API](https://docs.paperless-ngx.com/api/) upload
   - [Nextcloud WebDAV](https://docs.Nextcloud.com/server/latest/user_manual/en/files/access_webdav.html) upload
+  - S3-compatible (AWS S3, MinIO, Cloudflare R2, Wasabi...) upload
+  - Webhook notification (JSON event with idempotency key, `scan-completed` /
+    `scan-delivery-failed` event types, per-page descriptors and delivery
+    outcomes). Each file carries `size`/`sha256` plus its location (`local`
+    path, S3 `bucket`/`key` or Nextcloud WebDAV URL); the event is a metadata
+    notification, so with `--keep-files` disabled the local `path` may be
+    cleaned up after a successful delivery. OpenAPI contract:
+    [`protocol_doc/webhook/openapi.yaml`](protocol_doc/webhook/openapi.yaml).
 
 ### Protocol Support
 
@@ -287,6 +295,22 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `--nextcloud-upload-folder`           | Nextcloud folder for uploads. Defaults to `scan`.                                                                                                                                                                              | `--nextcloud-upload-folder scan`                                  |
 | `--nextcloud-url`                     | Nextcloud instance URL.                                                                                                                                                                                                        | `--nextcloud-url https://domain.tld` (no default)                 |
 | `--nextcloud-username`                | Nextcloud username with write access to the upload folder.                                                                                                                                                                     | `--nextcloud-username user` (no default)                          |
+| `--s3-url`                            | S3-compatible endpoint URL.                                                                                                                                                                                                    | `--s3-url https://s3.us-east-1.amazonaws.com` (no default)        |
+| `--s3-region`                         | S3 region used for request signing. Defaults to `us-east-1`.                                                                                                                                                                   | `--s3-region eu-west-1`                                            |
+| `--s3-access-key-id`                  | S3 access key id.                                                                                                                                                                                                              | `--s3-access-key-id AKIA...` (no default)                         |
+| `--s3-secret-access-key`              | S3 secret access key. Required unless `--s3-secret-access-key-file` is used. Overrides if both are provided.                                                                                                                    | `--s3-secret-access-key ...` (no default)                         |
+| `--s3-secret-access-key-file`         | File containing the S3 secret access key. Required unless `--s3-secret-access-key` is used. Takes precedence if both are provided.                                                                                              | `--s3-secret-access-key-file /path/to/file` (no default)          |
+| `--s3-bucket`                         | S3 bucket to upload scans into.                                                                                                                                                                                                | `--s3-bucket scans` (no default)                                  |
+| `--s3-prefix`                         | Folder (prefix) inside the bucket. Defaults to the bucket root.                                                                                                                                                                | `--s3-prefix 2026/08`                                              |
+| `--s3-force-path-style`               | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...).                                                                                                                                                    | `--s3-force-path-style` (disabled by default)                     |
+| `--s3-session-token`                  | S3 session token for temporary credentials.                                                                                                                                                                                    | `--s3-session-token ...` (no default)                             |
+| `--webhook-url`                       | Webhook URL to POST scan events to (JSON with idempotency-key header).                                                                                           | `--webhook-url https://n8n.example/webhook/scan` (no default)      |
+| `--webhook-auth`                      | Auth scheme for the webhook request: `none`, `hmac`, `bearer` or `basic` (default: inferred from the configured credentials).                                                                                                    | `--webhook-auth hmac` (auto)                                       |
+| `--webhook-auth-header`               | Header name carrying the HMAC signature.                                                                                                                                                                                         | `x-webhook-signature` (default)                                    |
+| `--webhook-secret`                    | HMAC-SHA256 signing secret, used as-is (not hex-decoded); the resulting signature is sent as hex in the auth header. Required unless `--webhook-secret-file` is used. Overrides if both are provided.                            | `--webhook-secret s3cr3t` (no default)                             |
+| `--webhook-secret-file`               | File containing the HMAC signing secret. Required unless `--webhook-secret` is used. Takes precedence if both are provided.                                                                                                      | `--webhook-secret-file /path/to/file` (no default)                 |
+| `--webhook-token`                     | Bearer token sent as `Authorization: Bearer <token>`.                                                                                                                                                                            | `--webhook-token tok...` (no default)                              |
+| `--webhook-username` / `--webhook-password` | Basic auth credentials sent as `Authorization: Basic`.                                                                                                                                                                     | `--webhook-username scanner --webhook-password ...` (no default)   |
 
 **Notes:**
 
@@ -387,7 +411,6 @@ By default, this app runs the `listen` command as the default mode. It will list
 Run `npx node-hp-scan-to listen --help` to get the full list of command options.
 
 <!-- BEGIN HELP command: listen -->
-
 ```text
 Usage:  listen [options]
 
@@ -395,7 +418,7 @@ Listen the device for new scan job to save to this target
 
 Output Options:
   -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
-  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
 
@@ -428,6 +451,27 @@ Nextcloud Options:
   --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
   --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
 
+S3 Options:
+  --s3-url <s3_url>                                                The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)
+  --s3-region <s3_region>                                          The S3 region used for request signing (default: us-east-1)
+  --s3-access-key-id <s3_access_key_id>                            The S3 access key id
+  --s3-secret-access-key <s3_secret_access_key>                    The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.
+  --s3-secret-access-key-file <s3_secret_access_key_file>          File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.
+  --s3-bucket <s3_bucket>                                          The S3 bucket where scans are uploaded
+  --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
+  --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
+  --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
+Webhook Options:
+  --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
+
 Device Control Screen Options:
   -l, --label <label>                                              The label to display on the device (the default is the hostname)
   --add-emulated-duplex [mode]                                     Enable emulated duplex scanning, with optional assembly mode (default: document-wise) (choices: "page-wise", "document-wise", "reverse-front", "reverse-both")
@@ -440,7 +484,6 @@ Global Options:
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
-
 <!-- END HELP command: listen -->
 
 ##### `adf-autoscan`
@@ -474,7 +517,6 @@ redacted as `[Redacted]` in every log line.
 Run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help.
 
 <!-- BEGIN HELP command: adf-autoscan -->
-
 ```text
 Usage:  adf-autoscan [options]
 
@@ -483,7 +525,7 @@ the automatic document feeder (adf)
 
 Output Options:
   -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
-  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
@@ -518,6 +560,27 @@ Nextcloud Options:
   --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
   --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
 
+S3 Options:
+  --s3-url <s3_url>                                                The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)
+  --s3-region <s3_region>                                          The S3 region used for request signing (default: us-east-1)
+  --s3-access-key-id <s3_access_key_id>                            The S3 access key id
+  --s3-secret-access-key <s3_secret_access_key>                    The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.
+  --s3-secret-access-key-file <s3_secret_access_key_file>          File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.
+  --s3-bucket <s3_bucket>                                          The S3 bucket where scans are uploaded
+  --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
+  --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
+  --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
+Webhook Options:
+  --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
+
 Auto-scan Options:
   --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
   --start-scan-delay <startScanDelay>                              Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan
@@ -529,7 +592,6 @@ Global Options:
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
-
 <!-- END HELP command: adf-autoscan -->
 
 ##### `clear-registrations`
@@ -545,7 +607,6 @@ docker run -e MAIN_COMMAND="clear-registrations" docker.io/manuc66/node-hp-scan-
 ```
 
 <!-- BEGIN HELP command: clear-registrations -->
-
 ```text
 Usage:  clear-registrations [options]
 
@@ -561,7 +622,6 @@ Global Options:
   --health-check                           Start an http health check endpoint
   --health-check-port <health-check-port>  Define the port for the HTTP health check endpoint
 ```
-
 <!-- END HELP command: clear-registrations -->
 
 ##### `single-scan`
@@ -577,7 +637,6 @@ docker run -e MAIN_COMMAND="single-scan" docker.io/manuc66/node-hp-scan-to:lates
 ```
 
 <!-- BEGIN HELP command: single-scan -->
-
 ```text
 Usage:  single-scan [options]
 
@@ -585,7 +644,7 @@ Trigger a new scan job
 
 Output Options:
   -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
-  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
@@ -620,6 +679,27 @@ Nextcloud Options:
   --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
   --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
 
+S3 Options:
+  --s3-url <s3_url>                                                The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)
+  --s3-region <s3_region>                                          The S3 region used for request signing (default: us-east-1)
+  --s3-access-key-id <s3_access_key_id>                            The S3 access key id
+  --s3-secret-access-key <s3_secret_access_key>                    The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.
+  --s3-secret-access-key-file <s3_secret_access_key_file>          File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.
+  --s3-bucket <s3_bucket>                                          The S3 bucket where scans are uploaded
+  --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
+  --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
+  --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
+Webhook Options:
+  --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
+
 Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                                                Name of the device to lookup for on the network
@@ -627,7 +707,6 @@ Global Options:
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
-
 <!-- END HELP command: single-scan -->
 
 ### Run with Docker
@@ -651,6 +730,8 @@ Be aware that with Docker you have to specify the IP address of the printer via 
 You could however use Docker's [macvlan](https://docs.docker.com/engine/network/drivers/macvlan/) networking, this way you can use service discovery and the `NAME` environment variable.
 
 All scanned files are written to the volume `/scan`, the filename can be changed with the `PATTERN` environment variable. For the correct permissions to the volume set the environment variables `PUID` and `PGID` to that of the user running the container (usually `PUID=1000` and `PGID=1000`).
+
+When `WEBHOOK_URL` is set, scan events are sent best-effort: a single POST per event, and failures are logged.
 
 #### Docker Environment Variables
 
@@ -681,6 +762,23 @@ List of supported environment variables and their meaning, or correspondence wit
 | `MODE`                        | Scan mode setting                                                                                             | `--mode`                                                                      |
 | `PAPER_ORIENTATION`           | Paper orientation: portrait (default) or landscape. Applied to `PAPER_SIZE` only.                             | `--paper-orientation`                                                         |
 | `TEMP_DIR`                    | Temporary directory                                                                                           | `-t` / `--temp-directory`                                                     |
+| `S3_URL`                      | S3-compatible endpoint URL                                                                                    | `--s3-url`                                                                    |
+| `S3_REGION`                   | S3 region used for request signing (default `us-east-1`)                                                      | `--s3-region`                                                                 |
+| `S3_ACCESS_KEY_ID`            | S3 access key id                                                                                              | `--s3-access-key-id`                                                          |
+| `S3_SECRET_ACCESS_KEY`        | S3 secret access key (either this or `S3_SECRET_ACCESS_KEY_FILE` is required; file takes precedence)          |                                                                               |
+| `S3_SECRET_ACCESS_KEY_FILE`   | File containing the S3 secret access key (preferred for Docker Compose secrets)                               | Example: `./s3_secret.secret`                                                 |
+| `S3_BUCKET`                   | S3 bucket to upload scans into                                                                                | `--s3-bucket`                                                                 |
+| `S3_PREFIX`                   | Folder (prefix) inside the bucket (default bucket root)                                                       | `--s3-prefix`                                                                 |
+| `S3_FORCE_PATH_STYLE`         | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)                                    | `--s3-force-path-style`                                                       |
+| `S3_SESSION_TOKEN`            | S3 session token for temporary credentials                                                                    | `--s3-session-token`                                                          |
+| `WEBHOOK_URL`                 | Webhook URL to POST scan events to (JSON, idempotency-key header, outbox retries)                             | `--webhook-url`                                                               |
+| `WEBHOOK_AUTH`                | Auth scheme: `none`, `hmac`, `bearer` or `basic` (default: inferred from the credentials)                     | `--webhook-auth`                                                              |
+| `WEBHOOK_AUTH_HEADER`         | Header name carrying the HMAC signature (default `x-webhook-signature`)                                       | `--webhook-auth-header`                                                       |
+| `WEBHOOK_SECRET`              | HMAC-SHA256 signing secret (either this or `WEBHOOK_SECRET_FILE` is required; file takes precedence)          |                                                                               |
+| `WEBHOOK_SECRET_FILE`         | File containing the signing secret (preferred for Docker Compose secrets)                                     | Example: `./webhook_secret.secret`                                            |
+| `WEBHOOK_TOKEN`               | Bearer token sent as `Authorization: Bearer`                                                                  | `--webhook-token`                                                             |
+| `WEBHOOK_USERNAME`            | Basic auth username sent as `Authorization: Basic`                                                            | `--webhook-username`                                                          |
+| `WEBHOOK_PASSWORD`            | Basic auth password for `WEBHOOK_USERNAME`                                                                    | `--webhook-password`                                                          |
 
 **Additional Notes:**
 
