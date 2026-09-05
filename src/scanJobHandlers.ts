@@ -44,8 +44,6 @@ async function waitDeviceUntilItIsReadyToUploadOrCompleted(
 function recordJob(
   scanJobContent: ScanContent,
   jobState: JobState,
-  uri: string | null,
-  uuid: string | null,
 ): void {
   if (scanJobContent.meta === undefined) {
     return;
@@ -53,15 +51,9 @@ function recordJob(
   const job = (scanJobContent.meta.job ??= {
     state: jobState,
     count: 0,
-    jobs: [],
   });
   job.state = jobState;
-  job.jobs.push({
-    state: jobState,
-    uri,
-    uuid,
-  });
-  job.count = job.jobs.length;
+  job.count += 1;
 }
 
 async function fixJpegHeight(filePath: string): Promise<number | null> {
@@ -548,12 +540,12 @@ async function eSCLScanJobHandling(
         "job was not found in the device's status, this is probably a bug " +
         "in the device, the current scan will be marked as cancelled",
     );
-    recordJob(scanJobContent, JobState.Canceled, jobUri, jobUuid);
+    recordJob(scanJobContent, JobState.Canceled);
     return JobState.Canceled;
   }
 
   const state = mapToJobState(jobStateReason);
-  recordJob(scanJobContent, state, jobUri, jobUuid);
+  recordJob(scanJobContent, state);
   return state;
 }
 
@@ -624,7 +616,7 @@ export async function executeScanJob(
       scanCount,
       filePattern,
     );
-    recordJob(scanJobContent, jobState, jobUrl, null);
+    recordJob(scanJobContent, jobState);
   }
   return jobState;
 }

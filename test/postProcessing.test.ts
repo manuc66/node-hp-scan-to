@@ -180,26 +180,14 @@ describe("postProcessing", () => {
           inputSource: InputSource.Adf,
           contentType: "Document",
           format: "pdf",
-          sourceFormat: "jpg",
           mode: ScanMode.Color,
-          colorDepth: 8,
-          channels: 3,
           resolution: 200,
-          width: null,
-          height: null,
           isDuplex: false,
           pageCountingStrategy: PageCountingStrategy.Normal,
-          filePattern: undefined,
           paperSize: undefined,
-          paperDim: undefined,
-          paperOrientation: undefined,
         },
         startedAt: new Date().toISOString(),
-        instance: {
-          id: "test",
-          startedAt: new Date().toISOString(),
-          uptimeMs: 1,
-        },
+        instance: { id: "test", startedAt: new Date().toISOString() },
       };
       // outboxDir points at a regular file: writing an entry fails (ENOTDIR).
       const blockingFile = path.join(tempFolder, "blocker");

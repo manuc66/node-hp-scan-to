@@ -108,9 +108,8 @@ components:
         pages:
           type: array
           items:
-            type: object
-            additionalProperties: true
-          description: Reserved per-page data; currently always an empty array.
+            $ref: '#/components/schemas/WebhookPageDescriptor'
+          description: One descriptor per scanned page (ADF pages are not necessarily all the same size).
         files:
           type: array
           items:
@@ -150,6 +149,13 @@ components:
           allOf:
             - $ref: '#/components/schemas/ScanJobSummary'
           description: Device job summary, filled as scans run.
+        endedAt:
+          type: string
+          format: date-time
+          description: Filled in when the event is emitted.
+        durationMs:
+          type: integer
+          description: Scan duration in ms (event emission time minus startedAt).
     ScanDeviceInfo:
       type: object
       required: [ip, isEscl]
@@ -161,30 +167,21 @@ components:
           description: True when the device was reached through the eSCL protocol.
     ScanTargetInfo:
       type: object
-      required: [label, resourceURI, agingStamp]
+      required: [label, resourceURI]
       properties:
         label:
           type: string
+          description: Human-readable destination label shown on the printer.
         resourceURI:
           type: string
-        destinationURI:
-          type: string
-          nullable: true
-        agingStamp:
-          type: string
-        compEventURI:
-          type: string
-          nullable: true
+          description: Stable device identifier of the destination.
     ScanSettingsInfo:
       type: object
       required:
         - inputSource
         - contentType
         - format
-        - sourceFormat
         - mode
-        - colorDepth
-        - channels
         - resolution
         - isDuplex
         - pageCountingStrategy
@@ -198,27 +195,12 @@ components:
         format:
           type: string
           description: Format delivered to the target, e.g. `pdf` or `jpg`.
-        sourceFormat:
-          type: string
-          description: Format requested to the device, e.g. `jpg`.
         mode:
           type: string
           enum: [Gray, Color, Lineart]
-        colorDepth:
-          type: integer
-          description: Bits per channel (8 for Color/Gray, 1 for Lineart).
-        channels:
-          type: integer
-          description: 3 for Color, 1 otherwise.
         resolution:
           type: integer
           description: DPI.
-        width:
-          type: integer
-          nullable: true
-        height:
-          type: integer
-          nullable: true
         isDuplex:
           type: boolean
         duplexMode:
@@ -233,22 +215,12 @@ components:
         pageCountingStrategy:
           type: string
           enum: [Normal, "Odd Only", "Even Only"]
-        filePattern:
-          type: string
-          nullable: true
         paperSize:
           type: string
           nullable: true
-        paperDim:
-          type: string
-          nullable: true
-        paperOrientation:
-          type: string
-          enum: [portrait, landscape]
-          nullable: true
     ScanInstanceInfo:
       type: object
-      required: [id, startedAt, uptimeMs]
+      required: [id, startedAt]
       properties:
         id:
           type: string
@@ -256,41 +228,44 @@ components:
         startedAt:
           type: string
           format: date-time
-        uptimeMs:
-          type: integer
     ScanJobSummary:
       type: object
-      required: [state, count, jobs]
+      required: [state, count]
       properties:
         state:
           $ref: '#/components/schemas/JobState'
         count:
           type: integer
           description: Number of device jobs that produced the scan.
-        jobs:
-          type: array
-          items:
-            $ref: '#/components/schemas/ScanJobInfo'
-    ScanJobInfo:
-      type: object
-      required: [state, uri, uuid]
-      properties:
-        state:
-          $ref: '#/components/schemas/JobState'
-        uri:
-          type: string
-          nullable: true
-          description: Device job uri (eSCL pwg:JobUri or the HP job url).
-        uuid:
-          type: string
-          nullable: true
-          description: Only provided by eSCL devices.
     JobState:
       type: string
       enum: [Completed, Processing, Canceled, Blocked]
+    WebhookPageDescriptor:
+      type: object
+      required: [pageNumber, format, width, height, xResolution, yResolution]
+      properties:
+        pageNumber:
+          type: integer
+          description: 1-based page position in the scan (interleaved for emulated duplex).
+        format:
+          type: string
+          description: Extension without the dot, e.g. `jpg`.
+        width:
+          type: integer
+        height:
+          type: integer
+        xResolution:
+          type: integer
+          description: Horizontal DPI.
+        yResolution:
+          type: integer
+          description: Vertical DPI.
+        sizeBytes:
+          type: integer
+          description: File size in bytes when it could be read.
     WebhookFileDescriptor:
       type: object
-      required: [name, path, size, sha256, format]
+      required: [name, size, sha256, format]
       properties:
         name:
           type: string
@@ -298,8 +273,9 @@ components:
         path:
           type: string
           description: |
-            Local path at the time the event was created. May be cleaned up
-            after successful delivery (unless `--keep-files` is set).
+            Local path, only present when the file is stored locally. May be
+            cleaned up after successful delivery (unless `--keep-files` is
+            set); never exposed for remote stores.
         size:
           type: integer
           description: File size in bytes at event creation.

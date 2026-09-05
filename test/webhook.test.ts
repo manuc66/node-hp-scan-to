@@ -68,25 +68,16 @@ function buildMetadata(): ScanMetadata {
       inputSource: InputSource.Adf,
       contentType: "Document",
       format: "pdf",
-      sourceFormat: "jpg",
       mode: ScanMode.Gray,
-      colorDepth: 8,
-      channels: 1,
       resolution: 200,
-      width: null,
-      height: null,
       isDuplex: false,
       pageCountingStrategy: PageCountingStrategy.Normal,
-      filePattern: undefined,
       paperSize: undefined,
-      paperDim: undefined,
-      paperOrientation: undefined,
     },
     startedAt: "2026-08-31T22:32:10.154Z",
     instance: {
       id: "instance-1",
       startedAt: "2026-08-31T22:00:00.000Z",
-      uptimeMs: 1234,
     },
   };
 }
@@ -413,6 +404,19 @@ describe("webhook", () => {
         bucket: "scans",
         key: "2026/08/scan.pdf",
       });
+      expect(payload.files[0]).to.not.have.property("path");
+    });
+
+    it("keeps the local path only for files stored locally", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+
+      const payload = JSON.parse(srv.requests[0].body.toString("utf8")) as {
+        files: { path?: string }[];
+      };
+      expect(payload.files[0].path).to.equal(filePath);
     });
 
     it("publishes a scan-delivery-failed event when a delivery target failed", async () => {

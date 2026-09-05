@@ -16,7 +16,6 @@ import type {
   SingleScanConfig,
 } from "./type/scanConfigs.js";
 import { ScanFormat } from "./type/scanFormat.js";
-import { ScanMode } from "./type/scanMode.js";
 import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
 import type { IScanStatus } from "./hpModels/IScanStatus.js";
 import { ScannerState } from "./hpModels/ScannerState.js";
@@ -39,7 +38,6 @@ function buildInstanceInfo() {
   return {
     id: instanceId,
     startedAt: instanceStartedAt,
-    uptimeMs: Math.round(process.uptime() * 1000),
   };
 }
 
@@ -66,20 +64,7 @@ function buildScanMetadataInputTarget(
   return {
     label: target.label,
     resourceURI: target.resourceURI,
-    destinationURI: target.event.destinationURI,
-    agingStamp: target.event.agingStamp,
-    compEventURI: target.event.compEventURI,
   };
-}
-
-function colorDepthFor(mode: ScanMode): { colorDepth: number; channels: number } {
-  if (mode === ScanMode.Color) {
-    return { colorDepth: 8, channels: 3 };
-  }
-  if (mode === ScanMode.Gray) {
-    return { colorDepth: 8, channels: 1 };
-  }
-  return { colorDepth: 1, channels: 1 };
 }
 
 function buildScanMetadata(input: ScanMetadataInput): ScanMetadata {
@@ -98,19 +83,11 @@ function buildScanMetadata(input: ScanMetadataInput): ScanMetadata {
       inputSource: input.inputSource,
       contentType: input.contentType,
       format: input.isPdf ? "pdf" : imageFormat.getExtension(),
-      sourceFormat: imageFormat.getExtension(),
       mode: input.scanConfig.mode,
-      colorDepth: colorDepthFor(input.scanConfig.mode).colorDepth,
-      channels: colorDepthFor(input.scanConfig.mode).channels,
       resolution: input.scanConfig.resolution,
-      width: input.scanWidth,
-      height: input.scanHeight,
       isDuplex: input.isDuplex,
       pageCountingStrategy: input.pageCountingStrategy,
-      filePattern: input.scanConfig.directoryConfig.filePattern,
       paperSize: input.scanConfig.paperSize,
-      paperDim: input.scanConfig.paperDim,
-      paperOrientation: input.scanConfig.paperOrientation,
     },
     startedAt: new Date().toISOString(),
     instance: buildInstanceInfo(),

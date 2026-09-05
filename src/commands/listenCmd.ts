@@ -17,6 +17,7 @@ import PathHelper from "../PathHelper.js";
 
 import { DuplexMode } from "../type/duplexMode.js";
 import { TargetDuplexMode } from "../type/targetDuplexMode.js";
+import { JobState } from "../hpModels/Job.js";
 import type { ScanConfig } from "../type/scanConfigs.js";
 import { PageCountingStrategy } from "../type/pageCountingStrategy.js";
 import { ScanPlexMode } from "../hpModels/ScanPlexMode.js";
@@ -343,12 +344,15 @@ export function assembleDuplexScan(
   const meta = frontScan.meta ?? backScan.meta;
   if (meta !== undefined) {
     meta.settings.duplexMode = DuplexMode.Duplex;
-    const frontJobs = frontScan.meta?.job?.jobs ?? [];
-    const backJobs = backScan.meta?.job?.jobs ?? [];
-    const jobs = [...frontJobs, ...backJobs];
-    if (jobs.length > 0) {
-      const state = jobs[jobs.length - 1].state;
-      meta.job = { state, count: jobs.length, jobs };
+    const frontCount = frontScan.meta?.job?.count ?? 0;
+    const backCount = backScan.meta?.job?.count ?? 0;
+    const count = frontCount + backCount;
+    if (count > 0) {
+      const state =
+        backScan.meta?.job?.state ??
+        frontScan.meta?.job?.state ??
+        JobState.Completed;
+      meta.job = { state, count };
     }
   }
   const duplexScan: ScanContent =

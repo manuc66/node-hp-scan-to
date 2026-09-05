@@ -15,11 +15,10 @@ export interface ScanDeviceInfo {
 }
 
 export interface ScanTargetInfo {
+  /** Human-readable destination label shown on the printer. */
   label: string;
+  /** Stable device identifier of the destination (correlates events). */
   resourceURI: string;
-  destinationURI: string | undefined;
-  agingStamp: string;
-  compEventURI: string | undefined;
 }
 
 export interface ScanSettingsInfo {
@@ -27,16 +26,8 @@ export interface ScanSettingsInfo {
   contentType: "Document" | "Photo";
   /** Format delivered to the caller, e.g. "pdf" or "jpg". */
   format: string;
-  /** Image format requested to the device, e.g. "jpg". */
-  sourceFormat: string;
   mode: ScanMode;
-  /** Bits per channel (8 for Color/Gray, 1 for Lineart). */
-  colorDepth: number;
-  /** Number of color channels (3 for Color, 1 otherwise). */
-  channels: number;
   resolution: number;
-  width: number | null;
-  height: number | null;
   isDuplex: boolean;
   /** Resolved duplex mode for the scan (set by listen, e.g. emulated duplex). */
   duplexMode?: DuplexMode;
@@ -45,10 +36,7 @@ export interface ScanSettingsInfo {
   /** Assembly mode used for emulated duplex scans (set by listen). */
   duplexAssemblyMode?: DuplexAssemblyMode;
   pageCountingStrategy: PageCountingStrategy;
-  filePattern: string | undefined;
   paperSize: string | undefined;
-  paperDim: string | undefined;
-  paperOrientation: "portrait" | "landscape" | undefined;
 }
 
 export interface ScanInstanceInfo {
@@ -56,16 +44,6 @@ export interface ScanInstanceInfo {
   id: string;
   /** Timestamp the process started (ISO string). */
   startedAt: string;
-  /** Process uptime at the moment the metadata was built, in ms. */
-  uptimeMs: number;
-}
-
-export interface ScanJobInfo {
-  state: JobState;
-  /** Device job uri (eSCL pwg:JobUri, or the HP job url). */
-  uri: string | null;
-  /** Device job uuid (only provided by eSCL devices, otherwise null). */
-  uuid: string | null;
 }
 
 export interface ScanJobSummary {
@@ -73,14 +51,11 @@ export interface ScanJobSummary {
   state: JobState;
   /** Number of device jobs that produced this scan (usually 1). */
   count: number;
-  /** One entry per device job (emulated duplex and multi-page platen yield several). */
-  jobs: ScanJobInfo[];
 }
 
 /**
- * Metadata describing a scan, split from ScanContent.elements so that the
- * raw page data stays focused. Populated in scanProcessing.ts and currently
- * consumed by logs only (a webhook projection may reuse it later).
+ * Metadata describing a scan. Populated in scanProcessing.ts and exposed in
+ * the webhook event; only fields useful to a consumer of the event are kept.
  */
 export interface ScanMetadata {
   command: ScanCommand;

@@ -25,8 +25,8 @@ export interface WebhookFileLocation {
 
 export interface WebhookFileDescriptor {
   name: string;
-  /** Local path at the time the event was created (may be cleaned up later). */
-  path: string;
+  /** Local path, only present when the file is stored locally (may be cleaned up later). */
+  path?: string;
   size: number;
   sha256: string;
   format: string;
@@ -414,9 +414,10 @@ export async function sendScanEvent(
   for (const file of files) {
     const buffer = await fs.readFile(file.path);
     const contentType = file.contentType ?? inferContentType(file.path);
+    const remote = file.store === "s3" || file.store === "nextcloud";
     fileDescriptors.push({
       name: path.basename(file.path),
-      path: file.path,
+      ...(remote ? {} : { path: file.path }),
       size: buffer.length,
       sha256: sha256Hex(buffer),
       format: path.extname(file.path).replace(/^\./, ""),
