@@ -10,17 +10,15 @@ All notable changes to this project are documented in this file.
 
 - **Webhook notifications**: every completed scan POSTs a JSON event
   (`scan-completed`, or `scan-delivery-failed` when a delivery target failed)
-  to a configurable URL, carrying the scan metadata, the outcome of each
-  delivery target and one descriptor per file (name, size, SHA-256 and where
-  to fetch it: local path, S3 `bucket`/`key` or Nextcloud WebDAV URL). Events
-  are signed with HMAC-SHA256 (custom header supported) or authenticated with
-  bearer/basic auth, sent with an `idempotency-key` header and durably queued
-  in an outbox: delivery failures (5xx, 429, timeouts) are retried at startup
-  and after each scan, and events that keep failing are dead-lettered to
-  `<id>.failed.json` instead of being lost. Configured with the new
-  `--webhook-*` CLI options, the matching `webhook_*` config file keys or the
-  `WEBHOOK_*` environment variables (Docker). The event contract is described
-  in `protocol_doc/webhook/openapi.yaml`.
+  to a configurable URL, carrying the scan metadata, per-page descriptors, the
+  outcome of each delivery target and one descriptor per file (name, size,
+  SHA-256 and where to fetch it: local path, S3 `bucket`/`key` or Nextcloud
+  WebDAV URL). Events are signed with HMAC-SHA256 (custom header supported) or
+  authenticated with bearer/basic auth, sent with an `idempotency-key` header;
+  delivery is best-effort (a single POST, failures are logged). Configured
+  with the new `--webhook-*` CLI options, the matching `webhook_*` config file
+  keys or the `WEBHOOK_*` environment variables (Docker). The event contract
+  is described in `protocol_doc/webhook/openapi.yaml`.
 
 ### Changed
 

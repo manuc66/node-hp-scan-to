@@ -15,16 +15,6 @@ export interface WebhookConfig {
   username?: string;
   /** Basic auth password. */
   password?: string;
-  /** Durable directory where pending events survive restarts. */
-  outboxDir: string;
-  /** Max delivery attempts before dead-lettering an event. */
-  maxAttempts: number;
-  /**
-   * When false (default) the event is sent best-effort: a single POST, logged
-   * on failure, nothing persisted. When true the event is written to the
-   * outbox first and retried at startup and after each scan.
-   */
-  durableOutbox: boolean;
   keepFiles: boolean;
 }
 
