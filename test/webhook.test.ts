@@ -176,6 +176,37 @@ describe("webhook", () => {
       expect(payload.metadata.durationMs).to.be.greaterThanOrEqual(0);
     });
 
+    it("populates pages with per-page dimensions, resolution and size", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+      const pagePath = path.join(tempDir, "page1.jpg");
+      await fsPromises.writeFile(pagePath, "fake-page-content");
+      scanContent.elements.push({
+        pageNumber: 1,
+        path: pagePath,
+        width: 400,
+        height: 300,
+        xResolution: 96,
+        yResolution: 96,
+      });
+
+      await sendScanEvent(scanContent, [{ path: pagePath }], [], config);
+
+      const payload = JSON.parse(srv.requests[0].body.toString("utf8")) as {
+        pages: Record<string, unknown>[];
+      };
+      expect(payload.pages).to.have.length(1);
+      expect(payload.pages[0]).to.deep.include({
+        pageNumber: 1,
+        format: "jpg",
+        width: 400,
+        height: 300,
+        xResolution: 96,
+        yResolution: 96,
+      });
+      expect(payload.pages[0]).to.not.have.property("path");
+    });
+
     it("keeps the event in the outbox when the endpoint redirects (3xx)", async () => {
       let finalHit = false;
       const server = http.createServer((req, res) => {

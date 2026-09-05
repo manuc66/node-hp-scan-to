@@ -55,10 +55,22 @@ export interface WebhookEvent {
   type: string;
   time: string;
   metadata: ScanMetadata;
-  pages: unknown[];
+  pages: WebhookPageDescriptor[];
   files: WebhookFileDescriptor[];
   /** Outcome of every delivery attempt (paperless/nextcloud/s3/pdf...). */
   delivery: WebhookDeliveryTarget[];
+}
+
+export interface WebhookPageDescriptor {
+  /** 1-based page position in the scan (interleaved for emulated duplex). */
+  pageNumber: number;
+  format: string;
+  width: number;
+  height: number;
+  xResolution: number;
+  yResolution: number;
+  /** File size in bytes when it could be read (local path may be cleaned up). */
+  sizeBytes?: number;
 }
 
 export interface EnqueuedEventFile {
@@ -351,6 +363,35 @@ export async function flushOutbox(
 }
 
 /**
+ * One descriptor per scanned page. ADF pages are not necessarily the same
+ * size, so the consumer can rely on these to analyse the document without
+ * re-reading the files. The local path is intentionally not exposed.
+ */
+async function buildPageDescriptors(
+  scanContent: ScanContent,
+): Promise<WebhookPageDescriptor[]> {
+  return Promise.all(
+    scanContent.elements.map(async (element) => {
+      let sizeBytes: number | undefined;
+      try {
+        sizeBytes = (await fs.stat(element.path)).size;
+      } catch {
+        sizeBytes = undefined;
+      }
+      return {
+        pageNumber: element.pageNumber,
+        format: path.extname(element.path).replace(/^\./, ""),
+        width: element.width,
+        height: element.height,
+        xResolution: element.xResolution,
+        yResolution: element.yResolution,
+        ...(sizeBytes !== undefined ? { sizeBytes } : {}),
+      };
+    }),
+  );
+}
+
+/**
  * Builds the scan event, persists it in the outbox (write-ahead) and tries to
  * deliver it immediately. On failure the entry stays pending and is retried by
  * a later flushOutbox call.
@@ -385,6 +426,8 @@ export async function sendScanEvent(
     });
   }
 
+  const pageDescriptors = await buildPageDescriptors(scanContent);
+
   const events: WebhookEvent = {
     id: randomUUID(),
     type: deliveryFailed ? EVENT_DELIVERY_FAILED : EVENT_TYPE,
@@ -394,7 +437,7 @@ export async function sendScanEvent(
       endedAt: new Date().toISOString(),
       durationMs: Date.now() - new Date(scanContent.meta.startedAt).getTime(),
     },
-    pages: [],
+    pages: pageDescriptors,
     delivery,
     files: fileDescriptors,
   };
