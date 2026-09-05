@@ -6,6 +6,15 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **S3-compatible upload target**: scans (individual images or merged PDFs)
+  can be uploaded to AWS S3, MinIO, Cloudflare R2, Wasabi and other
+  S3-compatible stores, with SigV4 request signing, bucket prefix, path-style
+  addressing and optional STS session tokens. Configured with the new
+  `--s3-*` CLI options, the matching `s3_*` config file keys or the
+  `S3_*` environment variables (Docker).
+
 ### Changed
 
 - **Early validation of file patterns**: the `--pattern` / `pattern` value is
