@@ -75,6 +75,29 @@ function sha256Hex(data: Buffer): string {
   return createHash("sha256").update(data).digest("hex");
 }
 
+/**
+ * Fallback MIME type from the file extension, used when the device did not
+ * report a content type (PDFs and locally generated images).
+ */
+function inferContentType(filePath: string): string | undefined {
+  switch (path.extname(filePath).replace(/^\./, "").toLowerCase()) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "bmp":
+      return "image/bmp";
+    case "tif":
+    case "tiff":
+      return "image/tiff";
+    case "pdf":
+      return "application/pdf";
+    default:
+      return undefined;
+  }
+}
+
 function signPayload(body: Buffer, secret: string): string {
   return createHmac("sha256", secret).update(body).digest("hex");
 }
@@ -312,15 +335,14 @@ export async function sendScanEvent(
   const fileDescriptors: WebhookFileDescriptor[] = [];
   for (const file of files) {
     const buffer = await fs.readFile(file.path);
+    const contentType = file.contentType ?? inferContentType(file.path);
     fileDescriptors.push({
       name: path.basename(file.path),
       path: file.path,
       size: buffer.length,
       sha256: sha256Hex(buffer),
       format: path.extname(file.path).replace(/^\./, ""),
-      ...(file.contentType !== undefined
-        ? { contentType: file.contentType }
-        : {}),
+      ...(contentType !== undefined ? { contentType } : {}),
       ...(file.store !== undefined ? { store: file.store } : {}),
       ...(file.location !== undefined ? { location: file.location } : {}),
     });

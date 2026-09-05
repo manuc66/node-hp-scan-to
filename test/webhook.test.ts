@@ -150,6 +150,18 @@ describe("webhook", () => {
       expect(remaining.filter((f) => f.endsWith(".json"))).to.deep.equal([]);
     });
 
+    it("infers the content type from the file extension when not provided", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+
+      const payload = JSON.parse(srv.requests[0].body.toString("utf8")) as {
+        files: { contentType?: string }[];
+      };
+      expect(payload.files[0].contentType).to.equal("application/pdf");
+    });
+
     it("keeps the event in the outbox when the endpoint redirects (3xx)", async () => {
       let finalHit = false;
       const server = http.createServer((req, res) => {
