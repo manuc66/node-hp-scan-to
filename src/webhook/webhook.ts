@@ -129,7 +129,8 @@ async function atomicallyWrite(
 ): Promise<void> {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   const tmpPath = `${filePath}.tmp`;
-  await fs.writeFile(tmpPath, content, "utf8");
+  // 0600: outbox entries carry scan metadata and auth tokens, never world-readable.
+  await fs.writeFile(tmpPath, content, { encoding: "utf8", mode: 0o600 });
   await fs.rename(tmpPath, filePath);
 }
 

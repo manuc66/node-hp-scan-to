@@ -174,6 +174,20 @@ describe("webhook", () => {
       expect(remaining.filter((f) => f.endsWith(".json"))).to.have.length(1);
     });
 
+    it("writes outbox entries with restrictive permissions (0600)", async () => {
+      const srv = await startServer([500]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+
+      const entries = (await fsPromises.readdir(tempDir)).filter((f) =>
+        f.endsWith(".json"),
+      );
+      expect(entries).to.have.length(1);
+      const stat = await fsPromises.stat(path.join(tempDir, entries[0]));
+      expect(stat.mode & 0o777).to.equal(0o600);
+    });
+
     it("signs the payload with the secret when configured", async () => {
       const srv = await startServer([200]);
       config.url = `http://127.0.0.1:${srv.port}`;
