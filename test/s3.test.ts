@@ -30,14 +30,21 @@ function computeExpectedAuthorization(
   host: string,
   body: Buffer,
   amzDate: string,
+  sessionToken?: string,
 ): string {
   const payloadHash = sha256Hex(body);
-  const canonicalHeaders = `${[
+  const canonicalHeadersParts = [
     `host:${host}`,
     `x-amz-content-sha256:${payloadHash}`,
     `x-amz-date:${amzDate}`,
-  ].join("\n")}\n`;
-  const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+  ];
+  const signedHeadersParts = ["host", "x-amz-content-sha256", "x-amz-date"];
+  if (sessionToken !== undefined) {
+    canonicalHeadersParts.push(`x-amz-security-token:${sessionToken}`);
+    signedHeadersParts.push("x-amz-security-token");
+  }
+  const canonicalHeaders = `${canonicalHeadersParts.join("\n")}\n`;
+  const signedHeaders = signedHeadersParts.join(";");
   const canonicalRequest = [
     method,
     pathName,
@@ -78,6 +85,7 @@ function startVerifyingServer(): Promise<http.Server> {
           req.headers.host!,
           body,
           amzDate,
+          req.headers["x-amz-security-token"] as string | undefined,
         );
         const ok =
           req.method === "PUT" &&
@@ -181,6 +189,20 @@ describe("s3", () => {
 
         scanJobContent.elements.push(scanPage);
         scanJobContent.elements.push(scanPage);
+        scanJobContent.elements.push(scanPage);
+
+        await uploadImagesToS3(scanJobContent, s3Config);
+      } finally {
+        server.close();
+      }
+    });
+
+    it("signs with the STS session token in the canonical request", async () => {
+      const server = await startVerifyingServer();
+      try {
+        const port = (server.address() as AddressInfo).port;
+        const s3Config = buildS3Config(`http://127.0.0.1:${port}`, true);
+        s3Config.sessionToken = "sts-session-token";
         scanJobContent.elements.push(scanPage);
 
         await uploadImagesToS3(scanJobContent, s3Config);
