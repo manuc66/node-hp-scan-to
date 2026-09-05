@@ -2,6 +2,7 @@ import axios from "axios";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { existsSync } from "node:fs";
 import type { ScanContent } from "../type/ScanContent.js";
 import type { ScanMetadata } from "../type/ScanMetadata.js";
 import type { WebhookConfig } from "./WebhookConfig.js";
@@ -72,6 +73,16 @@ export interface WebhookPageDescriptor {
   sizeBytes?: number;
 }
 
+export interface EnqueuedEventFile {
+  id: string;
+  eventType: string;
+  createdAt: string;
+  attempts: number;
+  nextAttemptAt: string;
+  /** Raw payload body as sent (kept byte-for-byte for retries). */
+  payload: WebhookEvent;
+}
+
 function sha256Hex(data: Buffer): string {
   return createHash("sha256").update(data).digest("hex");
 }
@@ -127,8 +138,93 @@ function applyAuth(
   }
 }
 
+function outboxEntryPath(outboxDir: string, id: string): string {
+  return path.join(outboxDir, `${id}.json`);
+}
+
+function deadLetterPath(outboxDir: string, id: string): string {
+  return path.join(outboxDir, `${id}.failed.json`);
+}
+
+async function readOutboxEntry(
+  filePath: string,
+): Promise<EnqueuedEventFile | null> {
+  try {
+    const raw = await fs.readFile(filePath, "utf8");
+    return JSON.parse(raw) as EnqueuedEventFile;
+  } catch (e) {
+    logger.error(e, `Failed to read outbox entry ${filePath}, skipping it`);
+    return null;
+  }
+}
+
+async function atomicallyWrite(
+  filePath: string,
+  content: string,
+): Promise<void> {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  const tmpPath = `${filePath}.tmp`;
+  // 0600: outbox entries carry scan metadata and auth tokens, never world-readable.
+  await fs.writeFile(tmpPath, content, { encoding: "utf8", mode: 0o600 });
+  await fs.rename(tmpPath, filePath);
+}
+
+async function enqueueEvent(
+  webhookConfig: WebhookConfig,
+  payload: WebhookEvent,
+): Promise<void> {
+  const entry: EnqueuedEventFile = {
+    id: payload.id,
+    eventType: payload.type,
+    createdAt: new Date().toISOString(),
+    attempts: 0,
+    nextAttemptAt: new Date().toISOString(),
+    payload,
+  };
+  await atomicallyWrite(
+    outboxEntryPath(webhookConfig.outboxDir, payload.id),
+    JSON.stringify(entry),
+  );
+}
+
 /**
- * Best-effort delivery: a single POST, logged on failure, nothing persisted.
+ * Sends the event once. Returns "success", "dead-letter" or "retry".
+  * "success": 2xx (and other non-error statuses). "dead-letter": permanent 4xx
+  * (except 429/408 which are transient). "retry": 408/429/5xx, redirects (3xx),
+  * timeout or network failure — the entry stays in the outbox for a later attempt.
+  */
+async function deliverEvent(
+  webhookConfig: WebhookConfig,
+  entry: EnqueuedEventFile,
+): Promise<"success" | "dead-letter" | "retry"> {
+  try {
+    const status = await sendEventOnce(webhookConfig, entry.id, entry.payload);
+    if (status >= 200 && status < 300) {
+      logger.info(`Webhook acknowledged event ${entry.id}`);
+      return "success";
+    }
+    if (
+      (status >= 300 && status < 400) ||
+      status === 408 ||
+      status === 429 ||
+      status >= 500
+    ) {
+      logger.warn(`Webhook responded ${status}, event will be retried`);
+      return "retry";
+    }
+    logger.warn(
+      `Webhook rejected event ${entry.id} with ${status}, dead-lettering it`,
+    );
+    return "dead-letter";
+  } catch (error) {
+    logger.error(error, `Webhook delivery failed for event ${entry.id}`);
+    return "retry";
+  }
+}
+
+/**
+ * Best-effort delivery used when the durable outbox is disabled: a single
+ * POST, logged on failure, nothing persisted.
  */
 async function deliverBestEffort(
   webhookConfig: WebhookConfig,
@@ -177,6 +273,93 @@ async function sendEventOnce(
     validateStatus: () => true,
   });
   return response.status;
+}
+
+async function removeOutboxEntry(outboxDir: string, id: string): Promise<void> {
+  await fs.rm(outboxEntryPath(outboxDir, id), { force: true });
+}
+
+async function deadLetterEntry(
+  outboxDir: string,
+  id: string,
+  reason: string,
+): Promise<void> {
+  try {
+    const entryPath = outboxEntryPath(outboxDir, id);
+    const failedPath = deadLetterPath(outboxDir, id);
+    if (existsSync(entryPath)) {
+      const content = await fs.readFile(entryPath, "utf8");
+      await atomicallyWrite(
+        failedPath,
+        JSON.stringify({ ...JSON.parse(content), deadLetteredWith: reason }),
+      );
+      await fs.rm(entryPath, { force: true });
+    }
+    logger.warn(`Event ${id} has been dead-lettered (${reason})`);
+  } catch (e) {
+    logger.error(e, `Failed to dead-letter event ${id}`);
+  }
+}
+
+/**
+ * Attempts delivery of every pending outbox entry (skipping those scheduled
+ * for a later retry) and cleans up / dead-letters them as appropriate.
+ * Called at startup and after each scan so events survive restarts.
+ */
+export async function flushOutbox(
+  webhookConfig: WebhookConfig,
+): Promise<void> {
+  let entries: string[];
+  try {
+    await fs.mkdir(webhookConfig.outboxDir, { recursive: true });
+    entries = await fs.readdir(webhookConfig.outboxDir);
+  } catch (e) {
+    logger.error(e, "Failed to list outbox directory");
+    return;
+  }
+
+  const now = Date.now();
+  for (const fileName of entries) {
+    if (!fileName.endsWith(".json") || fileName.endsWith(".failed.json")) {
+      continue;
+    }
+    const filePath = path.join(webhookConfig.outboxDir, fileName);
+    const entry = await readOutboxEntry(filePath);
+    if (entry === null) {
+      continue;
+    }
+    if (Date.parse(entry.nextAttemptAt) > now) {
+      continue;
+    }
+
+    const outcome = await deliverEvent(webhookConfig, entry);
+    if (outcome === "success") {
+      await removeOutboxEntry(webhookConfig.outboxDir, entry.id);
+      continue;
+    }
+    if (outcome === "dead-letter") {
+      await deadLetterEntry(
+        webhookConfig.outboxDir,
+        entry.id,
+        "permanent rejection",
+      );
+      continue;
+    }
+
+    entry.attempts += 1;
+    if (entry.attempts >= webhookConfig.maxAttempts) {
+      await deadLetterEntry(
+        webhookConfig.outboxDir,
+        entry.id,
+        `too many attempts (${entry.attempts})`,
+      );
+      continue;
+    }
+    entry.nextAttemptAt = new Date(
+      now + entry.attempts * 30_000,
+    ).toISOString();
+    await atomicallyWrite(filePath, JSON.stringify(entry));
+  }
 }
 
 /**
@@ -260,5 +443,10 @@ export async function sendScanEvent(
     files: fileDescriptors,
   };
 
-  await deliverBestEffort(webhookConfig, events);
+  if (webhookConfig.durableOutbox) {
+    await enqueueEvent(webhookConfig, events);
+    await flushOutbox(webhookConfig);
+  } else {
+    await deliverBestEffort(webhookConfig, events);
+  }
 }

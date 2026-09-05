@@ -87,10 +87,10 @@ There is a good chance it also works on other unlisted HP All-in-One Printer.
   - [Paperless-ngx API](https://docs.paperless-ngx.com/api/) upload
   - [Nextcloud WebDAV](https://docs.Nextcloud.com/server/latest/user_manual/en/files/access_webdav.html) upload
   - S3-compatible (AWS S3, MinIO, Cloudflare R2, Wasabi...) upload
-  - Webhook notification (JSON event with idempotency key, `scan-completed` /
-    `scan-delivery-failed` event types, per-page descriptors and delivery
-    outcomes). Each file carries `size`/`sha256` plus its location (`local`
-    path, S3 `bucket`/`key` or Nextcloud WebDAV URL); the event is a metadata
+  - Webhook notification (JSON event with idempotency key, outbox retries and
+    dead-letter; `scan-completed` / `scan-delivery-failed` event types). Each
+    file carries `size`/`sha256` plus its location (`local` path, S3
+    `bucket`/`key` or Nextcloud WebDAV URL); the event is a metadata
     notification, so with `--keep-files` disabled the local `path` may be
     cleaned up after a successful delivery. OpenAPI contract:
     [`protocol_doc/webhook/openapi.yaml`](protocol_doc/webhook/openapi.yaml).
@@ -304,13 +304,16 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `--s3-prefix`                         | Folder (prefix) inside the bucket. Defaults to the bucket root.                                                                                                                                                                | `--s3-prefix 2026/08`                                              |
 | `--s3-force-path-style`               | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...).                                                                                                                                                    | `--s3-force-path-style` (disabled by default)                     |
 | `--s3-session-token`                  | S3 session token for temporary credentials.                                                                                                                                                                                    | `--s3-session-token ...` (no default)                             |
-| `--webhook-url`                       | Webhook URL to POST scan events to (JSON with idempotency-key header).                                                                                           | `--webhook-url https://n8n.example/webhook/scan` (no default)      |
+| `--webhook-url`                       | Webhook URL to POST scan events to (JSON with idempotency-key header, outbox retries, dead-letter).                                                                                                                              | `--webhook-url https://n8n.example/webhook/scan` (no default)      |
 | `--webhook-auth`                      | Auth scheme for the webhook request: `none`, `hmac`, `bearer` or `basic` (default: inferred from the configured credentials).                                                                                                    | `--webhook-auth hmac` (auto)                                       |
 | `--webhook-auth-header`               | Header name carrying the HMAC signature.                                                                                                                                                                                         | `x-webhook-signature` (default)                                    |
 | `--webhook-secret`                    | HMAC-SHA256 signing secret, used as-is (not hex-decoded); the resulting signature is sent as hex in the auth header. Required unless `--webhook-secret-file` is used. Overrides if both are provided.                            | `--webhook-secret s3cr3t` (no default)                             |
 | `--webhook-secret-file`               | File containing the HMAC signing secret. Required unless `--webhook-secret` is used. Takes precedence if both are provided.                                                                                                      | `--webhook-secret-file /path/to/file` (no default)                 |
 | `--webhook-token`                     | Bearer token sent as `Authorization: Bearer <token>`.                                                                                                                                                                            | `--webhook-token tok...` (no default)                              |
 | `--webhook-username` / `--webhook-password` | Basic auth credentials sent as `Authorization: Basic`.                                                                                                                                                                     | `--webhook-username scanner --webhook-password ...` (no default)   |
+| `--webhook-outbox-dir`                | Directory where pending webhook events are stored until delivered. Only used when `--webhook-url` is set; default is enough on the host, mount a volume on Docker if you want events to survive container re-creation.           | `~/.node-hp-scan-to/outbox`                                        |
+| `--webhook-max-attempts`              | Max delivery attempts before an event is dead-lettered (only with `--webhook-durable-outbox`).                                                                                                                                  | `--webhook-max-attempts 5` (default 5)                             |
+| `--webhook-durable-outbox`            | Persist undelivered events in the outbox and retry them at startup and after each scan. Disabled by default: events are sent once and failures are only logged.                                                                 | `--webhook-durable-outbox` (disabled by default)                   |
 
 **Notes:**
 
@@ -471,6 +474,9 @@ Webhook Options:
   --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
   --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
+  --webhook-outbox-dir <webhook_outbox_dir>                        Directory where pending events are stored until delivered (default: ~/.node-hp-scan-to/outbox)
+  --webhook-max-attempts <webhook_max_attempts>                    Max delivery attempts before dead-lettering an event (default: 5)
+  --webhook-durable-outbox                                         Persist undelivered events in the outbox and retry them at startup and after each scan. Disabled by default: events are sent once and failures are only logged.
 
 Device Control Screen Options:
   -l, --label <label>                                              The label to display on the device (the default is the hostname)
@@ -580,6 +586,9 @@ Webhook Options:
   --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
   --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
+  --webhook-outbox-dir <webhook_outbox_dir>                        Directory where pending events are stored until delivered (default: ~/.node-hp-scan-to/outbox)
+  --webhook-max-attempts <webhook_max_attempts>                    Max delivery attempts before dead-lettering an event (default: 5)
+  --webhook-durable-outbox                                         Persist undelivered events in the outbox and retry them at startup and after each scan. Disabled by default: events are sent once and failures are only logged.
 
 Auto-scan Options:
   --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
@@ -699,6 +708,9 @@ Webhook Options:
   --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
   --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
+  --webhook-outbox-dir <webhook_outbox_dir>                        Directory where pending events are stored until delivered (default: ~/.node-hp-scan-to/outbox)
+  --webhook-max-attempts <webhook_max_attempts>                    Max delivery attempts before dead-lettering an event (default: 5)
+  --webhook-durable-outbox                                         Persist undelivered events in the outbox and retry them at startup and after each scan. Disabled by default: events are sent once and failures are only logged.
 
 Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
@@ -731,7 +743,7 @@ You could however use Docker's [macvlan](https://docs.docker.com/engine/network/
 
 All scanned files are written to the volume `/scan`, the filename can be changed with the `PATTERN` environment variable. For the correct permissions to the volume set the environment variables `PUID` and `PGID` to that of the user running the container (usually `PUID=1000` and `PGID=1000`).
 
-When `WEBHOOK_URL` is set, scan events are sent best-effort: a single POST per event, and failures are logged.
+When `WEBHOOK_URL` is set, scan events are sent best-effort by default: a single POST, and failures are logged. With `--webhook-durable-outbox` (or `WEBHOOK_DURABLE_OUTBOX`), events are written to an **outbox** before delivery (default `~/.node-hp-scan-to/outbox` inside the container), so a briefly unreachable receiver (n8n down, 429, timeout) does not drop the event: it is retried at startup and after each later scan, then dead-lettered to `<id>.failed.json`. That directory lives on the container writable layer, so `docker restart` keeps it, but **re-creating** the container (image update, `docker compose up --force-recreate`, `docker rm`) discards pending events. Mounting a volume and setting `WEBHOOK_OUTBOX_DIR` to that path is recommended if you want retries to survive those recreates.
 
 #### Docker Environment Variables
 
@@ -779,6 +791,9 @@ List of supported environment variables and their meaning, or correspondence wit
 | `WEBHOOK_TOKEN`               | Bearer token sent as `Authorization: Bearer`                                                                  | `--webhook-token`                                                             |
 | `WEBHOOK_USERNAME`            | Basic auth username sent as `Authorization: Basic`                                                            | `--webhook-username`                                                          |
 | `WEBHOOK_PASSWORD`            | Basic auth password for `WEBHOOK_USERNAME`                                                                    | `--webhook-password`                                                          |
+| `WEBHOOK_OUTBOX_DIR`          | Outbox directory (only when `WEBHOOK_URL` is set). Optional volume: recommended for new webhook usage so pending events survive image updates; existing setups without webhooks need none | `--webhook-outbox-dir`                                                        |
+| `WEBHOOK_MAX_ATTEMPTS`        | Max delivery attempts before an event is dead-lettered (only with `WEBHOOK_DURABLE_OUTBOX`; default `5`)     | `--webhook-max-attempts`                                                      |
+| `WEBHOOK_DURABLE_OUTBOX`      | Persist undelivered events and retry them (disabled by default)                                              | `--webhook-durable-outbox`                                                   |
 
 **Additional Notes:**
 
