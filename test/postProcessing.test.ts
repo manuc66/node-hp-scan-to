@@ -10,6 +10,8 @@ import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
 import { ScanMode } from "../src/type/scanMode.js";
 import nock from "nock";
 import path from "node:path";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "url";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -166,6 +168,97 @@ describe("postProcessing", () => {
         f.endsWith(".pdf"),
       );
       expect(remaining).to.deep.equal([]);
+    });
+
+    it("reports configured delivery targets as skipped when no PDF can be built", async () => {
+      scanConfig.paperlessConfig = paperlessConfig();
+      scanConfig.nextcloudConfig = nextcloudConfig();
+      scanConfig.s3Config = {
+        endpointUrl: "https://s3.example.test",
+        region: "eu-west-1",
+        bucket: "scans",
+        accessKeyId: "AKIA",
+        secretAccessKey: "secret",
+        forcePathStyle: true,
+        keepFiles: false,
+      };
+
+      const bodies: Buffer[] = [];
+      const server = http.createServer((req, res) => {
+        const chunks: Buffer[] = [];
+        req.on("data", (c: Buffer) => chunks.push(c));
+        req.on("end", () => {
+          bodies.push(Buffer.concat(chunks));
+          res.writeHead(200);
+          res.end();
+        });
+      });
+      await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+      const port = (server.address() as AddressInfo).port;
+      scanConfig.webhookConfig = {
+        url: `http://127.0.0.1:${port}/scan`,
+        auth: "none",
+        authHeader: "x-webhook-signature",
+        keepFiles: false,
+      };
+
+      const emptyScan: ScanContent = {
+        elements: [],
+        meta: {
+          command: "listen",
+          scanCount: 1,
+          device: { ip: "127.0.0.1", isEscl: false },
+          target: undefined,
+          settings: {
+            inputSource: InputSource.Adf,
+            contentType: "Document",
+            format: "pdf",
+            sourceFormat: "jpg",
+            mode: ScanMode.Color,
+            colorDepth: 8,
+            channels: 3,
+            resolution: 200,
+            isDuplex: false,
+            pageCountingStrategy: PageCountingStrategy.Normal,
+            paperSize: undefined,
+            paperDim: undefined,
+          },
+          startedAt: new Date().toISOString(),
+          instance: { id: "test", startedAt: new Date().toISOString() },
+        },
+      };
+
+      try {
+        nock.enableNetConnect((host: string) => host.startsWith("127.0.0.1"));
+        await postProcessing(
+          scanConfig,
+          tempFolder,
+          tempFolder,
+          1,
+          emptyScan,
+          new Date(),
+          true,
+        );
+
+        expect(bodies).to.have.length(1);
+        const payload = JSON.parse(bodies[0].toString("utf8")) as {
+          delivery: { target: string; status: string }[];
+        };
+        const targets = payload.delivery.map((d) => d.target);
+        expect(targets).to.include("pdf");
+        expect(targets).to.include("paperless");
+        expect(targets).to.include("nextcloud");
+        expect(targets).to.include("s3");
+        for (const d of payload.delivery) {
+          expect(d.status).to.equal("failed");
+        }
+      } finally {
+        server.close();
+        scanConfig.webhookConfig = undefined;
+        scanConfig.s3Config = undefined;
+        scanConfig.nextcloudConfig = undefined;
+        scanConfig.paperlessConfig = undefined;
+      }
     });
 
     it("reports the failure and keeps the pdf when paperless rejects the upload", async () => {
