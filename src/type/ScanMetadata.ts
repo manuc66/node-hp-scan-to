@@ -93,4 +93,8 @@ export interface ScanMetadata {
   instance: ScanInstanceInfo;
   /** Device jobs that produced this scan, filled as they run. */
   job?: ScanJobSummary;
+  /** Filled in when the event is emitted (ISO 8601). */
+  endedAt?: string;
+  /** Scan duration in ms (event emission time minus startedAt). */
+  durationMs?: number;
 }

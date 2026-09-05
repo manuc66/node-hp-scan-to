@@ -162,6 +162,19 @@ describe("webhook", () => {
       expect(payload.files[0].contentType).to.equal("application/pdf");
     });
 
+    it("enriches the metadata with endedAt and durationMs", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+
+      const payload = JSON.parse(srv.requests[0].body.toString("utf8")) as {
+        metadata: { endedAt?: string; durationMs?: number };
+      };
+      expect(payload.metadata.endedAt).to.be.a("string");
+      expect(payload.metadata.durationMs).to.be.greaterThanOrEqual(0);
+    });
+
     it("keeps the event in the outbox when the endpoint redirects (3xx)", async () => {
       let finalHit = false;
       const server = http.createServer((req, res) => {

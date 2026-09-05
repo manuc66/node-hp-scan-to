@@ -352,7 +352,11 @@ export async function sendScanEvent(
     id: randomUUID(),
     type: deliveryFailed ? EVENT_DELIVERY_FAILED : EVENT_TYPE,
     time: new Date().toISOString(),
-    metadata: scanContent.meta,
+    metadata: {
+      ...scanContent.meta,
+      endedAt: new Date().toISOString(),
+      durationMs: Date.now() - new Date(scanContent.meta.startedAt).getTime(),
+    },
     pages: [],
     delivery,
     files: fileDescriptors,
