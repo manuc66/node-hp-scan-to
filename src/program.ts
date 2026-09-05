@@ -445,7 +445,7 @@ function getNextcloudConfig(
   }
 }
 
-function getS3Config(
+export function getS3Config(
   options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   fileConfig: FileConfig,
 ): S3Config | undefined {
@@ -467,13 +467,44 @@ function getS3Config(
     fileConfig.s3_secret_access_key_file,
   );
 
-  if (
+  const s3Attempted =
+    configS3Url !== undefined ||
+    configS3Bucket !== undefined ||
+    configS3AccessKeyId !== undefined ||
+    configS3SecretAccessKey !== undefined ||
+    configS3SecretAccessKeyFile !== undefined;
+
+  if (!s3Attempted) {
+    return undefined;
+  }
+
+  const s3Complete =
     configS3Url !== undefined &&
     configS3Bucket !== undefined &&
     configS3AccessKeyId !== undefined &&
     (configS3SecretAccessKey !== undefined ||
-      configS3SecretAccessKeyFile !== undefined)
-  ) {
+      configS3SecretAccessKeyFile !== undefined);
+  if (!s3Complete) {
+    const missing: string[] = [];
+    if (configS3Url === undefined) {
+      missing.push("--s3-url");
+    }
+    if (configS3Bucket === undefined) {
+      missing.push("--s3-bucket");
+    }
+    if (configS3AccessKeyId === undefined) {
+      missing.push("--s3-access-key-id");
+    }
+    if (
+      configS3SecretAccessKey === undefined &&
+      configS3SecretAccessKeyFile === undefined
+    ) {
+      missing.push("--s3-secret-access-key or --s3-secret-access-key-file");
+    }
+    throw new Error(
+      `Incomplete S3 configuration: missing ${missing.join(", ")}. Either provide all the required S3 options or remove them.`,
+    );
+  }
     const region = getConfiguredValue(
       options.s3Region,
       fileConfig.s3_region,
@@ -521,9 +552,6 @@ function getS3Config(
       s3Config.sessionToken = sessionToken;
     }
     return s3Config;
-  } else {
-    return undefined;
-  }
 }
 
 /**
@@ -705,7 +733,7 @@ function getDeviceUpPollingInterval(
   );
 }
 
-type ListenOptions = ReturnType<ReturnType<typeof createListenCliCmd>["opts"]>;
+export type ListenOptions = ReturnType<ReturnType<typeof createListenCliCmd>["opts"]>;
 
 function createListenCliCmd(configFile: FileConfig) {
   return setupScanParameters("listen")
@@ -798,7 +826,7 @@ function createListenCliCmd(configFile: FileConfig) {
     });
 }
 
-type AdfAutoscanOptions = ReturnType<
+export type AdfAutoscanOptions = ReturnType<
   ReturnType<typeof createAdfAutoscanCliCmd>["opts"]
 >;
 
@@ -885,7 +913,7 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
     });
 }
 
-type SingleScanOptions = ReturnType<
+export type SingleScanOptions = ReturnType<
   ReturnType<typeof createSingleScanCliCmd>["opts"]
 >;
 
