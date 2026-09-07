@@ -62,6 +62,62 @@ describe("serializeError", () => {
       statusText: "Internal Server Error",
     });
   });
+
+  it("does not leak SigV4 credentials from an axios network failure", async () => {
+    const axios = (await import("axios")).default;
+    const accessKey = "AKIA_TEST_ACCESS_KEY";
+    const sessionToken = "sts-session-token-secret";
+    const authorization = `AWS4-HMAC-SHA256 Credential=${accessKey}/20260101/eu-west-1/s3/aws4_request, SignedHeaders=host, Signature=deadbeef`;
+
+    let serialized: unknown;
+    try {
+      await axios.put("http://127.0.0.1:1/scans/key", Buffer.from("x"), {
+        headers: {
+          authorization,
+          "x-amz-security-token": sessionToken,
+        },
+      });
+      throw new Error("Should have thrown");
+    } catch (error) {
+      serialized = serializeError(error);
+    }
+
+    const dumped = JSON.stringify(serialized);
+    expect(dumped).to.not.include(accessKey);
+    expect(dumped).to.not.include(sessionToken);
+    expect(dumped).to.not.include(authorization);
+    expect(dumped).to.not.include("x-amz-security-token");
+    expect(serialized).to.not.have.property("config");
+    expect(serialized).to.not.have.property("request");
+    expect(serialized).to.have.property("code", "ECONNREFUSED");
+  });
+
+  it("recursively serializes error.cause without leaking sensitive data", async () => {
+    const cause = new Error("DB connection failed");
+    // @ts-ignore – we deliberately add a non-standard property to test redaction
+    (cause as any).password = "secret-db-password";
+
+    const error = new Error("Operation failed");
+    // @ts-ignore – we deliberately add a non-standard cause property
+    (error as any).cause = cause;
+
+    const serialized = serializeError(error) as Record<string, unknown>;
+
+    // The top‑level error keeps its base message; pino combines it with the cause
+    expect(serialized).to.have.property("message");
+    expect(serialized).to.have.property("type", "Error");
+
+    // The cause should be an object with the same shape
+    const causeObj = serialized["cause"] as Record<string, unknown>;
+    expect(causeObj).to.be.an("object");
+    expect(causeObj).to.have.property("message", "DB connection failed");
+    expect(causeObj).to.have.property("type", "Error");
+
+    // Sensitive field from the cause must be redacted
+    const causeString = JSON.stringify(causeObj);
+    expect(causeString).to.not.include("secret-db-password");
+    expect(causeString).to.include("[Redacted]");
+  });
 });
 
 describe("formatPlainLogMessage", () => {

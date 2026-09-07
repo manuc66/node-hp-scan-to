@@ -40,6 +40,20 @@ const LEVEL_LABELS: Record<number, string> = {
   60: "fatal",
 };
 
+const SAFE_ERROR_KEYS = new Set([
+  "type",
+  "message",
+  "stack",
+  "name",
+  "code",
+  "status",
+  "errno",
+  "syscall",
+  "address",
+  "port",
+  "isAxiosError",
+]);
+
 // axios Error objects carry the full request config (headers with auth
 // tokens) and the request/response payloads: never serialize those.
 export function serializeError(err: unknown): unknown {
@@ -50,15 +64,27 @@ export function serializeError(err: unknown): unknown {
   const response = (
     err as { response?: { status?: number; statusText?: string } }
   ).response;
+  const cause = (err as { cause?: unknown }).cause;
+  const safe: Record<string, unknown> = {};
+  for (const key of SAFE_ERROR_KEYS) {
+    if (serialized[key] !== undefined) {
+      safe[key] = serialized[key];
+    }
+  }
+  // Copy custom sensitive fields (like password) for redaction
+  if ((err as { password?: unknown }).password !== undefined) {
+    safe["password"] = "[Redacted]";
+  }
   if (response !== undefined) {
-    serialized["response"] = {
+    safe["response"] = {
       status: response.status,
       statusText: response.statusText,
     };
   }
-  delete serialized["config"];
-  delete serialized["request"];
-  return serialized;
+  if (cause !== undefined) {
+    safe["cause"] = serializeError(cause);
+  }
+  return safe;
 }
 
 // Keeps legacy bare info/debug lines and prefixes warn/error/fatal so
@@ -86,8 +112,19 @@ const loggerOptions = {
       "token",
       "*.token",
       "Authorization",
+      "authorization",
       "headers.Authorization",
+      "headers.authorization",
       "*.headers.Authorization",
+      "*.headers.authorization",
+      "secretAccessKey",
+      "*.secretAccessKey",
+      "accessKeyId",
+      "*.accessKeyId",
+      "sessionToken",
+      "*.sessionToken",
+      "x-amz-security-token",
+      "*.x-amz-security-token",
     ],
     censor: "[Redacted]",
   },
