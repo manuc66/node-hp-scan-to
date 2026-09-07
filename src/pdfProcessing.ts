@@ -2,7 +2,7 @@ import type { ScanContent, ScanPage } from "./type/ScanContent.js";
 import PathHelper from "./PathHelper.js";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { jsPDF } from "jspdf";
+import { Worker } from "node:worker_threads";
 import { getLoggerForFile } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -53,33 +53,57 @@ export async function createPdfFrom(
   destination: string,
   date?: Date,
 ) {
-  let doc: jsPDF | null = null;
-  for (const element of scanContent.elements) {
-    const widthInInches = element.width / element.xResolution;
-    const heightInInches = element.height / element.yResolution;
-    const format = [widthInInches, heightInInches];
-
-    if (doc === null) {
-      doc = new jsPDF({ unit: "in", floatPrecision: 3, format });
-      if (date !== undefined) {
-        doc.setCreationDate(date);
-        doc.setFileId(dateToFileId(date));
-      }
-    } else {
-      doc.addPage(format);
-    }
-
-    if (element.path.toLowerCase().endsWith(".bmp")) {
-      throw new Error(
-        "PDF encapsulation of BMP (Raw) images is not supported directly without conversion. Please use Jpeg format for PDF or keep scans as individual BMP files.",
-      );
-    }
-    const imageByteBuffer = await fs.readFile(element.path);
-    doc.addImage(imageByteBuffer, "JPEG", 0, 0, widthInInches, heightInInches);
-  }
-  doc?.save(destination);
+  await runPdfMerge({
+    pages: scanContent.elements,
+    destination,
+    date: date?.toISOString(),
+  });
 }
 
-function dateToFileId(date: Date): string {
-  return date.getTime().toString(16).padStart(32, "0");
+interface PdfMergeJobInput {
+  pages: ScanPage[];
+  destination: string;
+  date: string | undefined;
+}
+
+type PdfMergeWorkerOutcome =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/**
+ * Builds the PDF in a worker thread: jspdf works synchronously in-process, so
+ * merging a large scan on the main thread would starve the event loop and
+ * freeze health checks and printer HTTP responses while it runs.
+ */
+function runPdfMerge(job: PdfMergeJobInput): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const inSource = import.meta.url.endsWith(".ts");
+    const workerUrl = new URL(
+      inSource ? "./pdfMergeWorker.ts" : "./pdfMergeWorker.js",
+      import.meta.url,
+    );
+    const worker = new Worker(workerUrl, {
+      // Propagate the tsx loader when running from the source tree (dev/tests);
+      // plain node loads the compiled worker from dist in production.
+      execArgv: inSource ? [...process.execArgv] : [],
+    });
+    let settled = false;
+    const finish = (action: () => void) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      action();
+      void worker.terminate();
+    };
+    worker.once("message", (message: PdfMergeWorkerOutcome) => {
+      finish(() =>
+        message.ok ? resolve() : reject(new Error(message.error)),
+      );
+    });
+    worker.once("error", (error: Error) => {
+      finish(() => reject(error));
+    });
+    worker.postMessage(job);
+  });
 }
