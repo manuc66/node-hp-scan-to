@@ -33,10 +33,11 @@ describeWithBun("bun-compiled executable logging", () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "bun-logger-test-"));
   const binary = path.join(outDir, "bun-logger-test");
 
-  before(() => {
+  before(function () {
     // Compile a standalone executable from a tiny entry that logs in pretty
     // mode. This reproduces the standalone binaries shipped with releases.
     // No --target is passed so bun compiles for the current host.
+    this.timeout(120_000);
     execFileSync("bun", ["build", "--compile", `--outfile=${binary}`, entry], {
       stdio: "ignore",
     });

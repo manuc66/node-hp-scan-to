@@ -198,7 +198,16 @@ export async function processScanWithDestination(
     pageCountingStrategy,
   );
 
-frontOfDoubleSidedScanContext = handleScanResult(
+  if (scanJobContent.meta) {
+    scanJobContent.meta.settings.duplexMode = duplexMode;
+    scanJobContent.meta.settings.targetDuplexMode = targetDuplexMode;
+    if (selectedScanTarget.duplexAssemblyMode !== undefined) {
+      scanJobContent.meta.settings.duplexAssemblyMode =
+        selectedScanTarget.duplexAssemblyMode;
+    }
+  }
+
+  frontOfDoubleSidedScanContext = handleScanResult(
     duplexMode,
     frontOfDoubleSidedScanContext,
     scanConfig,
@@ -331,7 +340,21 @@ export function assembleDuplexScan(
       break;
   }
 
-  const duplexScan: ScanContent = { elements: [] };
+  const meta = frontScan.meta ?? backScan.meta;
+  if (meta !== undefined) {
+    meta.settings.duplexMode = DuplexMode.Duplex;
+    const frontJobs = frontScan.meta?.job?.jobs ?? [];
+    const backJobs = backScan.meta?.job?.jobs ?? [];
+    const jobs = [...frontJobs, ...backJobs];
+    if (jobs.length > 0) {
+      const state = jobs[jobs.length - 1].state;
+      meta.job = { state, count: jobs.length, jobs };
+    }
+  }
+  const duplexScan: ScanContent =
+    meta === undefined
+      ? { elements: [] }
+      : { elements: [], meta };
   const maxLength = Math.max(frontContent.length, backContent.length);
 
   // Interleave pages, tolerating missing last back page gracefully

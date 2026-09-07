@@ -51,6 +51,8 @@ describe("singleScanCmd", () => {
       },
       paperlessConfig: undefined,
       nextcloudConfig: undefined,
+      s3Config: undefined,
+      webhookConfig: undefined,
       preferEscl: false,
       paperSize: undefined,
       paperDim: undefined,

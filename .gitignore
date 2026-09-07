@@ -19,3 +19,6 @@ packaging/windows/staging/
 /rust-version/
 /protocol_doc/capture/tools/driver-store/
 /protocol_doc/capture/tools/hp-mitm-capture/
+
+# Generated scratch dir for the bmp/ppm conversion tests
+test/tmp/

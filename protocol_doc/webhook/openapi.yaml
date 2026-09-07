@@ -1,0 +1,347 @@
+openapi: 3.0.3
+info:
+  title: node-hp-scan-to scan event webhook
+  description: |
+    Outbound webhook contract of node-hp-scan-to. After a scan completes (or
+    one of its deliveries fails), the CLI POSTs a JSON event to the URL
+    provided by the integrator via `--webhook-url`.
+
+    This document describes the request the consumer will receive: the exact
+    endpoint path is whatever the integrator configured (the example
+    `/webhook/scan` is only illustrative). Retry semantics are governed by the
+    outbox: `2xx` acknowledges and removes the event, transient `408/429/5xx`
+    are retried with backoff, permanent `4xx` dead-letter the event.
+  version: 1.0.0
+  contact:
+    name: node-hp-scan-to
+    url: https://github.com/manuc66/node-hp-scan-to
+paths:
+  /webhook/scan:
+    post:
+      operationId: receiveScanEvent
+      summary: Receive a scan-completed (or scan-delivery-failed) event
+      description: |
+        The URL is chosen by the consumer (`--webhook-url`); the path shown is
+        an example. The client never expects a response body — any `2xx`
+        acknowledges delivery.
+      parameters:
+        - name: Content-Type
+          in: header
+          required: true
+          schema:
+            type: string
+            const: application/json
+          description: Always `application/json`.
+        - name: User-Agent
+          in: header
+          required: true
+          schema:
+            type: string
+            const: node-hp-scan-to
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: |
+            Event id, also present in the body. Consumers should deduplicate
+            on it: the same event may be retried by the outbox.
+        - name: X-Webhook-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+            description: |
+              Hex HMAC-SHA256 of the raw request body when the webhook is
+              configured with `--webhook-auth hmac`. The header name is
+              configurable via `--webhook-auth-header` (default
+              `x-webhook-signature`).
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: >
+            Present instead of X-Webhook-Signature when `--webhook-auth` is
+            `bearer` (`Bearer <token>`) or `basic` (`Basic base64(user:pass)`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanEvent'
+      responses:
+        "2xx":
+          description: Event acknowledged and removed from the outbox.
+        "408":
+          description: Retried later (transient timeout).
+        "429":
+          description: Retried later (rate limited).
+        "5XX":
+          description: Retried later (server error).
+        "4XX":
+          description: |
+            Permanent rejection (anything else), the event is dead-lettered.
+components:
+  schemas:
+    ScanEvent:
+      type: object
+      required: [id, type, time, metadata, pages, files, delivery]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Same value as the Idempotency-Key header.
+        type:
+          type: string
+          enum: [scan-completed, scan-delivery-failed]
+          description: |
+            `scan-completed` when every delivery (paperless/nextcloud/s3/pdf)
+            succeeded, `scan-delivery-failed` when at least one failed.
+        time:
+          type: string
+          format: date-time
+          description: ISO-8601 timestamp the event was created.
+        metadata:
+          $ref: '#/components/schemas/ScanMetadata'
+        pages:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+          description: Reserved per-page data; currently always an empty array.
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookFileDescriptor'
+          description: One descriptor per scanned file at the time the event was created.
+        delivery:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookDeliveryTarget'
+          description: Outcome of every upload attempt of this scan.
+    ScanMetadata:
+      type: object
+      required: [command, scanCount, device, settings, startedAt, instance]
+      properties:
+        command:
+          type: string
+          enum: [single-scan, listen, adf-autoscan]
+        scanCount:
+          type: integer
+          minimum: 0
+          description: Zero-based scan counter for the run.
+        device:
+          $ref: '#/components/schemas/ScanDeviceInfo'
+        target:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/ScanTargetInfo'
+          description: Selected walkup-scan target, absent for single-scan.
+        settings:
+          $ref: '#/components/schemas/ScanSettingsInfo'
+        startedAt:
+          type: string
+          format: date-time
+        instance:
+          $ref: '#/components/schemas/ScanInstanceInfo'
+        job:
+          allOf:
+            - $ref: '#/components/schemas/ScanJobSummary'
+          description: Device job summary, filled as scans run.
+    ScanDeviceInfo:
+      type: object
+      required: [ip, isEscl]
+      properties:
+        ip:
+          type: string
+        isEscl:
+          type: boolean
+          description: True when the device was reached through the eSCL protocol.
+    ScanTargetInfo:
+      type: object
+      required: [label, resourceURI, agingStamp]
+      properties:
+        label:
+          type: string
+        resourceURI:
+          type: string
+        destinationURI:
+          type: string
+          nullable: true
+        agingStamp:
+          type: string
+        compEventURI:
+          type: string
+          nullable: true
+    ScanSettingsInfo:
+      type: object
+      required:
+        - inputSource
+        - contentType
+        - format
+        - sourceFormat
+        - mode
+        - colorDepth
+        - channels
+        - resolution
+        - isDuplex
+        - pageCountingStrategy
+      properties:
+        inputSource:
+          type: string
+          enum: [Adf, Platen]
+        contentType:
+          type: string
+          enum: [Document, Photo]
+        format:
+          type: string
+          description: Format delivered to the target, e.g. `pdf` or `jpg`.
+        sourceFormat:
+          type: string
+          description: Format requested to the device, e.g. `jpg`.
+        mode:
+          type: string
+          enum: [Gray, Color, Lineart]
+        colorDepth:
+          type: integer
+          description: Bits per channel (8 for Color/Gray, 1 for Lineart).
+        channels:
+          type: integer
+          description: 3 for Color, 1 otherwise.
+        resolution:
+          type: integer
+          description: DPI.
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        isDuplex:
+          type: boolean
+        duplexMode:
+          type: string
+          enum: [Simplex, Duplex, FrontOfDoubleSided, BackOfDoubleSided]
+        targetDuplexMode:
+          type: string
+          enum: [Simplex, Duplex, EmulatedDuplex]
+        duplexAssemblyMode:
+          type: string
+          enum: [page-wise, document-wise, reverse-front, reverse-both]
+        pageCountingStrategy:
+          type: string
+          enum: [Normal, "Odd Only", "Even Only"]
+        filePattern:
+          type: string
+          nullable: true
+        paperSize:
+          type: string
+          nullable: true
+        paperDim:
+          type: string
+          nullable: true
+        paperOrientation:
+          type: string
+          enum: [portrait, landscape]
+          nullable: true
+    ScanInstanceInfo:
+      type: object
+      required: [id, startedAt, uptimeMs]
+      properties:
+        id:
+          type: string
+          description: Random id generated once per running CLI process.
+        startedAt:
+          type: string
+          format: date-time
+        uptimeMs:
+          type: integer
+    ScanJobSummary:
+      type: object
+      required: [state, count, jobs]
+      properties:
+        state:
+          $ref: '#/components/schemas/JobState'
+        count:
+          type: integer
+          description: Number of device jobs that produced the scan.
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScanJobInfo'
+    ScanJobInfo:
+      type: object
+      required: [state, uri, uuid]
+      properties:
+        state:
+          $ref: '#/components/schemas/JobState'
+        uri:
+          type: string
+          nullable: true
+          description: Device job uri (eSCL pwg:JobUri or the HP job url).
+        uuid:
+          type: string
+          nullable: true
+          description: Only provided by eSCL devices.
+    JobState:
+      type: string
+      enum: [Completed, Processing, Canceled, Blocked]
+    WebhookFileDescriptor:
+      type: object
+      required: [name, path, size, sha256, format]
+      properties:
+        name:
+          type: string
+          description: Base file name.
+        path:
+          type: string
+          description: |
+            Local path at the time the event was created. May be cleaned up
+            after successful delivery (unless `--keep-files` is set).
+        size:
+          type: integer
+          description: File size in bytes at event creation.
+        sha256:
+          type: string
+          description: Hex SHA-256 of the file content at event creation.
+        format:
+          type: string
+          description: Extension without the dot, e.g. `pdf`.
+        contentType:
+          type: string
+          nullable: true
+        store:
+          type: string
+          enum: [local, s3, nextcloud]
+          description: Where the file actually lives when the event was created.
+        location:
+          allOf:
+            - $ref: '#/components/schemas/WebhookFileLocation'
+          description: How to reach the object; always set when store is not `local`.
+    WebhookFileLocation:
+      type: object
+      properties:
+        bucket:
+          type: string
+          description: S3 bucket when store is `s3`.
+        key:
+          type: string
+          description: S3 object key when store is `s3`.
+        webdavUrl:
+          type: string
+          description: WebDAV URL of the file when store is `nextcloud`.
+    WebhookDeliveryTarget:
+      type: object
+      required: [target, status]
+      properties:
+        target:
+          type: string
+          description: e.g. `paperless`, `nextcloud`, `s3`, `pdf`.
+        status:
+          type: string
+          enum: [success, failed]
+        error:
+          type: string
+          nullable: true

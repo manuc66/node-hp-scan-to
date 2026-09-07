@@ -15,8 +15,12 @@ import {
 } from "../src/queue/processingQueue.js";
 import type { ScanConfig } from "../src/type/scanConfigs.js";
 import type { ScanContent } from "../src/type/ScanContent.js";
+import type { ScanMetadata } from "../src/type/ScanMetadata.js";
+import type { WebhookConfig } from "../src/webhook/WebhookConfig.js";
 import type { PaperlessConfig } from "../src/paperless/PaperlessConfig.js";
 import { fileURLToPath } from "node:url";
+import { InputSource } from "../src/type/InputSource.js";
+import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
 import { ScanMode } from "../src/type/scanMode.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
 
@@ -31,7 +35,11 @@ afterEach(async () => {
   }
 });
 
-function makeScanConfig(dir: string, paperless?: PaperlessConfig): ScanConfig {
+function makeScanConfig(
+  dir: string,
+  webhook?: WebhookConfig,
+  paperless?: PaperlessConfig,
+): ScanConfig {
   return {
     resolution: 300,
     mode: ScanMode.Color,
@@ -45,6 +53,8 @@ function makeScanConfig(dir: string, paperless?: PaperlessConfig): ScanConfig {
     },
     paperlessConfig: paperless,
     nextcloudConfig: undefined,
+    s3Config: undefined,
+    webhookConfig: webhook,
     preferEscl: false,
     paperSize: undefined,
     paperDim: undefined,
@@ -52,10 +62,40 @@ function makeScanConfig(dir: string, paperless?: PaperlessConfig): ScanConfig {
   };
 }
 
+function buildMetadata(scanCount: number): ScanMetadata {
+  return {
+    command: "listen",
+    scanCount,
+    device: { ip: "127.0.0.1", isEscl: false },
+    target: undefined,
+    settings: {
+      inputSource: InputSource.Adf,
+      contentType: "Photo",
+      format: "jpg",
+      sourceFormat: "jpg",
+      mode: ScanMode.Color,
+      colorDepth: 8,
+      channels: 3,
+      resolution: 300,
+      width: null,
+      height: null,
+      isDuplex: false,
+      pageCountingStrategy: PageCountingStrategy.Normal,
+      filePattern: undefined,
+      paperSize: undefined,
+      paperDim: undefined,
+      paperOrientation: undefined,
+    },
+    startedAt: new Date().toISOString(),
+    instance: { id: "test", startedAt: new Date().toISOString(), uptimeMs: 1 },
+  };
+}
+
 function makeImageJob(
   dir: string,
   scanCount: number,
   imagePath: string,
+  webhook?: WebhookConfig,
   paperless?: PaperlessConfig,
 ): ScanProcessingJob {
   const scanJobContent: ScanContent = {
@@ -69,9 +109,10 @@ function makeImageJob(
         yResolution: 96,
       },
     ],
+    meta: buildMetadata(scanCount),
   };
   return {
-    scanConfig: makeScanConfig(dir, paperless),
+    scanConfig: makeScanConfig(dir, webhook, paperless),
     folder: dir,
     tempFolder: dir,
     scanCount,
@@ -97,6 +138,7 @@ function makePdfJob(
         yResolution: 96,
       },
     ],
+    meta: buildMetadata(scanCount),
   };
   return {
     scanConfig: makeScanConfig(dir),
@@ -109,17 +151,17 @@ function makePdfJob(
   };
 }
 
-function startPaperlessServer(): Promise<{
-  bodies: Buffer[];
+function startWebhookServer(): Promise<{
+  bodies: unknown[];
   port: number;
 }> {
   return new Promise((resolve) => {
-    const bodies: Buffer[] = [];
+    const bodies: unknown[] = [];
     const server = http.createServer((req, res) => {
       const chunks: Buffer[] = [];
       req.on("data", (chunk) => chunks.push(chunk as Buffer));
       req.on("end", () => {
-        bodies.push(Buffer.concat(chunks));
+        bodies.push(JSON.parse(Buffer.concat(chunks).toString("utf8")));
         res.statusCode = 200;
         res.end();
       });
@@ -131,16 +173,6 @@ function startPaperlessServer(): Promise<{
   });
 }
 
-function makePaperlessConfig(url: string): PaperlessConfig {
-  return {
-    postDocumentUrl: url,
-    authToken: "token",
-    keepFiles: false,
-    groupMultiPageScanIntoAPdf: false,
-    alwaysSendAsPdfFile: false,
-  };
-}
-
 describe("processing queue", () => {
   it("drops a scan into the queue without waiting for the delivery work", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "processing-queue-"));
@@ -150,14 +182,19 @@ describe("processing queue", () => {
       const scope = nock("http://paperless.example.test")
         .post("/api/documents/post_document/")
         .reply(200);
-      const paperless = makePaperlessConfig(
-        "http://paperless.example.test/api/documents/post_document/",
-      );
+      const paperless: PaperlessConfig = {
+        postDocumentUrl:
+          "http://paperless.example.test/api/documents/post_document/",
+        authToken: "token",
+        keepFiles: false,
+        groupMultiPageScanIntoAPdf: false,
+        alwaysSendAsPdfFile: false,
+      };
 
       const image = path.join(dir, "scan1_page1.jpg");
       await fsPromises.copyFile(JPEG_ASSET, image);
 
-      enqueueScanProcessing(makeImageJob(dir, 1, image, paperless));
+      enqueueScanProcessing(makeImageJob(dir, 1, image, undefined, paperless));
 
       // The capture loop did not wait for the upload: the request has not
       // been sent yet, even though the scan was already dropped in the queue.
@@ -175,25 +212,33 @@ describe("processing queue", () => {
 
   it("processes scans in FIFO order through the single-worker drain", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "processing-queue-"));
-    const { bodies, port } = await startPaperlessServer();
+    const { bodies, port } = await startWebhookServer();
     try {
       const image1 = path.join(dir, "scan1_page1.jpg");
       const image2 = path.join(dir, "scan2_page1.jpg");
       await fsPromises.copyFile(JPEG_ASSET, image1);
       await fsPromises.copyFile(JPEG_ASSET, image2);
-      const paperless = makePaperlessConfig(
-        `http://127.0.0.1:${port}/api/documents/post_document/`,
-      );
+
+      const webhook: WebhookConfig = {
+        url: `http://127.0.0.1:${port}/scan`,
+        auth: "none",
+        authHeader: "x-webhook-signature",
+        outboxDir: dir,
+        maxAttempts: 1,
+        keepFiles: true,
+      };
 
       // Both scans are captured before any delivery started: the queue must
       // hand them to the worker in capture order.
-      enqueueScanProcessing(makeImageJob(dir, 1, image1, paperless));
-      enqueueScanProcessing(makeImageJob(dir, 2, image2, paperless));
+      enqueueScanProcessing(makeImageJob(dir, 1, image1, webhook));
+      enqueueScanProcessing(makeImageJob(dir, 2, image2, webhook));
       await flushScanProcessingQueue();
 
       expect(bodies).to.have.length(2);
-      expect(bodies[0].toString("utf8")).to.contain("scan1_page1.jpg");
-      expect(bodies[1].toString("utf8")).to.contain("scan2_page1.jpg");
+      const firstEvent = bodies[0] as { files: { name: string }[] };
+      const secondEvent = bodies[1] as { files: { name: string }[] };
+      expect(firstEvent.files[0].name).to.equal("scan1_page1.jpg");
+      expect(secondEvent.files[0].name).to.equal("scan2_page1.jpg");
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

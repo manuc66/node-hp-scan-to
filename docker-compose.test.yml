@@ -1,0 +1,97 @@
+# Real-service test harness for the delivery targets (S3, Nextcloud,
+# Paperless-ngx, webhook). NOT for production: fixed test credentials.
+#
+# Usage (from the repo root):
+#   docker compose -f docker-compose.test.yml up -d --wait
+#   ./scripts/real-services-test.sh
+services:
+  minio:
+    image: quay.io/minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: miniotest
+      MINIO_ROOT_PASSWORD: miniotest123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        until mc alias set minio http://minio:9000 miniotest miniotest123; do
+          sleep 1;
+        done;
+        mc mb -p minio/scans || true;
+        echo "minio bucket 'scans' ready";
+    restart: "no"
+
+  nextcloud:
+    image: docker.io/library/nextcloud:apache
+    environment:
+      NEXTCLOUD_ADMIN_USER: admin
+      NEXTCLOUD_ADMIN_PASSWORD: adminpass
+      SQLITE_DATABASE: nextcloud
+      NEXTCLOUD_TRUSTED_DOMAINS: localhost,127.0.0.1
+    ports:
+      - "8081:80"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost/status.php"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: docker.io/library/redis:7
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  paperless:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      PAPERLESS_REDIS: redis://redis:6379
+      PAPERLESS_ADMIN_USER: admin
+      PAPERLESS_ADMIN_PASSWORD: adminpass
+      PAPERLESS_SECRET_KEY: real-services-test
+      PAPERLESS_TIME_ZONE: UTC
+      PAPERLESS_URL: http://localhost:8090
+      PAPERLESS_OCR_ENABLED: "false"
+      PAPERLESS_CONSUMER_POLLING: "5"
+    ports:
+      - "8090:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-o", "/dev/null", "http://localhost:8000/api/"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    environment:
+      TZ: UTC
+      GENERIC_TIMEZONE: UTC
+      N8N_PUBLIC_API_DISABLED: "false"
+      N8N_SECURE_COOKIE: "false"
+    ports:
+      - "5678:5678"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5678/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
