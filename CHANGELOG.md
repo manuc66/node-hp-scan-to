@@ -28,6 +28,13 @@ All notable changes to this project are documented in this file.
   pattern example (`--pattern` help, README) was updated to the `: `-free
   `"scan"_dd.mm.yyyy_HHMMss` form, which works everywhere.
 
+### Security
+
+- **Upload error logs**: axios network failures (S3, Nextcloud, Paperless)
+  no longer serialize request `config`/`headers`, so SigV4 signatures,
+  STS session tokens, Nextcloud basic-auth passwords and Paperless tokens
+  cannot appear in logs.
+
 ### Fixed
 
 - **Tests on Windows**: the suite now runs green again on Windows. The README

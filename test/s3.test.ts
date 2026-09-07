@@ -212,21 +212,25 @@ describe("s3", () => {
     });
 
     it("throws when the signature is rejected", async () => {
-      const s3Config = buildS3Config(
-        "http://127.0.0.1:1",
-        true,
-      );
-      s3Config.secretAccessKey = "wrong-secret";
-      scanJobContent.elements.push(scanPage);
-
-      let threw = false;
+      const server = await startVerifyingServer();
       try {
-        await uploadImagesToS3(scanJobContent, s3Config);
-      } catch {
-        threw = true;
-      }
-      if (!threw) {
-        throw new Error("Should have thrown");
+        const port = (server.address() as AddressInfo).port;
+        const s3Config = buildS3Config(`http://127.0.0.1:${port}`, true);
+        s3Config.secretAccessKey = "wrong-secret";
+        scanJobContent.elements.push(scanPage);
+
+        try {
+          await uploadImagesToS3(scanJobContent, s3Config);
+          throw new Error("Should have thrown");
+        } catch (error) {
+          expect(error).to.have.nested.property("response.status", 403);
+          expect(error).to.have.nested.property(
+            "response.data",
+            "SignatureDoesNotMatch",
+          );
+        }
+      } finally {
+        server.close();
       }
     });
   });
