@@ -41,6 +41,9 @@ describe("scanJobHandlers flows", () => {
   let tempDir: string;
 
   beforeEach(() => {
+    if (!nock.isActive()) {
+      nock.activate();
+    }
     nock.cleanAll();
     nock.disableNetConnect();
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "scanJobHandlers-test-"));
