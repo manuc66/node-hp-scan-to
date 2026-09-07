@@ -48,6 +48,8 @@ jobs:
       SIGNPATH_SIGNING_POLICY_SLUG: ${{ startsWith(github.ref, 'refs/tags/v') && 'release-signing' || 'test-signing' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v3
         with:
@@ -137,6 +139,13 @@ jobs:
         run: |
           mv release-signed/setup-node-hp-scan-to-*.exe release/
 
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0.23.1
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: release/node-hp-scan-to.sbom.json
+
       - name: Generate checksums
         run: |
           cd release
@@ -152,13 +161,6 @@ jobs:
             release/setup-node-hp-scan-to-*.exe
             release/SHA256SUMS.txt
           if-no-files-found: error
-
-      - name: Generate SBOM
-        uses: anchore/sbom-action@v0.23.1
-        with:
-          path: .
-          format: cyclonedx-json
-          output-file: release/node-hp-scan-to.sbom.json
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
@@ -182,25 +184,26 @@ jobs:
       - name: Compute release asset globs
         id: assets
         run: |
-          if [[ "${{ steps.ver.outputs.prerelease }}" == "true" ]]; then
-            GLOBS="release/*.zip
-                   release/*.tar.gz
-                   release/*.exe
-                   release/*.sbom.json
-                   release/SHA256SUMS.txt"
-          else
-            GLOBS="release/*.zip
-                   release/*.tar.gz
-                   release/*.deb
-                   release/*.apk
-                   release/*.rpm
-                   release/*.exe
-                   release/*.sbom.json
-                   release/SHA256SUMS.txt"
-          fi
-          echo "files<<GLOBSEOF" >> "$GITHUB_OUTPUT"
-          echo "$GLOBS" >> "$GITHUB_OUTPUT"
-          echo "GLOBSEOF" >> "$GITHUB_OUTPUT"
+          {
+            echo "files<<GLOBSEOF"
+            if [[ "${{ steps.ver.outputs.prerelease }}" == "true" ]]; then
+              echo "release/*.zip"
+              echo "release/*.tar.gz"
+              echo "release/*.exe"
+              echo "release/*.sbom.json"
+              echo "release/SHA256SUMS.txt"
+            else
+              echo "release/*.zip"
+              echo "release/*.tar.gz"
+              echo "release/*.deb"
+              echo "release/*.apk"
+              echo "release/*.rpm"
+              echo "release/*.exe"
+              echo "release/*.sbom.json"
+              echo "release/SHA256SUMS.txt"
+            fi
+            echo "GLOBSEOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Attach artifacts to the GitHub release
         if: startsWith(github.ref, 'refs/tags/')
