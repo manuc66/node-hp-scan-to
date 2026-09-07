@@ -53,6 +53,7 @@ pnpm test
 echo "Updating commitInfo.json..."
 node getCommitId.js
 
+
 echo "Committing the release..."
 git add package.json pnpm-lock.yaml src/commitInfo.json CHANGELOG.md
 git commit -m "chore: release v$NEW_VERSION"

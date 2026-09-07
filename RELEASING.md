@@ -18,7 +18,7 @@ Two equivalent ways:
   ```
 
 Either way, pushing the `vX.Y.Z` tag triggers the `Publish` workflow (npm,
-binaries, packages, AUR).
+binaries, packages, AUR, and Nix flake hashes update on `master`).
 
 ## 2. Write the release note
 
