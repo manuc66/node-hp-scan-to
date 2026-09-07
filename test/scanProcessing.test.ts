@@ -63,6 +63,7 @@ const scanConfig: ScanConfig = {
   },
   paperlessConfig: undefined,
   nextcloudConfig: undefined,
+  s3Config: undefined,
   preferEscl: false,
   paperSize: undefined,
   paperDim: undefined,

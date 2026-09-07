@@ -8,22 +8,12 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
-- **Reactive scan processing**: in `listen` and `adf-autoscan` mode, captured
-  scans are now delivered on a background FIFO queue and the PDF merge runs in
-  a worker thread, so the loop keeps polling the printer while uploads or
-  post-processing are still running. Previously a long delivery (large upload,
-  slow destination, heavy PDF merge) could make the loop miss the next scan
-  event or trip the printer's `userActionTimeout` / `waitScanNewPageRequest`
-  timeouts. Scan order is preserved (scans are processed in the order they
-  were captured) and `single-scan` still waits for delivery before exiting.
-  Details on
-  [processing-pipeline.md](docs/processing-pipeline.md).
-- Durability of pending scans is intentionally **not** part of this change:
-  the queue is in memory, so a process crash mid-job leaves the captured files
-  on disk (cleanup only runs once delivery finished) and delivery can be
-  redone by hand — no worse than the previous synchronous behavior. A
-  conditional durable inbox (relevant only when a network destination is
-  configured) is planned; no new Docker volume or constraint is required.
+- **S3-compatible upload target**: scans (individual images or merged PDFs)
+  can be uploaded to AWS S3, MinIO, Cloudflare R2, Wasabi and other
+  S3-compatible stores, with SigV4 request signing, bucket prefix, path-style
+  addressing and optional STS session tokens. Configured with the new
+  `--s3-*` CLI options, the matching `s3_*` config file keys or the
+  `S3_*` environment variables (Docker).
 
 ### Changed
 
@@ -37,6 +27,13 @@ All notable changes to this project are documented in this file.
   thus rejected on Windows but still fine on POSIX systems. The documented
   pattern example (`--pattern` help, README) was updated to the `: `-free
   `"scan"_dd.mm.yyyy_HHMMss` form, which works everywhere.
+
+### Security
+
+- **Upload error logs**: axios network failures (S3, Nextcloud, Paperless)
+  no longer serialize request `config`/`headers`, so SigV4 signatures,
+  STS session tokens, Nextcloud basic-auth passwords and Paperless tokens
+  cannot appear in logs.
 
 ### Fixed
 
