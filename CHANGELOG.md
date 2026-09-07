@@ -8,6 +8,11 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- **Nix flake** (`flake.nix` + `packaging/nix/package.nix`): installs the
+  self-contained Linux binary shipped with each release (x86_64/aarch64) and
+  provides a default configuration under
+  `$out/etc/node-hp-scan-to/default.json` via `NODE_CONFIG_DIR`. Usable with
+  `nix run github:manuc66/node-hp-scan-to` or `nix profile install`.
 - **S3-compatible upload target**: scans (individual images or merged PDFs)
   can be uploaded to AWS S3, MinIO, Cloudflare R2, Wasabi and other
   S3-compatible stores, with SigV4 request signing, bucket prefix, path-style
