@@ -45,6 +45,7 @@ function makeScanConfig(dir: string, paperless?: PaperlessConfig): ScanConfig {
     },
     paperlessConfig: paperless,
     nextcloudConfig: undefined,
+    s3Config: undefined,
     preferEscl: false,
     paperSize: undefined,
     paperDim: undefined,
