@@ -96,12 +96,12 @@ describe("serializeError", () => {
 
   it("recursively serializes error.cause without leaking sensitive data", async () => {
     const cause = new Error("DB connection failed");
-    // @ts-ignore – we deliberately add a non-standard property to test redaction
-    (cause as any).password = "secret-db-password";
+    // @ts-expect-error – we deliberately add a non-standard property to test redaction
+    (cause as Record<string, unknown>).password = "secret-db-password";
 
     const error = new Error("Operation failed");
-    // @ts-ignore – we deliberately add a non-standard cause property
-    (error as any).cause = cause;
+    // @ts-expect-error – we deliberately add a non-standard cause property
+    (error as Record<string, unknown>).cause = cause;
 
     const serialized = serializeError(error) as Record<string, unknown>;
 
