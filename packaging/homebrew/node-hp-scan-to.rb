@@ -14,10 +14,10 @@ cask "node-hp-scan-to" do
 
   caveats <<~EOS
     The app runs in the background and waits for scan jobs started from the
-    printer panel. Configure your printer in:
-      ~/Library/Application Support/node-hp-scan-to/config/default.json
+    printer panel. It reads config/default.json next to its binary
+    (override with the NODE_CONFIG_DIR environment variable).
 
-    To start it at login, see the LaunchAgent shipped inside the app:
+    To start it at login, copy the shipped LaunchAgent and edit the paths:
       /Applications/node-hp-scan-to.app/Contents/Resources/io.github.manuc66.node-hp-scan-to.plist
   EOS
 end
