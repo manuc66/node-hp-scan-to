@@ -37,7 +37,9 @@ function expectComandUsageIsUpdated(commandName: string) {
       const help = new Help();
       help.showGlobalOptions = true;
       const val = `\`\`\`text\n${help.formatHelp(command, help)}\`\`\``;
-      expect(usageInReadme).to.be.eq(val);
+      // Normalize line endings: checkouts on Windows may convert the README
+      // to CRLF, while the generated help always uses LF.
+      expect(usageInReadme?.replace(/\r\n/g, "\n")).to.be.eq(val);
     }
   }
 }

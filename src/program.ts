@@ -12,6 +12,7 @@ const { Bonjour } = bonjourService;
 import DeviceClient from "./DeviceClient.js";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
+import type { S3Config } from "./s3/S3Config.js";
 import { startHealthCheckServer } from "./healthcheck.js";
 import fs from "node:fs";
 import { Command, Option } from "@commander-js/extra-typings";
@@ -33,6 +34,7 @@ import type { Server as NetServer } from "node:net";
 import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
+import { validateFilePatternForPlatform } from "./fileNameValidation.js";
 import { getLoggerForFile, setDebugLevel } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -73,7 +75,7 @@ function setupScanParameters(commandName: string) {
     .addOption(
       new Option(
         "-p, --pattern <pattern>",
-        'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes',
+        'Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows',
       ).helpGroup(HelpGroupsHeadings.ouput),
     )
     .addOption(
@@ -234,6 +236,60 @@ function setupScanParameters(commandName: string) {
         "--nextcloud-upload-folder <nextcloud_upload_folder>",
         "The upload folder where documents or images are uploaded (default: scan)",
       ).helpGroup(HelpGroupsHeadings.nextcloud),
+    )
+    .addOption(
+      new Option(
+        "--s3-url <s3_url>",
+        "The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-region <s3_region>",
+        "The S3 region used for request signing (default: us-east-1)",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-access-key-id <s3_access_key_id>",
+        "The S3 access key id",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-secret-access-key <s3_secret_access_key>",
+        "The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-secret-access-key-file <s3_secret_access_key_file>",
+        "File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-bucket <s3_bucket>",
+        "The S3 bucket where scans are uploaded",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-prefix <s3_prefix>",
+        "The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-force-path-style",
+        "Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)",
+      ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--s3-session-token <s3_session_token>",
+        "The S3 session token for temporary credentials (optional)",
+      ).helpGroup(HelpGroupsHeadings.s3),
     );
 }
 
@@ -389,6 +445,115 @@ function getNextcloudConfig(
   }
 }
 
+export function getS3Config(
+  options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
+  fileConfig: FileConfig,
+): S3Config | undefined {
+  const configS3Url = getOptConfiguredValue(options.s3Url, fileConfig.s3_url);
+  const configS3Bucket = getOptConfiguredValue(
+    options.s3Bucket,
+    fileConfig.s3_bucket,
+  );
+  const configS3AccessKeyId = getOptConfiguredValue(
+    options.s3AccessKeyId,
+    fileConfig.s3_access_key_id,
+  );
+  const configS3SecretAccessKey = getOptConfiguredValue(
+    options.s3SecretAccessKey,
+    fileConfig.s3_secret_access_key,
+  );
+  const configS3SecretAccessKeyFile = getOptConfiguredValue(
+    options.s3SecretAccessKeyFile,
+    fileConfig.s3_secret_access_key_file,
+  );
+
+  const s3Attempted =
+    configS3Url !== undefined ||
+    configS3Bucket !== undefined ||
+    configS3AccessKeyId !== undefined ||
+    configS3SecretAccessKey !== undefined ||
+    configS3SecretAccessKeyFile !== undefined;
+
+  if (!s3Attempted) {
+    return undefined;
+  }
+
+  const s3Complete =
+    configS3Url !== undefined &&
+    configS3Bucket !== undefined &&
+    configS3AccessKeyId !== undefined &&
+    (configS3SecretAccessKey !== undefined ||
+      configS3SecretAccessKeyFile !== undefined);
+  if (!s3Complete) {
+    const missing: string[] = [];
+    if (configS3Url === undefined) {
+      missing.push("--s3-url");
+    }
+    if (configS3Bucket === undefined) {
+      missing.push("--s3-bucket");
+    }
+    if (configS3AccessKeyId === undefined) {
+      missing.push("--s3-access-key-id");
+    }
+    if (
+      configS3SecretAccessKey === undefined &&
+      configS3SecretAccessKeyFile === undefined
+    ) {
+      missing.push("--s3-secret-access-key or --s3-secret-access-key-file");
+    }
+    throw new Error(
+      `Incomplete S3 configuration: missing ${missing.join(", ")}. Either provide all the required S3 options or remove them.`,
+    );
+  }
+    const region = getConfiguredValue(
+      options.s3Region,
+      fileConfig.s3_region,
+      "us-east-1",
+    );
+    const prefix = getConfiguredValue(options.s3Prefix, fileConfig.s3_prefix, "");
+    const forcePathStyle = getConfiguredValue(
+      options.s3ForcePathStyle,
+      fileConfig.s3_force_path_style,
+      false,
+    );
+    const keepFiles: boolean = getConfiguredValue(
+      options.keepFiles,
+      fileConfig.keep_files,
+      false,
+    );
+    const sessionToken = getOptConfiguredValue(
+      options.s3SessionToken,
+      fileConfig.s3_session_token,
+    );
+
+    let secretAccessKey: string;
+    if (configS3SecretAccessKeyFile !== undefined) {
+      secretAccessKey = fs
+        .readFileSync(configS3SecretAccessKeyFile, "utf8")
+        .trimEnd();
+    } else {
+      secretAccessKey = configS3SecretAccessKey ?? "";
+    }
+
+    logger.info(
+      `S3 configuration provided, endpoint: ${configS3Url}, bucket: ${configS3Bucket}, region: ${region}, prefix: ${prefix}, forcePathStyle: ${forcePathStyle}, keepFiles: ${keepFiles}`,
+    );
+    const s3Config: S3Config = {
+      endpointUrl: configS3Url,
+      region,
+      bucket: configS3Bucket,
+      accessKeyId: configS3AccessKeyId,
+      secretAccessKey,
+      prefix,
+      forcePathStyle,
+      keepFiles,
+    };
+    if (sessionToken !== undefined && sessionToken.trim() !== "") {
+      s3Config.sessionToken = sessionToken;
+    }
+    return s3Config;
+}
+
 /**
  * Retrieves the configured value based on the provided options.
  * This function prioritizes the configuration from the command line if it is provided.
@@ -452,8 +617,15 @@ function getScanConfiguration(
     filePattern: getOptConfiguredValue(options.pattern, fileConfig.pattern),
   };
 
+  if (directoryConfig.filePattern !== undefined) {
+    // Fail early: a pattern producing an invalid file name would otherwise
+    // crash at scan time.
+    validateFilePatternForPlatform(directoryConfig.filePattern);
+  }
+
   const paperlessConfig = getPaperlessConfig(options, fileConfig);
   const nextcloudConfig = getNextcloudConfig(options, fileConfig);
+  const s3Config = getS3Config(options, fileConfig);
 
   const resolution = parseInt(
     getConfiguredValue(
@@ -544,6 +716,7 @@ function getScanConfiguration(
     directoryConfig,
     paperlessConfig,
     nextcloudConfig,
+    s3Config,
     preferEscl,
   };
   return scanConfig;
@@ -560,7 +733,7 @@ function getDeviceUpPollingInterval(
   );
 }
 
-type ListenOptions = ReturnType<ReturnType<typeof createListenCliCmd>["opts"]>;
+export type ListenOptions = ReturnType<ReturnType<typeof createListenCliCmd>["opts"]>;
 
 function createListenCliCmd(configFile: FileConfig) {
   return setupScanParameters("listen")
@@ -653,7 +826,7 @@ function createListenCliCmd(configFile: FileConfig) {
     });
 }
 
-type AdfAutoscanOptions = ReturnType<
+export type AdfAutoscanOptions = ReturnType<
   ReturnType<typeof createAdfAutoscanCliCmd>["opts"]
 >;
 
@@ -740,7 +913,7 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
     });
 }
 
-type SingleScanOptions = ReturnType<
+export type SingleScanOptions = ReturnType<
   ReturnType<typeof createSingleScanCliCmd>["opts"]
 >;
 

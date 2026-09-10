@@ -1,5 +1,5 @@
 cask "node-hp-scan-to" do
-  version "1.11.0"
+  version "1.11.1"
 
   # Universal (Intel + Apple Silicon) DMG attached to each GitHub release.
   # The DMG is rebuilt on every release, so the checksum is not pinned

@@ -101,6 +101,40 @@ elif [ -n "$NEXTCLOUD_PASSWORD" ]; then
     ARGS+=("--nextcloud-password" "$NEXTCLOUD_PASSWORD")
 fi
 
+if [ -n "$S3_URL" ]; then
+    ARGS+=("--s3-url" "$S3_URL")
+fi
+
+if [ -n "$S3_REGION" ]; then
+    ARGS+=("--s3-region" "$S3_REGION")
+fi
+
+if [ -n "$S3_ACCESS_KEY_ID" ]; then
+    ARGS+=("--s3-access-key-id" "$S3_ACCESS_KEY_ID")
+fi
+
+if [ -n "$S3_SECRET_ACCESS_KEY_FILE" ]; then
+    ARGS+=("--s3-secret-access-key-file" "$S3_SECRET_ACCESS_KEY_FILE")
+elif [ -n "$S3_SECRET_ACCESS_KEY" ]; then
+    ARGS+=("--s3-secret-access-key" "$S3_SECRET_ACCESS_KEY")
+fi
+
+if [ -n "$S3_BUCKET" ]; then
+    ARGS+=("--s3-bucket" "$S3_BUCKET")
+fi
+
+if [ -n "$S3_PREFIX" ]; then
+    ARGS+=("--s3-prefix" "$S3_PREFIX")
+fi
+
+if [ -n "${S3_FORCE_PATH_STYLE+x}" ] && [ "$S3_FORCE_PATH_STYLE" != "false" ] && [ "$S3_FORCE_PATH_STYLE" != "0" ]; then
+    ARGS+=("--s3-force-path-style")
+fi
+
+if [ -n "$S3_SESSION_TOKEN" ]; then
+    ARGS+=("--s3-session-token" "$S3_SESSION_TOKEN")
+fi
+
 if [ -n "$CMDLINE" ]; then
     # Split CMDLINE into words and add to ARGS
     set -- $CMDLINE

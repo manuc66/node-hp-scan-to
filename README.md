@@ -43,6 +43,7 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
   - [Configure](#Configure)
 - [Build Source Code](#build-source-code)
   - [Debugging](#debugging)
+- [Reverse Engineering](#reverse-engineering)
 - [💖 Support this project](#-support-this-project)
 - [🙏 Special Thanks](#-special-thanks)
 - [License](#license)
@@ -295,6 +296,15 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `--nextcloud-upload-folder`           | Nextcloud folder for uploads. Defaults to `scan`.                                                                                                                                                                              | `--nextcloud-upload-folder scan`                                  |
 | `--nextcloud-url`                     | Nextcloud instance URL.                                                                                                                                                                                                        | `--nextcloud-url https://domain.tld` (no default)                 |
 | `--nextcloud-username`                | Nextcloud username with write access to the upload folder.                                                                                                                                                                     | `--nextcloud-username user` (no default)                          |
+| `--s3-url`                            | S3-compatible endpoint URL.                                                                                                                                                                                                    | `--s3-url https://s3.us-east-1.amazonaws.com` (no default)        |
+| `--s3-region`                         | S3 region used for request signing. Defaults to `us-east-1`.                                                                                                                                                                   | `--s3-region eu-west-1`                                            |
+| `--s3-access-key-id`                  | S3 access key id.                                                                                                                                                                                                              | `--s3-access-key-id AKIA...` (no default)                         |
+| `--s3-secret-access-key`              | S3 secret access key. Required unless `--s3-secret-access-key-file` is used. Overrides if both are provided.                                                                                                                    | `--s3-secret-access-key ...` (no default)                         |
+| `--s3-secret-access-key-file`         | File containing the S3 secret access key. Required unless `--s3-secret-access-key` is used. Takes precedence if both are provided.                                                                                              | `--s3-secret-access-key-file /path/to/file` (no default)          |
+| `--s3-bucket`                         | S3 bucket to upload scans into.                                                                                                                                                                                                | `--s3-bucket scans` (no default)                                  |
+| `--s3-prefix`                         | Folder (prefix) inside the bucket. Defaults to the bucket root.                                                                                                                                                                | `--s3-prefix 2026/08`                                              |
+| `--s3-force-path-style`               | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...).                                                                                                                                                    | `--s3-force-path-style` (disabled by default)                     |
+| `--s3-session-token`                  | S3 session token for temporary credentials.                                                                                                                                                                                    | `--s3-session-token ...` (no default)                             |
 
 **Notes:**
 
@@ -395,7 +405,6 @@ By default, this app runs the `listen` command as the default mode. It will list
 Run `npx node-hp-scan-to listen --help` to get the full list of command options.
 
 <!-- BEGIN HELP command: listen -->
-
 ```text
 Usage:  listen [options]
 
@@ -403,7 +412,7 @@ Listen the device for new scan job to save to this target
 
 Output Options:
   -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
-  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
 
@@ -436,6 +445,17 @@ Nextcloud Options:
   --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
   --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
 
+S3 Options:
+  --s3-url <s3_url>                                                The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)
+  --s3-region <s3_region>                                          The S3 region used for request signing (default: us-east-1)
+  --s3-access-key-id <s3_access_key_id>                            The S3 access key id
+  --s3-secret-access-key <s3_secret_access_key>                    The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.
+  --s3-secret-access-key-file <s3_secret_access_key_file>          File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.
+  --s3-bucket <s3_bucket>                                          The S3 bucket where scans are uploaded
+  --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
+  --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
+  --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
 Device Control Screen Options:
   -l, --label <label>                                              The label to display on the device (the default is the hostname)
   --add-emulated-duplex [mode]                                     Enable emulated duplex scanning, with optional assembly mode (default: document-wise) (choices: "page-wise", "document-wise", "reverse-front", "reverse-both")
@@ -448,8 +468,9 @@ Global Options:
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
-
 <!-- END HELP command: listen -->
+
+In `listen` (and `adf-autoscan`) mode, scans are delivered on a background queue and the PDF merge runs in a worker thread, so the loop keeps responding to the printer while processing — see the [processing pipeline](docs/processing-pipeline.md) page.
 
 ##### `adf-autoscan`
 
@@ -482,7 +503,6 @@ redacted as `[Redacted]` in every log line.
 Run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help.
 
 <!-- BEGIN HELP command: adf-autoscan -->
-
 ```text
 Usage:  adf-autoscan [options]
 
@@ -491,7 +511,7 @@ the automatic document feeder (adf)
 
 Output Options:
   -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
-  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
@@ -526,6 +546,17 @@ Nextcloud Options:
   --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
   --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
 
+S3 Options:
+  --s3-url <s3_url>                                                The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)
+  --s3-region <s3_region>                                          The S3 region used for request signing (default: us-east-1)
+  --s3-access-key-id <s3_access_key_id>                            The S3 access key id
+  --s3-secret-access-key <s3_secret_access_key>                    The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.
+  --s3-secret-access-key-file <s3_secret_access_key_file>          File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.
+  --s3-bucket <s3_bucket>                                          The S3 bucket where scans are uploaded
+  --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
+  --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
+  --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
 Auto-scan Options:
   --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
   --start-scan-delay <startScanDelay>                              Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan
@@ -537,7 +568,6 @@ Global Options:
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
-
 <!-- END HELP command: adf-autoscan -->
 
 ##### `clear-registrations`
@@ -553,7 +583,6 @@ docker run -e MAIN_COMMAND="clear-registrations" docker.io/manuc66/node-hp-scan-
 ```
 
 <!-- BEGIN HELP command: clear-registrations -->
-
 ```text
 Usage:  clear-registrations [options]
 
@@ -569,7 +598,6 @@ Global Options:
   --health-check                           Start an http health check endpoint
   --health-check-port <health-check-port>  Define the port for the HTTP health check endpoint
 ```
-
 <!-- END HELP command: clear-registrations -->
 
 ##### `single-scan`
@@ -585,7 +613,6 @@ docker run -e MAIN_COMMAND="single-scan" docker.io/manuc66/node-hp-scan-to:lates
 ```
 
 <!-- BEGIN HELP command: single-scan -->
-
 ```text
 Usage:  single-scan [options]
 
@@ -593,7 +620,7 @@ Trigger a new scan job
 
 Output Options:
   -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
-  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
@@ -628,6 +655,17 @@ Nextcloud Options:
   --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
   --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
 
+S3 Options:
+  --s3-url <s3_url>                                                The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)
+  --s3-region <s3_region>                                          The S3 region used for request signing (default: us-east-1)
+  --s3-access-key-id <s3_access_key_id>                            The S3 access key id
+  --s3-secret-access-key <s3_secret_access_key>                    The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.
+  --s3-secret-access-key-file <s3_secret_access_key_file>          File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.
+  --s3-bucket <s3_bucket>                                          The S3 bucket where scans are uploaded
+  --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
+  --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
+  --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
 Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                                                Name of the device to lookup for on the network
@@ -635,7 +673,6 @@ Global Options:
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
-
 <!-- END HELP command: single-scan -->
 
 ### Run with Docker
@@ -689,6 +726,15 @@ List of supported environment variables and their meaning, or correspondence wit
 | `MODE`                        | Scan mode setting                                                                                             | `--mode`                                                                      |
 | `PAPER_ORIENTATION`           | Paper orientation: portrait (default) or landscape. Applied to `PAPER_SIZE` only.                             | `--paper-orientation`                                                         |
 | `TEMP_DIR`                    | Temporary directory                                                                                           | `-t` / `--temp-directory`                                                     |
+| `S3_URL`                      | S3-compatible endpoint URL                                                                                    | `--s3-url`                                                                    |
+| `S3_REGION`                   | S3 region used for request signing (default `us-east-1`)                                                      | `--s3-region`                                                                 |
+| `S3_ACCESS_KEY_ID`            | S3 access key id                                                                                              | `--s3-access-key-id`                                                          |
+| `S3_SECRET_ACCESS_KEY`        | S3 secret access key (either this or `S3_SECRET_ACCESS_KEY_FILE` is required; file takes precedence)          |                                                                               |
+| `S3_SECRET_ACCESS_KEY_FILE`   | File containing the S3 secret access key (preferred for Docker Compose secrets)                               | Example: `./s3_secret.secret`                                                 |
+| `S3_BUCKET`                   | S3 bucket to upload scans into                                                                                | `--s3-bucket`                                                                 |
+| `S3_PREFIX`                   | Folder (prefix) inside the bucket (default bucket root)                                                       | `--s3-prefix`                                                                 |
+| `S3_FORCE_PATH_STYLE`         | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)                                    | `--s3-force-path-style`                                                       |
+| `S3_SESSION_TOKEN`            | S3 session token for temporary credentials                                                                    | `--s3-session-token`                                                          |
 
 **Additional Notes:**
 
@@ -767,7 +813,7 @@ spec:
             - name: IP
               value: 192.168.0.5
             - name: PATTERN
-              value: '"scan"_dd.mm.yyyy_hh:MM:ss'
+              value: '"scan"_dd.mm.yyyy_HHMMss'
             - name: PGID
               value: "1000"
             - name: PUID
@@ -820,6 +866,12 @@ node dist/index.js -a 192.168.1.5
 I'm using Visual Studio Code to debug this application, so instead of running `tsx`, just run `code .` and press F5 to start debugging.
 
 You may want to set your printers ip or name in `.vscode/launch.json`
+
+## Reverse Engineering
+
+- [Capturing the HP driver network traffic in the clear](protocol_doc/capture/README.md) — how the driver/printer exchanges (including HTTPS) are reverse-engineered: native Windows with mitmproxy (IP redirection) and Linux/Wine with the GnuTLS keylog.
+- [Protocol documentation](protocol_doc/HP%20Officejet%206500%20E710n-z.md) — the reverse-engineered proprietary HP protocols.
+- [eSCL protocol documentation](protocol_doc/HP%20PageWide%20Pro%20477dw%20MFP.md).
 
 ## 💖 Support this project
 

@@ -8,6 +8,12 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- **S3-compatible upload target**: scans (individual images or merged PDFs)
+  can be uploaded to AWS S3, MinIO, Cloudflare R2, Wasabi and other
+  S3-compatible stores, with SigV4 request signing, bucket prefix, path-style
+  addressing and optional STS session tokens. Configured with the new
+  `--s3-*` CLI options, the matching `s3_*` config file keys or the
+  `S3_*` environment variables (Docker).
 - **macOS packages**: each release now also ships a universal2 (Intel &
   Apple Silicon) `.pkg` installer and `.dmg` disk image built natively on a
   dedicated macOS CI job. They wrap the app in a proper
@@ -17,6 +23,66 @@ All notable changes to this project are documented in this file.
   releases keep working without an Apple Developer account.
 - **Homebrew cask** (`packaging/homebrew/node-hp-scan-to.rb`): installs the
   universal `.dmg` on both Intel and Apple Silicon Macs.
+
+### Changed
+
+- **Early validation of file patterns**: the `--pattern` / `pattern` value is
+  now checked at startup against the file name rules of the **running
+  platform** instead of failing when the scan file is written, so existing
+  patterns stay valid where they already work. Windows rejects a name that
+  the `sanitize-filename` package would change (forbidden characters such as
+  `:`, reserved device names, trailing dots/spaces), while Linux and macOS
+  (APFS) only reject `/`; a pattern like `"scan"_dd.mm.yyyy_HH:MM:ss` is
+  thus rejected on Windows but still fine on POSIX systems. The documented
+  pattern example (`--pattern` help, README) was updated to the `: `-free
+  `"scan"_dd.mm.yyyy_HHMMss` form, which works everywhere.
+
+### Security
+
+- **Upload error logs**: axios network failures (S3, Nextcloud, Paperless)
+  no longer serialize request `config`/`headers`, so SigV4 signatures,
+  STS session tokens, Nextcloud basic-auth passwords and Paperless tokens
+  cannot appear in logs.
+
+### Fixed
+
+- **Tests on Windows**: the suite now runs green again on Windows. The README
+  help snapshot test compares line endings that git may convert to CRLF, the
+  `~` home expansion produced mixed path separators, and the read-only folder
+  checks relied on `chmod`, which has no effect on directories on Windows.
+  - README snapshot normalization: `test/readme.test.ts` no longer fails on a
+    CRLF checkout.
+  - `PathHelper.getOutputFolder`: `~` expansion now goes through
+    `path.join`, so paths use the platform separator consistently.
+  - `PathHelper.checkIfFolderIsWritable` now performs a real temporary write
+    (create + delete) instead of `fs.access(W_OK)`, which does not honor ACLs
+    or the read-only attribute on Windows; the writability tests use an
+    `icacls` deny on Windows (ACLs) and keep the `chmod` approach on POSIX.
+  - Timestamp patterns containing `:` cannot produce a valid file name on
+    Windows; that formatting case is skipped there.
+
+## [1.11.1] - 2026-08-29
+
+### Fixed
+
+- **Standalone executables**: in interactive terminals the `pretty` log mode
+  crashed with `unable to determine transport target for "pino-pretty"`. A
+  compiled Bun binary bundles every module, so the pino worker-thread
+  transport cannot resolve its target at runtime. Bun now runs pino-pretty
+  in-process (the same path already used for the plain/service mode);
+  Node.js keeps the worker transport.
+
+### Added
+
+- Tests guarding the Bun pretty-mode regression: a unit test for the
+  in-process/worker decision plus an integration test that compiles a real
+  Bun executable and runs it in `LOG_FORMAT=pretty` (skipped when bun is not
+  installed).
+- **Automated releases**: a `Release` GitHub Actions workflow
+  (`.github/workflows/release.yml`) that bumps the version, dates the
+  changelog, commits and tags in one step (manual `workflow_dispatch`).
+  `release.sh` was rewritten to be non-interactive and to match that flow
+  (single commit + annotated tag).
 
 ## [1.11.0] - 2026-08-29
 

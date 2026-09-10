@@ -1,5 +1,6 @@
 import { describe } from "mocha";
 import { expect } from "chai";
+import { execFileSync } from "node:child_process";
 import PathHelper from "../src/PathHelper.js";
 import fs from "node:fs";
 import * as fsp from "node:fs/promises";
@@ -7,6 +8,38 @@ import os from "node:os";
 import path from "node:path";
 
 const now: Date = new Date();
+const isWindows = process.platform === "win32";
+
+/**
+ * Makes a folder unwritable for the current user and returns a restore
+ * function. On POSIX a chmod 0o444 is enough; on Windows folder write
+ * access is controlled by ACLs, so an explicit deny is used instead.
+ */
+function makeFolderUnwritable(folder: string): () => void {
+  if (isWindows) {
+    const who = execFileSync("whoami", { encoding: "utf8" }).trim();
+    execFileSync("icacls", [folder, "/deny", `${who}:(WD,AD)`], {
+      stdio: "ignore",
+    });
+    return () => {
+      try {
+        execFileSync("icacls", [folder, "/remove:d", who], {
+          stdio: "ignore",
+        });
+      } catch {
+        // Restore failures are ignored; the caller may remove the folder anyway
+      }
+    };
+  }
+  fs.chmodSync(folder, 0o444);
+  return () => {
+    try {
+      fs.chmodSync(folder, 0o755);
+    } catch {
+      // ignore
+    }
+  };
+}
 
 describe("PathHelper", () => {
   describe("getFileForPage", () => {
@@ -49,7 +82,12 @@ describe("PathHelper", () => {
     });
   });
   describe("getFileForScan", () => {
-    it("Can format a file with formatted timestamp", async () => {
+    it("Can format a file with formatted timestamp", async function () {
+      if (isWindows) {
+        // `:` is not allowed in Windows file names, so a pattern producing
+        // `HH:MM:ss` cannot be exercised there.
+        this.skip();
+      }
       const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "test-"));
       const nextFileName = await PathHelper.getFileForScan(
         tempDir,
@@ -166,7 +204,7 @@ describe("PathHelper", () => {
     it("should throw an error if the folder is not writable", async () => {
       const readOnlyFolder = path.join(os.tmpdir(), "read-only-folder");
       await fs.promises.mkdir(readOnlyFolder, { recursive: true });
-      await fs.promises.chmod(readOnlyFolder, 0o444); // Set to read-only
+      const restore = makeFolderUnwritable(readOnlyFolder);
 
       try {
         await PathHelper.getTargetFolder(readOnlyFolder);
@@ -182,11 +220,10 @@ describe("PathHelper", () => {
         } else {
           throw error; // Re-throw if it's not an Error object
         }
+      } finally {
+        restore();
+        await fs.promises.rmdir(readOnlyFolder);
       }
-
-      // Clean up: Restore permissions and remove the folder
-      await fs.promises.chmod(readOnlyFolder, 0o755); // Set back to writable
-      await fs.promises.rmdir(readOnlyFolder);
     });
   });
 
@@ -212,7 +249,7 @@ describe("PathHelper", () => {
     it("should throw an error if the folder is not writable", async () => {
       const readOnlyFolder = path.join(os.tmpdir(), "read-only-folder");
       await fs.promises.mkdir(readOnlyFolder, { recursive: true });
-      await fs.promises.chmod(readOnlyFolder, 0o444); // Set to read-only
+      const restore = makeFolderUnwritable(readOnlyFolder);
 
       try {
         await PathHelper.getTempFolder(readOnlyFolder);
@@ -228,11 +265,10 @@ describe("PathHelper", () => {
         } else {
           throw error; // Re-throw if it's not an Error object
         }
+      } finally {
+        restore();
+        await fs.promises.rmdir(readOnlyFolder);
       }
-
-      // Clean up: Restore permissions and remove the folder
-      await fs.promises.chmod(readOnlyFolder, 0o755); // Set back to writable
-      await fs.promises.rmdir(readOnlyFolder);
     });
   });
 

@@ -40,6 +40,66 @@ const LEVEL_LABELS: Record<number, string> = {
   60: "fatal",
 };
 
+const SAFE_ERROR_KEYS = new Set([
+  "type",
+  "message",
+  "stack",
+  "name",
+  "code",
+  "status",
+  "errno",
+  "syscall",
+  "address",
+  "port",
+  "isAxiosError",
+]);
+
+// axios Error objects carry the full request config (headers with auth
+// tokens) and the request/response payloads: never serialize those.
+export function serializeError(err: unknown): unknown {
+  if (!err) {
+    return err;
+  }
+  const serialized = pino.stdSerializers.err(err as Error);
+  const response = (
+    err as { response?: { status?: number; statusText?: string } }
+  ).response;
+  const cause = (err as { cause?: unknown }).cause;
+  const safe: Record<string, unknown> = {};
+  for (const key of SAFE_ERROR_KEYS) {
+    if (serialized[key] !== undefined) {
+      safe[key] = serialized[key];
+    }
+  }
+  // Copy custom sensitive fields (like password) for redaction
+  if ((err as { password?: unknown }).password !== undefined) {
+    safe["password"] = "[Redacted]";
+  }
+  if (response !== undefined) {
+    safe["response"] = {
+      status: response.status,
+      statusText: response.statusText,
+    };
+  }
+  if (cause !== undefined) {
+    safe["cause"] = serializeError(cause);
+  }
+  return safe;
+}
+
+// Keeps legacy bare info/debug lines and prefixes warn/error/fatal so
+// humans can tell severity apart.
+export function formatPlainLogMessage(
+  log: Record<string, unknown>,
+  messageKey: string,
+): string {
+  const msg = log[messageKey] as string;
+  const levelLabel = LEVEL_LABELS[log["level"] as number] ?? "info";
+  return levelLabel === "info" || levelLabel === "debug"
+    ? msg
+    : `${levelLabel.toUpperCase()}: ${msg}`;
+}
+
 const loggerOptions = {
   enabled: !isTest,
   level: defaultLevel,
@@ -52,54 +112,58 @@ const loggerOptions = {
       "token",
       "*.token",
       "Authorization",
+      "authorization",
       "headers.Authorization",
+      "headers.authorization",
       "*.headers.Authorization",
+      "*.headers.authorization",
+      "secretAccessKey",
+      "*.secretAccessKey",
+      "accessKeyId",
+      "*.accessKeyId",
+      "sessionToken",
+      "*.sessionToken",
+      "x-amz-security-token",
+      "*.x-amz-security-token",
     ],
     censor: "[Redacted]",
   },
   serializers: {
-    // axios Error objects carry the full request config (headers with auth
-    // tokens) and the request/response payloads: never serialize those.
-    err: (err: unknown) => {
-      if (!err) {
-        return err;
-      }
-      const serialized = pino.stdSerializers.err(err as Error);
-      const response = (
-        err as { response?: { status?: number; statusText?: string } }
-      ).response;
-      if (response !== undefined) {
-        serialized["response"] = {
-          status: response.status,
-          statusText: response.statusText,
-        };
-      }
-      delete serialized["config"];
-      delete serialized["request"];
-      return serialized;
-    },
+    err: (err: unknown) => serializeError(err),
   },
 };
 
-const baseLogger: Logger = isPlain
-  ? // In-process pino-pretty (no worker thread): the messageFormat function
-    // cannot cross a worker boundary. Keeps legacy bare info/debug lines and
-    // prefixes warn/error/fatal so humans can tell severity apart.
-    pino(
-      loggerOptions,
-      pinoPretty({
-        colorize: false,
-        singleLine: true,
-        ignore: "pid,hostname,time,level,name",
-        messageFormat: (log: Record<string, unknown>, messageKey: string) => {
-          const msg = log[messageKey] as string;
-          const levelLabel = LEVEL_LABELS[log["level"] as number] ?? "info";
-          return levelLabel === "info" || levelLabel === "debug"
-            ? msg
-            : `${levelLabel.toUpperCase()}: ${msg}`;
-        },
-      }),
-    )
+// Bun-compiled executables bundle every module, so a pino worker-thread
+// transport cannot resolve its "pino-pretty" target at runtime. Run
+// pino-pretty in-process there (the messageFormat below cannot cross a
+// worker boundary anyway). Node.js keeps the worker transport.
+// process.isBun is only defined under Bun, so it is not part of @types/node.
+const isBun = (process as { isBun?: boolean }).isBun === true;
+
+export function shouldUseInProcessPinoPretty(
+  isPlain: boolean,
+  isPretty: boolean,
+  isBun: boolean,
+): boolean {
+  return isPlain || (isPretty && isBun);
+}
+
+const prettyOptions = isPlain
+  ? {
+      colorize: false,
+      singleLine: true,
+      ignore: "pid,hostname,time,level,name",
+      messageFormat: formatPlainLogMessage,
+    }
+  : {
+      colorize: isCli,
+      singleLine: true,
+      translateTime: "HH:MM:ss.l",
+      ignore: "pid,hostname",
+    };
+
+const baseLogger: Logger = shouldUseInProcessPinoPretty(isPlain, isPretty, isBun)
+  ? pino(loggerOptions, pinoPretty(prettyOptions))
   : pino({
       ...loggerOptions,
       ...(isPretty

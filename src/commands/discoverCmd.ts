@@ -115,7 +115,10 @@ function printDevices(devices: DiscoveredDevice[], json: boolean) {
   }
 }
 
-export async function discoverCmd(options: DiscoverOptions): Promise<number> {
+export async function discoverCmd(
+  options: DiscoverOptions,
+  browse: (timeoutMs: number) => Promise<DiscoveredDevice[]> = browseCandidates,
+): Promise<number> {
   // progress chatter goes to stderr so that stdout stays machine-readable
   if (options.ip !== undefined) {
     const isValid = await probeDevice(options.ip);
@@ -128,7 +131,7 @@ export async function discoverCmd(options: DiscoverOptions): Promise<number> {
   }
 
   console.error("Searching for HP scan-capable devices...");
-  let candidates = await browseCandidates(options.timeoutSeconds * 1000);
+  let candidates = await browse(options.timeoutSeconds * 1000);
 
   if (options.name !== undefined) {
     const prefix = options.name.toLowerCase();

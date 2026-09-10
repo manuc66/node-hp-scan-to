@@ -10,10 +10,12 @@ import {
   uploadPdfToNextcloud,
   uploadImagesToNextcloud,
 } from "./nextcloud/nextcloud.js";
+import { uploadPdfToS3, uploadImagesToS3 } from "./s3/s3.js";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
+import type { S3Config } from "./s3/S3Config.js";
 import type { ScanConfig } from "./type/scanConfigs.js";
 import { getLoggerForFile } from "./logger.js";
 
@@ -66,6 +68,7 @@ async function handlePdfPostProcessing(
 ): Promise<PostProcessingResult> {
   const paperlessConfig = scanConfig.paperlessConfig;
   const nextcloudConfig = scanConfig.nextcloudConfig;
+  const s3Config = scanConfig.s3Config;
 
   const pdfFilePath = await mergeToPdf(
     paperlessConfig ? tempFolder : folder,
@@ -92,12 +95,20 @@ async function handlePdfPostProcessing(
         failures.push(toFailureMessage(e));
       }
     }
+    if (s3Config) {
+      try {
+        await uploadPdfToS3(pdfFilePath, s3Config);
+      } catch (e) {
+        failures.push(toFailureMessage(e));
+      }
+    }
     // Only clean up if delivery succeeded, otherwise keep the files.
     if (failures.length === 0) {
       await cleanUpFilesIfNeeded(
         [pdfFilePath],
         paperlessConfig,
         nextcloudConfig,
+        s3Config,
       );
     }
   }
@@ -113,6 +124,7 @@ async function handleImagePostProcessing(
 ): Promise<PostProcessingResult> {
   const paperlessConfig = scanConfig.paperlessConfig;
   const nextcloudConfig = scanConfig.nextcloudConfig;
+  const s3Config = scanConfig.s3Config;
 
   displayImageScan(scanJobContent, scanCount);
   const failures: string[] = [];
@@ -152,10 +164,22 @@ async function handleImagePostProcessing(
       failures.push(toFailureMessage(e));
     }
   }
+  if (s3Config) {
+    try {
+      await uploadImagesToS3(scanJobContent, s3Config);
+    } catch (e) {
+      failures.push(toFailureMessage(e));
+    }
+  }
   // Only clean up if delivery succeeded, otherwise keep the files.
   if (failures.length === 0) {
     const filePaths = scanJobContent.elements.map((element) => element.path);
-    await cleanUpFilesIfNeeded(filePaths, paperlessConfig, nextcloudConfig);
+    await cleanUpFilesIfNeeded(
+      filePaths,
+      paperlessConfig,
+      nextcloudConfig,
+      s3Config,
+    );
   }
   return { uploadSucceeded: failures.length === 0, failures };
 }
@@ -197,9 +221,13 @@ async function cleanUpFilesIfNeeded(
   filePaths: string[],
   paperlessConfig: PaperlessConfig | undefined,
   nextcloudConfig: NextcloudConfig | undefined,
+  s3Config: S3Config | undefined,
 ) {
   const keepFiles: boolean =
-    paperlessConfig?.keepFiles ?? nextcloudConfig?.keepFiles ?? true;
+    paperlessConfig?.keepFiles ??
+    nextcloudConfig?.keepFiles ??
+    s3Config?.keepFiles ??
+    true;
   if (!keepFiles) {
     await Promise.all(
       filePaths.map(async (filePath) => {

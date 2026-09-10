@@ -8,11 +8,12 @@ import {
   listenCmd,
   processScanWithDestination,
   handleScanResult,
+  processFinishedPartialDuplexScan,
   determineDuplexModes,
   setupScanParameters,
-  processFinishedPartialDuplexScan,
   type FrontOfDoubleSidedScanContext,
 } from "../src/commands/listenCmd.js";
+import { flushScanProcessingQueue } from "../src/queue/processingQueue.js";
 import { DuplexAssemblyMode } from "../src/type/DuplexAssemblyMode.js";
 import type { ScanConfig } from "../src/type/scanConfigs.js";
 import { ScanMode } from "../src/type/scanMode.js";
@@ -253,6 +254,7 @@ const makeScanConfig = (
   },
   paperlessConfig: undefined,
   nextcloudConfig: undefined,
+  s3Config: undefined,
   preferEscl: false,
   paperSize: undefined,
   paperDim: undefined,
@@ -882,7 +884,7 @@ describe("handleScanResult", () => {
   it("FrontOfDoubleSided: captures all inputs into a new context, returns it", async () => {
     const cfg = makeScanConfig("/tmp");
     const content = makeScanContent([{ path: "p1.png" }]);
-    const result = await handleScanResult(
+    const result = handleScanResult(
       DuplexMode.FrontOfDoubleSided,
       null,
       cfg,
@@ -917,7 +919,7 @@ describe("handleScanResult", () => {
     it("Simplex: returns null and writes output PDF", async () => {
       const jpegPath = writeSampleJpeg(tempDir, "page1.jpg");
       const cfg = makeScanConfig(tempDir);
-      const result = await handleScanResult(
+      const result = handleScanResult(
         DuplexMode.Simplex,
         null,
         cfg,
@@ -929,6 +931,7 @@ describe("handleScanResult", () => {
         true,
         DuplexAssemblyMode.DOCUMENT_WISE,
       );
+      await flushScanProcessingQueue();
 
       expect(result).to.be.null;
       expect(fs.existsSync(path.join(tempDir, "scan1.pdf"))).to.be.true;
@@ -947,7 +950,7 @@ describe("handleScanResult", () => {
         scanJobContent: makeScanContent([{ path: frontPath }]),
       });
 
-      const result = await handleScanResult(
+      const result = handleScanResult(
         DuplexMode.BackOfDoubleSided,
         frontCtx,
         cfg,
@@ -959,6 +962,7 @@ describe("handleScanResult", () => {
         true,
         DuplexAssemblyMode.DOCUMENT_WISE,
       );
+      await flushScanProcessingQueue();
 
       // The function returns the front context object reference unchanged.
       expect(result).to.equal(frontCtx);
@@ -984,12 +988,13 @@ describe("processFinishedPartialDuplexScan", () => {
         scanJobContent: makeScanContent([{ path: jpegPath }]),
       });
 
-      await processFinishedPartialDuplexScan(
+      processFinishedPartialDuplexScan(
         makeScanTarget({ resourceURI: "/dest/1", isDuplexSingleSide: true }),
         makeScanTarget({ resourceURI: "/dest/2", isDuplexSingleSide: true }),
         1,
         frontCtx,
       );
+      await flushScanProcessingQueue();
 
       expect(fs.existsSync(path.join(tempDir, "scan1.pdf"))).to.be.true;
     } finally {
@@ -1087,6 +1092,7 @@ describe("processScanWithDestination", () => {
     expect(result.duplexMode).to.equal(DuplexMode.Simplex);
     expect(result.scanCount).to.equal(2);
     expect(jobScope.isDone()).to.be.true;
+    await flushScanProcessingQueue();
     // The flushed front-only PDF must exist (scan count from frontContext = 0).
     const pdfPath = path.join(tempDir, "scan0.pdf");
     console.log("DEBUG: checking for", pdfPath);
@@ -1126,6 +1132,7 @@ describe("processScanWithDestination", () => {
     expect(result.duplexMode).to.equal(DuplexMode.Duplex);
     expect(result.scanCount).to.equal(2);
     expect(jobScope.isDone()).to.be.true;
+    await flushScanProcessingQueue();
     expect(fs.existsSync(path.join(tempDir, "scan0.pdf"))).to.be.true;
   });
 });

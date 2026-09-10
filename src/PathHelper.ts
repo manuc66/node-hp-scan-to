@@ -133,17 +133,26 @@ export default class PathHelper {
     }
 
     if (folder.startsWith("~")) {
-      return folder.replace(/^~/, os.homedir());
+      return path.join(os.homedir(), folder.slice(2));
     }
     return folder;
   }
 
   private static async checkIfFolderIsWritable(folder: string) {
-    // Check if the folder exists
+    // Probe with an actual write: `fs.access(W_OK)` does not honor ACLs or
+    // the read-only attribute on Windows, so a real create/delete is the
+    // only reliable cross-platform check.
+    const probePath = path.join(
+      folder,
+      `.node-hp-scan-to-write-check-${process.pid}-${Date.now()}-${nanoid()}`,
+    );
     try {
-      await fs.promises.access(folder, fs.constants.W_OK);
+      const fd = await fs.promises.open(probePath, "wx");
+      await fd.close();
+      await fs.promises.unlink(probePath).catch(() => undefined);
       return folder; // The folder exists and is writable
     } catch {
+      await fs.promises.unlink(probePath).catch(() => undefined);
       // If the folder does not exist or is not writable, handle the error
       throw new Error(
         `The folder "${folder}" does not exist or is not writable.`,
