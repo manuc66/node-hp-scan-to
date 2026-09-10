@@ -48,6 +48,8 @@ jobs:
       SIGNPATH_SIGNING_POLICY_SLUG: ${{ startsWith(github.ref, 'refs/tags/v') && 'release-signing' || 'test-signing' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v3
         with:
@@ -279,6 +281,13 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
 
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0.23.1
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: release/node-hp-scan-to.sbom.json
+
       - name: Generate checksums
         run: |
           cd release
@@ -296,13 +305,6 @@ jobs:
             release/node-hp-scan-to-*-macos.dmg
             release/SHA256SUMS.txt
           if-no-files-found: error
-
-      - name: Generate SBOM
-        uses: anchore/sbom-action@v0.23.1
-        with:
-          path: .
-          format: cyclonedx-json
-          output-file: release/node-hp-scan-to.sbom.json
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
@@ -328,29 +330,30 @@ jobs:
       - name: Compute release asset globs
         id: assets
         run: |
-          if [[ "${{ steps.ver.outputs.prerelease }}" == "true" ]]; then
-            GLOBS="release/*.zip
-                   release/*.tar.gz
-                   release/*.exe
-                   release/*.pkg
-                   release/*.dmg
-                   release/*.sbom.json
-                   release/SHA256SUMS.txt"
-          else
-            GLOBS="release/*.zip
-                   release/*.tar.gz
-                   release/*.deb
-                   release/*.apk
-                   release/*.rpm
-                   release/*.exe
-                   release/*.pkg
-                   release/*.dmg
-                   release/*.sbom.json
-                   release/SHA256SUMS.txt"
-          fi
-          echo "files<<GLOBSEOF" >> "$GITHUB_OUTPUT"
-          echo "$GLOBS" >> "$GITHUB_OUTPUT"
-          echo "GLOBSEOF" >> "$GITHUB_OUTPUT"
+          {
+            echo "files<<GLOBSEOF"
+            if [[ "${{ steps.ver.outputs.prerelease }}" == "true" ]]; then
+              echo "release/*.zip"
+              echo "release/*.tar.gz"
+              echo "release/*.exe"
+              echo "release/*.pkg"
+              echo "release/*.dmg"
+              echo "release/*.sbom.json"
+              echo "release/SHA256SUMS.txt"
+            else
+              echo "release/*.zip"
+              echo "release/*.tar.gz"
+              echo "release/*.deb"
+              echo "release/*.apk"
+              echo "release/*.rpm"
+              echo "release/*.exe"
+              echo "release/*.pkg"
+              echo "release/*.dmg"
+              echo "release/*.sbom.json"
+              echo "release/SHA256SUMS.txt"
+            fi
+            echo "GLOBSEOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Attach artifacts to the GitHub release
         if: startsWith(github.ref, 'refs/tags/')
@@ -360,6 +363,26 @@ jobs:
           fail_on_unmatched_files: true
           generate_release_notes: true
           prerelease: ${{ steps.ver.outputs.prerelease }}
+
+      - name: Update Nix flake hashes on master
+        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
+        env:
+          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+        run: |
+          ./scripts/update-nix-hashes.sh "v${{ steps.ver.outputs.version }}"
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git fetch origin master:master
+          git checkout master
+          git add packaging/nix/package.nix
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(nix): bump flake to v${{ steps.ver.outputs.version }}"
+            if [ -n "$RELEASE_PAT" ]; then
+              git push "https://x-access-token:${RELEASE_PAT}@github.com/${GITHUB_REPOSITORY}.git" master
+            else
+              git push origin master
+            fi
+          fi
 
   aur:
     name: Update AUR package
