@@ -27,7 +27,9 @@ All notable changes to this project are documented in this file.
   the pipeline behind secrets and are skipped when none are configured, so
   releases keep working without an Apple Developer account.
 - **Homebrew cask** (`packaging/homebrew/node-hp-scan-to.rb`): installs the
-  universal `.dmg` on both Intel and Apple Silicon Macs.
+  universal `.dmg` on both Intel and Apple Silicon Macs. Its version is
+  bumped automatically on master after each stable release (same mechanism
+  as the Nix flake hashes).
 
 ### Changed
 
