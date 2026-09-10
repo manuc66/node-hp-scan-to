@@ -53,7 +53,6 @@ pnpm test
 echo "Updating commitInfo.json..."
 node getCommitId.js
 
-
 echo "Committing the release..."
 git add package.json pnpm-lock.yaml src/commitInfo.json CHANGELOG.md
 git commit -m "chore: release v$NEW_VERSION"
@@ -69,6 +68,6 @@ echo "  git push origin $BRANCH --follow-tags"
 echo ""
 echo "The Publish workflow will:"
 echo "- publish to npm"
-echo "- build Windows/macOS/Linux binaries and .deb/.rpm/.apk packages, then attach them to the release"
+echo "- build Windows/macOS/Linux binaries and .deb/.rpm/.apk packages, the Windows installer and the macOS .pkg/.dmg, then attach them to the release"
 echo "- update the AUR package (once the AUR_SSH_KEY secret is configured, see packaging/arch/PKGBUILD)"
 echo "----------------------------------------"

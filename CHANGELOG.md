@@ -19,6 +19,17 @@ All notable changes to this project are documented in this file.
   addressing and optional STS session tokens. Configured with the new
   `--s3-*` CLI options, the matching `s3_*` config file keys or the
   `S3_*` environment variables (Docker).
+- **macOS packages**: each release now also ships a universal2 (Intel &
+  Apple Silicon) `.pkg` installer and `.dmg` disk image built natively on a
+  dedicated macOS CI job. They wrap the app in a proper
+  `node-hp-scan-to.app` bundle (icon, `Info.plist`, bundled `default.json`,
+  LaunchAgent reference). Code signing and Apple notarization are wired into
+  the pipeline behind secrets and are skipped when none are configured, so
+  releases keep working without an Apple Developer account.
+- **Homebrew cask** (`packaging/homebrew/node-hp-scan-to.rb`): installs the
+  universal `.dmg` on both Intel and Apple Silicon Macs. Its version and DMG
+  checksum are refreshed automatically on master after each stable release
+  (same mechanism as the Nix flake hashes).
 
 ### Changed
 

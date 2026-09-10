@@ -20,6 +20,8 @@ EXPECTED_ASSETS=(
   "node-hp-scan-to-v${VERSION}-windows-x64.zip"
   "node-hp-scan-to-v${VERSION}-darwin-x64.zip"
   "node-hp-scan-to-v${VERSION}-darwin-arm64.zip"
+  "node-hp-scan-to-v${VERSION}-macos.pkg"
+  "node-hp-scan-to-v${VERSION}-macos.dmg"
   "node-hp-scan-to-v${VERSION}-linux-x64.tar.gz"
   "node-hp-scan-to-v${VERSION}-linux-arm64.tar.gz"
   "node-hp-scan-to-v${VERSION}-linux-x64-musl.tar.gz"
