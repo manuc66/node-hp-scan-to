@@ -21,4 +21,18 @@ echo "==> Bumping Homebrew cask to $VERSION in $CASK_FILE"
 sed -i -E "s|^(  version \").*(\")$|\1$VERSION\2|" "$CASK_FILE"
 grep -q "^  version \"$VERSION\"$" "$CASK_FILE" \
   || { echo "error: version bump failed" >&2; exit 1; }
+
+# Pin the checksum to the DMG attached to the release. The file uploaded to
+# the GitHub release is bit-identical to the local one, so hashing it here
+# is equivalent to hashing the download.
+DMG_FILE="release/node-hp-scan-to-v$VERSION-macos.dmg"
+if [ -f "$DMG_FILE" ]; then
+  echo "==> Pinning Homebrew cask checksum from $DMG_FILE"
+  SHA=$(sha256sum "$DMG_FILE" | awk '{print $1}')
+  sed -i -E "s|^  sha256 .*|  sha256 \"$SHA\"|" "$CASK_FILE"
+  grep -q "^  sha256 \"$SHA\"$" "$CASK_FILE" \
+    || { echo "error: checksum pinning failed" >&2; exit 1; }
+else
+  echo "warning: $DMG_FILE not found, keeping existing sha256" >&2
+fi
 echo "==> Done"

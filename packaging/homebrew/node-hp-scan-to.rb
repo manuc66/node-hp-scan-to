@@ -1,9 +1,10 @@
 cask "node-hp-scan-to" do
   version "1.11.1"
 
-  # Universal (Intel + Apple Silicon) DMG attached to each GitHub release.
-  # The DMG is rebuilt on every release, so the checksum is not pinned
-  # (:no_check); Homebrew still verifies the download size.
+  # Pinned to the universal DMG attached to each GitHub release and refreshed
+  # automatically on master after every stable release (see
+  # scripts/update-homebrew-cask.sh). :no_check is only a fallback while
+  # the hash of a released DMG is unknown.
   sha256 :no_check
   url "https://github.com/manuc66/node-hp-scan-to/releases/download/v#{version}/node-hp-scan-to-v#{version}-macos.dmg"
   name "node-hp-scan-to"

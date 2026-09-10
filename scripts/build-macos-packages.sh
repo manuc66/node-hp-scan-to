@@ -7,7 +7,7 @@
 #   - a signed (optional) and notarized (optional) .dmg
 #
 # Must run on macOS (uses lipo, pkgbuild, productbuild, hdiutil, iconutil,
-# sips, qlmanage, codesign, notarytool).
+# sips, codesign, notarytool).
 #
 # Usage:
 #   ./scripts/build-macos-packages.sh <version>
@@ -74,27 +74,17 @@ cp config/default.json "$APP/Contents/MacOS/config/default.json"
 cp packaging/io.github.manuc66.node-hp-scan-to.plist "$APP/Contents/Resources/"
 cp README.md SUPPORTED_DEVICES.md LICENSE "$APP/Contents/Resources/"
 
-echo "==> rendering icon.icns from assets/icon.svg"
+echo "==> building icon.icns from assets/icon-1024.png"
 ICONSET="$TMP/icon.iconset"
 mkdir -p "$ICONSET"
-# Render the SVG to a 1024px PNG. Quick Look is available on every macOS;
-# rsvg-convert is a fallback when present (e.g. via brew install librsvg).
-render_svg() {
-  qlmanage -t -s 1024 -o "$TMP" assets/icon.svg >/dev/null 2>&1 && \
-    mv "$TMP/icon.svg.png" "$TMP/icon-1024.png"
-}
-render_svg || {
-  if command -v rsvg-convert >/dev/null 2>&1; then
-    rsvg-convert -w 1024 -h 1024 -o "$TMP/icon-1024.png" assets/icon.svg
-  else
-    echo "error: could not render assets/icon.svg (qlmanage and rsvg-convert both unavailable)" >&2
-    exit 1
-  fi
-}
-[ -f "$TMP/icon-1024.png" ] || { echo "error: icon rendering produced no PNG" >&2; exit 1; }
+# icon-1024.png is pre-rendered from assets/icon.svg and committed, so the
+# build needs no SVG renderer. Regenerate it with:
+#   rsvg-convert -w 1024 -h 1024 -o assets/icon-1024.png assets/icon.svg
+ICON_SRC="assets/icon-1024.png"
+[ -f "$ICON_SRC" ] || { echo "error: missing $ICON_SRC" >&2; exit 1; }
 for size in 16 32 128 256 512; do
-  sips -z "$size" "$size" "$TMP/icon-1024.png" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
-  sips -z "$((size * 2))" "$((size * 2))" "$TMP/icon-1024.png" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+  sips -z "$size" "$size" "$ICON_SRC" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+  sips -z "$((size * 2))" "$((size * 2))" "$ICON_SRC" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/icon.icns"
 echo "==> done building $APP_NAME"
