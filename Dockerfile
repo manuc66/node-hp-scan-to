@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM node:22-alpine AS build
+FROM --platform=$BUILDPLATFORM node:24-alpine AS build
 WORKDIR /app
 
 COPY . .
@@ -10,14 +10,14 @@ RUN apk add --no-cache git \
     && rm dist/*.d.ts dist/*.js.map
 
 # New stage to install only production dependencies
-FROM --platform=$BUILDPLATFORM node:22-alpine AS deps
+FROM --platform=$BUILDPLATFORM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 COPY patches/ patches/
 RUN corepack enable \
     && pnpm install --frozen-lockfile --prod
 
-FROM node:22-alpine AS app
+FROM node:24-alpine AS app
 ENV NODE_ENV=production
 ADD root/ /
 
