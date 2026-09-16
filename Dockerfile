@@ -13,6 +13,7 @@ RUN apk add --no-cache git \
 FROM --platform=$BUILDPLATFORM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
+COPY patches/ patches/
 RUN corepack enable \
     && pnpm install --frozen-lockfile --prod
 
