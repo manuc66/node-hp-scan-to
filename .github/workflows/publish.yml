@@ -282,7 +282,7 @@ jobs:
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
 
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0.23.1
+        uses: anchore/sbom-action@v0.24.2
         with:
           path: .
           format: cyclonedx-json
