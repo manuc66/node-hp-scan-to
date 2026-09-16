@@ -33,7 +33,7 @@ jobs:
     env:
       RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
