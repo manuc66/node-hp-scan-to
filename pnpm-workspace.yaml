@@ -1,0 +1,13 @@
+overrides:
+  unicorn-magic: ^0.4.0
+
+patchedDependencies:
+  unicorn-magic@0.4.0: patches/unicorn-magic@0.4.0.patch
+
+allowBuilds:
+  esbuild: true
+  core-js: true
+
+minimumReleaseAgeExclude:
+  - '@types/node@26.6.1'
+  - 'prettier@3.9.7'

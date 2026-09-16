@@ -12,7 +12,7 @@ RUN apk add --no-cache git \
 # New stage to install only production dependencies
 FROM --platform=$BUILDPLATFORM node:24-alpine AS deps
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches/ patches/
 RUN corepack enable \
     && pnpm install --frozen-lockfile --prod
