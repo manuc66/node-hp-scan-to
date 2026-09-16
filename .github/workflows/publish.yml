@@ -142,21 +142,21 @@ jobs:
       - name: Upload darwin x64 binary for the macOS job
         # The .app/.pkg/.dmg are built natively on a macOS runner, but the
         # binaries themselves are cross-compiled here with bun.
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: darwin-x64
           path: release/.staging/darwin-x64/node-hp-scan-to
           if-no-files-found: error
 
       - name: Upload darwin arm64 binary for the macOS job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: darwin-arm64
           path: release/.staging/darwin-arm64/node-hp-scan-to
           if-no-files-found: error
 
       - name: Upload release artifacts for the release job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-binaries
           path: |
@@ -194,13 +194,13 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Download darwin x64 binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: darwin-x64
           path: release/.staging/darwin-x64
 
       - name: Download darwin arm64 binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: darwin-arm64
           path: release/.staging/darwin-arm64
@@ -239,7 +239,7 @@ jobs:
           ./scripts/build-macos-packages.sh "v${{ steps.ver.outputs.version }}"
 
       - name: Upload macOS artifacts for the release job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macos-artifacts
           path: |
@@ -255,13 +255,13 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Download binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-binaries
           path: release
 
       - name: Download macOS artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: macos-artifacts
           path: release
@@ -296,7 +296,7 @@ jobs:
 
       - name: Upload artifacts for manual testing
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-test
           path: |
