@@ -322,7 +322,7 @@ jobs:
             release/SHA256SUMS.txt
 
       - name: Attest SBOM
-        uses: actions/attest-sbom@v2
+        uses: actions/attest-sbom@v4
         with:
           subject-path: release/*.sbom.json
           sbom-path: release/node-hp-scan-to.sbom.json
