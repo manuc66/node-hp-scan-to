@@ -4,6 +4,14 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  unicorn-magic: ^0.4.0
+
+patchedDependencies:
+  unicorn-magic@0.4.0:
+    hash: up4qdocqxrrp2wejgxqmcqdtlq
+    path: patches/unicorn-magic@0.4.0.patch
+
 importers:
 
   .:
@@ -1286,9 +1294,9 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
-  unicorn-magic@0.3.0:
-    resolution: {integrity: sha512-+QBBXBCvifc56fsbuxZQ6Sic3wqqc3WWaqxs58gvJrcOuN83HGTCwz3oS5phzU9LthRNE9VrJCFCLUgHeeFnfA==}
-    engines: {node: '>=18'}
+  unicorn-magic@0.4.0:
+    resolution: {integrity: sha512-wH590V9VNgYH9g3lH9wWjTrUoKsjLF6sGLjhR4sH1LWpLmCOH0Zf7PukhDA8BiS7KHe4oPNkcTHqYkj7SOGUOw==}
+    engines: {node: '>=20'}
 
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
@@ -2009,7 +2017,7 @@ snapshots:
   find-up@8.0.0:
     dependencies:
       locate-path: 8.0.0
-      unicorn-magic: 0.3.0
+      unicorn-magic: 0.4.0(patch_hash=up4qdocqxrrp2wejgxqmcqdtlq)
 
   flat-cache@6.1.23:
     dependencies:
@@ -2487,7 +2495,7 @@ snapshots:
 
   undici-types@8.9.0: {}
 
-  unicorn-magic@0.3.0: {}
+  unicorn-magic@0.4.0(patch_hash=up4qdocqxrrp2wejgxqmcqdtlq): {}
 
   uri-js@4.4.1:
     dependencies:
