@@ -107,7 +107,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         if: github.event_name != 'pull_request'
         with:
           push: true
@@ -117,7 +117,7 @@ jobs:
 
       - name: Build Docker image without pushing (PRs only)
         if: github.event_name == 'pull_request'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           push: false
           tags: dummy/test:pr-${{ github.sha }}
