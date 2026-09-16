@@ -57,12 +57,9 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/chai": "^5.2.3",
-    "@types/config": "^4.4.0",
     "@types/dateformat": "^5.0.3",
-    "@types/is-docker": "^2.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.4.0",
-    "@types/pino": "^7.0.5",
     "@types/xml2js": "^0.4.14",
     "c8": "^12.0.0",
     "chai": "^6.2.2",

@@ -68,24 +68,15 @@ importers:
       '@types/chai':
         specifier: ^5.2.3
         version: 5.2.3
-      '@types/config':
-        specifier: ^4.4.0
-        version: 4.4.0
       '@types/dateformat':
         specifier: ^5.0.3
         version: 5.0.3
-      '@types/is-docker':
-        specifier: ^2.0.0
-        version: 2.0.0
       '@types/mocha':
         specifier: ^10.0.10
         version: 10.0.10
       '@types/node':
         specifier: ^26.4.0
         version: 26.6.1
-      '@types/pino':
-        specifier: ^7.0.5
-        version: 7.0.5
       '@types/xml2js':
         specifier: ^0.4.14
         version: 0.4.14
@@ -404,10 +395,6 @@ packages:
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
-  '@types/config@4.4.0':
-    resolution: {integrity: sha512-+82/thz8il6uR6mWFuMTWyC+jSXE4PIZUPmAfKUDOuvNULq3BPLM+tSKsAe3eOIOMKx5azvg3Q3JljWV9yX7aw==}
-    deprecated: This is a stub types definition. config provides its own type definitions, so you do not need this installed.
-
   '@types/dateformat@5.0.3':
     resolution: {integrity: sha512-hvskLa9ObgUwJe0rtfkyBbU+VIK8Ia3BACsxRsp4CPnyPBAOyIHbqImfBGFfaVVxn82wGx5SD8Twll6jMc/BaQ==}
 
@@ -419,10 +406,6 @@ packages:
 
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
-
-  '@types/is-docker@2.0.0':
-    resolution: {integrity: sha512-zV643cM+L8NBYDjbLcRtPqiQkdOBjld/Yrl2JUbxwoBM5c+VtK74zIzUkjJFURgIgQ7YUmzrVk6PdAwNv1H9ag==}
-    deprecated: This is a stub types definition. is-docker provides its own type definitions, so you do not need this installed.
 
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
@@ -438,10 +421,6 @@ packages:
 
   '@types/pako@2.0.4':
     resolution: {integrity: sha512-VWDCbrLeVXJM9fihYodcLiIv0ku+AlOa/TQ1SvYOaBuyrSKgEcro95LJyIsJ4vSo6BXIxOKxiJAat04CmST9Fw==}
-
-  '@types/pino@7.0.5':
-    resolution: {integrity: sha512-wKoab31pknvILkxAF8ss+v9iNyhw5Iu/0jLtRkUD74cNfOOLJNnqfFKAv0r7wVaTQxRZtWrMpGfShwwBjOcgcg==}
-    deprecated: This is a stub types definition. pino provides its own type definitions, so you do not need this installed.
 
   '@types/raf@3.4.3':
     resolution: {integrity: sha512-c4YAvMedbPZ5tEyxzQdMoOhhJ4RD3rngZIdwC2/qDN3d7JpEhB6fiBRKVY1lg5B7Wk+uPBjn5f39j1/2MY1oOw==}
@@ -1565,10 +1544,6 @@ snapshots:
       '@types/deep-eql': 4.0.2
       assertion-error: 2.0.1
 
-  '@types/config@4.4.0':
-    dependencies:
-      config: 5.0.1
-
   '@types/dateformat@5.0.3': {}
 
   '@types/deep-eql@4.0.2': {}
@@ -1576,10 +1551,6 @@ snapshots:
   '@types/esrecurse@4.3.1': {}
 
   '@types/estree@1.0.9': {}
-
-  '@types/is-docker@2.0.0':
-    dependencies:
-      is-docker: 4.0.0
 
   '@types/istanbul-lib-coverage@2.0.6': {}
 
@@ -1592,10 +1563,6 @@ snapshots:
       undici-types: 8.9.0
 
   '@types/pako@2.0.4': {}
-
-  '@types/pino@7.0.5':
-    dependencies:
-      pino: 10.3.1
 
   '@types/raf@3.4.3':
     optional: true
