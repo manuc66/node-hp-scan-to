@@ -357,7 +357,7 @@ jobs:
 
       - name: Attach artifacts to the GitHub release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ steps.assets.outputs.files }}
           fail_on_unmatched_files: true
