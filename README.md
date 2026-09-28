@@ -893,3 +893,9 @@ A special thank you to [JetBrains](https://www.jetbrains.com/) for supporting th
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmanuc66%2Fnode-hp-scan-to.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmanuc66%2Fnode-hp-scan-to?ref=badge_large)
 
 All product names, logos, and brands are property of their respective owners. HP and Hewlett-Packard are trademarks of HP Inc. All company, product, and service names used in this project are for identification purposes only. Use of these names does not imply any affiliation or endorsement.
+
+[All projects](https://manuc66.github.io/) ·
+[Source on GitHub](https://github.com/manuc66/node-hp-scan-to) ·
+[npm](https://www.npmjs.com/package/node-hp-scan-to) ·
+[Docker Hub](https://hub.docker.com/r/manuc66/node-hp-scan-to) ·
+MIT
