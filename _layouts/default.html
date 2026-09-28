@@ -35,6 +35,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
     {% include head-custom.html %}
+
+    <style>
+      /* The theme's sidebar and footer are both position:fixed in the same
+         left-hand band: the sidebar hangs from 220px and grows downwards, the
+         footer sits 20px above the bottom of the viewport. assets/js/main.js
+         fills the sidebar with one entry per section h1/h2/h3, so on a document
+         as long as this README it grows down into the footer and the two
+         overlap. Cap the sidebar and let it scroll instead of colliding.
+
+         420px is the 220px offset, the measured 142px footer, the 20px gap
+         below it, and some slack. If the footer ever grows the sidebar only
+         starts scrolling a little earlier, so the overlap cannot come back. */
+      nav {
+        max-height: calc(100vh - 420px);
+        overflow-y: auto;
+      }
+    </style>
   </head>
   <body>
 
