@@ -73,7 +73,13 @@ describe("scanJobHandlers flows", () => {
         .reply(200, jpegBody, { "Content-Type": "image/jpeg" });
       nock("http://127.0.0.1")
         .get("/eSCL/ScanJobs/1/ScanImageInfo")
-        .reply(200, fs.readFileSync(path.resolve(__dirname, "./asset/eSCL_ScanImageInfo.xml"), "utf-8"));
+        .reply(
+          200,
+          fs.readFileSync(
+            path.resolve(__dirname, "./asset/eSCL_ScanImageInfo.xml"),
+            "utf-8",
+          ),
+        );
     }
 
     it("downloads pages and completes an adf job", async () => {
@@ -81,12 +87,13 @@ describe("scanJobHandlers flows", () => {
         path.resolve(__dirname, "./asset/adf_bytes_scan.jpg"),
       );
       mockEsclPage(jpegBody);
+      // The job is still scanning on the first poll, so a page is downloaded;
+      // the following poll reports completion and ends the loop.
       nock("http://127.0.0.1")
         .get("/eSCL/ScannerStatus")
-        .reply(
-          200,
-          await readAsset("eSCL_ScannerStatus_completed.xml"),
-        );
+        .reply(200, await readAsset("eSCL_ScannerStatus_scanning.xml"))
+        .get("/eSCL/ScannerStatus")
+        .reply(200, await readAsset("eSCL_ScannerStatus_completed.xml"));
 
       const api = new DeviceClient("127.0.0.1", false);
       const scanJobContent: ScanContent = { elements: [] };

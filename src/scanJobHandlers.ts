@@ -367,12 +367,37 @@ async function eSCLScanJobHandling(
   do {
     await delay(1000);
 
+    const jobLocation = PathHelper.getPathFromHttpLocation(jobUrl);
+
+    // Check the job state *before* downloading: a device that has already
+    // transferred every image answers /NextDocument with 404, which would
+    // otherwise abort an otherwise successful scan.
+    const scannerStatus = await api.getEsclScanStatus();
+    jobInfo = scannerStatus.findJobByUri(jobLocation);
+    jobStateReason = jobInfo?.getJobStateReason() ?? null;
+
+    const isTerminal =
+      jobStateReason === JobStateReason.JobCompletedSuccessfully ||
+      jobStateReason === JobStateReason.JobCanceledByUser;
+
+    if (isTerminal) {
+      logger.info(
+        `Job finished with state ${jobStateReason}; no further pages to transfer.`,
+      );
+      break;
+    }
+
+    if (jobInfo?.getImagesToTransfer() === 0) {
+      logger.info("No images left to transfer; ending the eSCL job loop.");
+      jobStateReason = JobStateReason.JobCompletedSuccessfully;
+      break;
+    }
+
     const currentPageNumber = getPageNumber(
       pageCountingStrategy,
       scanJobContent,
     );
 
-    const jobLocation = PathHelper.getPathFromHttpLocation(jobUrl);
     if (targetImageFormat.isJpeg()) {
       const destinationFilePath = await PathHelper.getFileForPage(
         folder,
@@ -471,16 +496,7 @@ async function eSCLScanJobHandling(
 
       logJobInfo(jobUrl, scanImageInfo, jobInfo);
     }
-    const scannerStatus = await api.getEsclScanStatus();
-
-    jobInfo = scannerStatus.findJobByUri(jobLocation);
-
-    jobStateReason = jobInfo?.getJobStateReason() ?? null;
-  } while (
-    jobStateReason !== null &&
-    jobStateReason !== JobStateReason.JobCompletedSuccessfully &&
-    jobStateReason !== JobStateReason.JobCanceledByUser
-  );
+  } while (jobStateReason !== null);
 
   if (jobStateReason === null) {
     logger.warn(

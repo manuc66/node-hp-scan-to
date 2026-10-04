@@ -54,6 +54,14 @@ export class EsclJobInfo {
     return this.data["scan:Age"]["0"];
   }
 
+  /**
+   * Number of images the device still holds for transfer. Reaching 0 means
+   * the job has nothing left to hand out via /NextDocument.
+   */
+  getImagesToTransfer(): number {
+    return Number.parseInt(this.data["pwg:ImagesToTransfer"]["0"], 10) || 0;
+  }
+
   getJobState() {
     return EnumUtils.getState(
       "JobState",

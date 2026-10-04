@@ -23,6 +23,17 @@ export default class DiscoveryTree {
     return new DiscoveryTree(parsed);
   }
 
+  /**
+   * A tree with no manifests at all. Used when the device does not serve
+   * /DevMgmt/DiscoveryTree.xml (e.g. newer HP firmware that only exposes the
+   * standard eSCL endpoints), so callers can fall back to well-known paths.
+   */
+  static empty(): DiscoveryTree {
+    return new DiscoveryTree({
+      "ledm:DiscoveryTree": { "ledm:SupportedIfc": [] },
+    });
+  }
+
   private getManifestURI(resourceType: string): string | null {
     const manifest = this.data["ledm:DiscoveryTree"]["ledm:SupportedIfc"].find(
       (x) => x["dd:ResourceType"][0] === resourceType,

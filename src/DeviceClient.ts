@@ -143,13 +143,50 @@ export default class DeviceClient {
       url: "/DevMgmt/DiscoveryTree.xml",
       method: "GET",
       responseType: "text",
+      // Do not throw on 404: we handle a missing tree explicitly below.
+      validateStatus: () => true,
     });
 
     if (response.status !== 200) {
-      throw new Error(response.statusText);
+      // Some devices (e.g. HP Color LaserJet Pro MFP 3302) do not serve the
+      // HP-proprietary DiscoveryTree at all and only implement the standard
+      // eSCL endpoints. Degrade to an empty tree so the eSCL fallback in
+      // readDeviceCapabilities can take over instead of aborting the command.
+      logger.warn(
+        `DiscoveryTree.xml unavailable (status ${response.status}); falling back to standard eSCL endpoints.`,
+      );
+      return DiscoveryTree.empty();
     } else {
       return DiscoveryTree.createDiscoveryTree(response.data);
     }
+  }
+
+  /**
+   * Standard eSCL capabilities path. Some devices serve
+   * /eSCL/ScanCapabilities, others (HP firmware) only /eSCL/ScannerCapabilities.
+   */
+  async getEsclScanCapsFromWellKnownPath(): Promise<EsclScanCaps | null> {
+    for (const path of [
+      "/eSCL/ScanCapabilities",
+      "/eSCL/ScannerCapabilities",
+    ]) {
+      try {
+        const response = await this.callAxios({
+          baseURL: `http://${this.deviceIP}`,
+          url: path,
+          method: "GET",
+          responseType: "text",
+          // A 404 on the first candidate is expected; probe the next one.
+          validateStatus: () => true,
+        });
+        if (response.status === 200) {
+          return await EsclScanCaps.createScanCaps(response.data);
+        }
+      } catch (error) {
+        logger.debug({ error }, `eSCL capabilities probe for ${path} failed`);
+      }
+    }
+    return null;
   }
 
   async getWalkupScanDestinations(
@@ -653,12 +690,43 @@ export default class DeviceClient {
     destination: string,
   ): Promise<{ path: string; contentType: string | undefined }> {
     return await this.esclWaitDeviceBusy(async () => {
-      return await this.downloadPageWithMeta(
+      return await this.downloadEsclPageWithMeta(
         `${jobUri}/NextDocument`,
         destination,
         60_000,
       );
     });
+  }
+
+  /**
+   * eSCL is served on port 80 (the standard), unlike the HP-proprietary
+   * ScanJobs API which uses port 8080. Devices such as the HP Color LaserJet
+   * Pro MFP 3302 do not listen on 8080 at all.
+   */
+  async downloadEsclPageWithMeta(
+    url: string,
+    destination: string,
+    timeout?: number,
+  ): Promise<{ path: string; contentType: string | undefined }> {
+    const { data, headers }: AxiosResponse<Stream> =
+      await axios.request<Stream>({
+        url,
+        method: "GET",
+        responseType: "stream",
+        ...(timeout !== undefined && { timeout }),
+      });
+
+    const destinationFileStream = fs.createWriteStream(destination);
+    data.pipe(destinationFileStream);
+
+    await promisify(stream.finished)(destinationFileStream);
+
+    const contentType =
+      typeof headers["content-type"] === "string"
+        ? headers["content-type"]
+        : undefined;
+
+    return { path: destination, contentType };
   }
 
   async getEsclScanImageInfo(jobUri: string): Promise<EsclScanImageInfo> {
