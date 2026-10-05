@@ -38,6 +38,7 @@ Users have reported successful scans with these devices:
 - HP OfficeJet Pro 7720 Wide Format All-in-One
 - HP OfficeJet Pro 7730
 - HP OfficeJet Pro 8025e
+- [HP OfficeJet Pro 8710](https://github.com/manuc66/node-hp-scan-to/issues/1754)
 - HP OfficeJet Pro 9012e
 - HP PageWide 377dw MFP
 
