@@ -3,6 +3,15 @@
 This page tracks HP printers and scanners that are known to work with
 `node-hp-scan-to`.
 
+Being listed means that someone successfully scanned a file from the device.
+It does not mean every feature works on it. The document feeder, duplex
+scanning, and uploading to Paperless-ngx or Nextcloud have to be checked per
+device.
+
+Where a model links to a device report, that report gives the mode and the
+output that were actually tested. Entries without a link were reported without
+a dedicated device report to point to.
+
 ## Tested During Development
 
 These devices were used while developing or testing the project:
@@ -53,5 +62,9 @@ the list above. Include the following details in the pull request body:
 - Output format tested, such as JPG or PDF
 - Anything that did not work, if the support is partial
 
-If you are not comfortable opening a pull request, open an issue with the same
-details and mention that it is a device support report.
+If the device was reported in an issue, link the new entry to that issue so the
+mode and the output tested stay reachable.
+
+If you are not comfortable opening a pull request, open an
+[issue](https://github.com/manuc66/node-hp-scan-to/issues/new/choose) with the
+same details, using the device support report template.
