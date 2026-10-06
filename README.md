@@ -412,23 +412,50 @@ Typical uses:
 | **PDF** | PDF/A archiving (Ghostscript), digital signature, stamping, metadata injection, OCR text layer |
 | **Image (Jpeg/Bmp)** | recompression/resizing, watermarking, EXIF metadata injection, format conversion |
 
-Set it with `--post-command <command>` or `post_command` in the config file. The value is a program followed by its arguments, so quote any argument containing spaces:
+Set it with `--post-command <command>` or `post_command` in the config file. The value is a program followed by its arguments, so quote any argument containing spaces.
+
+A command takes one of three shapes, and the shape is decided by whether it mentions `{output}`:
+
+**1. Replace the file — write the result to `{output}`.** The command must produce that exact file; it then replaces the scan, atomically.
 
 ```sh
-# PDF/A conversion with Ghostscript
+# PDF/A archiving (PDF output) — `gs` on Linux/macOS, `gswin64c` on Windows
 node-hp-scan-to --address <printer> single-scan --pdf \
-  --post-command 'gswin64c -dPDFA=2 -sDEVICE=pdfwrite "{input}" -o "{output}"'
+  --post-command 'gs -dPDFA=2 -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -o "{output}" "{input}"'
 
-# Add EXIF metadata to a Jpeg scan (exiftool can update the file in place)
+# Optimise / linearise an existing PDF (PDF output)
+node-hp-scan-to --address <printer> single-scan --pdf \
+  --post-command 'qpdf --linearize "{input}" "{output}"'
+
+# Stamp a watermark on every page (image output)
+node-hp-scan-to --address <printer> single-scan \
+  --post-command 'magick "{input}" -gravity center -pointsize 48 -annotate +0+0 DRAFT "{output}"'
+```
+
+**2. Edit the file in place — do not use `{output}`.** The command updates `{input}` and must leave it there.
+
+```sh
+# EXIF metadata on a Jpeg; -overwrite_original avoids leaving a .jpg_original
 node-hp-scan-to --address <printer> single-scan \
   --post-command 'exiftool -overwrite_original -XResolution=200 "{input}"'
 ```
+
+**3. Produce a companion file beside the scan.** The command leaves `{input}` alone and drops a new file next to it. That file travels with the scan — see [Files created beside the scan](#files-created-beside-the-scan).
+
+```sh
+# OCR the page to <page>.txt beside it. tesseract takes an output *base*
+# name and appends `.txt`, hence {input} is passed twice.
+node-hp-scan-to --address <printer> single-scan \
+  --post-command 'tesseract "{input}" "{input}"'
+```
+
+> ℹ️ The command is started directly, **without a shell**: file names are passed as single arguments and are never interpreted as shell syntax. Pipes, redirections, `&&` and variable expansion are therefore not available — the only values at hand are the two placeholders. Run a script or wrapper if you need more.
 
 In the config file, `post_command` accepts the same command line as a string, or an explicit argument list:
 
 ```json
 {
-  "post_command": ["gswin64c", "-dPDFA=2", "-sDEVICE=pdfwrite", "{input}", "-o", "{output}"]
+  "post_command": ["gs", "-dPDFA=2", "-dBATCH", "-dNOPAUSE", "-sDEVICE=pdfwrite", "-o", "{output}", "{input}"]
 }
 ```
 
@@ -444,8 +471,6 @@ Since the command runs on every delivered file, make sure it handles the file ty
 Failure policy: the scan flow never fails because of the hook. If the command cannot be started, exits with a non-zero code, runs longer than the timeout, or produces no `{output}` file, the original file is kept and an error is logged — the flow continues as if the command had not been configured.
 
 The timeout defaults to 5 minutes, generous enough for a conversion over a large multi-page scan, and can be changed with the `POST_COMMAND_TIMEOUT` environment variable (milliseconds), e.g. `POST_COMMAND_TIMEOUT=60000 node-hp-scan-to ...`.
-
-> ℹ️ The command is started directly, **without a shell**: file names are passed as single arguments and are never interpreted as shell syntax. Pipes, redirections, `&&` and variable expansion are therefore not available — run a script or wrapper if you need them.
 
 ##### Files created beside the scan
 
