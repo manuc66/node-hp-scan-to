@@ -25,6 +25,7 @@ These devices were used while developing or testing the project:
 
 Users have reported successful scans with these devices:
 
+- HP Color LaserJet Pro MFP M479dfw
 - HP DeskJet 3050 (J610a)
 - HP DeskJet 3522
 - HP DeskJet 3775
@@ -33,22 +34,30 @@ Users have reported successful scans with these devices:
 - HP DeskJet Ink Advantage 4530 All-in-One Printer series
 - HP Envy 4504
 - HP Envy 4520
+- HP Envy 5070
 - HP Envy 5530
 - HP Envy 5532
 - HP Envy 7640
+- HP Envy Inspire 7920e
 - HP OfficeJet 250 Mobile
 - HP OfficeJet 3830
 - HP OfficeJet 5230
 - HP OfficeJet 5740
+- HP OfficeJet 5742
 - HP OfficeJet 6700 Premium
 - HP OfficeJet 6950
 - HP OfficeJet 8010 series
 - HP OfficeJet 8012
+- HP OfficeJet Pro 6960
+- HP OfficeJet Pro 6970
 - HP OfficeJet Pro 7720 Wide Format All-in-One
 - HP OfficeJet Pro 7730
+- HP OfficeJet Pro 8022e
 - HP OfficeJet Pro 8025e
+- HP OfficeJet Pro 8500a
 - HP OfficeJet Pro 9012e
 - HP PageWide 377dw MFP
+- HP ScanJet Pro 4500 fn1
 
 ## Add A Printer Report
 
