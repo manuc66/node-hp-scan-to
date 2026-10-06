@@ -54,18 +54,11 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
 
 ### Supported Devices
 
-This app has been developed and tested with the following HP All-in-One Printers:
+See [SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md) for the HP All-in-One Printers
+this app has been developed and tested with, the additional devices users have
+reported working, and the process for adding a new printer report.
 
-- HP DeskJet 3520
-- HP OfficeJet 6500A Plus
-- HP Smart Tank Plus 570 series
-- HP OfficeJet Pro 9019e
-
-Users have reported it also working on additional devices. See
-[SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md) for the full community-reported list
-and the process for adding a new printer report.
-
-There is a good chance it also works on other unlisted HP All-in-One Printer.
+There is a good chance it also works on other unlisted HP All-in-One Printers.
 
 ### Supported Functions
 
