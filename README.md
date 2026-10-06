@@ -79,6 +79,14 @@ There is a good chance it also works on other unlisted HP All-in-One Printers.
   - Local folders
   - [Paperless-ngx API](https://docs.paperless-ngx.com/api/) upload
   - [Nextcloud WebDAV](https://docs.Nextcloud.com/server/latest/user_manual/en/files/access_webdav.html) upload
+  - S3-compatible (AWS S3, MinIO, Cloudflare R2, Wasabi...) upload
+  - Webhook notification (JSON event with idempotency key, `scan-completed` /
+    `scan-delivery-failed` event types, per-page descriptors and delivery
+    outcomes). Each file carries `size`/`sha256` plus its location (`local`
+    path, S3 `bucket`/`key` or Nextcloud WebDAV URL); the event is a metadata
+    notification, so with `--keep-files` disabled the local `path` may be
+    cleaned up after a successful delivery. OpenAPI contract:
+    [`protocol_doc/webhook/openapi.yaml`](protocol_doc/webhook/openapi.yaml).
 
 ### Protocol Support
 
@@ -298,6 +306,13 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `--s3-prefix`                         | Folder (prefix) inside the bucket. Defaults to the bucket root.                                                                                                                                                                | `--s3-prefix 2026/08`                                              |
 | `--s3-force-path-style`               | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...).                                                                                                                                                    | `--s3-force-path-style` (disabled by default)                     |
 | `--s3-session-token`                  | S3 session token for temporary credentials.                                                                                                                                                                                    | `--s3-session-token ...` (no default)                             |
+| `--webhook-url`                       | Webhook URL to POST scan events to (JSON with idempotency-key header).                                                                                           | `--webhook-url https://n8n.example/webhook/scan` (no default)      |
+| `--webhook-auth`                      | Auth scheme for the webhook request: `none`, `hmac`, `bearer` or `basic` (default: inferred from the configured credentials).                                                                                                    | `--webhook-auth hmac` (auto)                                       |
+| `--webhook-auth-header`               | Header name carrying the HMAC signature.                                                                                                                                                                                         | `x-webhook-signature` (default)                                    |
+| `--webhook-secret`                    | HMAC-SHA256 signing secret, used as-is (not hex-decoded); the resulting signature is sent as hex in the auth header. Required unless `--webhook-secret-file` is used. Overrides if both are provided.                            | `--webhook-secret s3cr3t` (no default)                             |
+| `--webhook-secret-file`               | File containing the HMAC signing secret. Required unless `--webhook-secret` is used. Takes precedence if both are provided.                                                                                                      | `--webhook-secret-file /path/to/file` (no default)                 |
+| `--webhook-token`                     | Bearer token sent as `Authorization: Bearer <token>`.                                                                                                                                                                            | `--webhook-token tok...` (no default)                              |
+| `--webhook-username` / `--webhook-password` | Basic auth credentials sent as `Authorization: Basic`.                                                                                                                                                                     | `--webhook-username scanner --webhook-password ...` (no default)   |
 
 **Notes:**
 
@@ -405,7 +420,7 @@ Listen the device for new scan job to save to this target
 
 Output Options:
   -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
-  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
 
@@ -448,6 +463,16 @@ S3 Options:
   --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
   --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
   --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
+Webhook Options:
+  --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
 
 Device Control Screen Options:
   -l, --label <label>                                              The label to display on the device (the default is the hostname)
@@ -504,7 +529,7 @@ the automatic document feeder (adf)
 
 Output Options:
   -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
-  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
@@ -549,6 +574,16 @@ S3 Options:
   --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
   --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
   --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
+Webhook Options:
+  --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
 
 Auto-scan Options:
   --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
@@ -613,7 +648,7 @@ Trigger a new scan job
 
 Output Options:
   -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
-  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
@@ -659,6 +694,16 @@ S3 Options:
   --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
   --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
 
+Webhook Options:
+  --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
+
 Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                                                Name of the device to lookup for on the network
@@ -689,6 +734,8 @@ Be aware that with Docker you have to specify the IP address of the printer via 
 You could however use Docker's [macvlan](https://docs.docker.com/engine/network/drivers/macvlan/) networking, this way you can use service discovery and the `NAME` environment variable.
 
 All scanned files are written to the volume `/scan`, the filename can be changed with the `PATTERN` environment variable. For the correct permissions to the volume set the environment variables `PUID` and `PGID` to that of the user running the container (usually `PUID=1000` and `PGID=1000`).
+
+When `WEBHOOK_URL` is set, scan events are sent best-effort: a single POST per event, and failures are logged.
 
 #### Docker Environment Variables
 
@@ -728,6 +775,14 @@ List of supported environment variables and their meaning, or correspondence wit
 | `S3_PREFIX`                   | Folder (prefix) inside the bucket (default bucket root)                                                       | `--s3-prefix`                                                                 |
 | `S3_FORCE_PATH_STYLE`         | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)                                    | `--s3-force-path-style`                                                       |
 | `S3_SESSION_TOKEN`            | S3 session token for temporary credentials                                                                    | `--s3-session-token`                                                          |
+| `WEBHOOK_URL`                 | Webhook URL to POST scan events to (JSON, idempotency-key header, outbox retries)                             | `--webhook-url`                                                               |
+| `WEBHOOK_AUTH`                | Auth scheme: `none`, `hmac`, `bearer` or `basic` (default: inferred from the credentials)                     | `--webhook-auth`                                                              |
+| `WEBHOOK_AUTH_HEADER`         | Header name carrying the HMAC signature (default `x-webhook-signature`)                                       | `--webhook-auth-header`                                                       |
+| `WEBHOOK_SECRET`              | HMAC-SHA256 signing secret (either this or `WEBHOOK_SECRET_FILE` is required; file takes precedence)          |                                                                               |
+| `WEBHOOK_SECRET_FILE`         | File containing the signing secret (preferred for Docker Compose secrets)                                     | Example: `./webhook_secret.secret`                                            |
+| `WEBHOOK_TOKEN`               | Bearer token sent as `Authorization: Bearer`                                                                  | `--webhook-token`                                                             |
+| `WEBHOOK_USERNAME`            | Basic auth username sent as `Authorization: Basic`                                                            | `--webhook-username`                                                          |
+| `WEBHOOK_PASSWORD`            | Basic auth password for `WEBHOOK_USERNAME`                                                                    | `--webhook-password`                                                          |
 
 **Additional Notes:**
 
