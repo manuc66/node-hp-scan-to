@@ -443,6 +443,8 @@ Since the command runs on every delivered file, make sure it handles the file ty
 
 Failure policy: the scan flow never fails because of the hook. If the command cannot be started, exits with a non-zero code, runs longer than the timeout, or produces no `{output}` file, the original file is kept and an error is logged — the flow continues as if the command had not been configured.
 
+The timeout defaults to 5 minutes, generous enough for a conversion over a large multi-page scan, and can be changed with the `POST_COMMAND_TIMEOUT` environment variable (milliseconds), e.g. `POST_COMMAND_TIMEOUT=60000 node-hp-scan-to ...`.
+
 > ℹ️ The command is started directly, **without a shell**: file names are passed as single arguments and are never interpreted as shell syntax. Pipes, redirections, `&&` and variable expansion are therefore not available — run a script or wrapper if you need them.
 
 ##### Files created beside the scan
