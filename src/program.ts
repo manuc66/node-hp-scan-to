@@ -35,6 +35,7 @@ import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
 import { validateFilePatternForPlatform } from "./fileNameValidation.js";
+import { parsePostCommandArg } from "./postCommand.js";
 import { getLoggerForFile, setDebugLevel } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -209,9 +210,11 @@ function setupScanParameters(commandName: string) {
     )
     .addOption(
       new Option(
-        "--post-command <template>",
-        "Command template run on every generated file ({input} is the file path; when the template contains {output} the command output file replaces it, e.g. a Ghostscript PDF/A conversion).",
-      ).helpGroup(HelpGroupsHeadings.ouput),
+        "--post-command <command>",
+        "Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).",
+      )
+        .argParser(parsePostCommandArg)
+        .helpGroup(HelpGroupsHeadings.ouput),
     )
     .addOption(
       new Option(

@@ -18,6 +18,13 @@ import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import type { S3Config } from "./s3/S3Config.js";
 import type { ScanConfig } from "./type/scanConfigs.js";
 import { runFilePostProcessing } from "./filePostProcessing.js";
+import {
+  collectSidecarFiles,
+  scanDirectories,
+  snapshotDirectories,
+} from "./sidecarDetection.js";
+import { uploadFilesToNextcloud } from "./nextcloud/nextcloud.js";
+import { uploadFilesToS3 } from "./s3/s3.js";
 import { getLoggerForFile } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -71,6 +78,11 @@ async function handlePdfPostProcessing(
   const nextcloudConfig = scanConfig.nextcloudConfig;
   const s3Config = scanConfig.s3Config;
 
+  // The PDF may land in either folder, and the pages live wherever the scan
+  // captured them: both are watched for files the hooks leave beside them.
+  const directories = scanDirectories(scanJobContent, [folder, tempFolder]);
+  const before = await snapshotDirectories(directories);
+
   const pdfFilePath = await mergeToPdf(
     paperlessConfig ? tempFolder : folder,
     scanCount,
@@ -80,6 +92,20 @@ async function handlePdfPostProcessing(
     true,
     scanConfig.postCommand,
   );
+
+  // Collected before any upload: deliveries unlink the files they consumed.
+  const sidecars = collectSidecarFiles(
+    {
+      before,
+      knownFiles: [
+        ...scanJobContent.elements.map((element) => element.path),
+        pdfFilePath ?? "",
+      ],
+      directories,
+    },
+    await snapshotDirectories(directories),
+  );
+
   const failures: string[] = [];
   if (pdfFilePath !== null) {
     displayPdfScan(pdfFilePath, scanJobContent, scanCount);
@@ -104,17 +130,82 @@ async function handlePdfPostProcessing(
         failures.push(toFailureMessage(e));
       }
     }
-    // Only clean up if delivery succeeded, otherwise keep the files.
-    if (failures.length === 0) {
-      await cleanUpFilesIfNeeded(
-        [pdfFilePath],
-        paperlessConfig,
-        nextcloudConfig,
-        s3Config,
-      );
-    }
+  }
+
+  // Sidecars are delivered after the scan itself: the scan is the primary
+  // deliverable, and a sidecar must not get in front of it.
+  const deliveredSidecars = await deliverSidecars(
+    sidecars,
+    scanConfig,
+    failures,
+  );
+
+  // Only clean up if delivery succeeded, otherwise keep the files.
+  if (failures.length === 0) {
+    await cleanUpFilesIfNeeded(
+      [
+        ...(pdfFilePath !== null ? [pdfFilePath] : []),
+        // Sidecars are only removed when they were delivered somewhere: a
+        // sidecar Paperless never received must stay on disk.
+        ...deliveredSidecars,
+      ],
+      paperlessConfig,
+      nextcloudConfig,
+      s3Config,
+    );
   }
   return { uploadSucceeded: failures.length === 0, failures };
+}
+
+/**
+ * Uploads the sidecars a hook wrote beside the scan.
+ *
+ * Only S3 and Nextcloud receive them: Paperless turns every upload into a
+ * standalone document, and a sidecar there would be an unrelated entry in the
+ * library rather than a companion of the scan. A target that was not
+ * configured simply skips its part.
+ *
+ * Returns the paths that were actually delivered, so cleanup only ever
+ * removes a sidecar that reached a destination.
+ */
+async function deliverSidecars(
+  sidecars: readonly string[],
+  scanConfig: ScanConfig,
+  failures: string[],
+): Promise<string[]> {
+  if (sidecars.length === 0) {
+    return [];
+  }
+
+  const { nextcloudConfig, s3Config } = scanConfig;
+  if (nextcloudConfig === undefined && s3Config === undefined) {
+    logger.debug(
+      { sidecars },
+      "Post-processing produced files beside the scan but no target accepts them, keeping them",
+    );
+    return [];
+  }
+
+  const targets: Promise<void>[] = [];
+  if (nextcloudConfig) {
+    targets.push(uploadFilesToNextcloud(sidecars, nextcloudConfig));
+  }
+  if (s3Config) {
+    targets.push(uploadFilesToS3(sidecars, s3Config));
+  }
+
+  // Settled rather than all: one target failing must not leave the other
+  // without a chance to run, and any failure keeps the files on disk.
+  const results = await Promise.allSettled(targets);
+  let delivered = true;
+  for (const result of results) {
+    if (result.status === "rejected") {
+      delivered = false;
+      failures.push(toFailureMessage(result.reason));
+    }
+  }
+
+  return delivered ? [...sidecars] : [];
 }
 
 /**
@@ -126,16 +217,26 @@ async function applyPostCommandToImages(
   scanConfig: ScanConfig,
   scanJobContent: ScanContent,
 ): Promise<void> {
-  const paperlessConfig = scanConfig.paperlessConfig;
-  const nextcloudConfig = scanConfig.nextcloudConfig;
-  const pdfConversionOnly =
-    paperlessConfig !== undefined &&
-    nextcloudConfig === undefined &&
-    (paperlessConfig.groupMultiPageScanIntoAPdf ||
-      paperlessConfig.alwaysSendAsPdfFile);
-  if (pdfConversionOnly || scanConfig.postCommand === undefined) {
+  if (scanConfig.postCommand === undefined) {
     return;
   }
+
+  // The command already ran on the generated PDF, so the page images only
+  // need it when they are delivered as images. Every other target (paperless
+  // as images, nextcloud, S3) receives the images themselves.
+  const imagesAreConvertedToPdf =
+    scanConfig.paperlessConfig !== undefined &&
+    (scanConfig.paperlessConfig.groupMultiPageScanIntoAPdf ||
+      scanConfig.paperlessConfig.alwaysSendAsPdfFile);
+  const pdfIsTheOnlyDelivery =
+    imagesAreConvertedToPdf &&
+    scanConfig.nextcloudConfig === undefined &&
+    scanConfig.s3Config === undefined;
+
+  if (pdfIsTheOnlyDelivery) {
+    return;
+  }
+
   for (const element of scanJobContent.elements) {
     await runFilePostProcessing(scanConfig.postCommand, element.path);
   }
@@ -152,10 +253,25 @@ async function handleImagePostProcessing(
   const nextcloudConfig = scanConfig.nextcloudConfig;
   const s3Config = scanConfig.s3Config;
 
+  // The hook runs on the pages (and, for some paperless modes, on PDFs
+  // generated beside them): everything the folders gain belongs to the scan.
+  const directories = scanDirectories(scanJobContent, [folder]);
+  const before = await snapshotDirectories(directories);
+
   displayImageScan(scanJobContent, scanCount);
   const failures: string[] = [];
 
   await applyPostCommandToImages(scanConfig, scanJobContent);
+
+  // Collected before any upload: deliveries unlink the files they consumed.
+  const sidecars = collectSidecarFiles(
+    {
+      before,
+      knownFiles: scanJobContent.elements.map((e) => e.path),
+      directories,
+    },
+    await snapshotDirectories(directories),
+  );
 
   if (paperlessConfig) {
     try {
@@ -201,11 +317,21 @@ async function handleImagePostProcessing(
       failures.push(toFailureMessage(e));
     }
   }
+  // Sidecars are delivered after the scan itself: the scan is the primary
+  // deliverable, and a sidecar must not get in front of it.
+  const deliveredSidecars = await deliverSidecars(
+    sidecars,
+    scanConfig,
+    failures,
+  );
+
   // Only clean up if delivery succeeded, otherwise keep the files.
   if (failures.length === 0) {
     const filePaths = scanJobContent.elements.map((element) => element.path);
     await cleanUpFilesIfNeeded(
-      filePaths,
+      // Sidecars are only removed when they were delivered somewhere: a
+      // sidecar Paperless never received must stay on disk.
+      [...filePaths, ...deliveredSidecars],
       paperlessConfig,
       nextcloudConfig,
       s3Config,
