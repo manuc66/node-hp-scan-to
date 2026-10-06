@@ -412,7 +412,7 @@ Typical uses:
 | **PDF** | PDF/A archiving (Ghostscript), digital signature, stamping, metadata injection, OCR text layer |
 | **Image (Jpeg/Bmp)** | recompression/resizing, watermarking, EXIF metadata injection, format conversion |
 
-Set it with `--post-command <template>` or `post_command` in the config file:
+Set it with `--post-command <command>` or `post_command` in the config file. The value is a program followed by its arguments, so quote any argument containing spaces:
 
 ```sh
 # PDF/A conversion with Ghostscript
@@ -424,18 +424,35 @@ node-hp-scan-to --address <printer> single-scan \
   --post-command 'exiftool -overwrite_original -XResolution=200 "{input}"'
 ```
 
-The template supports two placeholders:
+In the config file, `post_command` accepts the same command line as a string, or an explicit argument list:
 
-- `{input}`: the absolute path of the generated file.
-- `{output}`: an absolute temporary file path. When the template contains `{output}`, the resulting file **atomically replaces the original file** if the command succeeds. A command that cannot overwrite its input in place (Ghostscript is one) should therefore write to `{output}`.
+```json
+{
+  "post_command": ["gswin64c", "-dPDFA=2", "-sDEVICE=pdfwrite", "{input}", "-o", "{output}"]
+}
+```
 
-When the template does not use `{output}`, the command is expected to modify the file in place.
+The command supports two placeholders:
 
-Since the command runs on every delivered file, make sure it handles the file type it receives (PDF or image). For instance a PDF/A template would not be appropriate for image output.
+- `{input}`: the absolute path of the generated file. It is **required**: a command without it cannot run on the scan and is rejected at startup.
+- `{output}`: an absolute temporary file path. When the command contains `{output}`, the resulting file **replaces the original file** if the command succeeds. A command that cannot overwrite its input in place (Ghostscript is one) should therefore write to `{output}`.
 
-Failure policy: if the command exits with a non-zero code, or no `{output}` file is produced, the original file is kept and an error is logged — the scan flow continues as if the command had not been configured.
+When the command does not use `{output}`, it is expected to modify the file in place.
 
-> ⚠️ **Security**: the template is executed by the local shell (`cmd.exe` on Windows, `/bin/sh` elsewhere). Only pass values you control; never build it from untrusted input.
+Since the command runs on every delivered file, make sure it handles the file type it receives (PDF or image). For instance a PDF/A command would not be appropriate for image output.
+
+Failure policy: the scan flow never fails because of the hook. If the command cannot be started, exits with a non-zero code, runs longer than the timeout, or produces no `{output}` file, the original file is kept and an error is logged — the flow continues as if the command had not been configured.
+
+> ℹ️ The command is started directly, **without a shell**: file names are passed as single arguments and are never interpreted as shell syntax. Pipes, redirections, `&&` and variable expansion are therefore not available — run a script or wrapper if you need them.
+
+##### Files created beside the scan
+
+A command is free to write additional files next to its input (an OCR text, a signature, a manifest). Those files belong to the scan, so:
+
+- **S3 and Nextcloud** receive them alongside the scan itself;
+- **Paperless does not**: every upload there becomes a standalone document, and a sidecar would appear as an unrelated entry rather than a companion of the scan.
+
+A sidecar is removed with the scan only when `keep_files` is false **and** it was actually delivered somewhere. If no target accepts it (Paperless-only setup), or if its upload failed, it stays on disk: the hook's output is never thrown away without being sent anywhere.
 
 ##### `listen`
 
@@ -454,7 +471,7 @@ Output Options:
   -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
-  --post-command <template>                                        Command template run on every generated file ({input} is the file path; when the template contains {output} the command output file replaces it, e.g. a Ghostscript PDF/A conversion).
+  --post-command <command>                                         Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
 
 Scan Options:
   -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
@@ -554,7 +571,7 @@ Output Options:
   -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
-  --post-command <template>                                        Command template run on every generated file ({input} is the file path; when the template contains {output} the command output file replaces it, e.g. a Ghostscript PDF/A conversion).
+  --post-command <command>                                         Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
 
 Scan Options:
@@ -664,7 +681,7 @@ Output Options:
   -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
-  --post-command <template>                                        Command template run on every generated file ({input} is the file path; when the template contains {output} the command output file replaces it, e.g. a Ghostscript PDF/A conversion).
+  --post-command <command>                                         Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
 
 Scan Options:

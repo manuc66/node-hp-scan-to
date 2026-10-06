@@ -2,6 +2,7 @@ import { z } from "zod";
 import { DuplexAssemblyMode } from "./DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./scanFormat.js";
 import { parseScanMode, ScanMode } from "./scanMode.js";
+import { postCommandSchema } from "../postCommand.js";
 
 // Configuration schema for the config file
 export const configSchema = z
@@ -130,7 +131,7 @@ export const configSchema = z
     /// Common to external destination (paperless & nextcloud)
     ///
     keep_files: z.boolean().optional(), // Keep scanned files locally after upload
-    post_command: z.string().optional(), // External command template run on every generated file
+    post_command: postCommandSchema.optional(), // External command run on every generated file
 
     ///
     /// Health Check

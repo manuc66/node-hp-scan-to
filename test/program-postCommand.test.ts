@@ -18,39 +18,97 @@ describe("CLI Program - Post Command Options", () => {
   const emptyConfig: FileConfig = {};
 
   describe("listen command post command options", () => {
-    it("should parse --post-command option", () => {
+    it("should parse --post-command into a program and its arguments", () => {
       const program = setupProgram(emptyConfig);
       const opts = parseSubcommandOptions(program, "listen", [
         "--post-command",
         'gswin64c -dPDFA=2 "{input}" -o "{output}"',
       ]);
-      expect(opts?.["postCommand"]).to.equal(
-        'gswin64c -dPDFA=2 "{input}" -o "{output}"',
-      );
+      expect(opts?.["postCommand"]).to.deep.equal([
+        "gswin64c",
+        "-dPDFA=2",
+        "{input}",
+        "-o",
+        "{output}",
+      ]);
     });
   });
 
   describe("single-scan command post command options", () => {
-    it("should parse --post-command option", () => {
+    it("should parse --post-command into a program and its arguments", () => {
       const program = setupProgram(emptyConfig);
       const opts = parseSubcommandOptions(program, "single-scan", [
         "--post-command",
         'cp "{input}" "{output}"',
       ]);
-      expect(opts?.["postCommand"]).to.equal('cp "{input}" "{output}"');
+      expect(opts?.["postCommand"]).to.deep.equal([
+        "cp",
+        "{input}",
+        "{output}",
+      ]);
+    });
+
+    it("should keep a quoted path with spaces in a single argument", () => {
+      const program = setupProgram(emptyConfig);
+      const opts = parseSubcommandOptions(program, "single-scan", [
+        "--post-command",
+        'exiftool -title "My Scan" "{input}"',
+      ]);
+      expect(opts?.["postCommand"]).to.deep.equal([
+        "exiftool",
+        "-title",
+        "My Scan",
+        "{input}",
+      ]);
     });
   });
 
   describe("adf-autoscan command post command options", () => {
-    it("should parse --post-command option", () => {
+    it("should parse --post-command into a program and its arguments", () => {
       const program = setupProgram(emptyConfig);
       const opts = parseSubcommandOptions(program, "adf-autoscan", [
         "--post-command",
         'gswin64c -dPDFA=2 "{input}" -o "{output}"',
       ]);
-      expect(opts?.["postCommand"]).to.equal(
-        'gswin64c -dPDFA=2 "{input}" -o "{output}"',
-      );
+      expect(opts?.["postCommand"]).to.deep.equal([
+        "gswin64c",
+        "-dPDFA=2",
+        "{input}",
+        "-o",
+        "{output}",
+      ]);
+    });
+  });
+
+  describe("post command without a {input} placeholder", () => {
+    // A command that never receives {input} can only run by accident: the
+    // user almost certainly forgot the placeholder, and the hook silently
+    // does something unrelated to the scan on every single file.
+    const cases: [string, string[]][] = [
+      ["listen", ["--post-command", "gswin64c -dPDFA=2"]],
+      ["single-scan", ["--post-command", "cp"]],
+      ["adf-autoscan", ["--post-command", "exiftool"]],
+    ];
+
+    for (const [commandName, args] of cases) {
+      it(`should reject a ${commandName} --post-command without {input}`, () => {
+        const program = setupProgram(emptyConfig);
+        const command = program.commands.find(
+          (cmd) => cmd.name() === commandName,
+        );
+        expect(command, `Command not found: ${commandName}`).to.exist;
+
+        expect(() => command?.parseOptions(args)).to.throw();
+      });
+    }
+
+    it("should accept a --post-command using {input}", () => {
+      const program = setupProgram(emptyConfig);
+      const opts = parseSubcommandOptions(program, "single-scan", [
+        "--post-command",
+        "exiftool {input}",
+      ]);
+      expect(opts?.["postCommand"]).to.deep.equal(["exiftool", "{input}"]);
     });
   });
 
