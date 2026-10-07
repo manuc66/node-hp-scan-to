@@ -5,6 +5,7 @@ import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import type { ScanConfig } from "../src/type/scanConfigs.js";
 import type { PaperlessConfig } from "../src/paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "../src/nextcloud/NextcloudConfig.js";
+import type { S3Config } from "../src/s3/S3Config.js";
 import nock from "nock";
 import path from "node:path";
 import { fileURLToPath } from "url";
@@ -17,11 +18,19 @@ const __dirname = path.dirname(__filename);
 describe("postProcessing", () => {
   const fileName = "post_processing_sample.jpg";
   const tempFolder = path.resolve(__dirname, "./tmp");
-  const assetDir = path.resolve(__dirname, "./asset");
-  const filePath = path.join(assetDir, fileName);
+  // Working copy of the scan page, kept in the temp folder: the post-command
+  // tests modify it in place, and the source asset must never be mutated.
+  const filePath = path.join(tempFolder, fileName);
   const paperlessUrl =
     "http://paperless.example.test/api/documents/post_document/";
   const nextcloudUrl = "https://nextcloud.example.test";
+
+  const appendTemplate = [
+    "node",
+    "-e",
+    "require('fs').appendFileSync(process.argv[1],'X')",
+    "{input}",
+  ];
 
   let scanJobContent: ScanContent;
   let scanPage: ScanPage;
@@ -34,12 +43,8 @@ describe("postProcessing", () => {
     if (!existsSync(tempFolder)) {
       await fs.mkdir(tempFolder, { recursive: true });
     }
-    if (!existsSync(assetDir)) {
-      await fs.mkdir(assetDir, { recursive: true });
-    }
-    if (!existsSync(filePath)) {
-      await fs.writeFile(filePath, "fake-jpg-content");
-    }
+    // Always reset the content: the post-command tests mutate it in place.
+    await fs.writeFile(filePath, "fake-jpg-content");
 
     scanPage = {
       pageNumber: 1,
@@ -64,10 +69,13 @@ describe("postProcessing", () => {
   afterEach(async () => {
     nock.cleanAll();
     nock.enableNetConnect();
-    // remove generated pdf artifacts so tests stay independent
+    // remove generated pdf and image artifacts so tests stay independent
     for (const file of await fs.readdir(tempFolder)) {
-      if (file.endsWith(".pdf")) {
-        await fs.rm(path.join(tempFolder, file), { force: true });
+      if (file.endsWith(".pdf") || file.endsWith(".jpg")) {
+        await fs.rm(path.join(tempFolder, file), {
+          force: true,
+          recursive: true,
+        });
       }
     }
   });
@@ -316,6 +324,212 @@ describe("postProcessing", () => {
       expect(result.uploadSucceeded).to.equal(false);
       expect(result.failures).to.have.lengthOf(2);
       expect(existsSync(filePath)).to.equal(true);
+    });
+  });
+
+  it("should apply the post-command to delivered images", async () => {
+    scanConfig = {
+      ...scanConfig,
+      postCommand: appendTemplate,
+    };
+    await postProcessing(
+      scanConfig,
+      tempFolder,
+      tempFolder,
+      1,
+      scanJobContent,
+      new Date(),
+      false,
+    );
+    expect((await fs.readFile(filePath, "utf8")).endsWith("X")).to.be.true;
+  });
+
+  it("should apply the post-command to the generated PDF", async () => {
+    const pdfFolder = path.join(tempFolder, "pdf-hook-test");
+    await fs.mkdir(pdfFolder, { recursive: true });
+    scanConfig = {
+      ...scanConfig,
+      postCommand: appendTemplate,
+    };
+    await postProcessing(
+      scanConfig,
+      pdfFolder,
+      tempFolder,
+      1,
+      scanJobContent,
+      new Date(),
+      true,
+    );
+    const pdfFiles = (await fs.readdir(pdfFolder)).filter((f) =>
+      f.endsWith(".pdf"),
+    );
+    expect(pdfFiles).to.have.lengthOf(1);
+    expect(
+      (await fs.readFile(path.join(pdfFolder, pdfFiles[0]), "utf8")).endsWith(
+        "X",
+      ),
+    ).to.be.true;
+    await fs.rm(pdfFolder, { recursive: true, force: true });
+  });
+
+  describe("post-command coverage across delivery targets", () => {
+    function s3Config(overrides?: Partial<S3Config>): S3Config {
+      return {
+        endpointUrl: "http://s3.example.test",
+        region: "eu-west-1",
+        bucket: "scans",
+        accessKeyId: "key",
+        secretAccessKey: "secret",
+        forcePathStyle: true,
+        keepFiles: true,
+        ...overrides,
+      };
+    }
+
+    function mockS3ImageUpload(): void {
+      nock("http://s3.example.test")
+        .intercept(/\/scans\/.+\.jpg$/, "PUT")
+        .reply(200);
+    }
+
+    it("applies the post-command to images uploaded to S3", async () => {
+      scanConfig.s3Config = s3Config();
+      scanConfig.postCommand = appendTemplate;
+      mockS3ImageUpload();
+
+      const result = await postProcessing(
+        scanConfig,
+        tempFolder,
+        tempFolder,
+        1,
+        scanJobContent,
+        new Date(),
+        false,
+      );
+
+      expect(result.uploadSucceeded).to.equal(true);
+      expect(await fs.readFile(filePath, "utf8")).to.equal("fake-jpg-contentX");
+    });
+
+    it("applies the post-command to images when paperless groups them into a PDF and S3 also gets the images", async () => {
+      // paperless receives the merged PDF (the hook runs on it) while S3
+      // receives the page images: those still have to go through the hook.
+      scanConfig.paperlessConfig = paperlessConfig({
+        groupMultiPageScanIntoAPdf: true,
+        keepFiles: true,
+      });
+      scanConfig.s3Config = s3Config();
+      scanConfig.postCommand = appendTemplate;
+      mockPaperlessSuccess();
+      mockS3ImageUpload();
+
+      const result = await postProcessing(
+        scanConfig,
+        tempFolder,
+        tempFolder,
+        1,
+        scanJobContent,
+        new Date(),
+        false,
+      );
+
+      expect(result.uploadSucceeded).to.equal(true);
+      expect(await fs.readFile(filePath, "utf8")).to.equal("fake-jpg-contentX");
+    });
+
+    it("applies the post-command to images when paperless converts them to PDF and S3 also gets the images", async () => {
+      scanConfig.paperlessConfig = paperlessConfig({
+        alwaysSendAsPdfFile: true,
+        keepFiles: true,
+      });
+      scanConfig.s3Config = s3Config();
+      scanConfig.postCommand = appendTemplate;
+      mockPaperlessSuccess();
+      mockS3ImageUpload();
+
+      const result = await postProcessing(
+        scanConfig,
+        tempFolder,
+        tempFolder,
+        1,
+        scanJobContent,
+        new Date(),
+        false,
+      );
+
+      expect(result.uploadSucceeded).to.equal(true);
+      expect(await fs.readFile(filePath, "utf8")).to.equal("fake-jpg-contentX");
+    });
+
+    it("applies the post-command to images uploaded to paperless", async () => {
+      scanConfig.paperlessConfig = paperlessConfig({ keepFiles: true });
+      scanConfig.postCommand = appendTemplate;
+      mockPaperlessSuccess();
+
+      await postProcessing(
+        scanConfig,
+        tempFolder,
+        tempFolder,
+        1,
+        scanJobContent,
+        new Date(),
+        false,
+      );
+
+      expect(await fs.readFile(filePath, "utf8")).to.equal("fake-jpg-contentX");
+    });
+
+    it("applies the post-command to images uploaded to nextcloud", async () => {
+      scanConfig.nextcloudConfig = nextcloudConfig({ keepFiles: true });
+      scanConfig.postCommand = appendTemplate;
+      mockNextcloudFolderExists();
+      nock(nextcloudUrl)
+        .intercept(/\/remote\.php\/dav\/files\/scanner\/scan\/.+\.jpg$/, "PUT")
+        .reply(201);
+
+      await postProcessing(
+        scanConfig,
+        tempFolder,
+        tempFolder,
+        1,
+        scanJobContent,
+        new Date(),
+        false,
+      );
+
+      expect(await fs.readFile(filePath, "utf8")).to.equal("fake-jpg-contentX");
+    });
+
+    it("applies the post-command once per page, not once per scan", async () => {
+      const secondPath = path.join(tempFolder, "post_processing_sample_2.jpg");
+      await fs.writeFile(secondPath, "fake-jpg-content");
+      scanConfig.postCommand = appendTemplate;
+
+      try {
+        await postProcessing(
+          scanConfig,
+          tempFolder,
+          tempFolder,
+          1,
+          {
+            elements: [
+              scanPage,
+              { ...scanPage, pageNumber: 2, path: secondPath },
+            ],
+          },
+          new Date(),
+          false,
+        );
+
+        expect(await fs.readFile(filePath, "utf8")).to.equal(
+          "fake-jpg-contentX",
+        );
+        expect(await fs.readFile(secondPath, "utf8")).to.equal(
+          "fake-jpg-contentX",
+        );
+      } finally {
+        await fs.rm(secondPath, { force: true });
+      }
     });
   });
 });

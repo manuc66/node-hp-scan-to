@@ -11,9 +11,22 @@ export async function uploadImagesToNextcloud(
   scanJobContent: ScanContent,
   nextcloudConfig: NextcloudConfig,
 ) {
+  await uploadFilesToNextcloud(
+    scanJobContent.elements.map((element) => element.path),
+    nextcloudConfig,
+  );
+}
+
+/**
+ * Uploads an arbitrary list of files, used for the sidecars a post-processing
+ * hook wrote beside the scan.
+ */
+export async function uploadFilesToNextcloud(
+  filePaths: readonly string[],
+  nextcloudConfig: NextcloudConfig,
+): Promise<void> {
   await checkFolderAndUpload(nextcloudConfig, async () => {
-    for (const element of scanJobContent.elements) {
-      const { path: filePath } = element;
+    for (const filePath of filePaths) {
       await uploadToNextcloud(filePath, nextcloudConfig);
     }
   });

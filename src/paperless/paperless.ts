@@ -6,6 +6,7 @@ import fs from "node:fs/promises";
 import { convertToPdf, mergeToPdf } from "../pdfProcessing.js";
 import type { PaperlessConfig } from "./PaperlessConfig.js";
 import type { ScanConfig } from "../type/scanConfigs.js";
+import type { PostCommand } from "../postCommand.js";
 import { getLoggerForFile } from "../logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -24,12 +25,14 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
   scanJobContent: ScanContent,
   paperlessConfig: PaperlessConfig,
   scanDate?: Date,
+  postCommand?: PostCommand,
 ) {
   for (const item of scanJobContent.elements) {
     const pdfFilePath = await convertToPdf(
       item,
       !paperlessConfig.keepFiles,
       scanDate,
+      postCommand,
     );
     if (pdfFilePath !== null) {
       await uploadToPaperless(pdfFilePath, paperlessConfig);
@@ -57,6 +60,7 @@ export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
     scanConfig.directoryConfig.filePattern,
     scanDate,
     !paperlessConfig.keepFiles,
+    scanConfig.postCommand,
   );
   if (pdfFilePath !== null) {
     await uploadToPaperless(pdfFilePath, paperlessConfig);

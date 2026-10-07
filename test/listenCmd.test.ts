@@ -259,6 +259,7 @@ const makeScanConfig = (
   paperSize: undefined,
   paperDim: undefined,
   paperOrientation: undefined,
+  postCommand: undefined,
   ...overrides,
 });
 

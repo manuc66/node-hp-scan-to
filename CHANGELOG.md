@@ -30,6 +30,23 @@ All notable changes to this project are documented in this file.
   universal `.dmg` on both Intel and Apple Silicon Macs. Its version and DMG
   checksum are refreshed automatically on master after each stable release
   (same mechanism as the Nix flake hashes).
+- **Post-processing command**: `--post-command <command>` (or `post_command`
+  in the config file) runs an external command over every generated scan file
+  (PDFs and delivered images) before it is uploaded or cleaned up, e.g. to
+  produce PDF/A archives, sign documents, inject metadata or watermark
+  images, without bundling or maintaining any of those tools in the project.
+  The command is given as a program and its arguments (`post_command` also
+  accepts an explicit argument list in the config file) and supports `{input}`
+  (the file path) and `{output}` (a temp file that replaces the file on
+  success); without `{output}` the command is expected to modify the file in
+  place. It runs without a shell, so file names are never interpreted as shell
+  syntax, and it is stopped if it runs for too long. Commands that fail never
+  block the flow: the original file is kept and the error is logged. Files the
+  command writes beside the scan are treated as part of it — recognized by
+  taking their name from the scan file, any other file appearing beside the
+  scan is left untouched: S3 and Nextcloud receive them next to the scan,
+  Paperless does not (an upload there would become a standalone document), and
+  they are removed with the scan only once they were actually delivered.
 
 ### Changed
 

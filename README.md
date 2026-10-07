@@ -391,6 +391,91 @@ environment:
 }
 ```
 
+#### Post-Processing Command
+
+Every generated scan file can be handed to an external command **before it is uploaded or cleaned up**. It runs on:
+
+- the generated PDFs (from the `--pdf` output mode, or the Paperless `--paperless-always-send-as-pdf-file` / `--paperless-group-multi-page-scan-into-a-pdf` flows);
+- the delivered images (beyond a Paperless PDF-conversion flow), i.e. each scan page kept on disk or uploaded as an image.
+
+Typical uses:
+
+| Output | Examples |
+|---|---|
+| **PDF** | PDF/A archiving (Ghostscript), digital signature, stamping, metadata injection, OCR text layer |
+| **Image (Jpeg/Bmp)** | recompression/resizing, watermarking, EXIF metadata injection, format conversion |
+
+Set it with `--post-command <command>` or `post_command` in the config file. The value is a program followed by its arguments, so quote any argument containing spaces.
+
+A command takes one of three shapes, and the shape is decided by whether it mentions `{output}`:
+
+**1. Replace the file — write the result to `{output}`.** The command must produce that exact file; it then replaces the scan, atomically.
+
+```sh
+# PDF/A archiving (PDF output) — `gs` on Linux/macOS, `gswin64c` on Windows
+node-hp-scan-to --address <printer> single-scan --pdf \
+  --post-command 'gs -dPDFA=2 -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -o "{output}" "{input}"'
+
+# Optimise / linearise an existing PDF (PDF output)
+node-hp-scan-to --address <printer> single-scan --pdf \
+  --post-command 'qpdf --linearize "{input}" "{output}"'
+
+# Stamp a watermark on every page (image output)
+node-hp-scan-to --address <printer> single-scan \
+  --post-command 'magick "{input}" -gravity center -pointsize 48 -annotate +0+0 DRAFT "{output}"'
+```
+
+**2. Edit the file in place — do not use `{output}`.** The command updates `{input}` and must leave it there.
+
+```sh
+# EXIF metadata on a Jpeg; -overwrite_original avoids leaving a .jpg_original
+node-hp-scan-to --address <printer> single-scan \
+  --post-command 'exiftool -overwrite_original -XResolution=200 "{input}"'
+```
+
+**3. Produce a companion file beside the scan.** The command leaves `{input}` alone and drops a new file next to it. That file travels with the scan — see [Files created beside the scan](#files-created-beside-the-scan).
+
+```sh
+# OCR the page to <page>.txt beside it. tesseract takes an output *base*
+# name and appends `.txt`, hence {input} is passed twice.
+node-hp-scan-to --address <printer> single-scan \
+  --post-command 'tesseract "{input}" "{input}"'
+```
+
+> ℹ️ The command is started directly, **without a shell**: file names are passed as single arguments and are never interpreted as shell syntax. Pipes, redirections, `&&` and variable expansion are therefore not available — the only values at hand are the two placeholders. Run a script or wrapper if you need more.
+
+In the config file, `post_command` accepts the same command line as a string, or an explicit argument list:
+
+```json
+{
+  "post_command": ["gs", "-dPDFA=2", "-dBATCH", "-dNOPAUSE", "-sDEVICE=pdfwrite", "-o", "{output}", "{input}"]
+}
+```
+
+The command supports two placeholders:
+
+- `{input}`: the absolute path of the generated file. It is **required**: a command without it cannot run on the scan and is rejected at startup.
+- `{output}`: an absolute temporary file path. When the command contains `{output}`, the resulting file **replaces the original file** if the command succeeds. A command that cannot overwrite its input in place (Ghostscript is one) should therefore write to `{output}`.
+
+When the command does not use `{output}`, it is expected to modify the file in place.
+
+Since the command runs on every delivered file, make sure it handles the file type it receives (PDF or image). For instance a PDF/A command would not be appropriate for image output.
+
+Failure policy: the scan flow never fails because of the hook. If the command cannot be started, exits with a non-zero code, runs longer than the timeout, or produces no `{output}` file, the original file is kept and an error is logged — the flow continues as if the command had not been configured.
+
+The timeout defaults to 5 minutes, generous enough for a conversion over a large multi-page scan, and can be changed with the `POST_COMMAND_TIMEOUT` environment variable (milliseconds), e.g. `POST_COMMAND_TIMEOUT=60000 node-hp-scan-to ...`.
+
+##### Files created beside the scan
+
+A command is free to write additional files next to its input (an OCR text, a signature, a manifest). A file is recognized as one of them by its name: it must be named after the file the command received (`page.jpg` → `page.jpg.txt`, `scan.pdf` → `scan.pdf.p7s`). Any other file appearing beside the scan while it is being processed — written by another program, or by the next scan in `listen` — is left untouched: neither delivered nor removed.
+
+Files recognized as sidecars belong to the scan, so:
+
+- **S3 and Nextcloud** receive them alongside the scan itself;
+- **Paperless does not**: every upload there becomes a standalone document, and a sidecar would appear as an unrelated entry rather than a companion of the scan.
+
+A sidecar is removed with the scan only when `keep_files` is false **and** it was actually delivered somewhere. If no target accepts it (Paperless-only setup), or if its upload failed, it stays on disk: the hook's output is never thrown away without being sent anywhere.
+
 ##### `listen`
 
 By default, this app runs the `listen` command as the default mode. It will listen to the print for new job and trigger based on the selection on the device.
@@ -408,6 +493,7 @@ Output Options:
   -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+  --post-command <command>                                         Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
 
 Scan Options:
   -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
@@ -507,6 +593,7 @@ Output Options:
   -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+  --post-command <command>                                         Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
 
 Scan Options:
@@ -616,6 +703,7 @@ Output Options:
   -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+  --post-command <command>                                         Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
 
 Scan Options:

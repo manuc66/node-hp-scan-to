@@ -35,6 +35,7 @@ import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
 import { validateFilePatternForPlatform } from "./fileNameValidation.js";
+import { parsePostCommandArg } from "./postCommand.js";
 import { getLoggerForFile, setDebugLevel } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -206,6 +207,14 @@ function setupScanParameters(commandName: string) {
         "-k, --keep-files",
         "Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)",
       ).helpGroup(HelpGroupsHeadings.ouput),
+    )
+    .addOption(
+      new Option(
+        "--post-command <command>",
+        "Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).",
+      )
+        .argParser(parsePostCommandArg)
+        .helpGroup(HelpGroupsHeadings.ouput),
     )
     .addOption(
       new Option(
@@ -718,6 +727,7 @@ function getScanConfiguration(
     nextcloudConfig,
     s3Config,
     preferEscl,
+    postCommand: getOptConfiguredValue(options.postCommand, fileConfig.post_command),
   };
   return scanConfig;
 }

@@ -25,6 +25,7 @@ export function createDefaultScanConfig(): ScanConfig {
     preferEscl: false,
     paperOrientation: "portrait",
     format: ScanFormat.Jpeg,
+    postCommand: undefined,
   };
 }
 
