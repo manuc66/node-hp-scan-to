@@ -505,4 +505,30 @@ describe("File post-processing command hook", () => {
       await fs.rm(dest, { force: true });
     });
   });
+
+  describe("a hook that writes a lot to stdout", () => {
+    // stdout is spawned as a pipe but never read by the runner. A hook that
+    // writes more than the OS pipe buffer (64 KB on Linux) blocks forever
+    // waiting for the pipe to drain, never closes, and is only stopped by
+    // the timeout — the hook then fails and its output is discarded. The
+    // runner has to drain stdout for the hook to be able to finish.
+    const stdoutHeavyTemplate = [
+      "node",
+      "-e",
+      "const fs=require('fs');" +
+        "process.stdout.write('x'.repeat(300000));" +
+        "fs.writeFileSync(process.argv[1],'HOOKED')",
+      "{output}",
+    ];
+
+    it("lets the hook complete instead of killing it at the timeout", async () => {
+      const dest = path.join(tempDir, "hook-stdout.pdf");
+      await fs.writeFile(dest, "ORIGINAL");
+
+      await runFilePostProcessing(stdoutHeavyTemplate, dest, 2_000);
+
+      expect(await fs.readFile(dest, "utf8")).to.equal("HOOKED");
+      await fs.rm(dest, { force: true });
+    }).timeout(20_000);
+  });
 });
