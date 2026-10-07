@@ -38,6 +38,14 @@ async function getScanCaps(
     if (scanJobManifest.scanCapsURI !== null) {
       eSclScanCaps = await api.getEsclScanCaps(scanJobManifest.scanCapsURI);
     }
+  } else if (preferEscl) {
+    // No eSCL manifest advertised (or no DiscoveryTree at all): when eSCL
+    // is explicitly preferred, probe the standard eSCL capabilities
+    // endpoints directly.
+    eSclScanCaps = await api.getEsclScanCapsFromWellKnownPath();
+    if (eSclScanCaps !== null) {
+      logger.info("eSCL capabilities discovered via well-known endpoint.");
+    }
   }
 
   if (preferEscl && eSclScanCaps !== null) {
