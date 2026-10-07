@@ -141,6 +141,12 @@ function runCommand(
       stderr = (stderr + chunk.toString()).slice(-MAX_LOGGED_STDERR_LENGTH);
     });
 
+    // stdout is piped but its content is not wanted: it must still be
+    // consumed, otherwise a hook writing past the OS pipe buffer (~64 KB)
+    // blocks forever waiting for a reader and is only stopped by the
+    // timeout, reporting a spurious failure for a hook that worked.
+    child.stdout?.resume();
+
     const timer = setTimeout(() => {
       logger.error(
         { program, timeoutMs },

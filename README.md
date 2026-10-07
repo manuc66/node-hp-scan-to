@@ -474,7 +474,9 @@ The timeout defaults to 5 minutes, generous enough for a conversion over a large
 
 ##### Files created beside the scan
 
-A command is free to write additional files next to its input (an OCR text, a signature, a manifest). Those files belong to the scan, so:
+A command is free to write additional files next to its input (an OCR text, a signature, a manifest). A file is recognized as one of them by its name: it must be named after the file the command received (`page.jpg` → `page.jpg.txt`, `scan.pdf` → `scan.pdf.p7s`). Any other file appearing beside the scan while it is being processed — written by another program, or by the next scan in `listen` — is left untouched: neither delivered nor removed.
+
+Files recognized as sidecars belong to the scan, so:
 
 - **S3 and Nextcloud** receive them alongside the scan itself;
 - **Paperless does not**: every upload there becomes a standalone document, and a sidecar would appear as an unrelated entry rather than a companion of the scan.
