@@ -42,10 +42,11 @@ All notable changes to this project are documented in this file.
   place. It runs without a shell, so file names are never interpreted as shell
   syntax, and it is stopped if it runs for too long. Commands that fail never
   block the flow: the original file is kept and the error is logged. Files the
-  command writes beside the scan are treated as part of it: S3 and Nextcloud
-  receive them next to the scan, Paperless does not (an upload there would
-  become a standalone document), and they are removed with the scan only once
-  they were actually delivered.
+  command writes beside the scan are treated as part of it — recognized by
+  taking their name from the scan file, any other file appearing beside the
+  scan is left untouched: S3 and Nextcloud receive them next to the scan,
+  Paperless does not (an upload there would become a standalone document), and
+  they are removed with the scan only once they were actually delivered.
 
 ### Changed
 
