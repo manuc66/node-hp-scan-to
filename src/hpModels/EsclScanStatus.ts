@@ -55,11 +55,12 @@ export class EsclJobInfo {
   }
 
   /**
-   * Number of images the device still holds for transfer. Reaching 0 means
-   * the job has nothing left to hand out via /NextDocument.
+   * Number of images the device still holds for transfer. This may be 0
+   * while a job is still scanning, so it must not be treated as a terminal
+   * state on its own.
    */
   getImagesToTransfer(): number {
-    return Number.parseInt(this.data["pwg:ImagesToTransfer"]["0"], 10) || 0;
+    return Number.parseInt(this.data["pwg:ImagesToTransfer"]?.["0"], 10) || 0;
   }
 
   getJobState() {

@@ -67,7 +67,8 @@ describe("scanJobHandlers flows", () => {
     }
 
     function mockEsclPage(jpegBody: Buffer): void {
-      // the job uri is absolute, so axios ignores the 8080 baseURL here
+      // Job URI is absolute, so it overrides the base URL (port 80); the base
+      // is only used for relative job URLs.
       nock("http://127.0.0.1")
         .get("/eSCL/ScanJobs/1/NextDocument")
         .reply(200, jpegBody, { "Content-Type": "image/jpeg" });
@@ -145,6 +146,218 @@ describe("scanJobHandlers flows", () => {
       );
 
       expect(jobState).to.equal(JobState.Canceled);
+    });
+
+    it("keeps polling when the job is Processing with ImagesToTransfer=0", async () => {
+      const jpegBody = await fsPromises.readFile(
+        path.resolve(__dirname, "./asset/adf_bytes_scan.jpg"),
+      );
+      mockEsclPage(jpegBody);
+      // Real-world intermediate state on some firmwares: the job is still
+      // scanning but ImagesToTransfer is already 0 (it was 1 on the previous
+      // poll). With the fix, this must NOT end the loop — polling continues
+      // until a terminal job state reason is seen.
+      nock("http://127.0.0.1")
+        .get("/eSCL/ScannerStatus")
+        .reply(200, await readAsset("eSCL_ScannerStatus_processing_noImagesToTransfer.xml"))
+        .get("/eSCL/ScannerStatus")
+        .reply(200, await readAsset("eSCL_ScannerStatus_completed.xml"));
+
+      const api = new DeviceClient("127.0.0.1", false);
+      const scanJobContent: ScanContent = { elements: [] };
+
+      const jobState = await executeScanJob(
+        api,
+        jpegSettings(),
+        InputSource.Adf,
+        tempDir,
+        tempDir,
+        0,
+        scanJobContent,
+        "scan",
+        PageCountingStrategy.Normal,
+        esclCapabilities(),
+      );
+
+      expect(jobState).to.equal(JobState.Completed);
+      expect(scanJobContent.elements).to.have.lengthOf(1);
+    });
+
+    it("ends the job when /NextDocument answers 404 (jpeg)", async () => {
+      // Some firmwares keep the job in Processing/JobScanning even after the
+      // last page was handed over; the 404 from /NextDocument is then the
+      // only reliable end-of-job signal and must not abort the scan.
+      nock("http://127.0.0.1")
+        .get("/eSCL/ScannerStatus")
+        .reply(200, await readAsset("eSCL_ScannerStatus_scanning.xml"))
+        .get("/eSCL/ScanJobs/1/NextDocument")
+        .reply(404);
+
+      const api = new DeviceClient("127.0.0.1", false);
+      const scanJobContent: ScanContent = { elements: [] };
+
+      const jobState = await executeScanJob(
+        api,
+        jpegSettings(),
+        InputSource.Adf,
+        tempDir,
+        tempDir,
+        0,
+        scanJobContent,
+        "scan",
+        PageCountingStrategy.Normal,
+        esclCapabilities(),
+      );
+
+      expect(jobState).to.equal(JobState.Completed);
+      expect(scanJobContent.elements).to.have.lengthOf(0);
+    });
+
+    it("ends the job when /NextDocument answers 404 (raw formats)", async () => {
+      nock("http://127.0.0.1")
+        .get("/eSCL/ScannerStatus")
+        .reply(200, await readAsset("eSCL_ScannerStatus_scanning.xml"))
+        .get("/eSCL/ScanJobs/1/NextDocument")
+        .reply(404);
+
+      const api = new DeviceClient("127.0.0.1", false);
+      const scanJobContent: ScanContent = { elements: [] };
+      const bmpSettings = {
+        format: createImageFormat(ScanFormat.Bmp),
+        mode: "Color",
+        xResolution: 200,
+        yResolution: 200,
+      } as unknown as IScanJobSettings;
+
+      const jobState = await executeScanJob(
+        api,
+        bmpSettings,
+        InputSource.Adf,
+        tempDir,
+        tempDir,
+        0,
+        scanJobContent,
+        "scan",
+        PageCountingStrategy.Normal,
+        esclCapabilities(),
+      );
+
+      expect(jobState).to.equal(JobState.Completed);
+      expect(scanJobContent.elements).to.have.lengthOf(0);
+    });
+
+    it("downloads eSCL pages on port 80 for relative job URLs", async () => {
+      const jpegBody = await fsPromises.readFile(
+        path.resolve(__dirname, "./asset/adf_bytes_scan.jpg"),
+      );
+
+      // eSCL manifest with a relative resource URI -> JobUri is relative,
+      // so the base URL (port 80) must be used to reach /NextDocument.
+      nock("http://127.0.0.1")
+        .get("/eSCL/eSclManifest.xml")
+        .reply(
+          200,
+          `<?xml version="1.0" encoding="UTF-8"?>
+<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/04/30" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/04/30" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
+  <map:ResourceMap>
+    <map:ResourceLink>
+      <dd:ResourceURI>http://127.0.0.1</dd:ResourceURI>
+    </map:ResourceLink>
+    <map:ResourceNode>
+      <map:ResourceType>
+        <scan:ScanResourceType>ScannerCapabilities</scan:ScanResourceType>
+      </map:ResourceType>
+      <map:ResourceLink>
+        <dd:ResourceURI>/eSCL/ScannerCapabilities.xml</dd:ResourceURI>
+      </map:ResourceLink>
+    </map:ResourceNode>
+  </map:ResourceMap>
+</man:Manifest>`,
+        );
+      nock("http://127.0.0.1")
+        .get("/eSCL/ScannerCapabilities.xml")
+        .reply(
+          200,
+          `<?xml version="1.0" encoding="UTF-8"?>
+<scan:ScannerCapabilities xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <scan:Platen>
+    <scan:PlatenInputCaps>
+      <scan:MaxWidth>2550</scan:MaxWidth>
+      <scan:MaxHeight>3508</scan:MaxHeight>
+    </scan:PlatenInputCaps>
+  </scan:Platen>
+</scan:ScannerCapabilities>`,
+        );
+
+      // ScannerStatus reports a relative JobUri; /NextDocument is fetched via
+      // the base URL, so the request must land on port 80.
+      nock("http://127.0.0.1")
+        .get("/eSCL/ScannerStatus")
+        .reply(
+          200,
+          `<?xml version="1.0" encoding="UTF-8"?>
+<scan:ScannerStatus xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <pwg:Version>2.5</pwg:Version>
+  <pwg:State>Processing</pwg:State>
+  <scan:AdfState>ScannerAdfLoaded</scan:AdfState>
+  <scan:Jobs>
+    <scan:JobInfo>
+      <pwg:JobUri>/eSCL/ScanJobs/1</pwg:JobUri>
+      <pwg:JobUuid>1876-0001</pwg:JobUuid>
+      <scan:Age>0</scan:Age>
+      <pwg:ImagesCompleted>0</pwg:ImagesCompleted>
+      <pwg:ImagesToTransfer>1</pwg:ImagesToTransfer>
+      <pwg:JobState>Processing</pwg:JobState>
+      <pwg:JobStateReasons>
+        <pwg:JobStateReason>JobScanning</pwg:JobStateReason>
+      </pwg:JobStateReasons>
+    </scan:JobInfo>
+  </scan:Jobs>
+</scan:ScannerStatus>`,
+        )
+        .get("/eSCL/ScanJobs/1/NextDocument")
+        .reply(200, jpegBody, { "Content-Type": "image/jpeg" })
+        .get("/eSCL/ScanJobs/1/ScanImageInfo")
+        .reply(function () {
+          // This scope only answers http://127.0.0.1 (port 80). Axios omits
+          // the port from the Host header there, but keeps it for 8080 —
+          // so the header proves the download used the port-80 base URL.
+          expect(this.req.headers["host"]).to.equal("127.0.0.1");
+          return [
+            200,
+            fs.readFileSync(
+              path.resolve(__dirname, "./asset/eSCL_ScanImageInfo.xml"),
+              "utf-8",
+            ),
+          ];
+        })
+        .get("/eSCL/ScannerStatus")
+        .reply(200, await readAsset("eSCL_ScannerStatus_completed.xml"));
+
+      const api = new DeviceClient("127.0.0.1", false);
+      const scanJobContent: ScanContent = { elements: [] };
+
+      const capabilities = {
+        isEscl: true,
+        submitScanJob: async () => "/eSCL/ScanJobs/1",
+        userActionTimeout: 1,
+      } as unknown as DeviceCapabilities;
+
+      const jobState = await executeScanJob(
+        api,
+        jpegSettings(),
+        InputSource.Adf,
+        tempDir,
+        tempDir,
+        0,
+        scanJobContent,
+        "scan",
+        PageCountingStrategy.Normal,
+        capabilities,
+      );
+
+      expect(jobState).to.equal(JobState.Completed);
+      expect(scanJobContent.elements).to.have.lengthOf(1);
     });
   });
 

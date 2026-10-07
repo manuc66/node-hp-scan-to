@@ -147,18 +147,23 @@ export default class DeviceClient {
       validateStatus: () => true,
     });
 
-    if (response.status !== 200) {
-      // Some devices (e.g. HP Color LaserJet Pro MFP 3302) do not serve the
-      // HP-proprietary DiscoveryTree at all and only implement the standard
-      // eSCL endpoints. Degrade to an empty tree so the eSCL fallback in
-      // readDeviceCapabilities can take over instead of aborting the command.
-      logger.warn(
-        `DiscoveryTree.xml unavailable (status ${response.status}); falling back to standard eSCL endpoints.`,
-      );
-      return DiscoveryTree.empty();
-    } else {
+    if (response.status === 200) {
       return DiscoveryTree.createDiscoveryTree(response.data);
     }
+
+    // Only a missing (404) or not-allowed (405) document means the device
+    // does not serve the HP-proprietary tree and we can fall back to the
+    // standard eSCL endpoints. All other statuses are real errors.
+    if (response.status === 404 || response.status === 405) {
+      logger.warn(
+        `DiscoveryTree.xml not available; falling back to standard eSCL endpoints.`,
+      );
+      return DiscoveryTree.empty();
+    }
+
+    throw new Error(
+      `DiscoveryTree.xml request failed with status ${response.status}`,
+    );
   }
 
   /**
@@ -644,10 +649,11 @@ export default class DeviceClient {
     binaryURL: string,
     destination: string,
     timeout?: number,
+    port = 8080,
   ): Promise<{ path: string; contentType: string | undefined }> {
     const { data, headers }: AxiosResponse<Stream> =
       await axios.request<Stream>({
-        baseURL: `http://${this.deviceIP}:8080`,
+        baseURL: `http://${this.deviceIP}:${port}`,
         url: binaryURL,
         method: "GET",
         responseType: "stream",
@@ -708,25 +714,7 @@ export default class DeviceClient {
     destination: string,
     timeout?: number,
   ): Promise<{ path: string; contentType: string | undefined }> {
-    const { data, headers }: AxiosResponse<Stream> =
-      await axios.request<Stream>({
-        url,
-        method: "GET",
-        responseType: "stream",
-        ...(timeout !== undefined && { timeout }),
-      });
-
-    const destinationFileStream = fs.createWriteStream(destination);
-    data.pipe(destinationFileStream);
-
-    await promisify(stream.finished)(destinationFileStream);
-
-    const contentType =
-      typeof headers["content-type"] === "string"
-        ? headers["content-type"]
-        : undefined;
-
-    return { path: destination, contentType };
+    return await this.downloadPageWithMeta(url, destination, timeout, 80);
   }
 
   async getEsclScanImageInfo(jobUri: string): Promise<EsclScanImageInfo> {
