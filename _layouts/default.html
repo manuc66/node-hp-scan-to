@@ -51,6 +51,16 @@
         max-height: calc(100vh - 420px);
         overflow-y: auto;
       }
+
+      /* Second symptom of the same source: main.js adds one entry per H1/H2/H3,
+         which on the README means ~24 flat entries and a sidebar nobody can
+         read. It tags every <li> with the level it came from (tag-h1/2/3), so
+         keep only the document title (h1) and its top-level sections (h2); the
+         in-page table of contents already lists the h3 subsections, and the
+         other pages (SUPPORTED_DEVICES, protocol_doc, ...) have their own. */
+      nav ul li.tag-h3 {
+        display: none;
+      }
     </style>
   </head>
   <body>
