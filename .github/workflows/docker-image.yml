@@ -17,6 +17,11 @@ jobs:
   sonarcloud:
     name: SonarCloud
     runs-on: ubuntu-latest
+    # Repository secrets are not passed to pull_request events from forks;
+    # expose SONAR_TOKEN through the job env so the scan step can detect
+    # its absence and skip instead of failing on an empty token.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     permissions:
       contents: read
       pull-requests: read
@@ -44,6 +49,7 @@ jobs:
         run: pnpm test:coverage
 
       - name: SonarCloud Scan
+        if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -101,6 +107,9 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: Login to DockerHub
+        # Fork pull_request runs receive no secrets; the PR-only build below
+        # never pushes, so the login is only needed for push/tag builds.
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}

@@ -17,6 +17,7 @@ import { type EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus.js";
 import type EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import type { ImageFormat, JobDesc } from "./imageFormats/index.js";
 import { getLoggerForFile } from "./logger.js";
+import { AxiosError } from "axios";
 
 const logger = getLoggerForFile(import.meta.url);
 
@@ -345,6 +346,32 @@ async function getAndFixHeightWHenAdf(
   return sizeFixed;
 }
 
+/**
+ * Fetch the next page from an eSCL job. A 404 from /NextDocument is the
+ * device's end-of-job signal: every image has been handed over and there is
+ * nothing left to fetch (some firmwares keep reporting the job as
+ * Processing/JobScanning while /NextDocument already answers 404). Returns
+ * null in that case so the caller can end the loop gracefully; any other
+ * failure is rethrown.
+ */
+async function downloadNextDocumentOrEnd(
+  api: DeviceClient,
+  jobUrl: string,
+  destinationFilePath: string,
+): Promise<{ path: string; contentType: string | undefined } | null> {
+  try {
+    return await api.downloadEsclPage(jobUrl, destinationFilePath);
+  } catch (error) {
+    if (error instanceof AxiosError && error.response?.status === 404) {
+      logger.info(
+        "No further image available from /NextDocument (404); treating the job as completed.",
+      );
+      return null;
+    }
+    throw error;
+  }
+}
+
 async function eSCLScanJobHandling(
   api: DeviceClient,
   jobUrl: string,
@@ -367,12 +394,31 @@ async function eSCLScanJobHandling(
   do {
     await delay(1000);
 
+    const jobLocation = PathHelper.getPathFromHttpLocation(jobUrl);
+
+    // Check the job state *before* downloading: the loop exits on a
+    // terminal job state reason, so it never fetches /NextDocument once the
+    // device has handed over every image (which would otherwise 404).
+    const scannerStatus = await api.getEsclScanStatus();
+    jobInfo = scannerStatus.findJobByUri(jobLocation);
+    jobStateReason = jobInfo?.getJobStateReason() ?? null;
+
+    const isTerminal =
+      jobStateReason === JobStateReason.JobCompletedSuccessfully ||
+      jobStateReason === JobStateReason.JobCanceledByUser;
+
+    if (isTerminal) {
+      logger.info(
+        `Job finished with state ${jobStateReason}; no further pages to transfer.`,
+      );
+      break;
+    }
+
     const currentPageNumber = getPageNumber(
       pageCountingStrategy,
       scanJobContent,
     );
 
-    const jobLocation = PathHelper.getPathFromHttpLocation(jobUrl);
     if (targetImageFormat.isJpeg()) {
       const destinationFilePath = await PathHelper.getFileForPage(
         folder,
@@ -383,9 +429,17 @@ async function eSCLScanJobHandling(
         new Date(),
       );
 
-      const jobLocation = PathHelper.getPathFromHttpLocation(jobUrl);
-
-      const filePath = await api.downloadEsclPage(jobUrl, destinationFilePath);
+      const filePath = await downloadNextDocumentOrEnd(
+        api,
+        jobUrl,
+        destinationFilePath,
+      );
+      if (filePath === null) {
+        // The device has handed over every image: treat this as the end of
+        // the job instead of aborting an otherwise successful scan.
+        jobStateReason = JobStateReason.JobCompletedSuccessfully;
+        break;
+      }
 
       const scanImageInfo = await api.getEsclScanImageInfo(jobLocation);
       logger.info(`scanImageInfo: ${scanImageInfo.jobURI}`);
@@ -426,10 +480,15 @@ async function eSCLScanJobHandling(
         `Downloading page ${currentPageNumber} → ${tempDestinationFilePath}`,
       );
 
-      const downloadMeta = await api.downloadEsclPage(
+      const downloadMeta = await downloadNextDocumentOrEnd(
+        api,
         jobUrl,
         tempDestinationFilePath,
       );
+      if (downloadMeta === null) {
+        jobStateReason = JobStateReason.JobCompletedSuccessfully;
+        break;
+      }
 
       logger.info(`Page downloaded content-type: ${downloadMeta.contentType}`);
 
@@ -471,16 +530,7 @@ async function eSCLScanJobHandling(
 
       logJobInfo(jobUrl, scanImageInfo, jobInfo);
     }
-    const scannerStatus = await api.getEsclScanStatus();
-
-    jobInfo = scannerStatus.findJobByUri(jobLocation);
-
-    jobStateReason = jobInfo?.getJobStateReason() ?? null;
-  } while (
-    jobStateReason !== null &&
-    jobStateReason !== JobStateReason.JobCompletedSuccessfully &&
-    jobStateReason !== JobStateReason.JobCanceledByUser
-  );
+  } while (jobStateReason !== null);
 
   if (jobStateReason === null) {
     logger.warn(

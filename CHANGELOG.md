@@ -68,6 +68,21 @@ All notable changes to this project are documented in this file.
   - Timestamp patterns containing `:` cannot produce a valid file name on
     Windows; that formatting case is skipped there.
 
+- **eSCL devices without `DiscoveryTree.xml`** (`src/DeviceClient.ts`,
+  `src/scanJobHandlers.ts`, `src/hpModels/EsclScanStatus.ts`,
+  `src/readDeviceCapabilities.ts`): support scanners whose firmware omits
+  `/DevMgmt/DiscoveryTree.xml` and serve only the standard eSCL endpoints on
+  port 80. DiscoveryTree 404s/405s are tolerated, capabilities are probed at
+  `/eSCL/ScanCapabilities` and `/eSCL/ScannerCapabilities` when eSCL is
+  preferred, `/NextDocument` is fetched on port 80, and the eSCL job loop now
+  ends on a terminal job state reason instead of `ImagesToTransfer == 0`
+  (the latter can be 0 while a multi-page job is still scanning); a 404 from
+  `/NextDocument` is treated as the end-of-job signal instead of aborting an
+  otherwise successful scan. Only
+  `single-scan` from the platen was verified on hardware; the shared ADF/duplex
+  job loop is covered by unit tests, including the in-progress `ImagesToTransfer=0`
+  case and relative job URLs over port 80.
+
 ## [1.11.1] - 2026-08-29
 
 ### Fixed

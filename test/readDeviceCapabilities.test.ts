@@ -224,4 +224,51 @@ describe("readDeviceCapabilities", () => {
     expect(caps.useWalkupScanToComp).to.be.true;
     expect(caps.supportsMultiItemScanFromPlaten).to.be.true;
   });
+
+  it("falls back to well-known eSCL capabilities when DiscoveryTree.xml returns 404", async () => {
+    // Newer HP firmware omits /DevMgmt/DiscoveryTree.xml entirely; the
+    // device serves only the standard eSCL endpoints on port 80.
+    nock("http://127.0.0.1")
+      .get("/DevMgmt/DiscoveryTree.xml")
+      .reply(404);
+
+    nock("http://127.0.0.1")
+      .get("/eSCL/ScannerCapabilities")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<scan:ScannerCapabilities xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <scan:Platen>
+    <scan:PlatenInputCaps>
+      <scan:MaxWidth>2550</scan:MaxWidth>
+      <scan:MaxHeight>3508</scan:MaxHeight>
+    </scan:PlatenInputCaps>
+  </scan:Platen>
+</scan:ScannerCapabilities>`,
+      );
+
+    const caps = await readDeviceCapabilities(api, true);
+
+    expect(caps.isEscl).to.be.true;
+    expect(caps.platenMaxWidth).to.equal(2550);
+    expect(caps.platenMaxHeight).to.equal(3508);
+  });
+
+  it("fails when DiscoveryTree.xml answers an unexpected status (e.g. 500)", async () => {
+    // Only 404/405 mean "no HP-proprietary tree"; any other status is a
+    // real error and must not be silently swallowed into an eSCL fallback.
+    nock("http://127.0.0.1")
+      .get("/DevMgmt/DiscoveryTree.xml")
+      .reply(500);
+
+    let caught: unknown;
+    try {
+      await readDeviceCapabilities(api, true);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).to.be.instanceOf(Error);
+    expect((caught as Error).message).to.match(/status 500/);
+  });
 });
