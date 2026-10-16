@@ -29,18 +29,35 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
   - [Emulated Duplex Scanning Feature](#emulated-duplex-scanning-feature)
 - [Installation](#installation)
   - [Using NodeJS](#using-nodejs)
+  - [Using standalone binaries (Windows, macOS, Linux)](#using-standalone-binaries-windows-macos-linux)
+  - [Using Debian / RPM packages](#using-debian--rpm-packages)
+    - [Alpine Linux](#alpine-linux)
+    - [Saving scans in your own user folder](#saving-scans-in-your-own-user-folder)
+    - [Verifying release artifacts](#verifying-release-artifacts)
   - [Using Docker](#using-docker)
+  - [Using Arch Linux (AUR)](#using-arch-linux-aur)
 - [Usage](#usage)
   - [Command Line (CLI)](#command-line-cli)
+    - [Discovering devices](#discovering-devices)
     - [CLI Options](#cli-options)
     - [CLI Commands](#cli-commands)
+      - [`listen`](#listen)
+      - [`adf-autoscan`](#adf-autoscan)
+      - [`clear-registrations`](#clear-registrations)
+      - [`single-scan`](#single-scan)
+    - [Paper Size Configuration](#paper-size-configuration)
+      - [Preset Paper Sizes](#preset-paper-sizes)
+      - [Custom Sizes](#custom-sizes)
+      - [Configuration Precedence](#configuration-precedence)
+      - [Important Rules](#important-rules)
+      - [Examples](#examples)
   - [Run with Docker](#run-with-docker)
     - [Public Pre-Built Docker image](#public-pre-built-docker-image)
     - [Docker Environment Variables](#docker-environment-variables)
     - [Example for Docker](#example-for-docker)
     - [Example for Docker Compose](#example-for-docker-compose)
   - [Run with Kubernetes](#run-with-kubernetes)
-  - [Configure](#Configure)
+  - [Configure](#configure)
 - [Build Source Code](#build-source-code)
   - [Debugging](#debugging)
 - [Reverse Engineering](#reverse-engineering)
@@ -260,7 +277,7 @@ Options: `--timeout <seconds>` (browsing window, default 5), `--json` (machine-r
 
 #### CLI Options
 
-Run `npx node-hp-scan-to --help` to see the full list of options below:
+Summary of the options shared across commands. Each command's own `--help` output (see [CLI Commands](#cli-commands)) is the authoritative list; options that only apply to some commands or modes are marked in the description.
 
 | Option                                | Description                                                                                                                                                                                                                    | Example/Default                                                   |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
@@ -268,34 +285,43 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `-d`, `--directory`                   | Directory to save scanned documents. Defaults to `/tmp/scan-to-pc<random value>` if not set.                                                                                                                                   | `-d /tmp/scan-to-pc1234`                                          |
 | `-D`, `--debug`                       | Enable debug logging.                                                                                                                                                                                                          | `-D` (disabled by default)                                        |
 | `-f`, `--image-format`                | Image format for scans (when not PDF).                                                                                                                                                                                         | `-f Jpeg` (choices: Jpeg, Bmp)                                    |
-| `-h`, `--height`                      | Scan height in pixels. Defaults to 3507.                                                                                                                                                                                       | `-h 3507`                                                         |
+| `-h`, `--height`                      | Scan height in pixels. Defaults to `max` (the device maximum).                                                                                                                                                                 | `-h 3507`                                                         |
 | `-k`, `--keep-files`                  | Retain scanned files after uploading to Paperless-ngx or Nextcloud (disabled by default).                                                                                                                                      | `-k` (disabled by default)                                        |
 | `-l`, `--label`                       | The name of the computer running this app. Defaults to the hostname.                                                                                                                                                           | `-l <hostname>` (default: system hostname)                        |
 | `-n`, `--name`                        | Printer name (quote if it contains spaces).                                                                                                                                                                                    | `-n "Officejet 6500 E710n-z"` (no default)                        |
-| `-o`, `--paperless-token`             | The paperless token. Required unless `----paperless-token-file` is used. Overrides if both are provided.                                                                                                                       | `-o xxxxxxxxxxxx` (no default)                                    |
-| `--paperless-token-file`              | File name that contains the paperless token. Required unless `---paperless-token` is used. Takes precedence if both are provided.                                                                                              | `--paperless-token-file some/path/to/file` (no default)           |
+| `-o`, `--paperless-token`             | The paperless token. Required unless `--paperless-token-file` is used. Overrides if both are provided.                                                                                                                         | `-o xxxxxxxxxxxx` (no default)                                    |
+| `--paperless-token-file`              | File name that contains the paperless token. Required unless `--paperless-token` is used. Takes precedence if both are provided.                                                                                               | `--paperless-token-file some/path/to/file` (no default)           |
 | `-p`, `--pattern`                     | Filename pattern (no extension). Use quotes for static text, supports date/time masks (see [dateformat docs](https://www.npmjs.com/package/dateformat#mask-options)). Defaults to `scan<increasing number>_page<page number>`. | `-p scan1_page1`                                                  |
 | `-r`, `--resolution`                  | Scan resolution in DPI. Defaults to 200.                                                                                                                                                                                       | `-r 200`                                                          |
-| `--mode <mode> `                      | Selects the scan mode (default: Color) (choices: "Gray", "Color").                                                                                                                                                             | `--mode Gray`                                                     |
+| `--mode <mode>`                       | Selects the scan mode (default: Color) (choices: "Gray", "Color").                                                                                                                                                             | `--mode Gray`                                                     |
 | `--paper-size <size>`                 | Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive). Cannot be used with `--paper-dim`.                                                                                                          | `--paper-size Letter`                                             |
 | `--paper-orientation <orientation>`   | Paper orientation: portrait (default) or landscape. Applied to `--paper-size` only.                                                                                                                                            | `--paper-orientation landscape`                                   |
 | `--paper-dim <dimensions>`            | Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with `--paper-size`.                                                                                                                  | `--paper-dim 8.5x11in`                                            |
 | `-s`, `--paperless-post-document-url` | Paperless-ngx API URL for uploading documents.                                                                                                                                                                                 | `-s https://domain.tld/api/documents/post_document/` (no default) |
 | `-t`, `--temp-directory`              | Temporary directory for processing. Defaults to `/tmp/scan-to-pc<random value>` if not set.                                                                                                                                    | `-t /tmp/scan-to-pc5678`                                          |
-| `-w`, `--width`                       | Scan width in pixels. Defaults to 2481.                                                                                                                                                                                        | `-w 2481`                                                         |
+| `-w`, `--width`                       | Scan width in pixels. Defaults to `max` (the device maximum).                                                                                                                                                                  | `-w 2481`                                                         |
 | `--device-up-polling-interval`        | Polling interval (in milliseconds) to check if the printer is online.                                                                                                                                                          | `--device-up-polling-interval 5000` (no default)                  |
+| `--pdf`                               | Force the scan result to be a PDF document (the default depends on the device choice). `single-scan` and `adf-autoscan` only.                                                                                                  | `--pdf` (disabled by default)                                     |
+| `--duplex`                            | Scan both sides if the device supports it. `single-scan` and `adf-autoscan` only; in `listen` mode duplex is chosen on the device panel.                                                                                       | `--duplex` (disabled by default)                                  |
+| `--prefer-eSCL`                       | Prefer the eSCL protocol when the device supports both eSCL and the HP protocols.                                                                                                                                              | `--prefer-eSCL` (disabled by default)                             |
+| `--add-emulated-duplex [mode]`        | Add an extra scan target that emulates duplex on devices without native duplex. `listen` mode only. Mode: `page-wise` (default), `document-wise`, `reverse-front` or `reverse-both`.                                           | `--add-emulated-duplex page-wise`                                 |
+| `--emulated-duplex-label <label>`     | Label of the emulated duplex target. Defaults to the main label with a `duplex` suffix. Only with `--add-emulated-duplex`.                                                                                                     | `--emulated-duplex-label "Duplex"`                                |
+| `--health-check`                      | Start an HTTP health-check endpoint (listens on all interfaces).                                                                                                                                                               | `--health-check` (disabled by default)                            |
+| `--health-check-port <port>`          | Port for the HTTP health-check endpoint.                                                                                                                                                                                       | `--health-check-port 3000` (default: 3000)                        |
+| `--pollingInterval <ms>`              | Time interval between each lookup for content in the ADF. `adf-autoscan` only.                                                                                                                                                 | `--pollingInterval 1000` (default: 1000)                          |
+| `--start-scan-delay <ms>`             | Wait delay before triggering the scan once paper is detected in the ADF. `adf-autoscan` only.                                                                                                                                  | `--start-scan-delay 5000` (default: 5000)                         |
 | `--nextcloud-password`                | Nextcloud app password. Required unless `--nextcloud-password-file` is used. Overrides if both are provided.                                                                                                                   | `--nextcloud-password mypassword` (no default)                    |
 | `--nextcloud-password-file`           | File containing the Nextcloud app password. Required unless `--nextcloud-password` is used. Takes precedence if both are provided.                                                                                             | `--nextcloud-password-file /path/to/file` (no default)            |
 | `--nextcloud-upload-folder`           | Nextcloud folder for uploads. Defaults to `scan`.                                                                                                                                                                              | `--nextcloud-upload-folder scan`                                  |
 | `--nextcloud-url`                     | Nextcloud instance URL.                                                                                                                                                                                                        | `--nextcloud-url https://domain.tld` (no default)                 |
 | `--nextcloud-username`                | Nextcloud username with write access to the upload folder.                                                                                                                                                                     | `--nextcloud-username user` (no default)                          |
 | `--s3-url`                            | S3-compatible endpoint URL.                                                                                                                                                                                                    | `--s3-url https://s3.us-east-1.amazonaws.com` (no default)        |
-| `--s3-region`                         | S3 region used for request signing. Defaults to `us-east-1`.                                                                                                                                                                   | `--s3-region eu-west-1`                                            |
+| `--s3-region`                         | S3 region used for request signing. Defaults to `us-east-1`.                                                                                                                                                                   | `--s3-region eu-west-1`                                           |
 | `--s3-access-key-id`                  | S3 access key id.                                                                                                                                                                                                              | `--s3-access-key-id AKIA...` (no default)                         |
-| `--s3-secret-access-key`              | S3 secret access key. Required unless `--s3-secret-access-key-file` is used. Overrides if both are provided.                                                                                                                    | `--s3-secret-access-key ...` (no default)                         |
-| `--s3-secret-access-key-file`         | File containing the S3 secret access key. Required unless `--s3-secret-access-key` is used. Takes precedence if both are provided.                                                                                              | `--s3-secret-access-key-file /path/to/file` (no default)          |
+| `--s3-secret-access-key`              | S3 secret access key. Required unless `--s3-secret-access-key-file` is used. Overrides if both are provided.                                                                                                                   | `--s3-secret-access-key ...` (no default)                         |
+| `--s3-secret-access-key-file`         | File containing the S3 secret access key. Required unless `--s3-secret-access-key` is used. Takes precedence if both are provided.                                                                                             | `--s3-secret-access-key-file /path/to/file` (no default)          |
 | `--s3-bucket`                         | S3 bucket to upload scans into.                                                                                                                                                                                                | `--s3-bucket scans` (no default)                                  |
-| `--s3-prefix`                         | Folder (prefix) inside the bucket. Defaults to the bucket root.                                                                                                                                                                | `--s3-prefix 2026/08`                                              |
+| `--s3-prefix`                         | Folder (prefix) inside the bucket. Defaults to the bucket root.                                                                                                                                                                | `--s3-prefix 2026/08`                                             |
 | `--s3-force-path-style`               | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...).                                                                                                                                                    | `--s3-force-path-style` (disabled by default)                     |
 | `--s3-session-token`                  | S3 session token for temporary credentials.                                                                                                                                                                                    | `--s3-session-token ...` (no default)                             |
 
@@ -305,91 +331,7 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 
 - Defaults like `/tmp/scan-to-pc<random value>` include a random suffix in practice (e.g., `/tmp/scan-to-pc1234`).
 
-#### Paper Size Configuration
-
-By default, scans use **A4 paper size** (210×297 mm). You can specify a different paper size or custom dimensions via CLI flags, environment variables, or the config file.
-
-##### Preset Paper Sizes
-
-The following preset sizes are available (case-insensitive):
-
-| Preset           | Dimensions     | Use Case                                                   |
-| ---------------- | -------------- | ---------------------------------------------------------- |
-| **A4** (default) | 210×297 mm     | Standard European paper size                               |
-| **Letter**       | 215.9×279.4 mm | Standard US letter size                                    |
-| **Legal**        | 215.9×355.6 mm | Standard US legal size                                     |
-| **A5**           | 148×210 mm     | Half of A4 size                                            |
-| **B5**           | 176×250 mm     | Between A4 and A5                                          |
-| **Max**          | Device maximum | Uses the device's maximum scannable area (not auto-detect) |
-
-##### Custom Sizes
-
-You can specify custom paper dimensions with explicit units using the `--paper-dim` option:
-
-```bash
-# Centimeters
-npx node-hp-scan-to single-scan --paper-dim 21x29.7cm
-
-# Inches
-npx node-hp-scan-to single-scan --paper-dim 8.5x11in
-
-# Millimeters
-npx node-hp-scan-to single-scan --paper-dim 210x297mm
-```
-
-**Supported units:** `cm`, `mm`, `in` (inches). Units are **required** and **case-insensitive**.
-
-##### Configuration Precedence
-
-Paper size is resolved in the following order (highest to lowest priority):
-
-1. **CLI flags**: `--paper-size` or `--paper-dim`
-2. **Environment variables**: `PAPER_SIZE` or `PAPER_DIM`
-3. **Config file**: `paper_size` or `paper_dim` in `config/default.json`
-4. **Default**: A4 (210×297 mm)
-
-##### Important Rules
-
-- **Cannot specify both `--paper-size` and `--paper-dim` simultaneously.** You must choose one; attempting to use both will result in an error.
-- **Resolution (DPI) is independent** of paper size. You can specify both independently:
-  ```bash
-  npx node-hp-scan-to single-scan --paper-size Letter --resolution 300
-  ```
-- **Device maximum is respected.** If your custom size exceeds the device's maximum scannable area, the scan will be clamped to the device's limits.
-- **"Max" uses device capabilities, not auto-detection.** The `Max` preset uses the device's reported maximum scan area; it does **not** automatically detect the actual paper size in the scanner.
-
-##### Examples
-
-```bash
-# Use Letter size
-npx node-hp-scan-to single-scan --paper-size Letter
-
-# Use A5 (smaller) size
-npx node-hp-scan-to single-scan --paper-size A5
-
-# Use maximum scannable area
-npx node-hp-scan-to single-scan --paper-size Max
-
-# Use custom size in centimeters
-npx node-hp-scan-to single-scan --paper-dim 21x29.7cm
-
-# Use custom size in inches (8.5" × 11")
-npx node-hp-scan-to single-scan --paper-dim 8.5x11in
-
-# With Docker (environment variable)
-docker run -e PAPER_SIZE=Letter manuc66/node-hp-scan-to
-
-# With Docker Compose
-environment:
-  PAPER_SIZE: "Letter"
-  PAPER_DIM: null  # Must be null if not using custom dimensions
-
-# In config file (config/default.json)
-{
-  "paper_size": "A4",
-  "paper_dim": null
-}
-```
+#### CLI Commands
 
 ##### `listen`
 
@@ -565,7 +507,7 @@ Global Options:
 
 ##### `clear-registrations`
 
-Running `npx node-hp-scan-to clear-registratons` will clear all registered targets on the device (useful for trial and error and debugging).
+Running `npx node-hp-scan-to clear-registrations` will clear all registered targets on the device (useful for trial and error and debugging).
 
 Run `npx node-hp-scan-to clear-registrations --help` to get command line usage help.
 
@@ -668,6 +610,92 @@ Global Options:
 ```
 <!-- END HELP command: single-scan -->
 
+#### Paper Size Configuration
+
+By default, scans use **A4 paper size** (210×297 mm). You can specify a different paper size or custom dimensions via CLI flags, environment variables, or the config file.
+
+##### Preset Paper Sizes
+
+The following preset sizes are available (case-insensitive):
+
+| Preset           | Dimensions     | Use Case                                                   |
+| ---------------- | -------------- | ---------------------------------------------------------- |
+| **A4** (default) | 210×297 mm     | Standard European paper size                               |
+| **Letter**       | 215.9×279.4 mm | Standard US letter size                                    |
+| **Legal**        | 215.9×355.6 mm | Standard US legal size                                     |
+| **A5**           | 148×210 mm     | Half of A4 size                                            |
+| **B5**           | 176×250 mm     | Between A4 and A5                                          |
+| **Max**          | Device maximum | Uses the device's maximum scannable area (not auto-detect) |
+
+##### Custom Sizes
+
+You can specify custom paper dimensions with explicit units using the `--paper-dim` option:
+
+```bash
+# Centimeters
+npx node-hp-scan-to single-scan --paper-dim 21x29.7cm
+
+# Inches
+npx node-hp-scan-to single-scan --paper-dim 8.5x11in
+
+# Millimeters
+npx node-hp-scan-to single-scan --paper-dim 210x297mm
+```
+
+**Supported units:** `cm`, `mm`, `in` (inches). Units are **required** and **case-insensitive**.
+
+##### Configuration Precedence
+
+Paper size is resolved in the following order (highest to lowest priority):
+
+1. **CLI flags**: `--paper-size` or `--paper-dim`
+2. **Environment variables**: `PAPER_SIZE` or `PAPER_DIM`
+3. **Config file**: `paper_size` or `paper_dim` in `config/default.json`
+4. **Default**: A4 (210×297 mm)
+
+##### Important Rules
+
+- **Cannot specify both `--paper-size` and `--paper-dim` simultaneously.** You must choose one; attempting to use both will result in an error.
+- **Resolution (DPI) is independent** of paper size. You can specify both independently:
+  ```bash
+  npx node-hp-scan-to single-scan --paper-size Letter --resolution 300
+  ```
+- **Device maximum is respected.** If your custom size exceeds the device's maximum scannable area, the scan will be clamped to the device's limits.
+- **"Max" uses device capabilities, not auto-detection.** The `Max` preset uses the device's reported maximum scan area; it does **not** automatically detect the actual paper size in the scanner.
+
+##### Examples
+
+```bash
+# Use Letter size
+npx node-hp-scan-to single-scan --paper-size Letter
+
+# Use A5 (smaller) size
+npx node-hp-scan-to single-scan --paper-size A5
+
+# Use maximum scannable area
+npx node-hp-scan-to single-scan --paper-size Max
+
+# Use custom size in centimeters
+npx node-hp-scan-to single-scan --paper-dim 21x29.7cm
+
+# Use custom size in inches (8.5" × 11")
+npx node-hp-scan-to single-scan --paper-dim 8.5x11in
+
+# With Docker (environment variable)
+docker run -e PAPER_SIZE=Letter manuc66/node-hp-scan-to
+
+# With Docker Compose
+environment:
+  PAPER_SIZE: "Letter"
+  PAPER_DIM: null  # Must be null if not using custom dimensions
+
+# In config file (config/default.json)
+{
+  "paper_size": "A4",
+  "paper_dim": null
+}
+```
+
 ### Run with Docker
 
 #### Public Pre-Built Docker image
@@ -709,8 +737,8 @@ List of supported environment variables and their meaning, or correspondence wit
 | `NEXTCLOUD_URL`               | Nextcloud URL                                                                                                 | Example: `https://nextcloud.example.tld`                                      |
 | `NEXTCLOUD_USERNAME`          | Nextcloud username                                                                                            |                                                                               |
 | `PAPERLESS_POST_DOCUMENT_URL` | Paperless-ngx post document URL (if provided with token, a PDF is uploaded)                                   | Example: `http://<paperless-host>:<port>/api/documents/post_document/`        |
-| `PAPERLESS_TOKEN`             | Paperless-ngx API token (either this or `NEXTCLOUD_PASSWORD_FILE` is required; file takes precedence)         | Example: `xxxxxxxxxxxx...`                                                    |
-| `PAPERLESS_TOKEN_FILE`        | File containing paperless-ngx API token (either this or `PAPERLESS_TOKEN_FILE` is required; takes precedence) | Example: `./paperless_token.secret` (preferred for Docker Compose secrets)    |
+| `PAPERLESS_TOKEN`             | Paperless-ngx API token (either this or `PAPERLESS_TOKEN_FILE` is required; file takes precedence)         | Example: `xxxxxxxxxxxx...`                                                    |
+| `PAPERLESS_TOKEN_FILE`        | File containing paperless-ngx API token (either this or `PAPERLESS_TOKEN` is required; takes precedence) | Example: `./paperless_token.secret` (preferred for Docker Compose secrets)    |
 | `PATTERN`                     | Pattern to use                                                                                                | `-p` / `--pattern`                                                            |
 | `PGID`                        | ID of the group that will run the program                                                                     |                                                                               |
 | `PUID`                        | ID of the user that will run the program                                                                      |                                                                               |
