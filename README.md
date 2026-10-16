@@ -27,6 +27,7 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
   - [App Features](#app-features)
   - [Protocol Support](#protocol-support)
   - [Emulated Duplex Scanning Feature](#emulated-duplex-scanning-feature)
+  - [Scope and Limitations](#scope-and-limitations)
 - [Installation](#installation)
   - [Using NodeJS](#using-nodejs)
   - [Using standalone binaries (Windows, macOS, Linux)](#using-standalone-binaries-windows-macos-linux)
@@ -38,6 +39,7 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
   - [Using Arch Linux (AUR)](#using-arch-linux-aur)
 - [Usage](#usage)
   - [Command Line (CLI)](#command-line-cli)
+    - [Choosing a mode](#choosing-a-mode)
     - [Discovering devices](#discovering-devices)
     - [CLI Options](#cli-options)
     - [CLI Commands](#cli-commands)
@@ -51,13 +53,16 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
       - [Configuration Precedence](#configuration-precedence)
       - [Important Rules](#important-rules)
       - [Examples](#examples)
+    - [Duplex scanning](#duplex-scanning)
   - [Run with Docker](#run-with-docker)
     - [Public Pre-Built Docker image](#public-pre-built-docker-image)
     - [Docker Environment Variables](#docker-environment-variables)
     - [Example for Docker](#example-for-docker)
     - [Example for Docker Compose](#example-for-docker-compose)
   - [Run with Kubernetes](#run-with-kubernetes)
+  - [Paperless-ngx](#paperless-ngx)
   - [Configure](#configure)
+- [Troubleshooting](#troubleshooting)
 - [Build Source Code](#build-source-code)
   - [Debugging](#debugging)
 - [Reverse Engineering](#reverse-engineering)
@@ -118,6 +123,13 @@ produce an assembled output.
 
 If you decide not to scan the back side immediately, the front side scan will be saved in the system and will remain
 there until you either scan the back side or perform a single side scan instead.
+
+### Scope and Limitations
+
+- **HP scan-capable devices only.** The app drives the scanner by speaking HP's proprietary scan protocols and eSCL. A device used with `listen` must expose **Scan to Computer** (or eSCL); see [SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md).
+- **Reverse-engineered and best-effort.** It is provided as-is (see the disclaimer above) and behaviour varies between models.
+- **It moves scans, it does not process them.** Output targets are a local folder, Paperless-ngx, Nextcloud and S3. OCR, document splitting, duplicate detection and blank-page removal are the destination's job (Paperless-ngx features or scripts), not this app's.
+- **Docker needs the printer IP.** mDNS discovery does not work on the default Docker network, so the printer must be given explicitly (or the container put on a macvlan network).
 
 ## Installation
 
@@ -267,6 +279,20 @@ Example usage:
 
 `npx node-hp-scan-to -a 192.168.0.5 -d ~/scans`
 
+#### Choosing a mode
+
+The command you run decides what triggers a scan:
+
+| Command                  | A scan starts when…                                            | On the printer panel                                     |
+| ------------------------ | -------------------------------------------------------------- | -------------------------------------------------------- |
+| `listen` *(default)*     | you pick the app in **Scan to Computer** and start the job      | the app appears under its `--label` (default: hostname)  |
+| `adf-autoscan`           | paper is loaded into the document feeder                        | nothing                                                   |
+| `single-scan`            | you run the command; it scans once, then exits                  | nothing                                                   |
+| `discover`               | – it only lists the HP devices found on the network             | nothing                                                   |
+| `clear-registrations`    | – it only clears the targets this app registered on the device  | nothing                                                   |
+
+With no command, `listen` runs. In Docker, select the command with the `MAIN_COMMAND` environment variable.
+
 #### Discovering devices
 
 `npx node-hp-scan-to discover`
@@ -304,7 +330,7 @@ Summary of the options shared across commands. Each command's own `--help` outpu
 | `--pdf`                               | Force the scan result to be a PDF document (the default depends on the device choice). `single-scan` and `adf-autoscan` only.                                                                                                  | `--pdf` (disabled by default)                                     |
 | `--duplex`                            | Scan both sides if the device supports it. `single-scan` and `adf-autoscan` only; in `listen` mode duplex is chosen on the device panel.                                                                                       | `--duplex` (disabled by default)                                  |
 | `--prefer-eSCL`                       | Prefer the eSCL protocol when the device supports both eSCL and the HP protocols.                                                                                                                                              | `--prefer-eSCL` (disabled by default)                             |
-| `--add-emulated-duplex [mode]`        | Add an extra scan target that emulates duplex on devices without native duplex. `listen` mode only. Mode: `page-wise` (default), `document-wise`, `reverse-front` or `reverse-both`.                                           | `--add-emulated-duplex page-wise`                                 |
+| `--add-emulated-duplex [mode]`        | Add an extra scan target that emulates duplex on devices without native duplex. `listen` mode only. Mode: `document-wise` (default), `page-wise`, `reverse-front` or `reverse-both`.                                           | `--add-emulated-duplex page-wise`                                 |
 | `--emulated-duplex-label <label>`     | Label of the emulated duplex target. Defaults to the main label with a `duplex` suffix. Only with `--add-emulated-duplex`.                                                                                                     | `--emulated-duplex-label "Duplex"`                                |
 | `--health-check`                      | Start an HTTP health-check endpoint (listens on all interfaces).                                                                                                                                                               | `--health-check` (disabled by default)                            |
 | `--health-check-port <port>`          | Port for the HTTP health-check endpoint.                                                                                                                                                                                       | `--health-check-port 3000` (default: 3000)                        |
@@ -696,6 +722,26 @@ environment:
 }
 ```
 
+#### Duplex scanning
+
+If the device can scan both sides by itself (duplex ADF):
+
+- `single-scan` and `adf-autoscan`: add `--duplex`.
+- `listen`: choose the duplex option on the printer panel for the job.
+
+If it can only scan one side, `--add-emulated-duplex` (listen mode only) adds a second destination, suffixed with `duplex`. The first time you select it the front side is scanned; selecting it again scans the back side and the app assembles both sides into one document. The pending front side is kept until you scan the back side or start a single-sided job.
+
+`--add-emulated-duplex <mode>` says how the two passes are assembled (default `document-wise`). Feeder models differ in the order in which each pass comes out, so pick the mode that matches yours:
+
+| Mode            | Front pass | Back pass |
+| --------------- | ---------- | --------- |
+| `page-wise`     | in order   | in order  |
+| `document-wise` | in order   | reversed  |
+| `reverse-front` | reversed   | in order  |
+| `reverse-both`  | reversed   | reversed  |
+
+"Reversed" means the sheets come out of the feeder back to front. Whatever the mode, the assembled document is in page order 1, 2, 3, …
+
 ### Run with Docker
 
 #### Public Pre-Built Docker image
@@ -861,11 +907,73 @@ spec:
             claimName: incoming-scans
 ```
 
+### Paperless-ngx
+
+There are two ways to get scans into Paperless-ngx.
+
+**Through the API.** Point the app at the Paperless upload endpoint and give it a token:
+
+```sh
+npx node-hp-scan-to -a 192.168.0.5 \
+  --paperless-post-document-url https://paperless.example.tld/api/documents/post_document/ \
+  --paperless-token-file /run/secrets/paperless_token
+```
+
+Each scan is uploaded to Paperless' `post_document` endpoint — no shared folder required. How a multi-page scan is turned into documents is controlled by:
+
+| Options                                        | Result                                    |
+| ---------------------------------------------- | ----------------------------------------- |
+| *(none)*                                       | one image document per page               |
+| `--paperless-always-send-as-pdf-file`          | one PDF document per page                 |
+| `--paperless-group-multi-page-scan-into-a-pdf` | a single PDF document for the whole scan  |
+
+The upload does not go through Paperless' `consume` folder, so Paperless' **`preconsume` and `postconsume` scripts do not run** on documents uploaded this way.
+
+**Through the consume folder.** Share Paperless' `consume` directory (SMB, FTP…) and point `--directory` at it. The files are ingested like any other drop and the `preconsume`/`postconsume` scripts *do* run — at the price of a shared folder.
+
+`--keep-files` keeps the local copy after a successful upload. Document splitting (barcode/separator pages), duplicate detection, OCR and blank-page removal are Paperless features or scripts, not options of this app.
+
 ### Configure
 
-Configuration can be done in a config file instead of using command line switches or environment variables in docker. The schema of the configuration file can be found in [FileConfig](src/type/FileConfig.ts)
+Settings can live in a JSON file instead of CLI flags. The file is read with the [`config`](https://www.npmjs.com/package/config) package; the shipped default is `config/default.json`, standalone binaries look for a `config` folder next to the executable, and `NODE_CONFIG_DIR` overrides the location.
 
-The configuration file is handled by https://www.npmjs.com/package/config
+```json
+{
+  "name": "Officejet 6500 E710n-z",
+  "directory": "/var/lib/node-hp-scan-to/scans",
+  "pattern": "scan_yyyy-mm-dd_HHMMss",
+  "resolution": 300,
+  "mode": "Gray",
+  "paper_size": "Letter",
+  "add_emulated_duplex": true,
+  "emulated_duplex_assembly_mode": "document-wise",
+  "paperless_post_document_url": "https://paperless.example.tld/api/documents/post_document/",
+  "paperless_token_file": "/run/secrets/paperless_token",
+  "keep_files": false
+}
+```
+
+Precedence, highest first: **CLI flag → config file → built-in default**. (The Docker image's environment variables are translated into CLI flags by its entrypoint, so from the app's point of view they are flags; `CMDLINE` is appended last and therefore wins over them.)
+
+Keys and types are validated at startup against [`src/type/FileConfig.ts`](src/type/FileConfig.ts). `paper_size` and `paper_dim` are mutually exclusive, as are `width`/`height` and `paper_size`/`paper_dim`.
+
+## Troubleshooting
+
+**The printer no longer lists the app as a destination.** HP devices sometimes drop a registered target. Restart the app; if the entry is stale on the printer, clear the registrations and let the app register itself again:
+
+```sh
+npx node-hp-scan-to clear-registrations --address 192.168.0.5
+```
+
+Prefer `-n/--name` over `-a/--address` so a changed DHCP lease does not break the link; `discover` lists the devices currently reachable.
+
+**Nothing shows up in "Scan to Computer".** In Docker, discovery over multicast does not work on the default network, so the app cannot register itself: pass the printer IP (`IP`/`--address`), or attach the container to a [macvlan network](#run-with-docker) and use `NAME`.
+
+**Scans land in `/tmp`.** No output directory was configured — set `-d/--directory` (or `DIR`). The Docker image defaults to `/scan`.
+
+**Permission denied when writing scans.** In Docker, set `PUID`/`PGID` to the owner of the mounted volume.
+
+**Something else.** Re-run with `-D/--debug` and attach the log to the issue; `LOG_FORMAT=json` produces structured lines for aggregators.
 
 ## Build Source Code
 
