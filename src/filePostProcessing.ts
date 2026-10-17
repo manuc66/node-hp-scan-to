@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -52,7 +52,9 @@ const MAX_LOGGED_STDERR_LENGTH = 2000;
  * in place.
  *
  * A failure never throws: the original file is kept and the error is logged,
- * so the post-processing hook stays an optional escape hatch.
+ * so the post-processing hook stays an optional escape hatch. In the in-place
+ * form the file is copied before the command runs and restored when the
+ * command fails or leaves nothing, so a half-written output cannot be lost.
  */
 export async function runFilePostProcessing(
   command: PostCommand | undefined,
@@ -69,7 +71,9 @@ export async function runFilePostProcessing(
   }
 
   const usesOutput = command.some((argument) => argument.includes("{output}"));
-  const outputPath = usesOutput ? buildTemporaryPath(filePath) : undefined;
+  const outputPath = usesOutput
+    ? buildTemporaryPath(filePath, "tmp")
+    : undefined;
 
   const resolvedArgs = args.map((argument) =>
     argument
@@ -77,41 +81,112 @@ export async function runFilePostProcessing(
       .replaceAll("{output}", outputPath ?? ""),
   );
 
-  const exitCode = await runCommand(program, resolvedArgs, timeoutMs);
-  if (exitCode !== 0) {
-    logger.error(
-      { exitCode, command: [program, ...resolvedArgs] },
-      `Post-processing command failed, keeping the original file: ${filePath}`,
-    );
-    await discardTempFile(outputPath);
-    return;
-  }
-
   if (outputPath !== undefined) {
+    const exitCode = await runCommand(program, resolvedArgs, timeoutMs);
+    if (exitCode !== 0) {
+      logger.error(
+        { exitCode, command: [program, ...resolvedArgs] },
+        `Post-processing command failed, keeping the original file: ${filePath}`,
+      );
+      await discardTempFile(outputPath);
+      return;
+    }
     await replaceFileWithOutput(outputPath, filePath, command);
     return;
   }
 
+  await runInPlaceCommand(program, resolvedArgs, filePath, command, timeoutMs);
+}
+
+/**
+ * Runs a command that is expected to modify the file at `filePath` in place.
+ *
+ * Unlike the `{output}` form, there is no atomic swap here: a tool can
+ * truncate or half-write the file before failing. The original is therefore
+ * copied first and put back whenever the run does not leave a usable file, so
+ * a failed hook can never lose the scan.
+ */
+async function runInPlaceCommand(
+  program: string,
+  resolvedArgs: string[],
+  filePath: string,
+  command: PostCommand,
+  timeoutMs: number,
+): Promise<void> {
+  const backupPath = buildTemporaryPath(filePath, "bak");
+
   try {
-    await fs.access(filePath);
-    logger.info(`Post-processing applied to ${filePath}`);
-  } catch {
+    await fs.copyFile(filePath, backupPath);
+  } catch (error) {
+    logger.error(
+      { error, command },
+      `Post-processing command could not back up ${filePath}, keeping the original file`,
+    );
+    return;
+  }
+
+  const exitCode = await runCommand(program, resolvedArgs, timeoutMs);
+  if (exitCode !== 0) {
+    logger.error(
+      { exitCode, command: [program, ...resolvedArgs] },
+      `Post-processing command failed, restoring the original file: ${filePath}`,
+    );
+    await restoreBackup(backupPath, filePath, command);
+    return;
+  }
+
+  if (!(await isRegularFile(filePath))) {
     logger.error(
       { command: [program, ...resolvedArgs] },
-      `Post-processing command did not leave the file at ${filePath}, keeping the original file`,
+      `Post-processing command did not leave the file at ${filePath}, restoring the original file`,
     );
+    await restoreBackup(backupPath, filePath, command);
+    return;
   }
+
+  await discardTempFile(backupPath);
+  logger.info(`Post-processing applied to ${filePath}`);
+}
+
+/**
+ * Puts the backup back in place. When the hook left something the rename
+ * cannot overwrite (a directory), it is removed first: the backup is the only
+ * copy of the scan at this point, so it must win.
+ */
+async function restoreBackup(
+  backupPath: string,
+  filePath: string,
+  command: PostCommand,
+): Promise<void> {
+  try {
+    await fs.rename(backupPath, filePath);
+  } catch {
+    try {
+      await fs.rm(filePath, { recursive: true, force: true });
+      await fs.rename(backupPath, filePath);
+    } catch (error) {
+      logger.error(
+        { error, command },
+        `The original file could not be restored from its backup: ${filePath}`,
+      );
+      return;
+    }
+  }
+  logger.info(`Original file restored: ${filePath}`);
 }
 
 /**
  * Builds a unique path next to the original file. A random suffix keeps
  * concurrent post-processing runs on the same file from sharing a temporary
  * file, and keeping it in the same folder keeps the later rename atomic.
+ *
+ * `kind` distinguishes the output file of a `{output}` command ("tmp") from
+ * the safety copy of an in-place command ("bak").
  */
-function buildTemporaryPath(filePath: string): string {
+function buildTemporaryPath(filePath: string, kind: "tmp" | "bak"): string {
   return path.join(
     path.dirname(filePath),
-    `${path.basename(filePath)}.${process.pid}.${crypto.randomUUID()}.postprocess.tmp`,
+    `${path.basename(filePath)}.${process.pid}.${crypto.randomUUID()}.postprocess.${kind}`,
   );
 }
 
@@ -124,6 +199,10 @@ function runCommand(
     const child = spawn(program, args, {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
+      // A dedicated process group on POSIX lets the timeout kill the whole
+      // tree: a hook that starts a converter of its own would otherwise keep
+      // running (and writing to {output}) after the direct child was killed.
+      detached: process.platform !== "win32",
     });
 
     let stderr = "";
@@ -152,7 +231,7 @@ function runCommand(
         { program, timeoutMs },
         "Post-processing command timed out, killing it",
       );
-      child.kill("SIGKILL");
+      killProcessTree(child);
       // Give the kill a moment to be observed before giving up on the event.
       setTimeout(() => settle(-1), 1_000).unref();
     }, timeoutMs);
@@ -181,6 +260,48 @@ function runCommand(
       settle(code ?? -1);
     });
   });
+}
+
+/**
+ * Kills the command and everything it started.
+ *
+ * On POSIX the child is spawned in its own process group (the `detached`
+ * option), so signalling the negative pid reaches its descendants too: a hook
+ * that delegates to another tool must not leave that tool running after the
+ * timeout. Windows has no process group to signal, `taskkill /T` walks the
+ * process tree instead.
+ */
+function killProcessTree(child: ChildProcess): void {
+  const pid = child.pid;
+  if (pid === undefined) {
+    return;
+  }
+
+  if (process.platform === "win32") {
+    try {
+      spawn("taskkill", ["/pid", String(pid), "/T", "/F"], {
+        stdio: "ignore",
+        windowsHide: true,
+      });
+      return;
+    } catch {
+      // Fall through to the single-process kill below.
+    }
+  } else {
+    try {
+      // Negative pid: signal the whole process group at once.
+      process.kill(-pid, "SIGKILL");
+      return;
+    } catch {
+      // The group is already gone or the child never led one.
+    }
+  }
+
+  try {
+    child.kill("SIGKILL");
+  } catch {
+    // The process is already gone.
+  }
 }
 
 /**
