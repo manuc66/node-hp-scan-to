@@ -260,7 +260,7 @@ describe("postProcessing - sidecar delivery", () => {
     expect(existsSync(sidecarPath)).to.be.true;
   });
 
-  it("reports a failure when only the sidecar upload fails", async () => {
+  it("does not fail the scan when only the sidecar upload fails", async () => {
     scanConfig.s3Config = s3Config({ keepFiles: false });
     // The scan page succeeds, the sidecar is rejected.
     nock("http://s3.example.test")
@@ -272,9 +272,12 @@ describe("postProcessing - sidecar delivery", () => {
 
     const result = await runImageFlow();
 
-    expect(result.uploadSucceeded).to.be.false;
-    expect(result.failures).to.have.lengthOf.at.least(1);
+    // The sidecar is auxiliary: its failure never fails the scan nor keeps
+    // the delivered scan on disk. The sidecar itself is left unsent.
+    expect(result.uploadSucceeded).to.be.true;
+    expect(result.failures).to.be.empty;
     expect(existsSync(sidecarPath)).to.be.true;
+    expect(existsSync(pagePath)).to.be.false;
   });
 
   it("leaves the scan untouched when the hook writes nothing beside it", async () => {

@@ -149,11 +149,7 @@ async function handlePdfPostProcessing(
 
   // Sidecars are delivered after the scan itself: the scan is the primary
   // deliverable, and a sidecar must not get in front of it.
-  const deliveredSidecars = await deliverSidecars(
-    sidecars,
-    scanConfig,
-    failures,
-  );
+  const deliveredSidecars = await deliverSidecars(sidecars, scanConfig);
 
   // Only clean up if delivery succeeded, otherwise keep the files.
   if (failures.length === 0) {
@@ -180,13 +176,15 @@ async function handlePdfPostProcessing(
  * library rather than a companion of the scan. A target that was not
  * configured simply skips its part.
  *
- * Returns the paths that were actually delivered, so cleanup only ever
- * removes a sidecar that reached a destination.
+ * Sidecar delivery is best-effort: a sidecar is an auxiliary file, so a failed
+ * upload must neither fail the scan (whose delivery already succeeded) nor keep
+ * the delivered scan files on disk. The failure is logged and the sidecar stays
+ * on disk, unclaimed. Returns the paths that were actually delivered, so
+ * cleanup only ever removes a sidecar that reached a destination.
  */
 async function deliverSidecars(
   sidecars: readonly string[],
   scanConfig: ScanConfig,
-  failures: string[],
 ): Promise<string[]> {
   if (sidecars.length === 0) {
     return [];
@@ -194,9 +192,9 @@ async function deliverSidecars(
 
   const { nextcloudConfig, s3Config } = scanConfig;
   if (nextcloudConfig === undefined && s3Config === undefined) {
-    logger.debug(
+    logger.warn(
       { sidecars },
-      "Post-processing produced files beside the scan but no target accepts them, keeping them",
+      "Post-processing produced files beside the scan but no target accepts them (S3 or Nextcloud); they are kept on disk",
     );
     return [];
   }
@@ -210,13 +208,17 @@ async function deliverSidecars(
   }
 
   // Settled rather than all: one target failing must not leave the other
-  // without a chance to run, and any failure keeps the files on disk.
+  // without a chance to run. Any failure keeps every sidecar on disk: the
+  // hook's output is never thrown away without being sent somewhere.
   const results = await Promise.allSettled(targets);
   let delivered = true;
   for (const result of results) {
     if (result.status === "rejected") {
       delivered = false;
-      failures.push(toFailureMessage(result.reason));
+      logger.warn(
+        { error: toFailureMessage(result.reason), sidecars },
+        "Post-processing sidecar delivery failed; the files are kept on disk",
+      );
     }
   }
 
@@ -360,11 +362,7 @@ async function handleImagePostProcessing(
   }
   // Sidecars are delivered after the scan itself: the scan is the primary
   // deliverable, and a sidecar must not get in front of it.
-  const deliveredSidecars = await deliverSidecars(
-    sidecars,
-    scanConfig,
-    failures,
-  );
+  const deliveredSidecars = await deliverSidecars(sidecars, scanConfig);
 
   // Only clean up if delivery succeeded, otherwise keep the files.
   if (failures.length === 0) {

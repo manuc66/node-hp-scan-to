@@ -726,6 +726,8 @@ Files recognized as sidecars belong to the scan, so:
 
 A sidecar is removed with the scan only when `keep_files` is false **and** it was actually delivered somewhere. If no target accepts it (Paperless-only setup), or if its upload failed, it stays on disk: the hook's output is never thrown away without being sent anywhere.
 
+A failed sidecar upload is reported as a warning only: the scan itself already reached its targets, so the scan is not marked failed and its files are cleaned up normally. In a Paperless-only setup there is nowhere for sidecars to go, so they stay on disk while the scan is cleaned up and accumulate over successive scans; configure an S3 or Nextcloud target if the hook produces files you want delivered (a warning naming the kept files is logged).
+
 #### Paper Size Configuration
 
 By default, scans use **A4 paper size** (210×297 mm). You can specify a different paper size or custom dimensions via CLI flags, environment variables, or the config file.
