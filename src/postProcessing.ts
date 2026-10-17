@@ -13,7 +13,6 @@ import {
 import { uploadPdfToS3, uploadImagesToS3 } from "./s3/s3.js";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
-import path from "node:path";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import type { S3Config } from "./s3/S3Config.js";
@@ -123,6 +122,8 @@ async function handlePdfPostProcessing(
     : [];
 
   const failures: string[] = [];
+  let scanDeliveredToNextcloud = false;
+  let scanDeliveredToS3 = false;
   if (pdfFilePath !== null) {
     displayPdfScan(pdfFilePath, scanJobContent, scanCount);
     if (paperlessConfig) {
@@ -135,6 +136,7 @@ async function handlePdfPostProcessing(
     if (nextcloudConfig) {
       try {
         await uploadPdfToNextcloud(pdfFilePath, nextcloudConfig);
+        scanDeliveredToNextcloud = true;
       } catch (e) {
         failures.push(toFailureMessage(e));
       }
@@ -142,6 +144,7 @@ async function handlePdfPostProcessing(
     if (s3Config) {
       try {
         await uploadPdfToS3(pdfFilePath, s3Config);
+        scanDeliveredToS3 = true;
       } catch (e) {
         failures.push(toFailureMessage(e));
       }
@@ -150,7 +153,10 @@ async function handlePdfPostProcessing(
 
   // Sidecars are delivered after the scan itself: the scan is the primary
   // deliverable, and a sidecar must not get in front of it.
-  const deliveredSidecars = await deliverSidecars(sidecars, scanConfig);
+  const deliveredSidecars = await deliverSidecars(sidecars, scanConfig, {
+    nextcloud: scanDeliveredToNextcloud,
+    s3: scanDeliveredToS3,
+  });
 
   // Only clean up if delivery succeeded, otherwise keep the files.
   if (failures.length === 0) {
@@ -175,7 +181,9 @@ async function handlePdfPostProcessing(
  * Only S3 and Nextcloud receive them: Paperless turns every upload into a
  * standalone document, and a sidecar there would be an unrelated entry in the
  * library rather than a companion of the scan. A target that was not
- * configured simply skips its part.
+ * configured, or that did not receive the scan itself, simply skips its part:
+ * a sidecar must never become an orphan entry on a target where the scan is
+ * missing.
  *
  * Sidecar delivery is best-effort: a sidecar is an auxiliary file, so a failed
  * upload must neither fail the scan (whose delivery already succeeded) nor keep
@@ -186,26 +194,34 @@ async function handlePdfPostProcessing(
 async function deliverSidecars(
   sidecars: readonly string[],
   scanConfig: ScanConfig,
+  scanDeliveredTo: { nextcloud: boolean; s3: boolean },
 ): Promise<string[]> {
   if (sidecars.length === 0) {
     return [];
   }
 
   const { nextcloudConfig, s3Config } = scanConfig;
-  if (nextcloudConfig === undefined && s3Config === undefined) {
-    logger.warn(
-      { sidecars },
-      "Post-processing produced files beside the scan but no target accepts them (S3 or Nextcloud); they are kept on disk",
-    );
-    return [];
-  }
-
   const targets: Promise<void>[] = [];
-  if (nextcloudConfig) {
+  if (nextcloudConfig !== undefined && scanDeliveredTo.nextcloud) {
     targets.push(uploadFilesToNextcloud(sidecars, nextcloudConfig));
   }
-  if (s3Config) {
+  if (s3Config !== undefined && scanDeliveredTo.s3) {
     targets.push(uploadFilesToS3(sidecars, s3Config));
+  }
+
+  if (targets.length === 0) {
+    if (nextcloudConfig === undefined && s3Config === undefined) {
+      logger.warn(
+        { sidecars },
+        "Post-processing produced files beside the scan but no target accepts them (S3 or Nextcloud); they are kept on disk",
+      );
+    } else {
+      logger.warn(
+        { sidecars },
+        "Post-processing produced files beside the scan but the scan itself was not delivered to any target that accepts them (S3 or Nextcloud); they are kept on disk",
+      );
+    }
+    return [];
   }
 
   // Settled rather than all: one target failing must not leave the other
@@ -280,26 +296,37 @@ async function handleImagePostProcessing(
 
   await applyPostCommandToImages(scanConfig, scanJobContent);
 
+  // The PDFs the paperless stage generates are named by `mergeToPdf` (after the
+  // scan count or the file pattern), so only that stage knows their real paths.
+  // They are collected here: a post-command may have written a sidecar beside
+  // each one, and it must be recognised like any other.
+  let generatedPdfPaths: string[] = [];
+
   if (paperlessConfig) {
     try {
       if (paperlessConfig.groupMultiPageScanIntoAPdf) {
-        await mergeToPdfAndUploadAsSingleDocumentToPaperless(
-          folder,
-          scanCount,
-          scanJobContent,
-          scanConfig,
-          scanDate,
-          paperlessConfig,
-        );
+        const pdfFilePath =
+          await mergeToPdfAndUploadAsSingleDocumentToPaperless(
+            folder,
+            scanCount,
+            scanJobContent,
+            scanConfig,
+            scanDate,
+            paperlessConfig,
+          );
+        if (pdfFilePath !== null) {
+          generatedPdfPaths = [pdfFilePath];
+        }
       } else {
         if (paperlessConfig.alwaysSendAsPdfFile) {
-          await convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
-            scanJobContent,
-            paperlessConfig,
-            scanDate,
-            scanConfig.postCommandPdf,
-            scanConfig.postCommandTimeout,
-          );
+          generatedPdfPaths =
+            await convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
+              scanJobContent,
+              paperlessConfig,
+              scanDate,
+              scanConfig.postCommandPdf,
+              scanConfig.postCommandTimeout,
+            );
         } else {
           await uploadImagesAsSeparateDocumentsToPaperless(
             scanJobContent,
@@ -314,17 +341,14 @@ async function handleImagePostProcessing(
 
   // Collected after the paperless stage: the PDFs it generates run the hook
   // too, and their sidecars must travel with the scan like every other one.
-  // Only files named after a file this scan owns (pages, plus the PDFs
-  // derived from them) are sidecars: a file that merely appeared in the
-  // folders while the pipeline ran belongs to someone else (the next scan's
-  // pages in `listen`, a sync client) and is left untouched — not delivered,
-  // not deleted.
+  // Only files named after a file this scan owns (pages, plus the PDFs derived
+  // from them) are sidecars: a file that merely appeared in the folders while
+  // the pipeline ran belongs to someone else (the next scan's pages in
+  // `listen`, a sync client) and is left untouched — not delivered, not
+  // deleted.
   const sourcePaths = [
     ...scanJobContent.elements.map((element) => element.path),
-    ...scanJobContent.elements.map((element) => {
-      const ext = path.extname(element.path);
-      return `${element.path.slice(0, element.path.length - ext.length)}.pdf`;
-    }),
+    ...generatedPdfPaths,
   ];
   const sidecars = detectSidecars
     ? collectSidecarFiles(
@@ -337,9 +361,12 @@ async function handleImagePostProcessing(
       ).filter((file) => sourcePaths.some((source) => file.startsWith(source)))
     : [];
 
+  let scanDeliveredToNextcloud = false;
+  let scanDeliveredToS3 = false;
   if (nextcloudConfig) {
     try {
       await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+      scanDeliveredToNextcloud = true;
     } catch (e) {
       failures.push(toFailureMessage(e));
     }
@@ -347,13 +374,18 @@ async function handleImagePostProcessing(
   if (s3Config) {
     try {
       await uploadImagesToS3(scanJobContent, s3Config);
+      scanDeliveredToS3 = true;
     } catch (e) {
       failures.push(toFailureMessage(e));
     }
   }
   // Sidecars are delivered after the scan itself: the scan is the primary
-  // deliverable, and a sidecar must not get in front of it.
-  const deliveredSidecars = await deliverSidecars(sidecars, scanConfig);
+  // deliverable, and a sidecar must not get in front of it. Only the targets
+  // that actually received it are offered the sidecars.
+  const deliveredSidecars = await deliverSidecars(sidecars, scanConfig, {
+    nextcloud: scanDeliveredToNextcloud,
+    s3: scanDeliveredToS3,
+  });
 
   // Only clean up if delivery succeeded, otherwise keep the files.
   if (failures.length === 0) {

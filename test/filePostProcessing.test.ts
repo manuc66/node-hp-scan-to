@@ -704,4 +704,40 @@ describe("File post-processing command hook", () => {
       await fs.rm(dir, { recursive: true, force: true });
     });
   });
+
+  describe("a temporary file the runner cannot clean up", () => {
+    // The hook contract is that post-processing never fails the scan flow.
+    // Dropping the temporary file is housekeeping: when the filesystem refuses
+    // it, the error must not escape and fail the whole scan job.
+    it("never throws and keeps the original file", async () => {
+      const dir = path.join(tempDir, "hook-undiscardable");
+      await fs.rm(dir, { recursive: true, force: true });
+      await fs.mkdir(dir, { recursive: true });
+      const dest = path.join(dir, "scan.pdf");
+      await fs.writeFile(dest, "ORIGINAL");
+
+      const isRoot = process.getuid?.() === 0;
+      // Leaves a directory at {output} and makes its folder read-only, so the
+      // runner cannot remove that temporary entry afterwards.
+      const makeUndiscardable = [
+        "node",
+        "-e",
+        "const fs=require('fs');const path=require('path');" +
+          "fs.mkdirSync(process.argv[1],{recursive:true});" +
+          "fs.chmodSync(path.dirname(process.argv[1]),0o500);",
+        "{output}",
+      ];
+
+      try {
+        await runFilePostProcessing(makeUndiscardable, dest);
+      } finally {
+        if (!isRoot) {
+          await fs.chmod(dir, 0o700);
+        }
+      }
+
+      expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINAL");
+      await fs.rm(dir, { recursive: true, force: true });
+    });
+  });
 });

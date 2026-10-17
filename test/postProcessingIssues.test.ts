@@ -516,4 +516,92 @@ describe("postProcessing - post-command / sidecar issues", () => {
       expect(outcome).to.equal("settled");
     });
   });
+
+  describe("a sidecar written beside a group multi-page Paperless PDF", () => {
+    // With groupMultiPageScanIntoAPdf, mergeToPdf names the PDF after the scan
+    // count or the file pattern ("scan1.pdf" / "<pattern>.pdf"), never after a
+    // page ("page.pdf"). The sidecar is named after the PDF that was actually
+    // generated, so it must still be recognised and delivered.
+    for (const filePattern of [undefined, "scan"]) {
+      it(`is uploaded to S3 with filePattern=${String(filePattern)}`, async () => {
+        const dir = path.join(tempFolder, `group-pdf-${String(filePattern)}`);
+        const pagePath = path.join(dir, "page.jpg");
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(pagePath, "content");
+
+        const pdfSidecarUpload = nock(s3Url)
+          .intercept(/\/scans\/.+\.pdf\.txt$/, "PUT")
+          .reply(200);
+        nock(s3Url)
+          .intercept(/\/scans\/.+$/, "PUT")
+          .reply(200);
+        nock(paperlessUrl)
+          .post("/api/documents/post_document/")
+          .reply(201, "1");
+
+        const scanConfig = {
+          directoryConfig: { filePattern, directory: dir },
+          paperlessConfig: paperlessConfig({
+            groupMultiPageScanIntoAPdf: true,
+            keepFiles: true,
+          }),
+          nextcloudConfig: undefined,
+          s3Config: s3Config({ keepFiles: true }),
+          postCommandPdf: appendAndSidecar,
+        } as unknown as ScanConfig;
+
+        await postProcessing(
+          scanConfig,
+          dir,
+          dir,
+          1,
+          { elements: [makePage(pagePath)] },
+          new Date(),
+          false,
+        );
+
+        expect(pdfSidecarUpload.isDone()).to.be.true;
+      });
+    }
+  });
+
+  describe("a sidecar when the scan itself could not be delivered", () => {
+    // Sidecars travel with the scan. A sidecar must not be uploaded to a target
+    // that never received the scan: it would become an orphan entry there while
+    // the scan itself is missing.
+    it("is not sent to a target that did not receive the scan, and is kept", async () => {
+      const dir = path.join(tempFolder, "scan-failed-sidecar");
+      const pagePath = path.join(dir, "page.jpg");
+      const sidecarPath = path.join(dir, "page.jpg.txt");
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(pagePath, "content");
+
+      const sidecarUpload = nock(s3Url)
+        .intercept("/scans/page.jpg.txt", "PUT")
+        .reply(200);
+      nock(s3Url).intercept("/scans/page.jpg", "PUT").reply(500);
+
+      const scanConfig = {
+        directoryConfig: { filePattern: "scan", directory: dir },
+        paperlessConfig: undefined,
+        nextcloudConfig: undefined,
+        s3Config: s3Config({ keepFiles: false }),
+        postCommandImage: appendAndSidecar,
+      } as unknown as ScanConfig;
+
+      const result = await postProcessing(
+        scanConfig,
+        dir,
+        dir,
+        1,
+        { elements: [makePage(pagePath)] },
+        new Date(),
+        false,
+      );
+
+      expect(result.uploadSucceeded).to.be.false;
+      expect(sidecarUpload.isDone()).to.be.false;
+      expect(existsSync(sidecarPath)).to.be.true;
+    });
+  });
 });

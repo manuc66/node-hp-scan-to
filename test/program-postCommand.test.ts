@@ -1,6 +1,7 @@
 import { describe, it } from "mocha";
 import { expect } from "chai";
-import { setupProgram } from "../src/program.js";
+import { getScanConfiguration, setupProgram } from "../src/program.js";
+import type { ListenOptions } from "../src/program.js";
 import type { FileConfig } from "../src/type/FileConfig.js";
 
 function parseSubcommandOptions(
@@ -184,5 +185,74 @@ describe("CLI Program - Post Command Options", () => {
         }
       });
     }
+  });
+
+  describe("Post Command scan configuration wiring", () => {
+    // The CLI parsers are tested above; these make sure the parsed options
+    // (and the config-file fallbacks) actually reach the ScanConfig that the
+    // pipeline consumes.
+    function listenOptions(
+      overrides: Partial<ListenOptions> = {},
+    ): ListenOptions {
+      return { ...overrides };
+    }
+
+    it("carries the post-commands from the CLI into the scan config", () => {
+      const scanConfig = getScanConfiguration(
+        listenOptions({
+          postCommandPdf: ["gs", "{input}", "{output}"],
+          postCommandImage: ["exiftool", "{input}"],
+          postCommandTimeout: 60_000,
+        }),
+        emptyConfig,
+      );
+
+      expect(scanConfig.postCommandPdf).to.deep.equal([
+        "gs",
+        "{input}",
+        "{output}",
+      ]);
+      expect(scanConfig.postCommandImage).to.deep.equal([
+        "exiftool",
+        "{input}",
+      ]);
+      expect(scanConfig.postCommandTimeout).to.equal(60_000);
+    });
+
+    it("falls back to the config file when no CLI flag is given", () => {
+      const scanConfig = getScanConfiguration(listenOptions(), {
+        post_command_pdf: ["gs", "{input}", "{output}"],
+        post_command_image: ["exiftool", "{input}"],
+        post_command_timeout: 30_000,
+      });
+
+      expect(scanConfig.postCommandPdf).to.deep.equal([
+        "gs",
+        "{input}",
+        "{output}",
+      ]);
+      expect(scanConfig.postCommandImage).to.deep.equal([
+        "exiftool",
+        "{input}",
+      ]);
+      expect(scanConfig.postCommandTimeout).to.equal(30_000);
+    });
+
+    it("prefers the CLI flag over the config file", () => {
+      const scanConfig = getScanConfiguration(
+        listenOptions({ postCommandPdf: ["cli", "{input}"] }),
+        { post_command_pdf: ["config", "{input}"] },
+      );
+
+      expect(scanConfig.postCommandPdf).to.deep.equal(["cli", "{input}"]);
+    });
+
+    it("leaves the keys absent when neither the CLI nor the config sets them", () => {
+      const scanConfig = getScanConfiguration(listenOptions(), emptyConfig);
+
+      expect(scanConfig.postCommandPdf).to.be.undefined;
+      expect(scanConfig.postCommandImage).to.be.undefined;
+      expect(scanConfig.postCommandTimeout).to.be.undefined;
+    });
   });
 });

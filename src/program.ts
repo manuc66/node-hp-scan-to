@@ -632,7 +632,7 @@ function getHealthCheckSetting(options: ProgramOption, configFile: FileConfig) {
   };
 }
 
-function getScanConfiguration(
+export function getScanConfiguration(
   options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   fileConfig: FileConfig,
 ) {

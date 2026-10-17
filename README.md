@@ -726,7 +726,7 @@ A command is free to write additional files next to its input (an OCR text, a si
 
 Files recognized as sidecars belong to the scan, so:
 
-- **S3 and Nextcloud** receive them alongside the scan itself;
+- **S3 and Nextcloud** receive them alongside the scan itself, and only when they actually received that scan: a sidecar is never sent to a target where the scan itself is missing;
 - **Paperless does not**: every upload there becomes a standalone document, and a sidecar would appear as an unrelated entry rather than a companion of the scan.
 
 A sidecar is removed with the scan only when `keep_files` is false **and** it was actually delivered somewhere. If no target accepts it (Paperless-only setup), or if its upload failed, it stays on disk: the hook's output is never thrown away without being sent anywhere.

@@ -350,8 +350,19 @@ async function isRegularFile(filePath: string): Promise<boolean> {
   }
 }
 
-async function discardTempFile(outputPath: string | undefined): Promise<void> {
-  if (outputPath !== undefined) {
+/**
+ * Drops a temporary file the runner created. Removing it is housekeeping: the
+ * filesystem can refuse it (a hook left a directory at the path on Windows, a
+ * folder turned read-only), and the hook contract is that post-processing never
+ * fails the scan flow. A leftover temporary file is logged, never thrown.
+ */
+async function discardTempFile(outputPath: string): Promise<void> {
+  try {
     await fs.rm(outputPath, { force: true, recursive: true });
+  } catch (error) {
+    logger.warn(
+      { error, outputPath },
+      "Post-processing could not remove its temporary file; it is left on disk",
+    );
   }
 }
