@@ -131,8 +131,9 @@ export const configSchema = z
     /// Common to external destination (paperless & nextcloud)
     ///
     keep_files: z.boolean().optional(), // Keep scanned files locally after upload
-    post_command: postCommandSchema.optional(), // External command run on every generated file
-    post_command_timeout: z.number().int().positive().optional(), // Timeout for the post-command, in milliseconds
+    post_command_image: postCommandSchema.optional(), // External command run on delivered image pages
+    post_command_pdf: postCommandSchema.optional(), // External command run on generated PDFs
+    post_command_timeout: z.number().int().positive().optional(), // Timeout for the post-commands, in milliseconds
 
     ///
     /// Health Check

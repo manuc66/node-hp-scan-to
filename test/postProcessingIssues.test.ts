@@ -136,7 +136,7 @@ describe("postProcessing - post-command / sidecar issues", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         s3Config: s3Config({ keepFiles: false }),
-        postCommand: hook,
+        postCommandImage: hook,
       } as unknown as ScanConfig;
 
       const scanJobContent: ScanContent = { elements: [makePage(pagePath)] };
@@ -233,7 +233,7 @@ describe("postProcessing - post-command / sidecar issues", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         s3Config: s3Config({ keepFiles: false }),
-        postCommand: hook,
+        postCommandPdf: hook,
       } as unknown as ScanConfig;
 
       const running = postProcessing(
@@ -271,9 +271,9 @@ describe("postProcessing - post-command / sidecar issues", () => {
   });
 
   describe("a sidecar written beside a Paperless-generated PDF", () => {
-    // The image flow snapshots for sidecars before the Paperless stage runs,
-    // so a sidecar the hook writes beside the converted PDF (same detection
-    // as the PDF flow delivers) is never collected nor uploaded to S3.
+    // The PDF hook runs during the Paperless stage; the file it writes beside
+    // the converted PDF must be collected and delivered like any other sidecar
+    // (here, alongside the image hook's own sidecar).
     it("is uploaded to S3 like every other sidecar", async () => {
       const dir = path.join(tempFolder, "paperless-pdf-sidecar");
       const pagePath = path.join(dir, "page.jpg");
@@ -295,7 +295,8 @@ describe("postProcessing - post-command / sidecar issues", () => {
         }),
         nextcloudConfig: undefined,
         s3Config: s3Config({ keepFiles: true }),
-        postCommand: appendAndSidecar,
+        postCommandImage: appendAndSidecar,
+        postCommandPdf: appendAndSidecar,
       } as unknown as ScanConfig;
 
       const scanJobContent: ScanContent = { elements: [makePage(pagePath)] };
@@ -319,12 +320,9 @@ describe("postProcessing - post-command / sidecar issues", () => {
   });
 
   describe("page images kept on disk with Paperless-only delivery", () => {
-    // The README states the hook runs on "each scan page kept on disk or
-    // uploaded as an image". With keep_files=true and Paperless as the only
-    // target (PDF conversion flow), the page images survive on disk but are
-    // currently skipped because pdfIsTheOnlyDelivery ignores keepFiles.
-    // If the intended contract becomes "kept images are not hooked", the
-    // README has to say so and this expectation should be inverted.
+    // The image hook is independent from the PDF hook: even when Paperless is
+    // the only target and the pages are converted to PDF, a configured image
+    // command runs on each kept page image.
     it("applies the post-command to the kept page images", async () => {
       const dir = path.join(tempFolder, "kept-images");
       const pagePath = path.join(dir, "kept.jpg");
@@ -348,7 +346,7 @@ describe("postProcessing - post-command / sidecar issues", () => {
         }),
         nextcloudConfig: undefined,
         s3Config: undefined,
-        postCommand: appendInPlace,
+        postCommandImage: appendInPlace,
       } as unknown as ScanConfig;
 
       const scanJobContent: ScanContent = { elements: [makePage(pagePath)] };
@@ -398,7 +396,7 @@ describe("postProcessing - post-command / sidecar issues", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         s3Config: s3Config({ keepFiles: false }),
-        postCommand: hook,
+        postCommandImage: hook,
       } as unknown as ScanConfig;
 
       await postProcessing(
@@ -416,24 +414,27 @@ describe("postProcessing - post-command / sidecar issues", () => {
     });
   });
 
-  describe("a hook that runs on images and on Paperless-converted PDFs", () => {
-    // Documents the current contract: the image flow applies the hook to the
-    // page images and, separately, to each PDF Paperless derives from them.
-    // Every file the hook is handed is recorded.
-    it("runs on both the page image and the PDF derived from it", async () => {
+  describe("a hook configured for both image and PDF", () => {
+    // Each hook only ever receives the type it was configured for: the image
+    // hook gets the page image, the PDF hook the PDF Paperless derives from
+    // it. Each logs a tagged line, so a command receiving the wrong type would
+    // show up as the wrong tag.
+    it("runs the image hook on the image and the PDF hook on the PDF", async () => {
       const dir = path.join(tempFolder, "double-run");
       const pagePath = path.join(dir, "page.jpg");
       const logPath = path.join(tempFolder, "double-run.log");
       await fs.mkdir(dir, { recursive: true });
       await fs.writeFile(pagePath, "content");
 
-      const hook = [
-        "node",
-        "-e",
-        "require('fs').appendFileSync(process.argv[2],process.argv[1]+'\\n')",
-        "{input}",
-        logPath,
-      ];
+      function taggedHook(tag: string): string[] {
+        return [
+          "node",
+          "-e",
+          `require('fs').appendFileSync(process.argv[2],'${tag} '+process.argv[1]+'\\n')`,
+          "{input}",
+          logPath,
+        ];
+      }
 
       nock(paperlessUrl).post("/api/documents/post_document/").reply(201, "1");
       nock(s3Url).intercept("/scans/page.jpg", "PUT").reply(200);
@@ -446,7 +447,8 @@ describe("postProcessing - post-command / sidecar issues", () => {
         }),
         nextcloudConfig: undefined,
         s3Config: s3Config({ keepFiles: true }),
-        postCommand: hook,
+        postCommandImage: taggedHook("image"),
+        postCommandPdf: taggedHook("pdf"),
       } as unknown as ScanConfig;
 
       await postProcessing(
@@ -461,7 +463,10 @@ describe("postProcessing - post-command / sidecar issues", () => {
 
       const calls = (await fs.readFile(logPath, "utf8")).trim().split("\n");
       expect(calls.sort()).to.deep.equal(
-        [path.join(dir, "page.jpg"), path.join(dir, "page.pdf")].sort(),
+        [
+          `image ${path.join(dir, "page.jpg")}`,
+          `pdf ${path.join(dir, "page.pdf")}`,
+        ].sort(),
       );
     });
   });
@@ -484,7 +489,12 @@ describe("postProcessing - post-command / sidecar issues", () => {
         paperlessConfig: undefined,
         nextcloudConfig: undefined,
         s3Config: s3Config({ keepFiles: true }),
-        postCommand: ["node", "-e", "setTimeout(()=>{},600000)", "{input}"],
+        postCommandImage: [
+          "node",
+          "-e",
+          "setTimeout(()=>{},600000)",
+          "{input}",
+        ],
         postCommandTimeout: 500,
       } as unknown as ScanConfig;
 

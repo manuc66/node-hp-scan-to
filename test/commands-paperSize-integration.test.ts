@@ -44,7 +44,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         width: undefined,
         height: undefined,
         paperOrientation: undefined,
-        postCommand: undefined,
         paperDim: undefined,
         directoryConfig: {
           directory: undefined,
@@ -82,7 +81,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         height: undefined,
         paperSize: undefined,
         paperOrientation: undefined,
-        postCommand: undefined,
         directoryConfig: {
           directory: undefined,
           tempDirectory: undefined,
@@ -118,7 +116,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         height: undefined,
         paperSize: undefined,
         paperOrientation: undefined,
-        postCommand: undefined,
         paperDim: undefined,
         directoryConfig: {
           directory: undefined,
@@ -154,7 +151,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         width: undefined,
         height: undefined,
         paperOrientation: undefined,
-        postCommand: undefined,
         paperDim: undefined,
         directoryConfig: {
           directory: undefined,
@@ -192,7 +188,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         width: undefined,
         height: undefined,
         paperOrientation: undefined,
-        postCommand: undefined,
         paperDim: undefined,
         directoryConfig: {
           directory: undefined,
@@ -231,7 +226,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         height: undefined,
         paperSize: undefined,
         paperOrientation: undefined,
-        postCommand: undefined,
         paperDim: undefined,
         directoryConfig: {
           directory: undefined,
@@ -269,7 +263,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         width: undefined,
         height: undefined,
         paperOrientation: undefined,
-        postCommand: undefined,
         paperDim: undefined,
         directoryConfig: {
           directory: undefined,
@@ -303,7 +296,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         width: undefined,
         height: undefined,
         paperOrientation: undefined,
-        postCommand: undefined,
         paperDim: undefined,
         directoryConfig: {
           directory: undefined,
@@ -346,7 +338,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         width: undefined,
         height: undefined,
         paperOrientation: undefined,
-        postCommand: undefined,
         paperDim: undefined,
         directoryConfig: {
           directory: undefined,
@@ -380,7 +371,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         width: undefined,
         height: undefined,
         paperOrientation: undefined,
-        postCommand: undefined,
         paperDim: undefined,
         directoryConfig: {
           directory: undefined,
@@ -415,7 +405,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         width: 1000, // Manual width
         height: 1000, // Manual height
         paperOrientation: undefined,
-        postCommand: undefined,
         paperDim: undefined,
         directoryConfig: {
           directory: undefined,
@@ -453,7 +442,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         width: undefined,
         height: undefined,
         paperOrientation: undefined,
-        postCommand: undefined,
         paperDim: undefined,
         directoryConfig: {
           directory: undefined,
@@ -487,7 +475,6 @@ describe("Command Integration - Paper Size Configuration", () => {
         width: undefined,
         height: undefined,
         paperOrientation: undefined,
-        postCommand: undefined,
         paperDim: undefined,
         directoryConfig: {
           directory: undefined,

@@ -64,7 +64,7 @@ describe("postProcessing - sidecar delivery", () => {
       paperlessConfig: undefined,
       nextcloudConfig: undefined,
       s3Config: undefined,
-      postCommand: writeSidecar,
+      postCommandImage: writeSidecar,
     } as unknown as ScanConfig;
   });
 
@@ -282,7 +282,7 @@ describe("postProcessing - sidecar delivery", () => {
 
   it("leaves the scan untouched when the hook writes nothing beside it", async () => {
     scanConfig.s3Config = s3Config({ keepFiles: false });
-    scanConfig.postCommand = [
+    scanConfig.postCommandImage = [
       "node",
       "-e",
       "require('fs').appendFileSync(process.argv[1],'X')",
@@ -304,7 +304,7 @@ describe("postProcessing - sidecar delivery", () => {
     // PDF flow: the hook runs on the generated PDF, which may leave files
     // beside it in the output folder.
     scanConfig.s3Config = s3Config({ keepFiles: true });
-    scanConfig.postCommand = [
+    scanConfig.postCommandPdf = [
       "node",
       "-e",
       "const fs=require('fs');const out=process.argv[1];fs.writeFileSync(out+'.txt','OCR of '+out);",

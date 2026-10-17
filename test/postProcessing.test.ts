@@ -330,7 +330,7 @@ describe("postProcessing", () => {
   it("should apply the post-command to delivered images", async () => {
     scanConfig = {
       ...scanConfig,
-      postCommand: appendTemplate,
+      postCommandImage: appendTemplate,
     };
     await postProcessing(
       scanConfig,
@@ -349,7 +349,7 @@ describe("postProcessing", () => {
     await fs.mkdir(pdfFolder, { recursive: true });
     scanConfig = {
       ...scanConfig,
-      postCommand: appendTemplate,
+      postCommandPdf: appendTemplate,
     };
     await postProcessing(
       scanConfig,
@@ -394,7 +394,7 @@ describe("postProcessing", () => {
 
     it("applies the post-command to images uploaded to S3", async () => {
       scanConfig.s3Config = s3Config();
-      scanConfig.postCommand = appendTemplate;
+      scanConfig.postCommandImage = appendTemplate;
       mockS3ImageUpload();
 
       const result = await postProcessing(
@@ -412,14 +412,14 @@ describe("postProcessing", () => {
     });
 
     it("applies the post-command to images when paperless groups them into a PDF and S3 also gets the images", async () => {
-      // paperless receives the merged PDF (the hook runs on it) while S3
-      // receives the page images: those still have to go through the hook.
+      // paperless receives the merged PDF while S3 receives the page images:
+      // the image hook still has to run on the images S3 gets.
       scanConfig.paperlessConfig = paperlessConfig({
         groupMultiPageScanIntoAPdf: true,
         keepFiles: true,
       });
       scanConfig.s3Config = s3Config();
-      scanConfig.postCommand = appendTemplate;
+      scanConfig.postCommandImage = appendTemplate;
       mockPaperlessSuccess();
       mockS3ImageUpload();
 
@@ -443,7 +443,7 @@ describe("postProcessing", () => {
         keepFiles: true,
       });
       scanConfig.s3Config = s3Config();
-      scanConfig.postCommand = appendTemplate;
+      scanConfig.postCommandImage = appendTemplate;
       mockPaperlessSuccess();
       mockS3ImageUpload();
 
@@ -463,7 +463,7 @@ describe("postProcessing", () => {
 
     it("applies the post-command to images uploaded to paperless", async () => {
       scanConfig.paperlessConfig = paperlessConfig({ keepFiles: true });
-      scanConfig.postCommand = appendTemplate;
+      scanConfig.postCommandImage = appendTemplate;
       mockPaperlessSuccess();
 
       await postProcessing(
@@ -481,7 +481,7 @@ describe("postProcessing", () => {
 
     it("applies the post-command to images uploaded to nextcloud", async () => {
       scanConfig.nextcloudConfig = nextcloudConfig({ keepFiles: true });
-      scanConfig.postCommand = appendTemplate;
+      scanConfig.postCommandImage = appendTemplate;
       mockNextcloudFolderExists();
       nock(nextcloudUrl)
         .intercept(/\/remote\.php\/dav\/files\/scanner\/scan\/.+\.jpg$/, "PUT")
@@ -503,7 +503,7 @@ describe("postProcessing", () => {
     it("applies the post-command once per page, not once per scan", async () => {
       const secondPath = path.join(tempFolder, "post_processing_sample_2.jpg");
       await fs.writeFile(secondPath, "fake-jpg-content");
-      scanConfig.postCommand = appendTemplate;
+      scanConfig.postCommandImage = appendTemplate;
 
       try {
         await postProcessing(

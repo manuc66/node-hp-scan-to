@@ -13,34 +13,42 @@ export type PostCommand = string[];
 const INPUT_PLACEHOLDER = "{input}";
 
 /**
- * Schema for `post_command` in the configuration file. Both a single string
- * (split into a program and its arguments) and an explicit argument list are
- * accepted; blank values are rejected so a typo cannot silently disable the
- * hook.
+ * Schema for the `post_command_pdf` / `post_command_image` entries in the
+ * configuration file. Both a single string (split into a program and its
+ * arguments) and an explicit argument list are accepted; blank values are
+ * rejected so a typo cannot silently disable the hook. The message is generic:
+ * the failing key is carried by the Zod issue path.
  */
 export const postCommandSchema = z
   .union([z.string(), z.array(z.string())])
   .transform((value, ctx) => {
     const command = typeof value === "string" ? splitCommand(value) : value;
+    const problem = findCommandProblem(command);
 
-    if (command.length === 0 || command[0].trim() === "") {
-      ctx.addIssue({
-        code: "custom",
-        message: "post_command must not be empty",
-      });
-      return z.NEVER;
-    }
-
-    if (!hasInputPlaceholder(command)) {
-      ctx.addIssue({
-        code: "custom",
-        message: `post_command must contain the ${INPUT_PLACEHOLDER} placeholder in an argument (the program is run as-is), otherwise it cannot run on the generated file`,
-      });
+    if (problem !== undefined) {
+      ctx.addIssue({ code: "custom", message: `the post-command ${problem}` });
       return z.NEVER;
     }
 
     return command;
   });
+
+/**
+ * Why a command could never run on a generated file, or `undefined` when it is
+ * usable. Shared by the config-file schema and the CLI parser so both reject
+ * the same shapes with the same wording.
+ */
+function findCommandProblem(command: readonly string[]): string | undefined {
+  if (command.length === 0 || command[0].trim() === "") {
+    return "must not be empty";
+  }
+
+  if (!hasInputPlaceholder(command)) {
+    return `must contain the ${INPUT_PLACEHOLDER} placeholder in an argument (the program is run as-is), otherwise it cannot run on the generated file`;
+  }
+
+  return undefined;
+}
 
 /**
  * A command runs on the generated file only when one of its arguments carries
@@ -120,22 +128,21 @@ export function parsePostCommandTimeoutArg(value: string): number {
 }
 
 /**
- * Validates a command coming from the command line and returns it as an
- * argument list. Throws a descriptive error when the hook would never run on
- * the generated file.
+ * Builds the `argParser` for a `--post-command-*` flag. Validates the value
+ * and returns it as an argument list, throwing a descriptive error naming the
+ * flag when the hook would never run on the generated file.
  */
-export function parsePostCommandArg(value: string): PostCommand {
-  const command = splitCommand(value);
+export function postCommandArgParser(
+  flagName: string,
+): (value: string) => PostCommand {
+  return (value: string): PostCommand => {
+    const command = splitCommand(value);
+    const problem = findCommandProblem(command);
 
-  if (command.length === 0 || command[0].trim() === "") {
-    throw new Error("--post-command must not be empty");
-  }
+    if (problem !== undefined) {
+      throw new Error(`${flagName} ${problem}`);
+    }
 
-  if (!hasInputPlaceholder(command)) {
-    throw new Error(
-      `--post-command must contain the ${INPUT_PLACEHOLDER} placeholder in an argument (the program is run as-is), otherwise the command cannot run on the generated file`,
-    );
-  }
-
-  return command;
+    return command;
+  };
 }

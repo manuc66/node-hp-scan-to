@@ -16,7 +16,7 @@ export async function mergeToPdf(
   filePattern: string | undefined,
   date: Date,
   deleteFiles: boolean,
-  postCommand?: PostCommand,
+  postCommandPdf?: PostCommand,
   postCommandTimeout?: number,
 ): Promise<string | null> {
   if (scanJobContent.elements.length > 0) {
@@ -31,7 +31,7 @@ export async function mergeToPdf(
       scanJobContent,
       pdfFilePath,
       date,
-      postCommand,
+      postCommandPdf,
       postCommandTimeout,
     );
     if (deleteFiles) {
@@ -47,7 +47,7 @@ export async function convertToPdf(
   scanPage: ScanPage,
   deleteFile: boolean,
   date?: Date,
-  postCommand?: PostCommand,
+  postCommandPdf?: PostCommand,
   postCommandTimeout?: number,
 ): Promise<string | null> {
   const fileName = path.basename(scanPage.path, path.extname(scanPage.path));
@@ -57,7 +57,7 @@ export async function convertToPdf(
     { elements: [scanPage] },
     pdfFilePath,
     date,
-    postCommand,
+    postCommandPdf,
     postCommandTimeout,
   );
   if (deleteFile) {
@@ -70,7 +70,7 @@ export async function createPdfFrom(
   scanContent: ScanContent,
   destination: string,
   date?: Date,
-  postCommand?: PostCommand,
+  postCommandPdf?: PostCommand,
   postCommandTimeout?: number,
 ) {
   await runPdfMerge({
@@ -78,8 +78,12 @@ export async function createPdfFrom(
     destination,
     date: date?.toISOString(),
   });
-  if (postCommand !== undefined) {
-    await runFilePostProcessing(postCommand, destination, postCommandTimeout);
+  if (postCommandPdf !== undefined) {
+    await runFilePostProcessing(
+      postCommandPdf,
+      destination,
+      postCommandTimeout,
+    );
   }
 }
 

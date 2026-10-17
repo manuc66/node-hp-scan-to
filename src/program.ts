@@ -36,8 +36,8 @@ import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
 import { validateFilePatternForPlatform } from "./fileNameValidation.js";
 import {
-  parsePostCommandArg,
   parsePostCommandTimeoutArg,
+  postCommandArgParser,
 } from "./postCommand.js";
 import { getLoggerForFile, setDebugLevel } from "./logger.js";
 
@@ -213,16 +213,24 @@ function setupScanParameters(commandName: string) {
     )
     .addOption(
       new Option(
-        "--post-command <command>",
-        "Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).",
+        "--post-command-pdf <command>",
+        "Command run on every generated PDF, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).",
       )
-        .argParser(parsePostCommandArg)
+        .argParser(postCommandArgParser("--post-command-pdf"))
+        .helpGroup(HelpGroupsHeadings.ouput),
+    )
+    .addOption(
+      new Option(
+        "--post-command-image <command>",
+        "Command run on every delivered image page, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it).",
+      )
+        .argParser(postCommandArgParser("--post-command-image"))
         .helpGroup(HelpGroupsHeadings.ouput),
     )
     .addOption(
       new Option(
         "--post-command-timeout <milliseconds>",
-        "Timeout in milliseconds for the --post-command hook before it is killed (default: 300000)",
+        "Timeout in milliseconds for the post-command hooks before they are killed (default: 300000)",
       )
         .argParser(parsePostCommandTimeoutArg)
         .helpGroup(HelpGroupsHeadings.ouput),
@@ -724,6 +732,14 @@ function getScanConfiguration(
     ScanFormat.Jpeg,
   );
 
+  const postCommandImage = getOptConfiguredValue(
+    options.postCommandImage,
+    fileConfig.post_command_image,
+  );
+  const postCommandPdf = getOptConfiguredValue(
+    options.postCommandPdf,
+    fileConfig.post_command_pdf,
+  );
   const postCommandTimeout = getOptConfiguredValue(
     options.postCommandTimeout,
     fileConfig.post_command_timeout,
@@ -743,10 +759,8 @@ function getScanConfiguration(
     nextcloudConfig,
     s3Config,
     preferEscl,
-    postCommand: getOptConfiguredValue(
-      options.postCommand,
-      fileConfig.post_command,
-    ),
+    ...(postCommandImage !== undefined && { postCommandImage }),
+    ...(postCommandPdf !== undefined && { postCommandPdf }),
     ...(postCommandTimeout !== undefined && { postCommandTimeout }),
   };
   return scanConfig;

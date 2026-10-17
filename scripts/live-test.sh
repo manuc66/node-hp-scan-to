@@ -44,7 +44,7 @@ echo "--- single-scan --pdf with pdf post-command"
 mkdir -p "$WORK/pdf"
 PDFS=0
 if timeout 60 $BIN --address "$IP" single-scan -d "$WORK/pdf" --pdf \
-  --post-command 'cp "{input}" "{output}"' >"$WORK/pdf.log" 2>&1; then
+  --post-command-pdf 'cp "{input}" "{output}"' >"$WORK/pdf.log" 2>&1; then
   PDFS="$(find "$WORK/pdf" -name '*.pdf' 2>/dev/null | wc -l)"
   if [ "$PDFS" -ge 1 ]; then
     ok "$PDFS pdf(s) produced and post-processed"

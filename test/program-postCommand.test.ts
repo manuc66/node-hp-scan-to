@@ -18,13 +18,13 @@ describe("CLI Program - Post Command Options", () => {
   const emptyConfig: FileConfig = {};
 
   describe("listen command post command options", () => {
-    it("should parse --post-command into a program and its arguments", () => {
+    it("should parse --post-command-pdf into a program and its arguments", () => {
       const program = setupProgram(emptyConfig);
       const opts = parseSubcommandOptions(program, "listen", [
-        "--post-command",
+        "--post-command-pdf",
         'gswin64c -dPDFA=2 "{input}" -o "{output}"',
       ]);
-      expect(opts?.["postCommand"]).to.deep.equal([
+      expect(opts?.["postCommandPdf"]).to.deep.equal([
         "gswin64c",
         "-dPDFA=2",
         "{input}",
@@ -32,29 +32,45 @@ describe("CLI Program - Post Command Options", () => {
         "{output}",
       ]);
     });
+
+    it("should parse --post-command-image into a program and its arguments", () => {
+      const program = setupProgram(emptyConfig);
+      const opts = parseSubcommandOptions(program, "listen", [
+        "--post-command-image",
+        'magick "{input}" "{output}"',
+      ]);
+      expect(opts?.["postCommandImage"]).to.deep.equal([
+        "magick",
+        "{input}",
+        "{output}",
+      ]);
+    });
   });
 
   describe("single-scan command post command options", () => {
-    it("should parse --post-command into a program and its arguments", () => {
+    it("should keep the PDF and image commands separate", () => {
       const program = setupProgram(emptyConfig);
       const opts = parseSubcommandOptions(program, "single-scan", [
-        "--post-command",
+        "--post-command-pdf",
         'cp "{input}" "{output}"',
+        "--post-command-image",
+        'exiftool "{input}"',
       ]);
-      expect(opts?.["postCommand"]).to.deep.equal([
+      expect(opts?.["postCommandPdf"]).to.deep.equal([
         "cp",
         "{input}",
         "{output}",
       ]);
+      expect(opts?.["postCommandImage"]).to.deep.equal(["exiftool", "{input}"]);
     });
 
     it("should keep a quoted path with spaces in a single argument", () => {
       const program = setupProgram(emptyConfig);
       const opts = parseSubcommandOptions(program, "single-scan", [
-        "--post-command",
+        "--post-command-image",
         'exiftool -title "My Scan" "{input}"',
       ]);
-      expect(opts?.["postCommand"]).to.deep.equal([
+      expect(opts?.["postCommandImage"]).to.deep.equal([
         "exiftool",
         "-title",
         "My Scan",
@@ -64,13 +80,13 @@ describe("CLI Program - Post Command Options", () => {
   });
 
   describe("adf-autoscan command post command options", () => {
-    it("should parse --post-command into a program and its arguments", () => {
+    it("should parse --post-command-pdf into a program and its arguments", () => {
       const program = setupProgram(emptyConfig);
       const opts = parseSubcommandOptions(program, "adf-autoscan", [
-        "--post-command",
+        "--post-command-pdf",
         'gswin64c -dPDFA=2 "{input}" -o "{output}"',
       ]);
-      expect(opts?.["postCommand"]).to.deep.equal([
+      expect(opts?.["postCommandPdf"]).to.deep.equal([
         "gswin64c",
         "-dPDFA=2",
         "{input}",
@@ -84,34 +100,35 @@ describe("CLI Program - Post Command Options", () => {
     // A command that never receives {input} can only run by accident: the
     // user almost certainly forgot the placeholder, and the hook silently
     // does something unrelated to the scan on every single file.
-    const cases: [string, string[]][] = [
-      ["listen", ["--post-command", "gswin64c -dPDFA=2"]],
-      ["single-scan", ["--post-command", "cp"]],
-      ["adf-autoscan", ["--post-command", "exiftool"]],
+    const cases: [string, string, string[]][] = [
+      ["listen", "--post-command-pdf", ["gswin64c -dPDFA=2"]],
+      ["single-scan", "--post-command-pdf", ["cp"]],
+      ["single-scan", "--post-command-image", ["exiftool"]],
+      ["adf-autoscan", "--post-command-image", ["magick"]],
     ];
 
-    for (const [commandName, args] of cases) {
-      it(`should reject a ${commandName} --post-command without {input}`, () => {
+    for (const [commandName, flag, values] of cases) {
+      it(`should reject a ${commandName} ${flag} without {input}`, () => {
         const program = setupProgram(emptyConfig);
         const command = program.commands.find(
           (cmd) => cmd.name() === commandName,
         );
         expect(command, `Command not found: ${commandName}`).to.exist;
 
-        expect(() => command?.parseOptions(args)).to.throw();
+        expect(() => command?.parseOptions([flag, ...values])).to.throw();
       });
     }
 
-    it("should accept a --post-command using {input}", () => {
+    it("should accept a --post-command-image using {input}", () => {
       const program = setupProgram(emptyConfig);
       const opts = parseSubcommandOptions(program, "single-scan", [
-        "--post-command",
+        "--post-command-image",
         "exiftool {input}",
       ]);
-      expect(opts?.["postCommand"]).to.deep.equal(["exiftool", "{input}"]);
+      expect(opts?.["postCommandImage"]).to.deep.equal(["exiftool", "{input}"]);
     });
 
-    it("should reject a --post-command whose only {input} is the program", () => {
+    it("should reject a command whose only {input} is the program", () => {
       const program = setupProgram(emptyConfig);
       const command = program.commands.find(
         (cmd) => cmd.name() === "single-scan",
@@ -119,7 +136,7 @@ describe("CLI Program - Post Command Options", () => {
       expect(command, "Command not found: single-scan").to.exist;
 
       expect(() =>
-        command?.parseOptions(["--post-command", "{input} --flag"]),
+        command?.parseOptions(["--post-command-pdf", "{input} --flag"]),
       ).to.throw();
     });
   });
@@ -128,7 +145,7 @@ describe("CLI Program - Post Command Options", () => {
     it("parses --post-command-timeout as milliseconds", () => {
       const program = setupProgram(emptyConfig);
       const opts = parseSubcommandOptions(program, "single-scan", [
-        "--post-command",
+        "--post-command-image",
         "exiftool {input}",
         "--post-command-timeout",
         "60000",
@@ -152,38 +169,20 @@ describe("CLI Program - Post Command Options", () => {
   });
 
   describe("Post Command Help Documentation", () => {
-    it("should include post-command in listen command help", () => {
-      const program = setupProgram(emptyConfig);
-      const listenCmd = program.commands.find((cmd) => cmd.name() === "listen");
-      expect(listenCmd).to.exist;
-      if (listenCmd) {
-        const help = listenCmd.helpInformation();
-        expect(help).to.include("--post-command");
-      }
-    });
-
-    it("should include post-command in single-scan command help", () => {
-      const program = setupProgram(emptyConfig);
-      const singleCmd = program.commands.find(
-        (cmd) => cmd.name() === "single-scan",
-      );
-      expect(singleCmd).to.exist;
-      if (singleCmd) {
-        const help = singleCmd.helpInformation();
-        expect(help).to.include("--post-command");
-      }
-    });
-
-    it("should include post-command in adf-autoscan command help", () => {
-      const program = setupProgram(emptyConfig);
-      const adfCmd = program.commands.find(
-        (cmd) => cmd.name() === "adf-autoscan",
-      );
-      expect(adfCmd).to.exist;
-      if (adfCmd) {
-        const help = adfCmd.helpInformation();
-        expect(help).to.include("--post-command");
-      }
-    });
+    for (const commandName of ["listen", "single-scan", "adf-autoscan"]) {
+      it(`should include the post-command options in ${commandName} help`, () => {
+        const program = setupProgram(emptyConfig);
+        const command = program.commands.find(
+          (cmd) => cmd.name() === commandName,
+        );
+        expect(command, `Command not found: ${commandName}`).to.exist;
+        if (command) {
+          const help = command.helpInformation();
+          expect(help).to.include("--post-command-pdf");
+          expect(help).to.include("--post-command-image");
+          expect(help).to.include("--post-command-timeout");
+        }
+      });
+    }
   });
 });

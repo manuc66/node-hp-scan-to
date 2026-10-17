@@ -85,7 +85,7 @@ async function handlePdfPostProcessing(
   // nothing in this pipeline creates sidecars, and files that appear in the
   // folders meanwhile (a concurrent capture in `listen`, another process)
   // must never be mistaken for scan output.
-  const detectSidecars = scanConfig.postCommand !== undefined;
+  const detectSidecars = scanConfig.postCommandPdf !== undefined;
   const directories = scanDirectories(scanJobContent, [folder, tempFolder]);
   const before = detectSidecars
     ? await snapshotDirectories(directories)
@@ -98,7 +98,7 @@ async function handlePdfPostProcessing(
     scanConfig.directoryConfig.filePattern,
     scanDate,
     true,
-    scanConfig.postCommand,
+    scanConfig.postCommandPdf,
     scanConfig.postCommandTimeout,
   );
 
@@ -227,40 +227,23 @@ async function deliverSidecars(
 }
 
 /**
- * Applies the post-processing command to delivered images, unless the only
- * delivery is a conversion to a single PDF: in that case the command already
- * runs on the generated PDF instead.
+ * Applies the image post-processing command to the page images.
+ *
+ * The PDFs derived from those pages are handled separately by the PDF hook
+ * (`postCommandPdf`), so each command only ever receives the file type it was
+ * configured for.
  */
 async function applyPostCommandToImages(
   scanConfig: ScanConfig,
   scanJobContent: ScanContent,
 ): Promise<void> {
-  if (scanConfig.postCommand === undefined) {
-    return;
-  }
-
-  // The command already ran on the generated PDF, so the page images only
-  // need it when they are delivered as images. Every other target (paperless
-  // as images, nextcloud, S3) receives the images themselves.
-  const imagesAreConvertedToPdf =
-    scanConfig.paperlessConfig !== undefined &&
-    (scanConfig.paperlessConfig.groupMultiPageScanIntoAPdf ||
-      scanConfig.paperlessConfig.alwaysSendAsPdfFile);
-  const pdfIsTheOnlyDelivery =
-    imagesAreConvertedToPdf &&
-    scanConfig.nextcloudConfig === undefined &&
-    scanConfig.s3Config === undefined &&
-    // With keep_files the page images stay on disk: they are kept output of
-    // the scan and must go through the hook like every other kept file.
-    scanConfig.paperlessConfig?.keepFiles !== true;
-
-  if (pdfIsTheOnlyDelivery) {
+  if (scanConfig.postCommandImage === undefined) {
     return;
   }
 
   for (const element of scanJobContent.elements) {
     await runFilePostProcessing(
-      scanConfig.postCommand,
+      scanConfig.postCommandImage,
       element.path,
       scanConfig.postCommandTimeout,
     );
@@ -278,13 +261,15 @@ async function handleImagePostProcessing(
   const nextcloudConfig = scanConfig.nextcloudConfig;
   const s3Config = scanConfig.s3Config;
 
-  // The hook runs on the pages (and, for some paperless modes, on PDFs
-  // generated beside them): everything the folders gain belongs to the scan.
-  // Detection only runs when a hook can produce them: without a post-command
-  // nothing in this pipeline creates sidecars, and files that appear in the
-  // folders meanwhile (a concurrent capture in `listen`, another process)
-  // must never be mistaken for scan output.
-  const detectSidecars = scanConfig.postCommand !== undefined;
+  // The hooks run on the pages and, for some paperless modes, on PDFs
+  // generated beside them: everything the folders gain belongs to the scan.
+  // Detection only runs when a hook can produce sidecars: without a
+  // post-command nothing in this pipeline creates them, and files that appear
+  // in the folders meanwhile (a concurrent capture in `listen`, another
+  // process) must never be mistaken for scan output.
+  const detectSidecars =
+    scanConfig.postCommandImage !== undefined ||
+    scanConfig.postCommandPdf !== undefined;
   const directories = scanDirectories(scanJobContent, [folder]);
   const before = detectSidecars
     ? await snapshotDirectories(directories)
@@ -312,7 +297,7 @@ async function handleImagePostProcessing(
             scanJobContent,
             paperlessConfig,
             scanDate,
-            scanConfig.postCommand,
+            scanConfig.postCommandPdf,
             scanConfig.postCommandTimeout,
           );
         } else {
