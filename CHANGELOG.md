@@ -60,6 +60,12 @@ All notable changes to this project are documented in this file.
   thus rejected on Windows but still fine on POSIX systems. The documented
   pattern example (`--pattern` help, README) was updated to the `: `-free
   `"scan"_dd.mm.yyyy_HHMMss` form, which works everywhere.
+- **Default configuration**: the tracked `config/default.json` no longer
+  carries a hardcoded device address, so the shipped default works for any
+  device instead of pointing at one network. Personal settings belong in
+  `config/local.json`, which the `config` package merges over the default and
+  git now ignores, or in a directory of your own via `NODE_CONFIG_DIR`; the
+  README documents both.
 
 ### Security
 

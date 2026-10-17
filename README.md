@@ -1043,6 +1043,8 @@ Settings can live in a JSON file instead of CLI flags. The file is read with the
 }
 ```
 
+Keep your own settings out of the tracked file: `config/local.json` is read on top of `config/default.json` and is ignored by git, so personal values (device address, output directory, credentials) are never committed. To keep the file outside the checkout altogether, point `NODE_CONFIG_DIR` at another directory — that is what the standalone binaries do with the `config` folder next to the executable.
+
 Precedence, highest first: **CLI flag → config file → built-in default**. (The Docker image's environment variables are translated into CLI flags by its entrypoint, so from the app's point of view they are flags; `CMDLINE` is appended last and therefore wins over them.)
 
 Keys and types are validated at startup against [`src/type/FileConfig.ts`](src/type/FileConfig.ts). `paper_size` and `paper_dim` are mutually exclusive, as are `width`/`height` and `paper_size`/`paper_dim`.
