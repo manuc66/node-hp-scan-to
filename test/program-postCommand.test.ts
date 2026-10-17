@@ -110,6 +110,18 @@ describe("CLI Program - Post Command Options", () => {
       ]);
       expect(opts?.["postCommand"]).to.deep.equal(["exiftool", "{input}"]);
     });
+
+    it("should reject a --post-command whose only {input} is the program", () => {
+      const program = setupProgram(emptyConfig);
+      const command = program.commands.find(
+        (cmd) => cmd.name() === "single-scan",
+      );
+      expect(command, "Command not found: single-scan").to.exist;
+
+      expect(() =>
+        command?.parseOptions(["--post-command", "{input} --flag"]),
+      ).to.throw();
+    });
   });
 
   describe("Post Command Help Documentation", () => {

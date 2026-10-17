@@ -31,16 +31,28 @@ export const postCommandSchema = z
       return z.NEVER;
     }
 
-    if (!command.some((argument) => argument.includes(INPUT_PLACEHOLDER))) {
+    if (!hasInputPlaceholder(command)) {
       ctx.addIssue({
         code: "custom",
-        message: `post_command must contain the ${INPUT_PLACEHOLDER} placeholder, otherwise it cannot run on the generated file`,
+        message: `post_command must contain the ${INPUT_PLACEHOLDER} placeholder in an argument (the program is run as-is), otherwise it cannot run on the generated file`,
       });
       return z.NEVER;
     }
 
     return command;
   });
+
+/**
+ * A command runs on the generated file only when one of its arguments carries
+ * the `{input}` placeholder. The program itself is spawned as-is (the runner
+ * never substitutes it), so a placeholder placed there would only be taken
+ * literally and the command would never receive the scan.
+ */
+function hasInputPlaceholder(command: readonly string[]): boolean {
+  return command
+    .slice(1)
+    .some((argument) => argument.includes(INPUT_PLACEHOLDER));
+}
 
 /**
  * Splits a command line into a program and its arguments, honouring single
@@ -104,9 +116,9 @@ export function parsePostCommandArg(value: string): PostCommand {
     throw new Error("--post-command must not be empty");
   }
 
-  if (!command.some((argument) => argument.includes(INPUT_PLACEHOLDER))) {
+  if (!hasInputPlaceholder(command)) {
     throw new Error(
-      `--post-command must contain the ${INPUT_PLACEHOLDER} placeholder, otherwise the command cannot run on the generated file`,
+      `--post-command must contain the ${INPUT_PLACEHOLDER} placeholder in an argument (the program is run as-is), otherwise the command cannot run on the generated file`,
     );
   }
 

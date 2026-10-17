@@ -80,6 +80,24 @@ describe("FileConfig - Post Command Validation with Zod", () => {
       expect(result.success).to.be.true;
     });
 
+    it("should reject a command whose only {input} is the program", () => {
+      // The program is spawned as-is: a placeholder in that position is never
+      // substituted, so the command would never receive the scan.
+      const config = { post_command: ["{input}", "--flag"] };
+      const result = configSchema.safeParse(config);
+      expect(result.success).to.be.false;
+      if (!result.success) {
+        expect(result.error.issues.some((i) => i.path.includes("post_command")))
+          .to.be.true;
+      }
+    });
+
+    it("should reject a string whose only {input} is the program", () => {
+      const config = { post_command: '"{input}" --flag' };
+      const result = configSchema.safeParse(config);
+      expect(result.success).to.be.false;
+    });
+
     it("should reject a list containing a non-string entry", () => {
       const config = { post_command: ["exiftool", 42] };
       const result = configSchema.safeParse(config);
