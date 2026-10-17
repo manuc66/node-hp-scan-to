@@ -4,6 +4,7 @@ import type { NextcloudConfig } from "../nextcloud/NextcloudConfig.js";
 import type { S3Config } from "../s3/S3Config.js";
 import type { ScanMode } from "./scanMode.js";
 import type { ScanFormat } from "./scanFormat.js";
+import type { PostCommand } from "../postCommand.js";
 
 export interface ScanConfig {
   resolution: number;
@@ -19,6 +20,9 @@ export interface ScanConfig {
   paperSize: string | undefined; // e.g., "A4", "Letter", "Max", or preset name
   paperDim: string | undefined; // e.g., "21x29.7cm", "8.5x11in", "210x297mm"
   paperOrientation: "portrait" | "landscape" | undefined;
+  postCommandImage?: PostCommand; // External command run on delivered image pages
+  postCommandPdf?: PostCommand; // External command run on generated PDFs
+  postCommandTimeout?: number; // Timeout for the post-commands, in milliseconds
 }
 export type AdfAutoScanConfig = ScanConfig & {
   isDuplex: boolean;
