@@ -465,4 +465,45 @@ describe("postProcessing - post-command / sidecar issues", () => {
       );
     });
   });
+
+  describe("the post-command timeout taken from the config", () => {
+    // The runner has its own timeout test; this one makes sure scanConfig
+    // actually carries postCommandTimeout all the way to it. Without the
+    // wiring the hook below would hang for the 5 minute default.
+    it("is passed to the hook runner", async function () {
+      this.timeout(20_000);
+      const dir = path.join(tempFolder, "timeout");
+      const pagePath = path.join(dir, "page.jpg");
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(pagePath, "content");
+
+      nock(s3Url).intercept("/scans/page.jpg", "PUT").reply(200);
+
+      const scanConfig = {
+        directoryConfig: { filePattern: "scan", directory: dir },
+        paperlessConfig: undefined,
+        nextcloudConfig: undefined,
+        s3Config: s3Config({ keepFiles: true }),
+        postCommand: ["node", "-e", "setTimeout(()=>{},600000)", "{input}"],
+        postCommandTimeout: 500,
+      } as unknown as ScanConfig;
+
+      const outcome = await Promise.race([
+        postProcessing(
+          scanConfig,
+          dir,
+          dir,
+          1,
+          { elements: [makePage(pagePath)] },
+          new Date(),
+          false,
+        ).then(() => "settled"),
+        new Promise<string>((resolve) =>
+          setTimeout(() => resolve("still running"), 10_000),
+        ),
+      ]);
+
+      expect(outcome).to.equal("settled");
+    });
+  });
 });

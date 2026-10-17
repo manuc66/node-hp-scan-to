@@ -21,6 +21,7 @@ export interface ScanConfig {
   paperDim: string | undefined; // e.g., "21x29.7cm", "8.5x11in", "210x297mm"
   paperOrientation: "portrait" | "landscape" | undefined;
   postCommand: PostCommand | undefined; // External command run on every generated file
+  postCommandTimeout?: number; // Timeout for the post-command, in milliseconds
 }
 export type AdfAutoScanConfig = ScanConfig & {
   isDuplex: boolean;

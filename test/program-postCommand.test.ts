@@ -124,6 +124,33 @@ describe("CLI Program - Post Command Options", () => {
     });
   });
 
+  describe("post command timeout", () => {
+    it("parses --post-command-timeout as milliseconds", () => {
+      const program = setupProgram(emptyConfig);
+      const opts = parseSubcommandOptions(program, "single-scan", [
+        "--post-command",
+        "exiftool {input}",
+        "--post-command-timeout",
+        "60000",
+      ]);
+      expect(opts?.["postCommandTimeout"]).to.equal(60_000);
+    });
+
+    it("rejects a non-positive or non-integer --post-command-timeout", () => {
+      for (const value of ["0", "-5", "1.5", "abc"]) {
+        const program = setupProgram(emptyConfig);
+        const command = program.commands.find(
+          (cmd) => cmd.name() === "single-scan",
+        );
+        expect(command, "Command not found: single-scan").to.exist;
+        expect(
+          () => command?.parseOptions(["--post-command-timeout", value]),
+          `value ${value}`,
+        ).to.throw();
+      }
+    });
+  });
+
   describe("Post Command Help Documentation", () => {
     it("should include post-command in listen command help", () => {
       const program = setupProgram(emptyConfig);

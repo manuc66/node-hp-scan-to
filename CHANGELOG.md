@@ -40,7 +40,9 @@ All notable changes to this project are documented in this file.
   (the file path) and `{output}` (a temp file that replaces the file on
   success); without `{output}` the command is expected to modify the file in
   place. It runs without a shell, so file names are never interpreted as shell
-  syntax, and it is stopped if it runs for too long. Commands that fail never
+  syntax, and it is stopped if it runs for too long (the timeout is
+  configurable with `--post-command-timeout` / `post_command_timeout`, with
+  `POST_COMMAND_TIMEOUT` as the fallback default). Commands that fail never
   block the flow: the original file is kept and the error is logged. Files the
   command writes beside the scan are treated as part of it — recognized by
   taking their name from the scan file, any other file appearing beside the

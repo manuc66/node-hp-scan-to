@@ -132,6 +132,7 @@ export const configSchema = z
     ///
     keep_files: z.boolean().optional(), // Keep scanned files locally after upload
     post_command: postCommandSchema.optional(), // External command run on every generated file
+    post_command_timeout: z.number().int().positive().optional(), // Timeout for the post-command, in milliseconds
 
     ///
     /// Health Check

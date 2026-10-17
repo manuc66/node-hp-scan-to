@@ -26,6 +26,7 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
   paperlessConfig: PaperlessConfig,
   scanDate?: Date,
   postCommand?: PostCommand,
+  postCommandTimeout?: number,
 ) {
   for (const item of scanJobContent.elements) {
     const pdfFilePath = await convertToPdf(
@@ -33,6 +34,7 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
       !paperlessConfig.keepFiles,
       scanDate,
       postCommand,
+      postCommandTimeout,
     );
     if (pdfFilePath !== null) {
       await uploadToPaperless(pdfFilePath, paperlessConfig);
@@ -61,6 +63,7 @@ export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
     scanDate,
     !paperlessConfig.keepFiles,
     scanConfig.postCommand,
+    scanConfig.postCommandTimeout,
   );
   if (pdfFilePath !== null) {
     await uploadToPaperless(pdfFilePath, paperlessConfig);

@@ -105,6 +105,21 @@ export function splitCommand(value: string): string[] {
 }
 
 /**
+ * Parses the `--post-command-timeout` value: a positive integer number of
+ * milliseconds. Anything else is rejected so a typo cannot silently fall back
+ * to the default timeout.
+ */
+export function parsePostCommandTimeoutArg(value: string): number {
+  const timeout = Number(value);
+  if (!Number.isInteger(timeout) || timeout <= 0) {
+    throw new Error(
+      "--post-command-timeout must be a positive integer number of milliseconds",
+    );
+  }
+  return timeout;
+}
+
+/**
  * Validates a command coming from the command line and returns it as an
  * argument list. Throws a descriptive error when the hook would never run on
  * the generated file.

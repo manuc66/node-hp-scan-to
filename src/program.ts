@@ -35,7 +35,10 @@ import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
 import { validateFilePatternForPlatform } from "./fileNameValidation.js";
-import { parsePostCommandArg } from "./postCommand.js";
+import {
+  parsePostCommandArg,
+  parsePostCommandTimeoutArg,
+} from "./postCommand.js";
 import { getLoggerForFile, setDebugLevel } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -214,6 +217,14 @@ function setupScanParameters(commandName: string) {
         "Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).",
       )
         .argParser(parsePostCommandArg)
+        .helpGroup(HelpGroupsHeadings.ouput),
+    )
+    .addOption(
+      new Option(
+        "--post-command-timeout <milliseconds>",
+        "Timeout in milliseconds for the --post-command hook before it is killed (default: 300000)",
+      )
+        .argParser(parsePostCommandTimeoutArg)
         .helpGroup(HelpGroupsHeadings.ouput),
     )
     .addOption(
@@ -713,6 +724,11 @@ function getScanConfiguration(
     ScanFormat.Jpeg,
   );
 
+  const postCommandTimeout = getOptConfiguredValue(
+    options.postCommandTimeout,
+    fileConfig.post_command_timeout,
+  );
+
   const scanConfig: ScanConfig = {
     resolution,
     mode,
@@ -727,7 +743,11 @@ function getScanConfiguration(
     nextcloudConfig,
     s3Config,
     preferEscl,
-    postCommand: getOptConfiguredValue(options.postCommand, fileConfig.post_command),
+    postCommand: getOptConfiguredValue(
+      options.postCommand,
+      fileConfig.post_command,
+    ),
+    ...(postCommandTimeout !== undefined && { postCommandTimeout }),
   };
   return scanConfig;
 }

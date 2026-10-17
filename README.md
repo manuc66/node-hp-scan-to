@@ -379,6 +379,7 @@ Output Options:
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
   --post-command <command>                                         Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
+  --post-command-timeout <milliseconds>                            Timeout in milliseconds for the --post-command hook before it is killed (default: 300000)
 
 Scan Options:
   -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
@@ -479,6 +480,7 @@ Output Options:
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
   --post-command <command>                                         Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
+  --post-command-timeout <milliseconds>                            Timeout in milliseconds for the --post-command hook before it is killed (default: 300000)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
 
 Scan Options:
@@ -589,6 +591,7 @@ Output Options:
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
   --post-command <command>                                         Command run on every generated file, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
+  --post-command-timeout <milliseconds>                            Timeout in milliseconds for the --post-command hook before it is killed (default: 300000)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
 
 Scan Options:
@@ -713,7 +716,7 @@ Since the command runs on every delivered file, make sure it handles the file ty
 
 Failure policy: the scan flow never fails because of the hook. If the command cannot be started, exits with a non-zero code, runs longer than the timeout, or produces no `{output}` file, the original file is kept and an error is logged — the flow continues as if the command had not been configured.
 
-The timeout defaults to 5 minutes, generous enough for a conversion over a large multi-page scan, and can be changed with the `POST_COMMAND_TIMEOUT` environment variable (milliseconds), e.g. `POST_COMMAND_TIMEOUT=60000 node-hp-scan-to ...`.
+The timeout defaults to 5 minutes, generous enough for a conversion over a large multi-page scan. It can be changed with `--post-command-timeout <milliseconds>` or `post_command_timeout` in the config file; the `POST_COMMAND_TIMEOUT` environment variable (milliseconds) sets the fallback default when neither is given. Precedence is the usual **CLI flag → config file → environment/default**, e.g. `node-hp-scan-to ... --post-command-timeout 60000`.
 
 ##### Files created beside the scan
 

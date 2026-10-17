@@ -55,6 +55,27 @@ describe("FileConfig - Post Command Validation with Zod", () => {
     });
   });
 
+  describe("Post command timeout", () => {
+    it("should accept a positive integer post_command_timeout", () => {
+      const config = {
+        post_command: "cp {input} {output}",
+        post_command_timeout: 60_000,
+      };
+      const result = configSchema.safeParse(config);
+      expect(result.success).to.be.true;
+    });
+
+    it("should reject a non-positive, non-integer or non-numeric post_command_timeout", () => {
+      for (const value of [0, -1, 1.5, "60000"]) {
+        const result = configSchema.safeParse({
+          post_command: "cp {input} {output}",
+          post_command_timeout: value,
+        });
+        expect(result.success, `value ${String(value)}`).to.be.false;
+      }
+    });
+  });
+
   describe("Program and arguments form", () => {
     // A post-processing hook runs an external program; spelling it as a
     // program plus an argument list avoids handing the file path to a shell.

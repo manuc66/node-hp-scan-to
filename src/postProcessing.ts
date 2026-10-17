@@ -99,6 +99,7 @@ async function handlePdfPostProcessing(
     scanDate,
     true,
     scanConfig.postCommand,
+    scanConfig.postCommandTimeout,
   );
 
   // Collected before any upload: deliveries unlink the files they consumed.
@@ -258,7 +259,11 @@ async function applyPostCommandToImages(
   }
 
   for (const element of scanJobContent.elements) {
-    await runFilePostProcessing(scanConfig.postCommand, element.path);
+    await runFilePostProcessing(
+      scanConfig.postCommand,
+      element.path,
+      scanConfig.postCommandTimeout,
+    );
   }
 }
 
@@ -308,6 +313,7 @@ async function handleImagePostProcessing(
             paperlessConfig,
             scanDate,
             scanConfig.postCommand,
+            scanConfig.postCommandTimeout,
           );
         } else {
           await uploadImagesAsSeparateDocumentsToPaperless(
