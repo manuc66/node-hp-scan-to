@@ -531,4 +531,177 @@ describe("File post-processing command hook", () => {
       await fs.rm(dest, { force: true });
     }).timeout(20_000);
   });
+
+  describe("an in-place command that fails after modifying the file", () => {
+    // Without {output} there is no atomic swap: a tool can truncate or
+    // half-write the file before it fails. The runner has to keep a copy of
+    // the original and put it back, otherwise the scan is lost while the log
+    // claims the original was kept.
+    const truncateThenFail = [
+      "node",
+      "-e",
+      "require('fs').writeFileSync(process.argv[1],'PARTIAL');process.exit(4)",
+      "{input}",
+    ];
+    const deleteThenFail = [
+      "node",
+      "-e",
+      "require('fs').rmSync(process.argv[1]);process.exit(4)",
+      "{input}",
+    ];
+    const deleteThenSucceed = [
+      "node",
+      "-e",
+      "require('fs').rmSync(process.argv[1])",
+      "{input}",
+    ];
+
+    it("restores the original content when the command truncated it", async () => {
+      const dest = path.join(tempDir, "hook-inplace-truncated.pdf");
+      await fs.writeFile(dest, "ORIGINAL");
+
+      await runFilePostProcessing(truncateThenFail, dest);
+
+      expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINAL");
+      await fs.rm(dest, { force: true });
+    });
+
+    it("restores the original when the command deleted it before failing", async () => {
+      const dest = path.join(tempDir, "hook-inplace-deleted.pdf");
+      await fs.writeFile(dest, "ORIGINAL");
+
+      await runFilePostProcessing(deleteThenFail, dest);
+
+      expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINAL");
+      await fs.rm(dest, { force: true });
+    });
+
+    it("restores the original when the command exits 0 but leaves no file", async () => {
+      const dest = path.join(tempDir, "hook-inplace-removed.pdf");
+      await fs.writeFile(dest, "ORIGINAL");
+
+      await runFilePostProcessing(deleteThenSucceed, dest);
+
+      expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINAL");
+      await fs.rm(dest, { force: true });
+    });
+
+    it("restores the original when the command left a directory in its place", async () => {
+      const dest = path.join(tempDir, "hook-inplace-dir.pdf");
+      await fs.writeFile(dest, "ORIGINAL");
+      const directoryThenFail = [
+        "node",
+        "-e",
+        "const fs=require('fs');" +
+          "fs.rmSync(process.argv[1],{force:true});" +
+          "fs.mkdirSync(process.argv[1]);" +
+          "process.exit(4)",
+        "{input}",
+      ];
+
+      await runFilePostProcessing(directoryThenFail, dest);
+
+      expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINAL");
+      await fs.rm(dest, { force: true });
+    });
+
+    it("leaves no backup file behind", async () => {
+      const dest = path.join(tempDir, "hook-inplace-leftover.pdf");
+      await fs.writeFile(dest, "ORIGINAL");
+
+      await runFilePostProcessing(truncateThenFail, dest);
+
+      const leftovers = (await fs.readdir(path.dirname(dest))).filter((f) =>
+        f.endsWith(".postprocess.bak"),
+      );
+      expect(leftovers).to.deep.equal([]);
+      await fs.rm(dest, { force: true });
+    });
+
+    it("skips the command when the original cannot be backed up", async () => {
+      const dir = path.join(tempDir, "hook-nobackup");
+      await fs.rm(dir, { recursive: true, force: true });
+      await fs.mkdir(dir, { recursive: true });
+      const dest = path.join(dir, "scan.pdf");
+      await fs.writeFile(dest, "ORIGINAL");
+      const marker = path.join(tempDir, "hook-nobackup-ran.txt");
+      await fs.rm(marker, { force: true });
+      // A read-only folder makes the safety copy fail: the hook must not run
+      // on a file the runner cannot protect.
+      const isRoot = process.getuid?.() === 0;
+      const appendAndMark = [
+        "node",
+        "-e",
+        "const fs=require('fs');" +
+          "fs.appendFileSync(process.argv[1],'X');" +
+          "fs.writeFileSync(process.argv[2],'ran')",
+        "{input}",
+        marker,
+      ];
+
+      if (!isRoot) {
+        await fs.chmod(dir, 0o500);
+      }
+      try {
+        await runFilePostProcessing(appendAndMark, dest);
+      } finally {
+        if (!isRoot) {
+          await fs.chmod(dir, 0o700);
+        }
+      }
+
+      if (!isRoot) {
+        expect(existsSync(marker)).to.be.false;
+      }
+      expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINAL");
+      await fs.rm(dir, { recursive: true, force: true });
+    });
+  });
+
+  describe("timeout on a command that starts its own process", () => {
+    // A hook often delegates to a converter. Killing only the direct child
+    // leaves that converter running, and it may keep writing after the runner
+    // discarded its work. The whole process tree has to be killed.
+    it("kills the process the hook started, not just the hook", async function () {
+      this.timeout(20_000);
+      const dir = path.join(tempDir, "hook-tree");
+      await fs.rm(dir, { recursive: true, force: true });
+      await fs.mkdir(dir, { recursive: true });
+
+      const dest = path.join(dir, "scan.pdf");
+      await fs.writeFile(dest, "ORIGINAL");
+      const leakPath = path.join(dir, "leaked.txt");
+      const grandchild = path.join(dir, "grandchild.cjs");
+      const hookFile = path.join(dir, "hook.cjs");
+
+      // The grandchild writes well after the timeout; the hook hangs so the
+      // runner has to kill it.
+      // `node script.js a b` puts the script path in argv[1], so the hook is
+      // run as `node hook.cjs {input} <leakPath> <grandchild>`: argv[3] is the
+      // leak path, argv[4] the grandchild script.
+      await fs.writeFile(
+        grandchild,
+        "setTimeout(()=>require('fs').writeFileSync(process.argv[2],'leak'),1500)",
+      );
+      await fs.writeFile(
+        hookFile,
+        "const {spawn}=require('child_process');" +
+          "spawn(process.execPath,[process.argv[4],process.argv[3]],{stdio:'ignore'}).unref();" +
+          "setTimeout(()=>{},600000);",
+      );
+
+      await runFilePostProcessing(
+        ["node", hookFile, "{input}", leakPath, grandchild],
+        dest,
+        800,
+      );
+
+      // Wait past the moment the grandchild would have written its file.
+      await new Promise((resolve) => setTimeout(resolve, 2_500));
+
+      expect(existsSync(leakPath)).to.be.false;
+      expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINAL");
+      await fs.rm(dir, { recursive: true, force: true });
+    });
+  });
 });

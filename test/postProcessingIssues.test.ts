@@ -366,4 +366,103 @@ describe("postProcessing - post-command / sidecar issues", () => {
       expect((await fs.readFile(pagePath, "utf8")).endsWith("X")).to.be.true;
     });
   });
+
+  describe("a file a hook writes under a name the scan does not own", () => {
+    // Only files named after the scan's own files are claimed as sidecars.
+    // A hook (or any other program) writing "notes.txt" beside the scan must
+    // not have that file uploaded as a sidecar, nor removed during cleanup.
+    it("is neither delivered nor removed", async () => {
+      const dir = path.join(tempFolder, "unnamed-sidecar");
+      const pagePath = path.join(dir, "page.jpg");
+      const notesPath = path.join(dir, "notes.txt");
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(pagePath, "content");
+
+      const unrelatedUpload = nock(s3Url)
+        .intercept("/scans/notes.txt", "PUT")
+        .reply(200);
+      nock(s3Url).intercept("/scans/page.jpg", "PUT").reply(200);
+
+      const hook = [
+        "node",
+        "-e",
+        "const fs=require('fs');" +
+          "fs.writeFileSync(process.argv[2],'notes');" +
+          "fs.appendFileSync(process.argv[1],'X');",
+        "{input}",
+        notesPath,
+      ];
+
+      const scanConfig = {
+        directoryConfig: { filePattern: "scan", directory: dir },
+        paperlessConfig: undefined,
+        nextcloudConfig: undefined,
+        s3Config: s3Config({ keepFiles: false }),
+        postCommand: hook,
+      } as unknown as ScanConfig;
+
+      await postProcessing(
+        scanConfig,
+        dir,
+        dir,
+        1,
+        { elements: [makePage(pagePath)] },
+        new Date(),
+        false,
+      );
+
+      expect(unrelatedUpload.isDone()).to.be.false;
+      expect(existsSync(notesPath)).to.be.true;
+    });
+  });
+
+  describe("a hook that runs on images and on Paperless-converted PDFs", () => {
+    // Documents the current contract: the image flow applies the hook to the
+    // page images and, separately, to each PDF Paperless derives from them.
+    // Every file the hook is handed is recorded.
+    it("runs on both the page image and the PDF derived from it", async () => {
+      const dir = path.join(tempFolder, "double-run");
+      const pagePath = path.join(dir, "page.jpg");
+      const logPath = path.join(tempFolder, "double-run.log");
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(pagePath, "content");
+
+      const hook = [
+        "node",
+        "-e",
+        "require('fs').appendFileSync(process.argv[2],process.argv[1]+'\\n')",
+        "{input}",
+        logPath,
+      ];
+
+      nock(paperlessUrl).post("/api/documents/post_document/").reply(201, "1");
+      nock(s3Url).intercept("/scans/page.jpg", "PUT").reply(200);
+
+      const scanConfig = {
+        directoryConfig: { filePattern: "scan", directory: dir },
+        paperlessConfig: paperlessConfig({
+          alwaysSendAsPdfFile: true,
+          keepFiles: true,
+        }),
+        nextcloudConfig: undefined,
+        s3Config: s3Config({ keepFiles: true }),
+        postCommand: hook,
+      } as unknown as ScanConfig;
+
+      await postProcessing(
+        scanConfig,
+        dir,
+        dir,
+        1,
+        { elements: [makePage(pagePath)] },
+        new Date(),
+        false,
+      );
+
+      const calls = (await fs.readFile(logPath, "utf8")).trim().split("\n");
+      expect(calls.sort()).to.deep.equal(
+        [path.join(dir, "page.jpg"), path.join(dir, "page.pdf")].sort(),
+      );
+    });
+  });
 });
