@@ -716,9 +716,9 @@ A command supports two placeholders:
 
 When the command does not use `{output}`, it is expected to modify the file in place.
 
-Failure policy: the scan flow never fails because of a hook. If a command cannot be started, exits with a non-zero code, runs longer than the timeout, or produces no `{output}` file, the original file is kept and an error is logged — the flow continues as if that command had not been configured.
+Failure policy: the scan flow never fails because of a hook. If a command cannot be started, exits with a non-zero code, runs longer than the timeout, produces no `{output}` file, or leaves an empty file (or a symbolic link) in place of the scan, the original file is kept and an error is logged — the flow continues as if that command had not been configured.
 
-The timeout is shared by both commands and defaults to 5 minutes, generous enough for a conversion over a large multi-page scan. It can be changed with `--post-command-timeout <milliseconds>` or `post_command_timeout` in the config file; the `POST_COMMAND_TIMEOUT` environment variable (milliseconds) sets the fallback default when neither is given. Precedence is the usual **CLI flag → config file → environment/default**, e.g. `node-hp-scan-to ... --post-command-timeout 60000`.
+The timeout is shared by both commands and defaults to 5 minutes, generous enough for a conversion over a large multi-page scan. It can be changed with `--post-command-timeout <milliseconds>` or `post_command_timeout` in the config file (at most `2147483647`, the largest delay a timer honours, so a value that would be silently cut to 1 ms is refused); the `POST_COMMAND_TIMEOUT` environment variable (milliseconds) sets the fallback default when neither is given, and an unusable value there falls back to the default too. Precedence is the usual **CLI flag → config file → environment/default**, e.g. `node-hp-scan-to ... --post-command-timeout 60000`.
 
 ##### Files created beside the scan
 

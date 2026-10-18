@@ -83,6 +83,25 @@ describe("FileConfig - Post Command Validation with Zod", () => {
         expect(result.success, `value ${String(value)}`).to.be.false;
       }
     });
+
+    it("should accept the largest timeout a timer can honour", () => {
+      const result = configSchema.safeParse({
+        post_command_timeout: 2_147_483_647,
+      });
+      expect(result.success).to.be.true;
+    });
+
+    it("should reject a post_command_timeout larger than a timer can honour", () => {
+      // setTimeout clamps anything beyond 2^31-1 ms to 1 ms, which would kill
+      // every hook the moment it starts: such a value must not reach it.
+      for (const value of [2_147_483_648, 3_000_000_000, 1e30]) {
+        const result = configSchema.safeParse({
+          post_command_pdf: "cp {input} {output}",
+          post_command_timeout: value,
+        });
+        expect(result.success, `value ${String(value)}`).to.be.false;
+      }
+    });
   });
 
   describe("Program and arguments form", () => {

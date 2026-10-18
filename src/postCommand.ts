@@ -113,15 +113,28 @@ export function splitCommand(value: string): string[] {
 }
 
 /**
+ * The longest delay `setTimeout` accepts. A larger value is not honoured:
+ * Node warns and clamps the delay to 1 ms, which would kill every hook the
+ * moment it starts instead of letting it run. The bound is therefore enforced
+ * at both edges (the CLI flag and the config file) and applied again by the
+ * runner, which never hands `setTimeout` a value it would silently rewrite.
+ */
+export const MAX_POST_PROCESSING_TIMEOUT_MS = 2_147_483_647;
+
+/**
  * Parses the `--post-command-timeout` value: a positive integer number of
- * milliseconds. Anything else is rejected so a typo cannot silently fall back
- * to the default timeout.
+ * milliseconds, within the range a timer can honour. Anything else is rejected
+ * so a typo cannot silently fall back to the default timeout.
  */
 export function parsePostCommandTimeoutArg(value: string): number {
   const timeout = Number(value);
-  if (!Number.isInteger(timeout) || timeout <= 0) {
+  if (
+    !Number.isInteger(timeout) ||
+    timeout <= 0 ||
+    timeout > MAX_POST_PROCESSING_TIMEOUT_MS
+  ) {
     throw new Error(
-      "--post-command-timeout must be a positive integer number of milliseconds",
+      `--post-command-timeout must be a positive integer number of milliseconds, at most ${MAX_POST_PROCESSING_TIMEOUT_MS}`,
     );
   }
   return timeout;

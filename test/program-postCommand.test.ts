@@ -167,6 +167,31 @@ describe("CLI Program - Post Command Options", () => {
         ).to.throw();
       }
     });
+
+    it("accepts the largest timeout a timer can honour", () => {
+      const program = setupProgram(emptyConfig);
+      const opts = parseSubcommandOptions(program, "single-scan", [
+        "--post-command-timeout",
+        "2147483647",
+      ]);
+      expect(opts?.["postCommandTimeout"]).to.equal(2_147_483_647);
+    });
+
+    it("rejects a --post-command-timeout larger than a timer can honour", () => {
+      // setTimeout clamps anything beyond 2^31-1 ms to 1 ms, which would kill
+      // every hook the moment it starts: the value must not be accepted.
+      for (const value of ["2147483648", "3000000000", "1e30"]) {
+        const program = setupProgram(emptyConfig);
+        const command = program.commands.find(
+          (cmd) => cmd.name() === "single-scan",
+        );
+        expect(command, "Command not found: single-scan").to.exist;
+        expect(
+          () => command?.parseOptions(["--post-command-timeout", value]),
+          `value ${value}`,
+        ).to.throw();
+      }
+    });
   });
 
   describe("Post Command Help Documentation", () => {

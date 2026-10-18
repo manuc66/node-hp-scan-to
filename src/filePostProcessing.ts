@@ -2,7 +2,11 @@ import { spawn, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { PostCommand } from "./postCommand.js";
+import type { Stats } from "node:fs";
+import {
+  MAX_POST_PROCESSING_TIMEOUT_MS,
+  type PostCommand,
+} from "./postCommand.js";
 import { getLoggerForFile } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -23,14 +27,41 @@ export const DEFAULT_POST_PROCESSING_TIMEOUT_MS = resolveTimeout(
 
 /**
  * Reads the timeout from the `POST_COMMAND_TIMEOUT` environment variable,
- * falling back to a generous default when it is absent or unusable.
+ * falling back to a generous default when it is absent or unusable. A value
+ * the timer could not honour counts as unusable: reading it back from Node
+ * would only turn it into an immediate kill.
  */
 export function resolveTimeout(rawValue: string | undefined): number {
-  const configured = Number(rawValue);
-  if (rawValue !== undefined && rawValue.trim() !== "" && configured > 0) {
-    return configured;
+  if (rawValue === undefined || rawValue.trim() === "") {
+    return FALLBACK_POST_PROCESSING_TIMEOUT_MS;
   }
-  return FALLBACK_POST_PROCESSING_TIMEOUT_MS;
+
+  const configured = Number(rawValue);
+  if (
+    !Number.isInteger(configured) ||
+    configured <= 0 ||
+    configured > MAX_POST_PROCESSING_TIMEOUT_MS
+  ) {
+    return FALLBACK_POST_PROCESSING_TIMEOUT_MS;
+  }
+
+  return configured;
+}
+
+/**
+ * The delay actually handed to the timer: clamped into the range `setTimeout`
+ * honours. Callers are validated at startup, but the runner is also given
+ * values from code and environment, and an out-of-range one must mean "let the
+ * hook run" rather than "kill it at once".
+ */
+function effectiveTimeout(timeoutMs: number): number {
+  if (!Number.isFinite(timeoutMs)) {
+    return DEFAULT_POST_PROCESSING_TIMEOUT_MS;
+  }
+  return Math.min(
+    Math.max(Math.trunc(timeoutMs), 1),
+    MAX_POST_PROCESSING_TIMEOUT_MS,
+  );
 }
 
 /** Upper bound on the stderr kept for the logs. */
@@ -54,7 +85,8 @@ const MAX_LOGGED_STDERR_LENGTH = 2000;
  * A failure never throws: the original file is kept and the error is logged,
  * so the post-processing hook stays an optional escape hatch. In the in-place
  * form the file is copied before the command runs and restored when the
- * command fails or leaves nothing, so a half-written output cannot be lost.
+ * command fails or leaves nothing usable behind (no file, an empty file, a
+ * symbolic link), so a half-written output cannot be lost.
  */
 export async function runFilePostProcessing(
   command: PostCommand | undefined,
@@ -135,10 +167,11 @@ async function runInPlaceCommand(
     return;
   }
 
-  if (!(await isRegularFile(filePath))) {
+  const problem = await findResultProblem(filePath);
+  if (problem !== undefined) {
     logger.error(
       { command: [program, ...resolvedArgs] },
-      `Post-processing command did not leave the file at ${filePath}, restoring the original file`,
+      `Post-processing command left ${problem} at ${filePath}, restoring the original file`,
     );
     await restoreBackup(backupPath, filePath, command);
     return;
@@ -226,15 +259,16 @@ function runCommand(
     // timeout, reporting a spurious failure for a hook that worked.
     child.stdout?.resume();
 
+    const timeout = effectiveTimeout(timeoutMs);
     const timer = setTimeout(() => {
       logger.error(
-        { program, timeoutMs },
+        { program, timeoutMs: timeout },
         "Post-processing command timed out, killing it",
       );
       killProcessTree(child);
       // Give the kill a moment to be observed before giving up on the event.
       setTimeout(() => settle(-1), 1_000).unref();
-    }, timeoutMs);
+    }, timeout);
     timer.unref();
 
     child.on("error", (error) => {
@@ -307,19 +341,20 @@ function killProcessTree(child: ChildProcess): void {
 /**
  * Replaces the original file with the command output.
  *
- * The original is only ever removed once the replacement is known to be a
- * readable regular file, so a hook leaving a directory (or nothing at all)
- * cannot destroy the scan.
+ * The original is only ever replaced by a file the delivery stage can actually
+ * use, so a hook leaving a directory, a symbolic link, an empty file or
+ * nothing at all cannot destroy the scan.
  */
 async function replaceFileWithOutput(
   outputPath: string,
   filePath: string,
   command: PostCommand,
 ): Promise<void> {
-  if (!(await isRegularFile(outputPath))) {
+  const problem = await findResultProblem(outputPath);
+  if (problem !== undefined) {
     logger.error(
       { command },
-      `Post-processing command produced no {output} file, keeping the original file: ${filePath}`,
+      `Post-processing command produced ${problem}, keeping the original file: ${filePath}`,
     );
     // The hook may have left a directory or nothing at all: drop whatever
     // sits at the temporary path so nothing is left next to the scan.
@@ -341,13 +376,37 @@ async function replaceFileWithOutput(
   logger.info(`Post-processing applied to ${filePath}`);
 }
 
-async function isRegularFile(filePath: string): Promise<boolean> {
+/**
+ * What disqualifies a file the hook left behind, or `undefined` when it is a
+ * usable scan.
+ *
+ * `lstat` is deliberate: a symbolic link is not the file the hook was asked to
+ * write, and renaming one over the scan would hand the delivery stage whatever
+ * it points at. An empty file is not a scan either, and accepting it would
+ * silently replace the scan by nothing. Both are treated exactly like a hook
+ * that produced no file: the original is kept.
+ */
+async function findResultProblem(
+  filePath: string,
+): Promise<string | undefined> {
+  let stats: Stats;
   try {
-    const stats = await fs.stat(filePath);
-    return stats.isFile();
+    stats = await fs.lstat(filePath);
   } catch {
-    return false;
+    return "nothing";
   }
+
+  if (stats.isSymbolicLink()) {
+    return "a symbolic link";
+  }
+  if (!stats.isFile()) {
+    return "something other than a regular file";
+  }
+  if (stats.size === 0) {
+    return "an empty file";
+  }
+
+  return undefined;
 }
 
 /**

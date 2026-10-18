@@ -43,14 +43,16 @@ All notable changes to this project are documented in this file.
   the file in place. It runs without a shell, so file names are never
   interpreted as shell syntax, and it is stopped if it runs for too long (the
   timeout is configurable with `--post-command-timeout` /
-  `post_command_timeout`, with `POST_COMMAND_TIMEOUT` as the fallback default).
+  `post_command_timeout`, with `POST_COMMAND_TIMEOUT` as the fallback default;
+  a value a timer cannot honour is refused rather than silently cut to 1 ms).
   Commands that fail never block the flow: the original file is kept and the
-  error is logged. Files a command writes beside the scan are treated as part
-  of it — recognized by taking their name from the scan file, any other file
-  appearing beside the scan is left untouched: S3 and Nextcloud receive them
-  next to the scan, Paperless does not (an upload there would become a
-  standalone document), and they are removed with the scan only once they were
-  actually delivered.
+  error is logged, and a command leaving an empty file or a symbolic link in
+  place of the scan counts as a failure. Files a command writes beside the
+  scan are treated as part of it — recognized by taking their name from the
+  scan file, any other file appearing beside the scan is left untouched: S3
+  and Nextcloud receive them next to the scan, Paperless does not (an upload
+  there would become a standalone document), and they are removed with the
+  scan only once they were actually delivered.
 
 ### Changed
 

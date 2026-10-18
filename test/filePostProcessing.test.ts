@@ -7,11 +7,12 @@ import {
   resolveTimeout,
   runFilePostProcessing,
 } from "../src/filePostProcessing.js";
+import { MAX_POST_PROCESSING_TIMEOUT_MS } from "../src/postCommand.js";
 import type { ScanPage } from "../src/type/ScanContent.js";
 import path from "node:path";
 import { fileURLToPath } from "url";
 import fs from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, lstatSync } from "node:fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -304,6 +305,29 @@ describe("File post-processing command hook", () => {
       expect(DEFAULT_POST_PROCESSING_TIMEOUT_MS).to.be.a("number");
       expect(DEFAULT_POST_PROCESSING_TIMEOUT_MS).to.be.greaterThan(0);
     });
+
+    it("does not turn a timeout larger than a timer can honour into an immediate kill", async () => {
+      const dest = path.join(tempDir, "hook-huge-timeout.pdf");
+      await fs.writeFile(dest, "ORIGINAL");
+
+      // Number.isInteger(1e30) is true, so a value like this reaches the
+      // runner from the CLI, the config file or the environment. Handed to
+      // setTimeout as-is, Node clamps it to 1 ms and kills the hook the moment
+      // it starts; it must mean "let the hook run" instead.
+      await runFilePostProcessing(appendTemplate, dest, 1e30);
+      expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINALX");
+
+      // Infinity is the same trap for a bound computed in code.
+      await fs.writeFile(dest, "ORIGINAL");
+      await runFilePostProcessing(
+        appendTemplate,
+        dest,
+        Number.POSITIVE_INFINITY,
+      );
+      expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINALX");
+
+      await fs.rm(dest, { force: true });
+    });
   });
 
   describe("timeout configuration", () => {
@@ -338,6 +362,29 @@ describe("File post-processing command hook", () => {
 
     it("leaves enough room for a legitimate conversion", () => {
       expect(FALLBACK_POST_PROCESSING_TIMEOUT_MS).to.be.at.least(60_000);
+    });
+
+    it("accepts the largest timeout a timer can honour", () => {
+      // 2^31-1 ms is the longest delay setTimeout does not rewrite.
+      expect(MAX_POST_PROCESSING_TIMEOUT_MS).to.equal(2_147_483_647);
+      expect(resolveTimeout("2147483647")).to.equal(2_147_483_647);
+    });
+
+    it("falls back to the default on a value larger than a timer can honour", () => {
+      // Beyond 2^31-1 ms Node does not honour the delay, it warns and rewrites
+      // it to 1 ms: the value is unusable, exactly like a blank one.
+      expect(resolveTimeout("2147483648")).to.equal(
+        FALLBACK_POST_PROCESSING_TIMEOUT_MS,
+      );
+      expect(resolveTimeout("1e30")).to.equal(
+        FALLBACK_POST_PROCESSING_TIMEOUT_MS,
+      );
+    });
+
+    it("falls back to the default on a fractional value a timer would truncate", () => {
+      expect(resolveTimeout("1000.5")).to.equal(
+        FALLBACK_POST_PROCESSING_TIMEOUT_MS,
+      );
     });
   });
 
@@ -430,6 +477,110 @@ describe("File post-processing command hook", () => {
       }
       await fs.rm(dest, { force: true });
     });
+  });
+
+  describe("a hook that leaves nothing usable behind", () => {
+    // The runner promises that a failing hook can never lose the scan. A tool
+    // that stops halfway must therefore not be able to replace it with
+    // something the delivery stage cannot use: a symbolic link (which is not
+    // the file the hook was asked to write) or an empty file.
+    const isWindows = process.platform === "win32";
+    const ifSymlinksAllowed = isWindows ? it.skip : it;
+
+    it("keeps the original when the {output} file is empty", async () => {
+      const dest = path.join(tempDir, "hook-empty-output.pdf");
+      await fs.writeFile(dest, "ORIGINAL");
+      const emptyOutput = [
+        "node",
+        "-e",
+        "require('fs').writeFileSync(process.argv[1],'')",
+        "{output}",
+      ];
+
+      await runFilePostProcessing(emptyOutput, dest);
+
+      expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINAL");
+      await fs.rm(dest, { force: true });
+    });
+
+    it("restores the original when an in-place hook empties the file", async () => {
+      const dest = path.join(tempDir, "hook-truncated.pdf");
+      await fs.writeFile(dest, "ORIGINAL");
+      const emptyInPlace = [
+        "node",
+        "-e",
+        "require('fs').writeFileSync(process.argv[1],'')",
+        "{input}",
+      ];
+
+      await runFilePostProcessing(emptyInPlace, dest);
+
+      expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINAL");
+      await fs.rm(dest, { force: true });
+    });
+
+    ifSymlinksAllowed(
+      "keeps the original when the hook links {output} elsewhere",
+      async () => {
+        const dir = path.join(tempDir, "hook-output-symlink");
+        await fs.rm(dir, { recursive: true, force: true });
+        await fs.mkdir(dir, { recursive: true });
+        const dest = path.join(dir, "scan.pdf");
+        const elsewhere = path.join(dir, "elsewhere.pdf");
+        await fs.writeFile(dest, "ORIGINAL");
+        await fs.writeFile(elsewhere, "NOT THE SCAN");
+
+        // `gs` and friends are not the only tools that can leave a link: any
+        // hook writing through one produces it.
+        const linkOutput = [
+          "node",
+          "-e",
+          "require('fs').symlinkSync(process.argv[2],process.argv[1])",
+          "{output}",
+          elsewhere,
+        ];
+
+        try {
+          await runFilePostProcessing(linkOutput, dest);
+
+          expect(lstatSync(dest).isSymbolicLink()).to.be.false;
+          expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINAL");
+        } finally {
+          await fs.rm(dir, { recursive: true, force: true });
+        }
+      },
+    );
+
+    ifSymlinksAllowed(
+      "restores the original when an in-place hook links the file elsewhere",
+      async () => {
+        const dir = path.join(tempDir, "hook-in-place-symlink");
+        await fs.rm(dir, { recursive: true, force: true });
+        await fs.mkdir(dir, { recursive: true });
+        const dest = path.join(dir, "scan.pdf");
+        const elsewhere = path.join(dir, "elsewhere.pdf");
+        await fs.writeFile(dest, "ORIGINAL");
+        await fs.writeFile(elsewhere, "NOT THE SCAN");
+
+        const linkInPlace = [
+          "node",
+          "-e",
+          "const fs=require('fs');fs.unlinkSync(process.argv[1]);" +
+            "fs.symlinkSync(process.argv[2],process.argv[1]);",
+          "{input}",
+          elsewhere,
+        ];
+
+        try {
+          await runFilePostProcessing(linkInPlace, dest);
+
+          expect(lstatSync(dest).isSymbolicLink()).to.be.false;
+          expect(await fs.readFile(dest, "utf8")).to.equal("ORIGINAL");
+        } finally {
+          await fs.rm(dir, { recursive: true, force: true });
+        }
+      },
+    );
   });
 
   describe("concurrent runs", () => {
