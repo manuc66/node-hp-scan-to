@@ -23,9 +23,13 @@ the next scan event or trip the printer's `userActionTimeout` /
 ## What changed
 
 - **Staged pipeline** (`src/postProcessing.ts`): `generate PDF → announce →
-  deliver → webhook → log → cleanup`, threaded through a shared context.
-  Future stages (e.g. an external OCR/deskew `--post-command`) plug in before
-  the PDF merge.
+  deliver → deliver sidecars → webhook → log → cleanup`, threaded through a
+  shared context. `--post-command-pdf` runs on each generated PDF as soon as
+  it exists (the merged PDF, so **after** the merge, not before it) and
+  `--post-command-image` on the page images; both always ahead of delivery.
+  Files a command writes beside the scan are detected here and delivered with
+  it (S3 and Nextcloud only, see the
+  [README](../#files-created-beside-the-scan)).
 - **FIFO processing queue** (`src/queue/processingQueue.ts`): each captured
   scan is enqueued and drained in order by a single background worker. Order
   is preserved; capture returns to the printer immediately.

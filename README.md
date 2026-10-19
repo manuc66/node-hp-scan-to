@@ -47,6 +47,8 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
       - [`adf-autoscan`](#adf-autoscan)
       - [`clear-registrations`](#clear-registrations)
       - [`single-scan`](#single-scan)
+    - [Post-Processing Command](#post-processing-command)
+      - [Files created beside the scan](#files-created-beside-the-scan)
     - [Paper Size Configuration](#paper-size-configuration)
       - [Preset Paper Sizes](#preset-paper-sizes)
       - [Custom Sizes](#custom-sizes)
@@ -376,6 +378,9 @@ Output Options:
   -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+  --post-command-pdf <command>                                     Command run on every generated PDF, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
+  --post-command-image <command>                                   Command run on every delivered image page, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it).
+  --post-command-timeout <milliseconds>                            Timeout in milliseconds for the post-command hooks before they are killed (default: 300000)
 
 Scan Options:
   -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
@@ -475,6 +480,9 @@ Output Options:
   -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+  --post-command-pdf <command>                                     Command run on every generated PDF, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
+  --post-command-image <command>                                   Command run on every delivered image page, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it).
+  --post-command-timeout <milliseconds>                            Timeout in milliseconds for the post-command hooks before they are killed (default: 300000)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
 
 Scan Options:
@@ -584,6 +592,9 @@ Output Options:
   -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
   -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
   -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+  --post-command-pdf <command>                                     Command run on every generated PDF, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
+  --post-command-image <command>                                   Command run on every delivered image page, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it).
+  --post-command-timeout <milliseconds>                            Timeout in milliseconds for the post-command hooks before they are killed (default: 300000)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
 
 Scan Options:
@@ -635,6 +646,94 @@ Global Options:
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
 <!-- END HELP command: single-scan -->
+
+#### Post-Processing Command
+
+Every generated scan file can be handed to an external command **before it is uploaded or cleaned up**. Two independent commands are available, one per file type:
+
+- `--post-command-pdf` (or `post_command_pdf`) runs on the generated **PDFs** — the `--pdf` output mode, and the Paperless `--paperless-always-send-as-pdf-file` / `--paperless-group-multi-page-scan-into-a-pdf` flows;
+- `--post-command-image` (or `post_command_image`) runs on the **image pages** (Jpeg/Bmp) — each scan page kept on disk or uploaded as an image.
+
+Each command only ever receives the type it was configured for, so a PDF tool is never handed a Jpeg. Set either or both; leaving both unset disables post-processing.
+
+Typical uses:
+
+| Command | Examples |
+|---|---|
+| **`--post-command-pdf`** | PDF/A archiving (Ghostscript), digital signature, stamping, metadata injection, OCR text layer |
+| **`--post-command-image`** | recompression/resizing, watermarking, EXIF metadata injection, format conversion |
+
+Each value is a program followed by its arguments, so quote any argument containing spaces. A command takes one of three shapes, and the shape is decided by whether it mentions `{output}`:
+
+**1. Replace the file — write the result to `{output}`.** The command must produce that exact file; it then replaces the scan, atomically.
+
+```sh
+# PDF/A archiving — `gs` on Linux/macOS, `gswin64c` on Windows
+node-hp-scan-to --address <printer> single-scan --pdf \
+  --post-command-pdf 'gs -dPDFA=2 -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -o "{output}" "{input}"'
+
+# Optimise / linearise an existing PDF
+node-hp-scan-to --address <printer> single-scan --pdf \
+  --post-command-pdf 'qpdf --linearize "{input}" "{output}"'
+
+# Stamp a watermark on every image page
+node-hp-scan-to --address <printer> single-scan \
+  --post-command-image 'magick "{input}" -gravity center -pointsize 48 -annotate +0+0 DRAFT "{output}"'
+```
+
+**2. Edit the file in place — do not use `{output}`.** The command updates `{input}` and must leave it there.
+
+```sh
+# EXIF metadata on a Jpeg; -overwrite_original avoids leaving a .jpg_original
+node-hp-scan-to --address <printer> single-scan \
+  --post-command-image 'exiftool -overwrite_original -XResolution=200 "{input}"'
+```
+
+**3. Produce a companion file beside the scan.** The command leaves `{input}` alone and drops a new file next to it. That file travels with the scan — see [Files created beside the scan](#files-created-beside-the-scan).
+
+```sh
+# OCR the page to <page>.txt beside it. tesseract takes an output *base*
+# name and appends `.txt`, hence {input} is passed twice.
+node-hp-scan-to --address <printer> single-scan \
+  --post-command-image 'tesseract "{input}" "{input}"'
+```
+
+> ℹ️ A command is started directly, **without a shell**: file names are passed as single arguments and are never interpreted as shell syntax. Pipes, redirections, `&&` and variable expansion are therefore not available — the only values at hand are the two placeholders. Run a script or wrapper if you need more.
+
+In the config file, each key accepts the same command line as a string, or an explicit argument list:
+
+```json
+{
+  "post_command_pdf": ["gs", "-dPDFA=2", "-dBATCH", "-dNOPAUSE", "-sDEVICE=pdfwrite", "-o", "{output}", "{input}"],
+  "post_command_image": ["exiftool", "-overwrite_original", "-XResolution=200", "{input}"]
+}
+```
+
+A command supports two placeholders:
+
+- `{input}`: the absolute path of the generated file. It is **required**: a command without it cannot run on the scan and is rejected at startup.
+- `{output}`: an absolute temporary file path. When the command contains `{output}`, the resulting file **replaces the original file** if the command succeeds. A command that cannot overwrite its input in place (Ghostscript is one) should therefore write to `{output}`.
+
+When the command does not use `{output}`, it is expected to modify the file in place.
+
+Failure policy: the scan flow never fails because of a hook. If a command cannot be started, exits with a non-zero code, runs longer than the timeout, produces no `{output}` file, or leaves an empty file (or a symbolic link) in place of the scan, the original file is kept and an error is logged — the flow continues as if that command had not been configured.
+
+The timeout is shared by both commands and defaults to 5 minutes, generous enough for a conversion over a large multi-page scan. It can be changed with `--post-command-timeout <milliseconds>` or `post_command_timeout` in the config file (at most `2147483647`, the largest delay a timer honours, so a value that would be silently cut to 1 ms is refused); the `POST_COMMAND_TIMEOUT` environment variable (milliseconds) sets the fallback default when neither is given, and an unusable value there falls back to the default too. Precedence is the usual **CLI flag → config file → environment/default**, e.g. `node-hp-scan-to ... --post-command-timeout 60000`.
+
+In the container, the two commands are set with the `POST_COMMAND_PDF` and `POST_COMMAND_IMAGE` environment variables, and `POST_COMMAND_TIMEOUT` sets the fallback timeout — see [Docker Environment Variables](#docker-environment-variables). The command runs **inside** the container, so the program must be part of the image: the published image ships no converter, extend it with the tools you need (`FROM manuc66/node-hp-scan-to:latest` then `apk add --no-cache ghostscript`, for example).
+
+##### Files created beside the scan
+
+A command is free to write additional files next to its input (an OCR text, a signature, a manifest). A file is recognized as one of them by its name: it must be named after the file the command received (`page.jpg` → `page.jpg.txt`, `scan.pdf` → `scan.pdf.p7s`). Any other file appearing beside the scan while it is being processed — written by another program, or by the next scan in `listen` — is left untouched: neither delivered nor removed.
+
+Files recognized as sidecars belong to the scan, so:
+
+- **S3 and Nextcloud** receive them alongside the scan itself, and only when they actually received that scan: a sidecar is never sent to a target where the scan itself is missing;
+- **Paperless does not**: every upload there becomes a standalone document, and a sidecar would appear as an unrelated entry rather than a companion of the scan.
+
+A sidecar is removed with the scan only when `keep_files` is false **and** it was actually delivered somewhere. If no target accepts it (Paperless-only setup), or if its upload failed, it stays on disk: the hook's output is never thrown away without being sent anywhere.
+
+A failed sidecar upload is reported as a warning only: the scan itself already reached its targets, so the scan is not marked failed and its files are cleaned up normally. In a Paperless-only setup there is nowhere for sidecars to go, so they stay on disk while the scan is cleaned up and accumulate over successive scans; configure an S3 or Nextcloud target if the hook produces files you want delivered (a warning naming the kept files is logged).
 
 #### Paper Size Configuration
 
@@ -774,6 +873,9 @@ List of supported environment variables and their meaning, or correspondence wit
 | `DIR`                         | Directory to use                                                                                              | `-d` / `--directory`                                                          |
 | `IP`                          | IP address for the program                                                                                    | `-a` / `--address`                                                            |
 | `KEEP_FILES`                  | If set, scanned files are not deleted after uploading to Paperless-ngx or Nextcloud                           |                                                                               |
+| `POST_COMMAND_PDF`            | Command run on every generated PDF before it is uploaded or cleaned up (e.g. a Ghostscript PDF/A conversion)  | `--post-command-pdf`                                                          |
+| `POST_COMMAND_IMAGE`          | Command run on every delivered image page before it is uploaded or cleaned up                                 | `--post-command-image`                                                        |
+| `POST_COMMAND_TIMEOUT`        | Fallback timeout in milliseconds for those commands when the flag or the config file sets none                | `--post-command-timeout`                                                      |
 | `LABEL`                       | Label to set on the device's display as a scan target                                                         | `-l` / `--label`                                                              |
 | `NAME`                        | Name of the device to lookup for on the network                                                               | `-n` / `--name`                                                               |
 | `ADD_EMULATED_DUPLEX`         | Enable emulated duplex scanning, with optional assembly mode (default: document-wise)                         | `--add-emulated-duplex [mode]`                                                |
@@ -952,6 +1054,8 @@ Settings can live in a JSON file instead of CLI flags. The file is read with the
   "keep_files": false
 }
 ```
+
+Keep your own settings out of the tracked file: `config/local.json` is read on top of `config/default.json` and is ignored by git, so personal values (device address, output directory, credentials) are never committed. To keep the file outside the checkout altogether, point `NODE_CONFIG_DIR` at another directory — that is what the standalone binaries do with the `config` folder next to the executable.
 
 Precedence, highest first: **CLI flag → config file → built-in default**. (The Docker image's environment variables are translated into CLI flags by its entrypoint, so from the app's point of view they are flags; `CMDLINE` is appended last and therefore wins over them.)
 

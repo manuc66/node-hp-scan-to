@@ -20,3 +20,5 @@ packaging/windows/staging/
 /rust-version/
 /protocol_doc/capture/tools/driver-store/
 /protocol_doc/capture/tools/hp-mitm-capture/
+# Personal settings merged over config/default.json by the "config" package.
+/config/local.json
