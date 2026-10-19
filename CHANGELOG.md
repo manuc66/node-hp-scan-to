@@ -47,12 +47,14 @@ All notable changes to this project are documented in this file.
   a value a timer cannot honour is refused rather than silently cut to 1 ms).
   Commands that fail never block the flow: the original file is kept and the
   error is logged, and a command leaving an empty file or a symbolic link in
-  place of the scan counts as a failure. Files a command writes beside the
-  scan are treated as part of it — recognized by taking their name from the
-  scan file, any other file appearing beside the scan is left untouched: S3
-  and Nextcloud receive them next to the scan, Paperless does not (an upload
-  there would become a standalone document), and they are removed with the
-  scan only once they were actually delivered.
+  place of the scan counts as a failure. In the container the commands are set
+  with the `POST_COMMAND_PDF` / `POST_COMMAND_IMAGE` environment variables
+  (`POST_COMMAND_TIMEOUT` for the fallback timeout). Files a command writes
+  beside the scan are treated as part of it — recognized by taking their name
+  from the scan file, any other file appearing beside the scan is left
+  untouched: S3 and Nextcloud receive them next to the scan, Paperless does
+  not (an upload there would become a standalone document), and they are
+  removed with the scan only once they were actually delivered.
 
 ### Changed
 

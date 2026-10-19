@@ -720,6 +720,8 @@ Failure policy: the scan flow never fails because of a hook. If a command cannot
 
 The timeout is shared by both commands and defaults to 5 minutes, generous enough for a conversion over a large multi-page scan. It can be changed with `--post-command-timeout <milliseconds>` or `post_command_timeout` in the config file (at most `2147483647`, the largest delay a timer honours, so a value that would be silently cut to 1 ms is refused); the `POST_COMMAND_TIMEOUT` environment variable (milliseconds) sets the fallback default when neither is given, and an unusable value there falls back to the default too. Precedence is the usual **CLI flag → config file → environment/default**, e.g. `node-hp-scan-to ... --post-command-timeout 60000`.
 
+In the container, the two commands are set with the `POST_COMMAND_PDF` and `POST_COMMAND_IMAGE` environment variables, and `POST_COMMAND_TIMEOUT` sets the fallback timeout — see [Docker Environment Variables](#docker-environment-variables).
+
 ##### Files created beside the scan
 
 A command is free to write additional files next to its input (an OCR text, a signature, a manifest). A file is recognized as one of them by its name: it must be named after the file the command received (`page.jpg` → `page.jpg.txt`, `scan.pdf` → `scan.pdf.p7s`). Any other file appearing beside the scan while it is being processed — written by another program, or by the next scan in `listen` — is left untouched: neither delivered nor removed.
@@ -871,6 +873,9 @@ List of supported environment variables and their meaning, or correspondence wit
 | `DIR`                         | Directory to use                                                                                              | `-d` / `--directory`                                                          |
 | `IP`                          | IP address for the program                                                                                    | `-a` / `--address`                                                            |
 | `KEEP_FILES`                  | If set, scanned files are not deleted after uploading to Paperless-ngx or Nextcloud                           |                                                                               |
+| `POST_COMMAND_PDF`            | Command run on every generated PDF before it is uploaded or cleaned up (e.g. a Ghostscript PDF/A conversion)  | `--post-command-pdf`                                                          |
+| `POST_COMMAND_IMAGE`          | Command run on every delivered image page before it is uploaded or cleaned up                                 | `--post-command-image`                                                        |
+| `POST_COMMAND_TIMEOUT`        | Fallback timeout in milliseconds for those commands when the flag or the config file sets none                | `--post-command-timeout`                                                      |
 | `LABEL`                       | Label to set on the device's display as a scan target                                                         | `-l` / `--label`                                                              |
 | `NAME`                        | Name of the device to lookup for on the network                                                               | `-n` / `--name`                                                               |
 | `ADD_EMULATED_DUPLEX`         | Enable emulated duplex scanning, with optional assembly mode (default: document-wise)                         | `--add-emulated-duplex [mode]`                                                |
