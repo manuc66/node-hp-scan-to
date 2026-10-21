@@ -1,1 +1,8 @@
 theme: jekyll-theme-leap-day
+
+# Link to the author's other projects, rendered in the footer of every page by the
+# _layouts/default.html override. TranscribeCppSharp and LexiSharp declare the same
+# link in their just-the-docs `aux_links`; this site uses the default leap-day theme,
+# which has no such hook, so the link is applied through a local layout override.
+projects_index_url: https://manuc66.github.io/
+

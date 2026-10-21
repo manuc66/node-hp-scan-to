@@ -6,6 +6,13 @@
     "schedule": ["before 5am on monday"]
   },
   "transitiveRemediation": true,
+  "packageRules": [
+    {
+      "description": "typescript-eslint does not support TypeScript 7 yet (https://github.com/typescript-eslint/typescript-eslint/issues/10940); lift this rule once it ships TS 7 support",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7.0.0"
+    }
+  ],
   "vulnerabilityAlerts": {
     "enabled": true,
     "labels": ["security"]

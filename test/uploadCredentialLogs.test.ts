@@ -4,6 +4,7 @@ import {
   spawnSync,
   type SpawnSyncOptionsWithStringEncoding,
 } from "node:child_process";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,6 +18,17 @@ function runUploadLog(target: "s3" | "nextcloud" | "paperless"): string {
   const env: Record<string, string | undefined> = { ...process.env };
   delete env["LOG_FORMAT"];
   delete env["LOG_LEVEL"];
+  // The entry loads the sources through its own `tsx` transpilation, which
+  // maps the coverage back to the .ts files with different line numbers.
+  // Merging that second mapping into the parent's would report every module
+  // twice (once per mapping) and hide the real coverage, so the child writes
+  // to a throwaway directory instead.
+  if (env["NODE_V8_COVERAGE"] !== undefined) {
+    env["NODE_V8_COVERAGE"] = path.join(
+      os.tmpdir(),
+      "node-hp-scan-to-discarded-coverage",
+    );
+  }
   const options: SpawnSyncOptionsWithStringEncoding = {
     encoding: "utf8",
     env: { ...env, NODE_ENV: "production", LOG_FORMAT: "json" },

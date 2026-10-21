@@ -57,12 +57,9 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/chai": "^5.2.3",
-    "@types/config": "^4.4.0",
     "@types/dateformat": "^5.0.3",
-    "@types/is-docker": "^2.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.4.0",
-    "@types/pino": "^7.0.5",
     "@types/xml2js": "^0.4.14",
     "c8": "^12.0.0",
     "chai": "^6.2.2",
@@ -70,7 +67,7 @@
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.11.0",
     "mocha": "^12.0.0",
-    "nock": "^14.0.17",
+    "nock": "^15.0.1",
     "prettier": "^3.9.6",
     "tsx": "^4.23.13",
     "typescript": "^6.0.3",
@@ -93,13 +90,5 @@
     "xml2js": "^0.6.2",
     "zod": "^4.5.4"
   },
-  "packageManager": "pnpm@9.5.0+sha512.140036830124618d624a2187b50d04289d5a087f326c9edfc0ccd733d76c4f52c3a313d4fc148794a2a9d81553016004e6742e8cf850670268a7387fc220c903",
-  "pnpm": {
-    "overrides": {
-      "unicorn-magic": "^0.4.0"
-    },
-    "patchedDependencies": {
-      "unicorn-magic@0.4.0": "patches/unicorn-magic@0.4.0.patch"
-    }
-  }
+  "packageManager": "pnpm@12.14.0"
 }

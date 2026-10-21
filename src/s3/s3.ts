@@ -12,8 +12,22 @@ export async function uploadImagesToS3(
   scanJobContent: ScanContent,
   s3Config: S3Config,
 ): Promise<void> {
-  for (const element of scanJobContent.elements) {
-    await uploadToS3(element.path, s3Config);
+  await uploadFilesToS3(
+    scanJobContent.elements.map((element) => element.path),
+    s3Config,
+  );
+}
+
+/**
+ * Uploads an arbitrary list of files, used for the sidecars a post-processing
+ * hook wrote beside the scan.
+ */
+export async function uploadFilesToS3(
+  filePaths: readonly string[],
+  s3Config: S3Config,
+): Promise<void> {
+  for (const filePath of filePaths) {
+    await uploadToS3(filePath, s3Config);
   }
 }
 

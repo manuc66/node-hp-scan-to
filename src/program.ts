@@ -35,6 +35,10 @@ import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
 import { validateFilePatternForPlatform } from "./fileNameValidation.js";
+import {
+  parsePostCommandTimeoutArg,
+  postCommandArgParser,
+} from "./postCommand.js";
 import { getLoggerForFile, setDebugLevel } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -206,6 +210,30 @@ function setupScanParameters(commandName: string) {
         "-k, --keep-files",
         "Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)",
       ).helpGroup(HelpGroupsHeadings.ouput),
+    )
+    .addOption(
+      new Option(
+        "--post-command-pdf <command>",
+        "Command run on every generated PDF, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).",
+      )
+        .argParser(postCommandArgParser("--post-command-pdf"))
+        .helpGroup(HelpGroupsHeadings.ouput),
+    )
+    .addOption(
+      new Option(
+        "--post-command-image <command>",
+        "Command run on every delivered image page, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it).",
+      )
+        .argParser(postCommandArgParser("--post-command-image"))
+        .helpGroup(HelpGroupsHeadings.ouput),
+    )
+    .addOption(
+      new Option(
+        "--post-command-timeout <milliseconds>",
+        "Timeout in milliseconds for the post-command hooks before they are killed (default: 300000)",
+      )
+        .argParser(parsePostCommandTimeoutArg)
+        .helpGroup(HelpGroupsHeadings.ouput),
     )
     .addOption(
       new Option(
@@ -604,7 +632,7 @@ function getHealthCheckSetting(options: ProgramOption, configFile: FileConfig) {
   };
 }
 
-function getScanConfiguration(
+export function getScanConfiguration(
   options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   fileConfig: FileConfig,
 ) {
@@ -704,6 +732,19 @@ function getScanConfiguration(
     ScanFormat.Jpeg,
   );
 
+  const postCommandImage = getOptConfiguredValue(
+    options.postCommandImage,
+    fileConfig.post_command_image,
+  );
+  const postCommandPdf = getOptConfiguredValue(
+    options.postCommandPdf,
+    fileConfig.post_command_pdf,
+  );
+  const postCommandTimeout = getOptConfiguredValue(
+    options.postCommandTimeout,
+    fileConfig.post_command_timeout,
+  );
+
   const scanConfig: ScanConfig = {
     resolution,
     mode,
@@ -718,6 +759,9 @@ function getScanConfiguration(
     nextcloudConfig,
     s3Config,
     preferEscl,
+    ...(postCommandImage !== undefined && { postCommandImage }),
+    ...(postCommandPdf !== undefined && { postCommandPdf }),
+    ...(postCommandTimeout !== undefined && { postCommandTimeout }),
   };
   return scanConfig;
 }

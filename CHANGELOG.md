@@ -30,6 +30,31 @@ All notable changes to this project are documented in this file.
   universal `.dmg` on both Intel and Apple Silicon Macs. Its version and DMG
   checksum are refreshed automatically on master after each stable release
   (same mechanism as the Nix flake hashes).
+- **Post-processing commands**: `--post-command-pdf` and
+  `--post-command-image` (or `post_command_pdf` / `post_command_image` in the
+  config file) run external commands over the generated PDFs and the image
+  pages respectively, before they are uploaded or cleaned up, e.g. to produce
+  PDF/A archives, sign documents, inject metadata or watermark images, without
+  bundling or maintaining any of those tools in the project. Each command only
+  receives the file type it was configured for. It is given as a program and
+  its arguments (the config keys also accept an explicit argument list) and
+  supports `{input}` (the file path) and `{output}` (a temp file that replaces
+  the file on success); without `{output}` the command is expected to modify
+  the file in place. It runs without a shell, so file names are never
+  interpreted as shell syntax, and it is stopped if it runs for too long (the
+  timeout is configurable with `--post-command-timeout` /
+  `post_command_timeout`, with `POST_COMMAND_TIMEOUT` as the fallback default;
+  a value a timer cannot honour is refused rather than silently cut to 1 ms).
+  Commands that fail never block the flow: the original file is kept and the
+  error is logged, and a command leaving an empty file or a symbolic link in
+  place of the scan counts as a failure. In the container the commands are set
+  with the `POST_COMMAND_PDF` / `POST_COMMAND_IMAGE` environment variables
+  (`POST_COMMAND_TIMEOUT` for the fallback timeout). Files a command writes
+  beside the scan are treated as part of it — recognized by taking their name
+  from the scan file, any other file appearing beside the scan is left
+  untouched: S3 and Nextcloud receive them next to the scan, Paperless does
+  not (an upload there would become a standalone document), and they are
+  removed with the scan only once they were actually delivered.
 
 ### Changed
 
@@ -43,6 +68,12 @@ All notable changes to this project are documented in this file.
   thus rejected on Windows but still fine on POSIX systems. The documented
   pattern example (`--pattern` help, README) was updated to the `: `-free
   `"scan"_dd.mm.yyyy_HHMMss` form, which works everywhere.
+- **Default configuration**: the tracked `config/default.json` no longer
+  carries a hardcoded device address, so the shipped default works for any
+  device instead of pointing at one network. Personal settings belong in
+  `config/local.json`, which the `config` package merges over the default and
+  git now ignores, or in a directory of your own via `NODE_CONFIG_DIR`; the
+  README documents both.
 
 ### Security
 
