@@ -256,7 +256,7 @@ importers:
         version: 12.0.1
       nock:
         specifier: ^15.0.1
-        version: 15.0.2(supports-color@8.1.1)
+        version: 15.0.5(supports-color@8.1.1)
       prettier:
         specifier: ^3.9.6
         version: 3.9.10
@@ -1174,9 +1174,9 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  nock@15.0.2:
-    resolution: {integrity: sha512-kz2EsEGshxe/zw0iMMoJFqdDp3ZBju5tgLA03CepBi9R0NHckyF/UgfmoyEYt2DNFZoe8tpx1V9M187qt43WJg==}
-    engines: {node: '>=20.12.1'}
+  nock@15.0.5:
+    resolution: {integrity: sha512-nVeuZGS2we1PyvqbW082Qj0EB4bd//6pZk/zOPDlaTPU72qcWrqfHg3kx9JcBcH1fJxwJHjmsfuQ4mss42su4w==}
+    engines: {node: '>=22.20.0'}
 
   on-exit-leak-free@2.1.2:
     resolution: {integrity: sha512-0eJJY6hXLGf1udHwfNftBqH+g73EU4B504nZeKpz1sYRKafAghwxEJunB2O7rDZkL4PGfsMVnTXZ2EjibbqcsA==}
@@ -2371,7 +2371,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  nock@15.0.2(supports-color@8.1.1):
+  nock@15.0.5(supports-color@8.1.1):
     dependencies:
       '@mswjs/interceptors': 0.44.0(supports-color@8.1.1)
     transitivePeerDependencies:
