@@ -646,10 +646,15 @@ export function getWebhookConfig(
     return undefined;
   }
 
+  // A webhook is a notification, not a delivery target: on its own it must
+  // never turn the retention off. Without another target the scan is the only
+  // copy, and the event advertises its local path, which would be deleted
+  // right after being sent. Retention stays decided by the real delivery
+  // targets, or by an explicit `keep_files: false`.
   const keepFiles: boolean = getConfiguredValue(
     options.keepFiles,
     fileConfig.keep_files,
-    false,
+    true,
   );
   const authHeader = getConfiguredValue(
     options.webhookAuthHeader,

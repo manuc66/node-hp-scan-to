@@ -134,6 +134,19 @@ describe("webhook config resolution", () => {
     ).to.equal("none");
   });
 
+  it("keeps the scanned files by default when only a webhook is configured", () => {
+    // A webhook is a notification: on its own it must not turn retention off,
+    // otherwise the only copy of the scan is deleted right after the event
+    // that advertises its local path.
+    const config = getWebhookConfig(buildOptions(url), {});
+    expect(config?.keepFiles).to.equal(true);
+  });
+
+  it("still honours an explicit keep_files: false", () => {
+    const config = getWebhookConfig(buildOptions(url), { keep_files: false });
+    expect(config?.keepFiles).to.equal(false);
+  });
+
   it("still infers the auth scheme from the credentials", () => {
     expect(
       getWebhookConfig(buildOptions({ ...url, webhookSecret: "s3cr3t" }), {})

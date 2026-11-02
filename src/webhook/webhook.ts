@@ -1,5 +1,6 @@
 import axios from "axios";
 import { createHash, createHmac, randomUUID } from "node:crypto";
+import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { ScanContent } from "../type/ScanContent.js";
@@ -72,8 +73,25 @@ export interface WebhookPageDescriptor {
   sizeBytes?: number;
 }
 
-function sha256Hex(data: Buffer): string {
-  return createHash("sha256").update(data).digest("hex");
+/**
+ * Size and SHA-256 of a delivered file, read in chunks.
+ *
+ * The file is never loaded whole: a merged multi-page scan is easily tens of
+ * megabytes, and hashing it with a single read would spike the resident memory
+ * of a small host (a Raspberry Pi, a container with a modest limit) on every
+ * scan.
+ */
+async function fileDigest(
+  filePath: string,
+): Promise<{ size: number; sha256: string }> {
+  const hash = createHash("sha256");
+  let size = 0;
+  for await (const chunk of createReadStream(filePath)) {
+    const buffer = chunk as Buffer;
+    size += buffer.length;
+    hash.update(buffer);
+  }
+  return { size, sha256: hash.digest("hex") };
 }
 
 /**
@@ -229,14 +247,14 @@ export async function sendScanEvent(
   const deliveryFailed = delivery.some((d) => d.status === "failed");
   const fileDescriptors: WebhookFileDescriptor[] = [];
   for (const file of files) {
-    const buffer = await fs.readFile(file.path);
+    const { size, sha256 } = await fileDigest(file.path);
     const contentType = file.contentType ?? inferContentType(file.path);
     const remote = file.store === "s3" || file.store === "nextcloud";
     fileDescriptors.push({
       name: path.basename(file.path),
       ...(remote ? {} : { path: file.path }),
-      size: buffer.length,
-      sha256: sha256Hex(buffer),
+      size,
+      sha256,
       format: path.extname(file.path).replace(/^\./, ""),
       ...(contentType !== undefined ? { contentType } : {}),
       ...(file.store !== undefined ? { store: file.store } : {}),

@@ -63,10 +63,12 @@ All notable changes to this project are documented in this file.
   Nextcloud WebDAV URL) — including the sidecars a post-command writes beside
   the scan and the PDFs the paperless stage generates. Events are signed with HMAC-SHA256 (custom header supported) or
   authenticated with bearer/basic auth, sent with an `idempotency-key` header;
-  delivery is best-effort (a single POST, failures are logged). Configured
-  with the new `--webhook-*` CLI options, the matching `webhook_*` config file
-  keys or the `WEBHOOK_*` environment variables (Docker). The event contract
-  is described in `protocol_doc/webhook/openapi.yaml`.
+  delivery is best-effort (a single POST, failures are logged). A webhook is
+  a notification, not a delivery target: configured alone it never removes the
+  scan, retention stays governed by the delivery targets and `keep_files`.
+  Configured with the new `--webhook-*` CLI options, the matching `webhook_*`
+  config file keys or the `WEBHOOK_*` environment variables (Docker). The
+  event contract is described in `protocol_doc/webhook/openapi.yaml`.
 
 ### Changed
 

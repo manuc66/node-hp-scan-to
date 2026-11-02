@@ -108,9 +108,10 @@ There is a good chance it also works on other unlisted HP All-in-One Printers.
     `scan-delivery-failed` event types, per-page descriptors and delivery
     outcomes). Each delivered file carries `size`/`sha256` plus its location
     (`local` path, S3 `bucket`/`key` or Nextcloud WebDAV URL), sidecars and
-    generated PDFs included; the event is a metadata
-    notification, so with `--keep-files` disabled the local `path` may be
-    cleaned up after a successful delivery. OpenAPI contract:
+    generated PDFs included. The event is a metadata notification: a webhook
+    on its own never removes the scan (retention follows the delivery targets
+    and `keep_files`), and when the files are cleaned up the local `path` is
+    stale. OpenAPI contract:
     [`protocol_doc/webhook/openapi.yaml`](protocol_doc/webhook/openapi.yaml).
 
 ### Protocol Support

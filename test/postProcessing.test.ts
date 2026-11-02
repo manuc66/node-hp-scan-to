@@ -97,6 +97,31 @@ describe("postProcessing", () => {
     );
   });
 
+  it("keeps the scan on disk when the webhook is the only target", async () => {
+    // The webhook is configured (and, like getWebhookConfig, keeps files by
+    // default): cleanup must not remove the only copy of the scan.
+    scanConfig.webhookConfig = {
+      url: "http://webhook.example.test",
+      auth: "none",
+      authHeader: "x-webhook-signature",
+      keepFiles: true,
+    };
+
+    const result = await postProcessing(
+      scanConfig,
+      tempFolder,
+      tempFolder,
+      1,
+      scanJobContent,
+      new Date(),
+      false,
+    );
+
+    expect(result.uploadSucceeded).to.equal(true);
+    expect(existsSync(filePath)).to.equal(true);
+    scanConfig.webhookConfig = undefined;
+  });
+
   it("should process as PDF (no paperless, no nextcloud)", async () => {
     await postProcessing(
       scanConfig,
