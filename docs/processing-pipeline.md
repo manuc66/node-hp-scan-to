@@ -43,15 +43,23 @@ the next scan event or trip the printer's `userActionTimeout` /
 
 ## Durability
 
-Not in this version. The queue is in memory: if the process dies mid-job, the
-captured files stay on disk (cleanup only runs once delivery finished) and the
-delivery can be redone by hand. This is no worse than the previous synchronous
-behavior.
+Not in this version, and not planned. The queue is in memory: if the process
+dies mid-job, the captured files stay on disk (cleanup only runs once delivery
+finished) and the delivery can be redone by hand. This is no worse than the
+previous synchronous behavior.
 
-Durability (surviving a crash, resuming pending jobs at startup) is planned as
-a **conditional** feature: only relevant when a network delivery destination
-is configured (Paperless, Nextcloud, S3, webhook). No new Docker volume or
-constraint is required.
+The same holds for every destination: delivery is **best-effort**, with no
+retry and no persisted queue, whether the target is a local folder, Paperless,
+Nextcloud, S3 or the webhook. A failed delivery is logged and its files stay on
+disk; nothing is silently dropped. Keeping that uniform is deliberate — making
+one destination durable while the others are not would treat a notification as
+more important than the document itself.
+
+Webhook events carry an `idempotency-key`, so a consumer that receives the same
+event twice (a manual replay, a restarted sender) can deduplicate it. If you
+need guaranteed delivery, put a queue in front of the receiver — an automation
+platform (n8n, Node-RED) or a small relay — instead of expecting the scanner to
+keep delivery state.
 
 ## Testing
 
