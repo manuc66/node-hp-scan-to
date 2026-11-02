@@ -156,6 +156,32 @@ function webhookFileSourcesForPdf(
 }
 
 /**
+ * Builds one descriptor per extra file the scan produced — a PDF the paperless
+ * stage generated, a sidecar a hook wrote beside the scan — with the store
+ * location (S3/Nextcloud) when configured. The content type is inferred from
+ * the extension unless one is given.
+ *
+ * Only files that were actually delivered are described: a sidecar no target
+ * accepted stays on disk, and the event reports what a consumer can fetch.
+ */
+function webhookFileSourcesForExtraFiles(
+  filePaths: readonly string[],
+  contentType: string | undefined,
+  s3Config: S3Config | undefined,
+  nextcloudConfig: NextcloudConfig | undefined,
+): WebhookFileSource[] {
+  return filePaths.map((filePath) =>
+    buildWebhookFileSource(
+      contentType === undefined
+        ? { path: filePath }
+        : { path: filePath, contentType },
+      s3Config,
+      nextcloudConfig,
+    ),
+  );
+}
+
+/**
  * Reports the configured-but-skipped delivery targets after a failed PDF
  * generation, so the consumer can tell a "never attempted" target from a
  * failed one.
@@ -321,7 +347,17 @@ async function handlePdfPostProcessing(
   if (webhookConfig) {
     await notifyWebhook(
       scanJobContent,
-      webhookFileSourcesForPdf(pdfFilePath, s3Config, nextcloudConfig),
+      [
+        ...webhookFileSourcesForPdf(pdfFilePath, s3Config, nextcloudConfig),
+        // A sidecar is part of the scan: the consumer must be able to fetch
+        // it, not just the file it was written beside.
+        ...webhookFileSourcesForExtraFiles(
+          deliveredSidecars,
+          undefined,
+          s3Config,
+          nextcloudConfig,
+        ),
+      ],
       delivery,
       webhookConfig,
     );
@@ -560,7 +596,28 @@ async function handleImagePostProcessing(
   if (webhookConfig) {
     await notifyWebhook(
       scanJobContent,
-      webhookFileSourcesForImages(scanJobContent, s3Config, nextcloudConfig),
+      [
+        ...webhookFileSourcesForImages(
+          scanJobContent,
+          s3Config,
+          nextcloudConfig,
+        ),
+        // In the paperless PDF modes the delivered artifact is the generated
+        // PDF, not the pages: describe both, the pages are still uploaded to
+        // S3/Nextcloud.
+        ...webhookFileSourcesForExtraFiles(
+          generatedPdfPaths,
+          "application/pdf",
+          s3Config,
+          nextcloudConfig,
+        ),
+        ...webhookFileSourcesForExtraFiles(
+          deliveredSidecars,
+          undefined,
+          s3Config,
+          nextcloudConfig,
+        ),
+      ],
       delivery,
       webhookConfig,
     );

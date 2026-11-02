@@ -58,9 +58,10 @@ All notable changes to this project are documented in this file.
 - **Webhook notifications**: every completed scan POSTs a JSON event
   (`scan-completed`, or `scan-delivery-failed` when a delivery target failed)
   to a configurable URL, carrying the scan metadata, per-page descriptors, the
-  outcome of each delivery target and one descriptor per file (name, size,
-  SHA-256 and where to fetch it: local path, S3 `bucket`/`key` or Nextcloud
-  WebDAV URL). Events are signed with HMAC-SHA256 (custom header supported) or
+  outcome of each delivery target and one descriptor per delivered file
+  (name, size, SHA-256 and where to fetch it: local path, S3 `bucket`/`key` or
+  Nextcloud WebDAV URL) — including the sidecars a post-command writes beside
+  the scan and the PDFs the paperless stage generates. Events are signed with HMAC-SHA256 (custom header supported) or
   authenticated with bearer/basic auth, sent with an `idempotency-key` header;
   delivery is best-effort (a single POST, failures are logged). Configured
   with the new `--webhook-*` CLI options, the matching `webhook_*` config file
