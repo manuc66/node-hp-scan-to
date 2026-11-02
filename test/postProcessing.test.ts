@@ -294,6 +294,99 @@ describe("postProcessing", () => {
       }
     });
 
+    it("advertises the target that actually received the pdf, not the configured one", async () => {
+      // S3 is configured but rejects the upload, Nextcloud accepts it: the
+      // event must point at Nextcloud. Advertising the S3 key would hand the
+      // consumer a dead location, and no local path either (a stored file
+      // omits it).
+      scanConfig.nextcloudConfig = nextcloudConfig({ keepFiles: true });
+      scanConfig.s3Config = {
+        endpointUrl: "http://s3.example.test",
+        region: "eu-west-1",
+        bucket: "scans",
+        accessKeyId: "key",
+        secretAccessKey: "secret",
+        forcePathStyle: true,
+        keepFiles: true,
+      };
+      nock("http://s3.example.test")
+        .intercept(/\/scans\/.+\.pdf$/, "PUT")
+        .reply(500);
+      mockNextcloudFolderExists();
+      nock(nextcloudUrl)
+        .intercept(/\/remote\.php\/dav\/files\/scanner\/scan\/.+\.pdf$/, "PUT")
+        .reply(201);
+
+      scanJobContent.meta = {
+        command: "listen",
+        scanCount: 1,
+        device: { ip: "127.0.0.1", isEscl: false },
+        target: undefined,
+        settings: {
+          inputSource: InputSource.Adf,
+          contentType: "Document",
+          format: "pdf",
+          sourceFormat: "jpg",
+          mode: ScanMode.Color,
+          colorDepth: 8,
+          channels: 3,
+          resolution: 200,
+          isDuplex: false,
+          pageCountingStrategy: PageCountingStrategy.Normal,
+          paperSize: undefined,
+          paperDim: undefined,
+        },
+        startedAt: new Date().toISOString(),
+        instance: { id: "test", startedAt: new Date().toISOString() },
+      };
+
+      const bodies: Buffer[] = [];
+      const server = http.createServer((req, res) => {
+        const chunks: Buffer[] = [];
+        req.on("data", (c: Buffer) => chunks.push(c));
+        req.on("end", () => {
+          bodies.push(Buffer.concat(chunks));
+          res.writeHead(200);
+          res.end();
+        });
+      });
+      await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+      const port = (server.address() as AddressInfo).port;
+      scanConfig.webhookConfig = {
+        url: `http://127.0.0.1:${port}/scan`,
+        auth: "none",
+        authHeader: "x-webhook-signature",
+        keepFiles: true,
+      };
+      nock.enableNetConnect((host: string) => host.startsWith("127.0.0.1"));
+
+      try {
+        await postProcessing(
+          scanConfig,
+          tempFolder,
+          tempFolder,
+          1,
+          scanJobContent,
+          new Date(),
+          true,
+        );
+      } finally {
+        server.close();
+        scanConfig.webhookConfig = undefined;
+        scanConfig.s3Config = undefined;
+        scanConfig.nextcloudConfig = undefined;
+      }
+
+      expect(bodies).to.have.length(1);
+      const payload = JSON.parse(bodies[0].toString("utf8")) as {
+        files: { store?: string; path?: string; location?: unknown }[];
+      };
+      expect(payload.files).to.have.length(1);
+      expect(payload.files[0].store).to.equal("nextcloud");
+      expect(payload.files[0].path).to.equal(undefined);
+      expect(payload.files[0].location).to.not.equal(undefined);
+    });
+
     it("reports the failure and keeps the pdf when paperless rejects the upload", async () => {
       scanConfig.paperlessConfig = paperlessConfig();
       nock("http://paperless.example.test")

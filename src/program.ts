@@ -634,6 +634,22 @@ export function getS3Config(
     return s3Config;
 }
 
+/**
+ * Host of the webhook endpoint, for the startup log.
+ *
+ * The URL itself is never logged: with n8n, Make or Zapier the URL *is* the
+ * credential (the path carries the token), and a log line ends up in
+ * `docker logs`, in log shippers and in bug reports. Only the origin is kept,
+ * which also drops any userinfo.
+ */
+function webhookHostForLog(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return "(unparsable url)";
+  }
+}
+
 export function getWebhookConfig(
   options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   fileConfig: FileConfig,
@@ -717,7 +733,7 @@ export function getWebhookConfig(
   }
 
   logger.info(
-    `Webhook configuration provided, url: ${webhookUrl}, auth: ${auth}, authHeader: ${authHeader}, keepFiles: ${keepFiles}`,
+    `Webhook configuration provided, host: ${webhookHostForLog(webhookUrl)}, auth: ${auth}, authHeader: ${authHeader}, keepFiles: ${keepFiles}`,
   );
   const webhookConfig: WebhookConfig = {
     url: webhookUrl,

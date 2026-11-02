@@ -192,6 +192,9 @@ async function sendEventOnce(
     data: body,
     timeout: 10_000,
     maxRedirects: 0,
+    // A receiver that answers with an endless body must not be able to make
+    // the scanner buffer it: the response is never read, only its status.
+    maxContentLength: 1_000_000,
     validateStatus: () => true,
   });
   return response.status;

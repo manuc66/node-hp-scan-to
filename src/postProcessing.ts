@@ -88,8 +88,23 @@ async function recordDelivery(
   }
 }
 
+/**
+ * Which delivery targets actually received the scan.
+ *
+ * A descriptor must never advertise a store the file never reached: the
+ * consumer would get a dead location and, because `path` is omitted once a
+ * store is set, no way to fetch the file at all.
+ */
+interface DeliveredTargets {
+  s3: boolean;
+  nextcloud: boolean;
+}
+
+const NOT_DELIVERED: DeliveredTargets = { s3: false, nextcloud: false };
+
 function buildWebhookFileSource(
   file: { path: string; contentType?: string },
+  delivered: DeliveredTargets,
   s3Config: S3Config | undefined,
   nextcloudConfig: NextcloudConfig | undefined,
 ): WebhookFileSource {
@@ -97,10 +112,10 @@ function buildWebhookFileSource(
   if (file.contentType !== undefined) {
     source.contentType = file.contentType;
   }
-  if (s3Config) {
+  if (s3Config !== undefined && delivered.s3) {
     source.store = "s3";
     source.location = s3ObjectLocation(s3Config, path.basename(file.path));
-  } else if (nextcloudConfig) {
+  } else if (nextcloudConfig !== undefined && delivered.nextcloud) {
     source.store = "nextcloud";
     source.location = {
       webdavUrl: nextcloudWebdavFileUrl(
@@ -114,10 +129,11 @@ function buildWebhookFileSource(
 
 /**
  * Builds the per-file descriptors for a scanned image set: one descriptor per
- * delivered image, with the store location (S3/Nextcloud) when configured.
+ * image, with the store location of the target that actually received it.
  */
 function webhookFileSourcesForImages(
   scanJobContent: ScanContent,
+  delivered: DeliveredTargets,
   s3Config: S3Config | undefined,
   nextcloudConfig: NextcloudConfig | undefined,
 ): WebhookFileSource[] {
@@ -129,6 +145,7 @@ function webhookFileSourcesForImages(
           ? { contentType: element.contentType }
           : {}),
       },
+      delivered,
       s3Config,
       nextcloudConfig,
     ),
@@ -137,10 +154,11 @@ function webhookFileSourcesForImages(
 
 /**
  * Builds the single file descriptor for a generated PDF (when one exists),
- * with the store location (S3/Nextcloud) when configured.
+ * with the store location of the target that actually received it.
  */
 function webhookFileSourcesForPdf(
   pdfFilePath: string | null,
+  delivered: DeliveredTargets,
   s3Config: S3Config | undefined,
   nextcloudConfig: NextcloudConfig | undefined,
 ): WebhookFileSource[] {
@@ -149,6 +167,7 @@ function webhookFileSourcesForPdf(
     : [
         buildWebhookFileSource(
           { path: pdfFilePath, contentType: "application/pdf" },
+          delivered,
           s3Config,
           nextcloudConfig,
         ),
@@ -157,9 +176,8 @@ function webhookFileSourcesForPdf(
 
 /**
  * Builds one descriptor per extra file the scan produced — a PDF the paperless
- * stage generated, a sidecar a hook wrote beside the scan — with the store
- * location (S3/Nextcloud) when configured. The content type is inferred from
- * the extension unless one is given.
+ * stage generated, a sidecar a hook wrote beside the scan. The content type is
+ * inferred from the extension unless one is given.
  *
  * Only files that were actually delivered are described: a sidecar no target
  * accepted stays on disk, and the event reports what a consumer can fetch.
@@ -167,6 +185,7 @@ function webhookFileSourcesForPdf(
 function webhookFileSourcesForExtraFiles(
   filePaths: readonly string[],
   contentType: string | undefined,
+  delivered: DeliveredTargets,
   s3Config: S3Config | undefined,
   nextcloudConfig: NextcloudConfig | undefined,
 ): WebhookFileSource[] {
@@ -175,6 +194,7 @@ function webhookFileSourcesForExtraFiles(
       contentType === undefined
         ? { path: filePath }
         : { path: filePath, contentType },
+      delivered,
       s3Config,
       nextcloudConfig,
     ),
@@ -341,6 +361,10 @@ async function handlePdfPostProcessing(
     nextcloud: scanDeliveredToNextcloud,
     s3: scanDeliveredToS3,
   });
+  const delivered: DeliveredTargets = {
+    nextcloud: scanDeliveredToNextcloud,
+    s3: scanDeliveredToS3,
+  };
 
   // The event describes the files as they were delivered, so it is sent once
   // every target had its turn and before the cleanup removes anything.
@@ -348,12 +372,18 @@ async function handlePdfPostProcessing(
     await notifyWebhook(
       scanJobContent,
       [
-        ...webhookFileSourcesForPdf(pdfFilePath, s3Config, nextcloudConfig),
+        ...webhookFileSourcesForPdf(
+          pdfFilePath,
+          delivered,
+          s3Config,
+          nextcloudConfig,
+        ),
         // A sidecar is part of the scan: the consumer must be able to fetch
         // it, not just the file it was written beside.
         ...webhookFileSourcesForExtraFiles(
           deliveredSidecars,
           undefined,
+          delivered,
           s3Config,
           nextcloudConfig,
         ),
@@ -590,6 +620,10 @@ async function handleImagePostProcessing(
     nextcloud: scanDeliveredToNextcloud,
     s3: scanDeliveredToS3,
   });
+  const delivered: DeliveredTargets = {
+    nextcloud: scanDeliveredToNextcloud,
+    s3: scanDeliveredToS3,
+  };
 
   // The event describes the files as they were delivered, so it is sent once
   // every target had its turn and before the cleanup removes anything.
@@ -599,21 +633,25 @@ async function handleImagePostProcessing(
       [
         ...webhookFileSourcesForImages(
           scanJobContent,
+          delivered,
           s3Config,
           nextcloudConfig,
         ),
         // In the paperless PDF modes the delivered artifact is the generated
         // PDF, not the pages: describe both, the pages are still uploaded to
-        // S3/Nextcloud.
+        // S3/Nextcloud. Those PDFs only ever go to Paperless, so they carry no
+        // S3/Nextcloud location.
         ...webhookFileSourcesForExtraFiles(
           generatedPdfPaths,
           "application/pdf",
+          NOT_DELIVERED,
           s3Config,
           nextcloudConfig,
         ),
         ...webhookFileSourcesForExtraFiles(
           deliveredSidecars,
           undefined,
+          delivered,
           s3Config,
           nextcloudConfig,
         ),
