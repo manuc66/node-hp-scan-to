@@ -83,6 +83,21 @@ if [ -n "$KEEP_FILES" ]; then
     ARGS+=("-k")
 fi
 
+# Post-processing commands run over the generated files before delivery. Each
+# value is handed to the application as a single argument: it is the command
+# line itself, split (and unquoted) by the application, never by this shell.
+if [ -n "$POST_COMMAND_PDF" ]; then
+    ARGS+=("--post-command-pdf" "$POST_COMMAND_PDF")
+fi
+
+if [ -n "$POST_COMMAND_IMAGE" ]; then
+    ARGS+=("--post-command-image" "$POST_COMMAND_IMAGE")
+fi
+
+# POST_COMMAND_TIMEOUT is deliberately not mapped to a flag: the application
+# reads it directly as the fallback default, which keeps the documented
+# precedence (flag, then config file, then environment) intact.
+
 if [ -n "$NEXTCLOUD_URL" ]; then
     ARGS+=("--nextcloud-url" "$NEXTCLOUD_URL")
 fi

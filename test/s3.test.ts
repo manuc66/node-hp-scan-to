@@ -272,7 +272,8 @@ describe("s3", () => {
       nock("https://s3.example.test")
         .matchHeader(
           "x-amz-security-token",
-          (value) => value === undefined,
+          // nock 15 exposes missing headers as null (nock 14 used undefined).
+          (value) => value === undefined || value === null,
         )
         .put("/scans/2026/08/s3_sample.jpg", Buffer.from("fake-jpg-content"))
         .reply(200);

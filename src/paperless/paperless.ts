@@ -6,6 +6,7 @@ import fs from "node:fs/promises";
 import { convertToPdf, mergeToPdf } from "../pdfProcessing.js";
 import type { PaperlessConfig } from "./PaperlessConfig.js";
 import type { ScanConfig } from "../type/scanConfigs.js";
+import type { PostCommand } from "../postCommand.js";
 import { getLoggerForFile } from "../logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -24,14 +25,22 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
   scanJobContent: ScanContent,
   paperlessConfig: PaperlessConfig,
   scanDate?: Date,
-) {
+  postCommandPdf?: PostCommand,
+  postCommandTimeout?: number,
+): Promise<string[]> {
+  // Returns the paths of the PDFs that were generated: the caller needs them
+  // to recognise the sidecars a post-command wrote beside each one.
+  const generatedPdfPaths: string[] = [];
   for (const item of scanJobContent.elements) {
     const pdfFilePath = await convertToPdf(
       item,
       !paperlessConfig.keepFiles,
       scanDate,
+      postCommandPdf,
+      postCommandTimeout,
     );
     if (pdfFilePath !== null) {
+      generatedPdfPaths.push(pdfFilePath);
       await uploadToPaperless(pdfFilePath, paperlessConfig);
       await fs.unlink(pdfFilePath);
     } else {
@@ -40,6 +49,7 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
       );
     }
   }
+  return generatedPdfPaths;
 }
 
 export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
@@ -49,7 +59,7 @@ export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
   scanConfig: ScanConfig,
   scanDate: Date,
   paperlessConfig: PaperlessConfig,
-) {
+): Promise<string | null> {
   const pdfFilePath = await mergeToPdf(
     folder,
     scanCount,
@@ -57,6 +67,8 @@ export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
     scanConfig.directoryConfig.filePattern,
     scanDate,
     !paperlessConfig.keepFiles,
+    scanConfig.postCommandPdf,
+    scanConfig.postCommandTimeout,
   );
   if (pdfFilePath !== null) {
     await uploadToPaperless(pdfFilePath, paperlessConfig);
@@ -69,6 +81,9 @@ export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
       "Pdf generation has failed, nothing is going to be uploaded to paperless",
     );
   }
+  // The path is returned even though the file was removed: it still names the
+  // sidecar a post-command may have written beside it.
+  return pdfFilePath;
 }
 
 export async function uploadPdfToPaperless(

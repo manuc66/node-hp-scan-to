@@ -209,9 +209,9 @@ async function buildPageDescriptors(
 }
 
 /**
- * Builds the scan event, persists it in the outbox (write-ahead) and tries to
- * deliver it immediately. On failure the entry stays pending and is retried by
- * a later flushOutbox call.
+ * Builds the scan event and delivers it once, best-effort: a failure is
+ * reported to the caller and nothing is kept for a later retry (the durable
+ * outbox is a separate, opt-in feature).
  */
 export async function sendScanEvent(
   scanContent: ScanContent,

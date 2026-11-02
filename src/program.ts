@@ -36,6 +36,11 @@ import type { Server as NetServer } from "node:net";
 import { ScanMode } from "./type/scanMode.js";
 import { DuplexAssemblyMode } from "./type/DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./type/scanFormat.js";
+import { validateFilePatternForPlatform } from "./fileNameValidation.js";
+import {
+  parsePostCommandTimeoutArg,
+  postCommandArgParser,
+} from "./postCommand.js";
 import { getLoggerForFile, setDebugLevel } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -76,7 +81,7 @@ function setupScanParameters(commandName: string) {
     .addOption(
       new Option(
         "-p, --pattern <pattern>",
-        'Pattern for filename (i.e. "scan"_dd.mm.yyyy_hh:MM:ss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes',
+        'Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows',
       ).helpGroup(HelpGroupsHeadings.ouput),
     )
     .addOption(
@@ -210,6 +215,30 @@ function setupScanParameters(commandName: string) {
     )
     .addOption(
       new Option(
+        "--post-command-pdf <command>",
+        "Command run on every generated PDF, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).",
+      )
+        .argParser(postCommandArgParser("--post-command-pdf"))
+        .helpGroup(HelpGroupsHeadings.ouput),
+    )
+    .addOption(
+      new Option(
+        "--post-command-image <command>",
+        "Command run on every delivered image page, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it).",
+      )
+        .argParser(postCommandArgParser("--post-command-image"))
+        .helpGroup(HelpGroupsHeadings.ouput),
+    )
+    .addOption(
+      new Option(
+        "--post-command-timeout <milliseconds>",
+        "Timeout in milliseconds for the post-command hooks before they are killed (default: 300000)",
+      )
+        .argParser(parsePostCommandTimeoutArg)
+        .helpGroup(HelpGroupsHeadings.ouput),
+    )
+    .addOption(
+      new Option(
         "--nextcloud-url <nextcloud_url>",
         "The nextcloud url (example: https://domain.tld)",
       ).helpGroup(HelpGroupsHeadings.nextcloud),
@@ -295,7 +324,7 @@ function setupScanParameters(commandName: string) {
     .addOption(
       new Option(
         "--webhook-url <webhook_url>",
-        "The webhook url to POST scan events to (JSON, idempotency-key header, outbox retries)",
+        "The webhook url to POST scan events to (JSON with an idempotency-key header, best-effort delivery)",
       ).helpGroup(HelpGroupsHeadings.webhook),
     )
     .addOption(
@@ -518,7 +547,7 @@ export function getS3Config(
     fileConfig.s3_secret_access_key_file,
   );
 
-const s3Attempted =
+  const s3Attempted =
     configS3Url !== undefined ||
     configS3Bucket !== undefined ||
     configS3AccessKeyId !== undefined ||
@@ -534,7 +563,7 @@ const s3Attempted =
     configS3Bucket !== undefined &&
     configS3AccessKeyId !== undefined &&
     (configS3SecretAccessKey !== undefined ||
-configS3SecretAccessKeyFile !== undefined);
+      configS3SecretAccessKeyFile !== undefined);
   if (!s3Complete) {
     const missing: string[] = [];
     if (configS3Url === undefined) {
@@ -599,7 +628,7 @@ configS3SecretAccessKeyFile !== undefined);
       forcePathStyle,
       keepFiles,
     };
-if (sessionToken !== undefined && sessionToken.trim() !== "") {
+    if (sessionToken !== undefined && sessionToken.trim() !== "") {
       s3Config.sessionToken = sessionToken;
     }
     return s3Config;
@@ -757,7 +786,7 @@ function getHealthCheckSetting(options: ProgramOption, configFile: FileConfig) {
   };
 }
 
-function getScanConfiguration(
+export function getScanConfiguration(
   options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
   fileConfig: FileConfig,
 ) {
@@ -769,6 +798,12 @@ function getScanConfiguration(
     ),
     filePattern: getOptConfiguredValue(options.pattern, fileConfig.pattern),
   };
+
+  if (directoryConfig.filePattern !== undefined) {
+    // Fail early: a pattern producing an invalid file name would otherwise
+    // crash at scan time.
+    validateFilePatternForPlatform(directoryConfig.filePattern);
+  }
 
   const paperlessConfig = getPaperlessConfig(options, fileConfig);
   const nextcloudConfig = getNextcloudConfig(options, fileConfig);
@@ -852,6 +887,19 @@ function getScanConfiguration(
     ScanFormat.Jpeg,
   );
 
+  const postCommandImage = getOptConfiguredValue(
+    options.postCommandImage,
+    fileConfig.post_command_image,
+  );
+  const postCommandPdf = getOptConfiguredValue(
+    options.postCommandPdf,
+    fileConfig.post_command_pdf,
+  );
+  const postCommandTimeout = getOptConfiguredValue(
+    options.postCommandTimeout,
+    fileConfig.post_command_timeout,
+  );
+
   const scanConfig: ScanConfig = {
     resolution,
     mode,
@@ -867,6 +915,9 @@ function getScanConfiguration(
     s3Config,
     webhookConfig,
     preferEscl,
+    ...(postCommandImage !== undefined && { postCommandImage }),
+    ...(postCommandPdf !== undefined && { postCommandPdf }),
+    ...(postCommandTimeout !== undefined && { postCommandTimeout }),
   };
   return scanConfig;
 }
@@ -964,7 +1015,6 @@ function createListenCliCmd(configFile: FileConfig) {
 
       const scanConfig = getScanConfiguration(options, configFile);
 
-
       await listenCmd(
         api,
         registrationConfigs,
@@ -1030,7 +1080,6 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
       }
 
       const scanConfig = getScanConfiguration(options, fileConfig);
-
 
       const adfScanConfig: AdfAutoScanConfig = {
         ...scanConfig,
@@ -1104,7 +1153,6 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
       );
 
       const scanConfig = getScanConfiguration(options, fileConfig);
-
 
       const singleScanConfig: SingleScanConfig = {
         ...scanConfig,

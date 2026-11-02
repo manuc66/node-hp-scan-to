@@ -22,7 +22,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 12.4.2
+          version: 12.14.0
 
       - uses: actions/setup-node@v7
         with:
@@ -53,7 +53,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 12.4.2
+          version: 12.14.0
 
       - uses: actions/setup-node@v7
         with:
@@ -62,7 +62,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: '1.4.2'
+          bun-version: '1.4.3'
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
@@ -282,7 +282,7 @@ jobs:
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
 
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0.24.2
+        uses: anchore/sbom-action@v0.24.3
         with:
           path: .
           format: cyclonedx-json
