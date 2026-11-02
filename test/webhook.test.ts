@@ -105,6 +105,7 @@ describe("webhook", () => {
       url: "http://127.0.0.1:1",
       auth: "none",
       authHeader: "x-webhook-signature",
+      payload: "full",
       keepFiles: false,
     };
     scanContent = { elements: [], meta: buildMetadata() };
@@ -399,6 +400,44 @@ describe("webhook", () => {
       const payload = JSON.parse(srv.requests[0].body.toString("utf8")) as {
         files: { path?: string }[];
       };
+      expect(payload.files[0].path).to.equal(filePath);
+    });
+
+    it("drops the identifiers and the local path in the minimal payload profile", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+      config.payload = "minimal";
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+
+      const payload = JSON.parse(srv.requests[0].body.toString("utf8")) as {
+        metadata: Record<string, unknown>;
+        pages: unknown[];
+        files: { name: string; path?: string }[];
+      };
+      expect(payload.metadata).to.not.have.property("device");
+      expect(payload.metadata).to.not.have.property("target");
+      // What is needed to file the document stays: the consumer loses the
+      // machine identity, not the scan semantics.
+      expect(payload.metadata).to.have.property("settings");
+      expect(payload.metadata).to.have.property("instance");
+      expect(payload.pages).to.have.lengthOf(0);
+      expect(payload.files[0].name).to.equal("scan.pdf");
+      expect(payload.files[0]).to.not.have.property("path");
+    });
+
+    it("keeps the identifiers in the full payload profile", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+      config.payload = "full";
+
+      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+
+      const payload = JSON.parse(srv.requests[0].body.toString("utf8")) as {
+        metadata: { device: { ip: string } };
+        files: { path?: string }[];
+      };
+      expect(payload.metadata.device.ip).to.equal("127.0.0.1");
       expect(payload.files[0].path).to.equal(filePath);
     });
 

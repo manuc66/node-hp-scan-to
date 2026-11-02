@@ -134,6 +134,24 @@ describe("webhook config resolution", () => {
     ).to.equal("none");
   });
 
+  it("defaults to the full payload profile", () => {
+    const config = getWebhookConfig(buildOptions(url), {});
+    expect(config?.payload).to.equal("full");
+  });
+
+  it("accepts the minimal payload profile from the CLI or the config file", () => {
+    const fromCli = getWebhookConfig(
+      buildOptions({ ...url, webhookPayload: "minimal" }),
+      {},
+    );
+    expect(fromCli?.payload).to.equal("minimal");
+
+    const fromFile = getWebhookConfig(buildOptions(url), {
+      webhook_payload: "minimal",
+    });
+    expect(fromFile?.payload).to.equal("minimal");
+  });
+
   it("keeps the scanned files by default when only a webhook is configured", () => {
     // A webhook is a notification: on its own it must not turn retention off,
     // otherwise the only copy of the scan is deleted right after the event

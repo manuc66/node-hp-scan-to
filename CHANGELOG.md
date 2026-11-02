@@ -66,6 +66,10 @@ All notable changes to this project are documented in this file.
   delivery is best-effort (a single POST, failures are logged). A webhook is
   a notification, not a delivery target: configured alone it never removes the
   scan, retention stays governed by the delivery targets and `keep_files`.
+  Two payload profiles: `full` (default, with the scanner IP, the printer
+  destination label and the local file paths) and `minimal` (none of those, so
+  the event can go to a receiver outside the local network), selected with
+  `--webhook-payload` / `webhook_payload` / `WEBHOOK_PAYLOAD`.
   Configured with the new `--webhook-*` CLI options, the matching `webhook_*`
   config file keys or the `WEBHOOK_*` environment variables (Docker). The
   event contract is described in `protocol_doc/webhook/openapi.yaml`.

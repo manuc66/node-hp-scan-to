@@ -180,6 +180,10 @@ if [ -n "$WEBHOOK_PASSWORD" ]; then
     ARGS+=("--webhook-password" "$WEBHOOK_PASSWORD")
 fi
 
+if [ -n "$WEBHOOK_PAYLOAD" ]; then
+    ARGS+=("--webhook-payload" "$WEBHOOK_PAYLOAD")
+fi
+
 if [ -n "$CMDLINE" ]; then
     # Split CMDLINE into words and add to ARGS
     set -- $CMDLINE

@@ -14,7 +14,11 @@ import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import type { S3Config } from "./s3/S3Config.js";
 import { assertWebhookAuthCredentials } from "./webhook/WebhookConfig.js";
-import type { WebhookConfig, WebhookAuthType } from "./webhook/WebhookConfig.js";
+import type {
+  WebhookAuthType,
+  WebhookConfig,
+  WebhookPayload,
+} from "./webhook/WebhookConfig.js";
 import { startHealthCheckServer } from "./healthcheck.js";
 import fs from "node:fs";
 import { Command, Option } from "@commander-js/extra-typings";
@@ -370,6 +374,14 @@ function setupScanParameters(commandName: string) {
         "--webhook-password <webhook_password>",
         "Basic auth password for webhook-username",
       ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-payload <webhook_payload>",
+        "What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path)",
+      )
+        .choices(["full", "minimal"])
+        .helpGroup(HelpGroupsHeadings.webhook),
     );
 }
 
@@ -672,6 +684,11 @@ export function getWebhookConfig(
     fileConfig.keep_files,
     true,
   );
+  const payload: WebhookPayload = getConfiguredValue(
+    options.webhookPayload,
+    fileConfig.webhook_payload,
+    "full",
+  );
   const authHeader = getConfiguredValue(
     options.webhookAuthHeader,
     fileConfig.webhook_auth_header,
@@ -740,6 +757,7 @@ export function getWebhookConfig(
     auth,
     authHeader,
     keepFiles,
+    payload,
   };
   if (secret !== undefined) {
     webhookConfig.secret = secret;

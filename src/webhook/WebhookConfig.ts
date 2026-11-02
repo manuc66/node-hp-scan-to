@@ -1,5 +1,16 @@
 export type WebhookAuthType = "none" | "hmac" | "bearer" | "basic";
 
+/**
+ * What the event carries.
+ *
+ * `full` describes the scan completely, including the scanner IP, the
+ * printer's destination label and the local file paths. `minimal` drops those
+ * identifiers and never exposes a filesystem path, for a receiver outside the
+ * network the scanner runs on; what is needed to file the document (settings,
+ * page and file descriptors, delivery outcomes) is kept.
+ */
+export type WebhookPayload = "full" | "minimal";
+
 export interface WebhookConfig {
   /** URL to POST scan events to (n8n/Zapier webhook). */
   url: string;
@@ -16,6 +27,8 @@ export interface WebhookConfig {
   /** Basic auth password. */
   password?: string;
   keepFiles: boolean;
+  /** Payload profile: `full` (default) or `minimal`, see {@link WebhookPayload}. */
+  payload: WebhookPayload;
 }
 
 /**

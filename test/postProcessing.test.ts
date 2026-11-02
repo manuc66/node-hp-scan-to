@@ -104,6 +104,7 @@ describe("postProcessing", () => {
       url: "http://webhook.example.test",
       auth: "none",
       authHeader: "x-webhook-signature",
+      payload: "full",
       keepFiles: true,
     };
 
@@ -232,6 +233,7 @@ describe("postProcessing", () => {
         url: `http://127.0.0.1:${port}/scan`,
         auth: "none",
         authHeader: "x-webhook-signature",
+        payload: "full",
         keepFiles: false,
       };
 
@@ -356,6 +358,7 @@ describe("postProcessing", () => {
         url: `http://127.0.0.1:${port}/scan`,
         auth: "none",
         authHeader: "x-webhook-signature",
+        payload: "full",
         keepFiles: true,
       };
       nock.enableNetConnect((host: string) => host.startsWith("127.0.0.1"));
@@ -492,6 +495,7 @@ describe("postProcessing", () => {
         url: "http://webhook.example.test",
         auth: "none",
         authHeader: "x-webhook-signature",
+        payload: "full",
         keepFiles: false,
       };
 

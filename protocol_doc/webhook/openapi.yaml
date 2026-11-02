@@ -8,9 +8,25 @@ info:
 
     This document describes the request the consumer will receive: the exact
     endpoint path is whatever the integrator configured (the example
-    `/webhook/scan` is only illustrative). Retry semantics are governed by the
-    outbox: `2xx` acknowledges and removes the event, transient `408/429/5xx`
-    are retried with backoff, permanent `4xx` dead-letter the event.
+    `/webhook/scan` is only illustrative).
+
+    Delivery is **best-effort**: one POST per event, with a 10 second timeout.
+    Any `2xx` acknowledges the event; anything else (including a `3xx`, which
+    is never followed) is logged and the event is not retried. Nothing is
+    persisted, so a consumer that needs guaranteed delivery should put a queue
+    in front of its endpoint.
+
+    The payload has two profiles, selected with `--webhook-payload`:
+
+    - `full` (default): everything below.
+    - `minimal`: `metadata.device` and `metadata.target` are absent, and
+      `files[].path` is never sent — no scanner IP, no printer destination
+      label, no filesystem path. Settings, page and file descriptors and
+      delivery outcomes are unchanged, so the consumer can still file the
+      document.
+
+    Every event carries an `idempotency-key` header (the event `id`), so a
+    consumer can deduplicate a replay.
   version: 1.0.0
   contact:
     name: node-hp-scan-to
@@ -122,7 +138,7 @@ components:
           description: Outcome of every upload attempt of this scan.
     ScanMetadata:
       type: object
-      required: [command, scanCount, device, settings, startedAt, instance]
+      required: [command, scanCount, settings, startedAt, instance]
       properties:
         command:
           type: string
@@ -132,12 +148,14 @@ components:
           minimum: 0
           description: Zero-based scan counter for the run.
         device:
-          $ref: '#/components/schemas/ScanDeviceInfo'
+          allOf:
+            - $ref: '#/components/schemas/ScanDeviceInfo'
+          description: Absent in the `minimal` payload profile.
         target:
           nullable: true
           allOf:
             - $ref: '#/components/schemas/ScanTargetInfo'
-          description: Selected walkup-scan target, absent for single-scan.
+          description: Selected walkup-scan target, absent for single-scan and in the `minimal` payload profile.
         settings:
           $ref: '#/components/schemas/ScanSettingsInfo'
         startedAt:
@@ -291,7 +309,8 @@ components:
           description: |
             Local path, only present when the file is stored locally. May be
             cleaned up after successful delivery (unless `--keep-files` is
-            set); never exposed for remote stores.
+            set); never exposed for remote stores, and never sent at all in the
+            `minimal` payload profile.
         size:
           type: integer
           description: File size in bytes at event creation.

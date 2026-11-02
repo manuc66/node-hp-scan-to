@@ -143,6 +143,9 @@ export const configSchema = z
     webhook_token: z.string().optional(), // Bearer token
     webhook_username: z.string().optional(), // Basic auth username
     webhook_password: z.string().optional(), // Basic auth password
+    webhook_payload: z
+      .enum(["full", "minimal"])
+      .optional(), // Event profile: full (identifiers) or minimal (no identifiers)
 
     ///
     /// Common to external destination (paperless & nextcloud)

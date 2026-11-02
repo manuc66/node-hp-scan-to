@@ -111,7 +111,9 @@ There is a good chance it also works on other unlisted HP All-in-One Printers.
     generated PDFs included. The event is a metadata notification: a webhook
     on its own never removes the scan (retention follows the delivery targets
     and `keep_files`), and when the files are cleaned up the local `path` is
-    stale. OpenAPI contract:
+    stale. `--webhook-payload minimal` drops the identifiers (scanner IP,
+    destination label) and every local path, for a receiver outside your
+    network. OpenAPI contract:
     [`protocol_doc/webhook/openapi.yaml`](protocol_doc/webhook/openapi.yaml).
 
 ### Protocol Support
@@ -369,6 +371,7 @@ Summary of the options shared across commands. Each command's own `--help` outpu
 | `--webhook-secret-file`               | File containing the HMAC signing secret. Required unless `--webhook-secret` is used. Takes precedence if both are provided.                                                                                                      | `--webhook-secret-file /path/to/file` (no default)                 |
 | `--webhook-token`                     | Bearer token sent as `Authorization: Bearer <token>`.                                                                                                                                                                            | `--webhook-token tok...` (no default)                              |
 | `--webhook-username` / `--webhook-password` | Basic auth credentials sent as `Authorization: Basic`.                                                                                                                                                                     | `--webhook-username scanner --webhook-password ...` (no default)   |
+| `--webhook-payload`                   | Event profile: `full` (default) or `minimal`. `minimal` drops the scanner IP, the printer destination label and every local file path.                                                                                     | `--webhook-payload minimal` (default: `full`)                       |
 
 **Notes:**
 
@@ -448,6 +451,7 @@ Webhook Options:
   --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
   --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
+  --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
 
 Device Control Screen Options:
   -l, --label <label>                                              The label to display on the device (the default is the hostname)
@@ -562,6 +566,7 @@ Webhook Options:
   --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
   --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
+  --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
 
 Auto-scan Options:
   --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
@@ -684,6 +689,7 @@ Webhook Options:
   --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
   --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
+  --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
 
 Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
@@ -910,7 +916,7 @@ You could however use Docker's [macvlan](https://docs.docker.com/engine/network/
 
 All scanned files are written to the volume `/scan`, the filename can be changed with the `PATTERN` environment variable. For the correct permissions to the volume set the environment variables `PUID` and `PGID` to that of the user running the container (usually `PUID=1000` and `PGID=1000`).
 
-When `WEBHOOK_URL` is set, scan events are sent best-effort: a single POST per event, and failures are logged.
+When `WEBHOOK_URL` is set, scan events are sent best-effort: a single POST per event, and failures are logged. Set `WEBHOOK_PAYLOAD=minimal` when the receiver is not on your network: the event then carries no scanner IP, no printer destination label and no local file path.
 
 #### Docker Environment Variables
 
@@ -961,6 +967,7 @@ List of supported environment variables and their meaning, or correspondence wit
 | `WEBHOOK_TOKEN`               | Bearer token sent as `Authorization: Bearer`                                                                  | `--webhook-token`                                                             |
 | `WEBHOOK_USERNAME`            | Basic auth username sent as `Authorization: Basic`                                                            | `--webhook-username`                                                          |
 | `WEBHOOK_PASSWORD`            | Basic auth password for `WEBHOOK_USERNAME`                                                                    | `--webhook-password`                                                          |
+| `WEBHOOK_PAYLOAD`             | Event profile: `full` (default) or `minimal` (no scanner IP, destination label or local path)                 | `--webhook-payload`                                                           |
 
 **Additional Notes:**
 

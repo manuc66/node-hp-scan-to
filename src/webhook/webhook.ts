@@ -4,7 +4,11 @@ import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { ScanContent } from "../type/ScanContent.js";
-import type { ScanMetadata } from "../type/ScanMetadata.js";
+import type {
+  ScanDeviceInfo,
+  ScanMetadata,
+  ScanTargetInfo,
+} from "../type/ScanMetadata.js";
 import type { WebhookConfig } from "./WebhookConfig.js";
 import { assertWebhookAuthCredentials } from "./WebhookConfig.js";
 import { getLoggerForFile } from "../logger.js";
@@ -54,12 +58,22 @@ export interface WebhookEvent {
   id: string;
   type: string;
   time: string;
-  metadata: ScanMetadata;
+  metadata: WebhookEventMetadata;
   pages: WebhookPageDescriptor[];
   files: WebhookFileDescriptor[];
   /** Outcome of every delivery attempt (paperless/nextcloud/s3/pdf...). */
   delivery: WebhookDeliveryTarget[];
 }
+
+/**
+ * Event metadata. `device` and `target` are absent in the `minimal` payload
+ * profile, which is why they are optional here while the scan metadata itself
+ * always carries them.
+ */
+export type WebhookEventMetadata = Omit<ScanMetadata, "device" | "target"> & {
+  device?: ScanDeviceInfo;
+  target?: ScanTargetInfo | undefined;
+};
 
 export interface WebhookPageDescriptor {
   /** 1-based page position in the scan (interleaved for emulated duplex). */
@@ -281,5 +295,30 @@ export async function sendScanEvent(
     files: fileDescriptors,
   };
 
-  await deliverBestEffort(webhookConfig, events);
+  await deliverBestEffort(
+    webhookConfig,
+    webhookConfig.payload === "minimal" ? withoutIdentifiers(events) : events,
+  );
+}
+
+/**
+ * The event as sent in the `minimal` payload profile: the fields that describe
+ * the host (scanner IP, printer destination label) and the local filesystem
+ * are dropped. Everything needed to file the document — settings, page and
+ * file descriptors, delivery outcomes — is kept, so the consumer loses no
+ * ability to act on the scan, only to identify the machine that produced it.
+ */
+function withoutIdentifiers(event: WebhookEvent): WebhookEvent {
+  const metadata: WebhookEventMetadata = { ...event.metadata };
+  delete metadata.device;
+  delete metadata.target;
+  return {
+    ...event,
+    metadata,
+    files: event.files.map((file) => {
+      const descriptor = { ...file };
+      delete descriptor.path;
+      return descriptor;
+    }),
+  };
 }

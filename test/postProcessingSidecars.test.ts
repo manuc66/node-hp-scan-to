@@ -375,6 +375,7 @@ describe("postProcessing - sidecar delivery", () => {
       url: `http://127.0.0.1:${port}/scan`,
       auth: "none",
       authHeader: "x-webhook-signature",
+      payload: "full",
       keepFiles: true,
     };
     nock.enableNetConnect((host: string) => host.startsWith("127.0.0.1"));
