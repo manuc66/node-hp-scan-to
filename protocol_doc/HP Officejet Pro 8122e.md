@@ -17,7 +17,7 @@
 
 # Protocol
 
-Walkup Scan (Scan to Computer) protocol traces captured for **HP OfficeJet Pro 8120e Series (HP OfficeJet Pro 8122e)** over HTTPS (`:443`) using eSCL (Apple AirScan / Mopria standard).
+Walkup Scan (Scan to Computer) protocol traces captured for **HP OfficeJet Pro 8120e Series (HP OfficeJet Pro 8122e)** over HTTPS (`:443`) using eSCL (Windows HP Scan to Computer).
 
 ## Recorded Sequence
 
@@ -42,7 +42,7 @@ Connection: Keep-Alive
 
 <?xml version="1.0" encoding="UTF-8"?>
 <WalkupScanSubscription xmlns="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.hp.com/imaging/escl/2011/05/03 eSCL.xsd">
-	<HostIdentifier>Sepid-Laptop (DESKTOP-GT6IN7I)</HostIdentifier>
+	<HostIdentifier>Mobin-Laptop (DESKTOP-GT6IN7I)</HostIdentifier>
 	<Connection>Network</Connection>
 	<Shortcuts>
 		<Shortcut>Save as PDF</Shortcut>
@@ -61,7 +61,7 @@ Connection: Keep-Alive
 HTTP/1.1 201 Created
 Server: nginx
 Date: Mon, 02 Nov 2026 17:13:13 GMT
-Location: /eSCL/WalkupSubscriptions/108b7a10-43ef-44b0-97ab-ea2f1274de50
+Location: /eSCL/WalkupSubscriptions/108b7a10-43ef-44b0-97ab-ea2f1274de50        # Here you can see the unique subscription ID returned by the printer
 Strict-Transport-Security: max-age=31536000; includeSubDomains
 Cache-Control: no-store, max-age=0
 Content-Length: 0
@@ -107,7 +107,7 @@ Cache-Control: no-store, max-age=0
 <?xml version="1.0"?>
 <scan:WalkupScanEvent xmlns:dest="http://schemas.hp.com/imaging/httpdestination/2011/10/13" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm" xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<scan:ResourceURI>/eSCL/WalkupSubscriptions/108b7a10-43ef-44b0-97ab-ea2f1274de50</scan:ResourceURI>
-	<scan:HostIdentifier>Sepid-Laptop (DESKTOP-GT6IN7I)</scan:HostIdentifier>
+	<scan:HostIdentifier>Mobin-Laptop (DESKTOP-GT6IN7I)</scan:HostIdentifier>
 	<scan:Connection>Network</scan:Connection>
 	<scan:Event>HostSelected</scan:Event>
 </scan:WalkupScanEvent>
@@ -127,15 +127,15 @@ Cache-Control: no-store, max-age=0
 <?xml version="1.0"?>
 <scan:WalkupScanEvent xmlns:dest="http://schemas.hp.com/imaging/httpdestination/2011/10/13" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm" xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<scan:ResourceURI>/eSCL/WalkupSubscriptions/108b7a10-43ef-44b0-97ab-ea2f1274de50</scan:ResourceURI>
-	<scan:HostIdentifier>Sepid-Laptop (DESKTOP-GT6IN7I)</scan:HostIdentifier>
+	<scan:HostIdentifier>Mobin-Laptop (DESKTOP-GT6IN7I)</scan:HostIdentifier>
 	<scan:Connection>Network</scan:Connection>
 	<scan:Event>ScanRequested</scan:Event>
-	<scan:Shortcut>paperless duplex</scan:Shortcut>
+	<scan:Shortcut>Paperless</scan:Shortcut>
 	<scan:ScanSettings>
 		<pwg:Version>2.4</pwg:Version>
-		<scan:XResolution>300</scan:XResolution>
+		<scan:XResolution>300</scan:XResolution>                # user can change the resolution on the touchscreen panel, but I did not test that feature
 		<scan:YResolution>300</scan:YResolution>
-		<scan:Duplex>false</scan:Duplex>
+		<scan:Duplex>false</scan:Duplex>                        # This printer does not support duplex scanning so I could not test that feature
 		<scan:Brightness>4</scan:Brightness>
 		<scan:ContentOrientation>Portrait</scan:ContentOrientation>
 	</scan:ScanSettings>
@@ -156,7 +156,7 @@ Cache-Control: no-store, max-age=0
 <?xml version="1.0"?>
 <scan:WalkupScanEvent xmlns:dest="http://schemas.hp.com/imaging/httpdestination/2011/10/13" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm" xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<scan:ResourceURI>/eSCL/WalkupSubscriptions/108b7a10-43ef-44b0-97ab-ea2f1274de50</scan:ResourceURI>
-	<scan:HostIdentifier>Sepid-Laptop (DESKTOP-GT6IN7I)</scan:HostIdentifier>
+	<scan:HostIdentifier>Mobin-Laptop (DESKTOP-GT6IN7I)</scan:HostIdentifier>
 	<scan:Connection>Network</scan:Connection>
 	<scan:Event>ScanPagesComplete</scan:Event>
 </scan:WalkupScanEvent>
@@ -602,7 +602,7 @@ Connection: Keep-Alive
 	<JobSourceInfo>
 		<UserName>LOCAL SERVICE</UserName>
 		<UserDomain></UserDomain>
-		<MachineName>SEPID-PC</MachineName>
+		<MachineName>MOBIN-PC</MachineName>
 		<AppFileName>svchost.exe</AppFileName>
 		<Application>WIA client</Application>
 	</JobSourceInfo>
@@ -718,6 +718,7 @@ Cache-Control: no-store, max-age=0
 ### `DELETE /eSCL/WalkupSubscriptions/{id}`
 
 Unregisters the host client subscription from the printer, removing it from the control panel destination list.
+this is very useful if you want to add new shortcuts or change the shortcut names, because you cannot update the shortcuts in an existing subscription. You have to delete the subscription and create a new one with the updated shortcuts.
 
 *Request*
 
@@ -747,7 +748,6 @@ Cache-Control: no-store, max-age=0
 1. **Shortcut Management & Dynamic UI**:
 * Shortcuts registered inside `<Shortcuts>` during `POST /eSCL/WalkupSubscriptions` appear on the printer's touchscreen under the selected computer destination.
 * Up to 5 shortcuts are supported (`<scan:MaxScanShortcuts>5</scan:MaxScanShortcuts>`).
-* Custom shortcut names (e.g. `Paperless`) allow routing scan files directly to distinct local directories or downstream intake pipelines (e.g., Paperless-ngx consumption folder) based on the `<scan:Shortcut>` tag returned in the `ScanRequested` event.
 
 
 2. **Subscription Teardown & Updates**:
