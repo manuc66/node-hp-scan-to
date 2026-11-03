@@ -32,9 +32,12 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
   // to recognise the sidecars a post-command wrote beside each one.
   const generatedPdfPaths: string[] = [];
   for (const item of scanJobContent.elements) {
+    // The page is not deleted here: other delivery targets (Nextcloud, S3)
+    // still have to read it after this stage, and the final cleanup removes it
+    // once every target had its turn, following the same `keepFiles` rule.
     const pdfFilePath = await convertToPdf(
       item,
-      !paperlessConfig.keepFiles,
+      false,
       scanDate,
       postCommandPdf,
       postCommandTimeout,
@@ -66,7 +69,10 @@ export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
     scanJobContent,
     scanConfig.directoryConfig.filePattern,
     scanDate,
-    !paperlessConfig.keepFiles,
+    // Same reason as in `convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless`:
+    // the pages are still needed by the other targets, and the final cleanup
+    // deletes them according to `keepFiles`.
+    false,
     scanConfig.postCommandPdf,
     scanConfig.postCommandTimeout,
   );

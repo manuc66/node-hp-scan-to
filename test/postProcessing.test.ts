@@ -461,6 +461,53 @@ describe("postProcessing", () => {
       expect(await fs.readFile(filePath, "utf8")).to.equal("fake-jpg-contentX");
     });
 
+    it("still delivers the pages to S3 when paperless converts them to PDF", async () => {
+      // `keepFiles` defaults to false: paperless used to delete every page it
+      // converted, so the S3 upload that runs afterwards read a missing file
+      // and always failed. The pages must survive until the final cleanup.
+      scanConfig.paperlessConfig = paperlessConfig({
+        alwaysSendAsPdfFile: true,
+      });
+      scanConfig.s3Config = s3Config();
+      mockPaperlessSuccess();
+      mockS3ImageUpload();
+
+      const result = await postProcessing(
+        scanConfig,
+        tempFolder,
+        tempFolder,
+        1,
+        scanJobContent,
+        new Date(),
+        false,
+      );
+
+      expect(result.uploadSucceeded).to.equal(true);
+      expect(result.failures).to.deep.equal([]);
+    });
+
+    it("still delivers the pages to S3 when paperless groups them into a PDF", async () => {
+      scanConfig.paperlessConfig = paperlessConfig({
+        groupMultiPageScanIntoAPdf: true,
+      });
+      scanConfig.s3Config = s3Config();
+      mockPaperlessSuccess();
+      mockS3ImageUpload();
+
+      const result = await postProcessing(
+        scanConfig,
+        tempFolder,
+        tempFolder,
+        1,
+        scanJobContent,
+        new Date(),
+        false,
+      );
+
+      expect(result.uploadSucceeded).to.equal(true);
+      expect(result.failures).to.deep.equal([]);
+    });
+
     it("applies the post-command to images uploaded to paperless", async () => {
       scanConfig.paperlessConfig = paperlessConfig({ keepFiles: true });
       scanConfig.postCommandImage = appendTemplate;
