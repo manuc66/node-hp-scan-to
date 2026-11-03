@@ -574,11 +574,11 @@ describe("postProcessing", () => {
       expect(existsSync(filePath)).to.equal(false);
     });
 
-    it("sends the event even when the paperless PDF mode already removed every file", async () => {
-      // `--paperless-always-send-as-pdf-file` deletes each page after
-      // converting it, then deletes the generated PDF after the upload: by the
-      // time the event is built there is no file left to describe. The event
-      // must still be delivered, with an empty files[].
+    it("describes the pages the cleanup removes once the event is sent", async () => {
+      // `--paperless-always-send-as-pdf-file` converts each page to a PDF for
+      // paperless. The pages are only removed by the final cleanup, so the
+      // event can still describe them; the generated PDFs never appear, they
+      // are unlinked right after the upload.
       scanConfig.paperlessConfig = paperlessConfig({
         alwaysSendAsPdfFile: true,
         keepFiles: false,
@@ -607,9 +607,12 @@ describe("postProcessing", () => {
 
       expect(capture.bodies).to.have.length(1);
       const payload = JSON.parse(capture.bodies[0].toString("utf8")) as {
-        files: unknown[];
+        files: { name: string; path?: string }[];
       };
-      expect(payload.files).to.deep.equal([]);
+      expect(payload.files.map((file) => file.name)).to.deep.equal([fileName]);
+      expect(payload.files[0].path).to.equal(filePath);
+      // `keepFiles` is false: the page is gone once delivery finished.
+      expect(existsSync(filePath)).to.equal(false);
     });
 
     it("describes the pages, not the PDFs the paperless stage deletes", async () => {
