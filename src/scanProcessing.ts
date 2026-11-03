@@ -11,8 +11,11 @@ import {
 } from "./queue/processingQueue.js";
 import type { PostProcessingResult } from "./postProcessing.js";
 import { getScanDimensions } from "./scanDimensions.js";
-import type { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers.js";
+import type {
+  ScanListener,
+  ScanRequest,
+} from "./scanListeners/ScanListener.js";
 import { KnownShortcut } from "./type/KnownShortcut.js";
 import type {
   AdfAutoScanConfig,
@@ -85,11 +88,12 @@ export function isPdf(destination: WalkupDestination): boolean {
 
 export async function saveScanFromEvent(
   api: DeviceClient,
-  selectedScanTarget: SelectedScanTarget,
+  selectedScanTarget: ScanRequest,
   folder: string,
   tempFolder: string,
   scanCount: number,
   deviceCapabilities: DeviceCapabilities,
+  scanListener: ScanListener,
   scanConfig: ScanConfig,
   isDuplex: boolean,
   isPdf: boolean,
@@ -157,6 +161,7 @@ export async function saveScanFromEvent(
     scanJobContent,
     selectedScanTarget,
     deviceCapabilities,
+    scanListener,
     filePattern,
     pageCountingStrategy,
   );

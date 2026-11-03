@@ -1,7 +1,6 @@
 import type DeviceClient from "./DeviceClient.js";
 import type { IEvent } from "./hpModels/Event.js";
 import Destination from "./hpModels/Destination.js";
-import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type {
   RegistrationConfig,
   ScanTarget,
@@ -95,7 +94,7 @@ async function waitForScanEventInternal(
   return { event: acceptedScanEvent, ...scanTarget };
 }
 
-async function registerWalkupScanDestination(
+export async function registerWalkupScanDestination(
   api: DeviceClient,
   registrationConfigs: RegistrationConfig[],
   isScanToComp = false,
@@ -140,26 +139,34 @@ async function registerWalkupScanDestination(
   return scanTargets;
 }
 
-export async function waitScanEvent(
+export async function waitScanNewPageRequest(
   api: DeviceClient,
-  deviceCapabilities: DeviceCapabilities,
-  registrationConfigs: RegistrationConfig[],
-): Promise<SelectedScanTarget | null> {
-  let useWalkupScanToComp: boolean;
-  if (deviceCapabilities.useWalkupScanToComp !== undefined) {
-    useWalkupScanToComp = deviceCapabilities.useWalkupScanToComp;
-  } else {
-    logger.warn(
-      "No compatible device capabilities detected. It appears that your device may not support the listen command. While the application will still run, there is a possibility it may crash. If your device includes an automatic document feeder, consider using the adf-autoscan command instead.",
-    );
-    useWalkupScanToComp = false;
+  compEventURI: string,
+  userActionTimeout: number | null = null,
+): Promise<boolean> {
+  let startNewScanJob = false;
+  let wait = true;
+  const waitMax = userActionTimeout ?? 50;
+  let i = 0;
+  while (wait && i < waitMax) {
+    i++;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const walkupScanToCompEvent =
+      await api.getWalkupScanToCompEvent(compEventURI);
+    const eventType = walkupScanToCompEvent.eventType;
+    const eventTypeStr = eventType.toString();
+    if (eventType === EventType.ScanNewPageRequested) {
+      startNewScanJob = true;
+      wait = false;
+    } else if (eventType === EventType.ScanPagesComplete) {
+      wait = false;
+    } else if (eventType === EventType.ScanRequested) {
+      logger.info(`Waiting for user input (attempt ${i} of ${waitMax})`);
+    } else {
+      wait = false;
+      logger.warn(`Unknown eventType: ${eventTypeStr}`);
+    }
   }
-
-  const scanTargets = await registerWalkupScanDestination(
-    api,
-    registrationConfigs,
-    useWalkupScanToComp,
-  );
-
-  return await waitForScanEvent(api, scanTargets);
+  return startNewScanJob;
 }

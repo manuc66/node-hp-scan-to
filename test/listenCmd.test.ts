@@ -26,10 +26,13 @@ import type { WalkupDestination } from "../src/scanProcessing.js";
 import { KnownShortcut } from "../src/type/KnownShortcut.js";
 import type { SelectedScanTarget } from "../src/type/scanTargetDefinitions.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
+import type { ScanRequest } from "../src/scanListeners/ScanListener.js";
+import { WalkupProtocol } from "../src/type/WalkupProtocol.js";
 import { InputSource } from "../src/type/InputSource.js";
 import { ScannerState } from "../src/hpModels/ScannerState.js";
 import { AdfState } from "../src/hpModels/AdfState.js";
 import PathHelper from "../src/PathHelper.js";
+import { createDefaultScanListener } from "./testUtils.js";
 import { fileURLToPath } from "url";
 import fs from "node:fs";
 import os from "node:os";
@@ -297,11 +300,26 @@ const makeScanTarget = (
   ...overrides,
 });
 
+const makeScanRequest = (
+  destination: WalkupDestination,
+  target: SelectedScanTarget,
+): ScanRequest => ({
+  resourceURI: target.resourceURI,
+  label: target.label,
+  isDuplexSingleSide: target.isDuplexSingleSide,
+  ...(target.duplexAssemblyMode !== undefined && {
+    duplexAssemblyMode: target.duplexAssemblyMode,
+  }),
+  shortcut: destination.shortcut,
+  scanPlexMode: destination.scanPlexMode,
+  continuation: target.event,
+});
+
 const makeDeviceCapabilities = (
   overrides: Partial<DeviceCapabilities> = {},
 ): DeviceCapabilities => ({
   supportsMultiItemScanFromPlaten: false,
-  useWalkupScanToComp: false,
+  walkupProtocol: WalkupProtocol.WalkupScan,
   platenMaxWidth: null,
   platenMaxHeight: null,
   adfMaxWidth: null,
@@ -1043,14 +1061,17 @@ describe("processScanWithDestination", () => {
 
     const result = await processScanWithDestination(
       api,
-      makeDestination({ scanPlexMode: null }),
-      makeScanTarget({ isDuplexSingleSide: false }),
+      makeScanRequest(
+        makeDestination({ scanPlexMode: null }),
+        makeScanTarget({ isDuplexSingleSide: false }),
+      ),
       DuplexMode.Simplex,
       undefined,
       tempDir,
       tempDir,
       makeScanConfig(tempDir),
       makeDeviceCapabilities(),
+      createDefaultScanListener(),
       0,
       null,
     );
@@ -1067,11 +1088,16 @@ describe("processScanWithDestination", () => {
 
     const result = await processScanWithDestination(
       api,
-      makeDestination({ shortcut: KnownShortcut.SaveJPEG, scanPlexMode: null }),
-      makeScanTarget({
-        resourceURI: "/WalkupScan/Destinations/2",
-        isDuplexSingleSide: false,
-      }),
+      makeScanRequest(
+        makeDestination({
+          shortcut: KnownShortcut.SaveJPEG,
+          scanPlexMode: null,
+        }),
+        makeScanTarget({
+          resourceURI: "/WalkupScan/Destinations/2",
+          isDuplexSingleSide: false,
+        }),
+      ),
       DuplexMode.FrontOfDoubleSided,
       makeScanTarget({
         resourceURI: "/WalkupScan/Destinations/1",
@@ -1081,6 +1107,7 @@ describe("processScanWithDestination", () => {
       tempDir,
       makeScanConfig(tempDir),
       makeDeviceCapabilities(),
+      createDefaultScanListener(),
       1,
       makeFrontContext(tempDir, {
         scanCount: 0,
@@ -1107,11 +1134,13 @@ describe("processScanWithDestination", () => {
 
     const result = await processScanWithDestination(
       api,
-      makeDestination({ scanPlexMode: ScanPlexMode.Duplex }),
-      makeScanTarget({
-        resourceURI: "/WalkupScan/Destinations/2",
-        isDuplexSingleSide: false,
-      }),
+      makeScanRequest(
+        makeDestination({ scanPlexMode: ScanPlexMode.Duplex }),
+        makeScanTarget({
+          resourceURI: "/WalkupScan/Destinations/2",
+          isDuplexSingleSide: false,
+        }),
+      ),
       DuplexMode.FrontOfDoubleSided,
       makeScanTarget({
         resourceURI: "/WalkupScan/Destinations/1",
@@ -1121,6 +1150,7 @@ describe("processScanWithDestination", () => {
       tempDir,
       makeScanConfig(tempDir),
       makeDeviceCapabilities(),
+      createDefaultScanListener(),
       1,
       makeFrontContext(tempDir, {
         scanCount: 0,

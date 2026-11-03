@@ -1,18 +1,19 @@
 import type DeviceClient from "./DeviceClient.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
-import { waitForScanEventFromTarget } from "./listening.js";
+import type {
+  ScanListener,
+  ScanRequest,
+} from "./scanListeners/ScanListener.js";
 import type { ScanContent, ScanPage } from "./type/ScanContent.js";
 import type Job from "./hpModels/Job.js";
 import { JobState, PageState } from "./hpModels/Job.js";
 import { delay } from "./delay.js";
 import PathHelper from "./PathHelper.js";
 import { InputSource } from "./type/InputSource.js";
-import type { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
 import fs from "node:fs/promises";
 import JpegUtil from "./imageFormats/JpegUtil.js";
 import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
 import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
-import { EventType } from "./hpModels/WalkupScanToCompEvent.js";
 import { type EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus.js";
 import type EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import type { ImageFormat, JobDesc } from "./imageFormats/index.js";
@@ -399,7 +400,7 @@ async function eSCLScanJobHandling(
     // Check the job state *before* downloading: the loop exits on a
     // terminal job state reason, so it never fetches /NextDocument once the
     // device has handed over every image (which would otherwise 404).
-    const scannerStatus = await api.getEsclScanStatus();
+    const scannerStatus = await api.getEsclScanStatus(jobUrl);
     jobInfo = scannerStatus.findJobByUri(jobLocation);
     jobStateReason = jobInfo?.getJobStateReason() ?? null;
 
@@ -615,38 +616,6 @@ export async function executeScanJob(
   return jobState;
 }
 
-async function waitScanNewPageRequest(
-  api: DeviceClient,
-  compEventURI: string,
-  userActionTimeout: number | null = null,
-): Promise<boolean> {
-  let startNewScanJob = false;
-  let wait = true;
-  const waitMax = userActionTimeout ?? 50;
-  let i = 0;
-  while (wait && i < waitMax) {
-    i++;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const walkupScanToCompEvent =
-      await api.getWalkupScanToCompEvent(compEventURI);
-    const eventType = walkupScanToCompEvent.eventType;
-    const eventTypeStr = eventType.toString();
-    if (eventType === EventType.ScanNewPageRequested) {
-      startNewScanJob = true;
-      wait = false;
-    } else if (eventType === EventType.ScanPagesComplete) {
-      wait = false;
-    } else if (eventType === EventType.ScanRequested) {
-      logger.info(`Waiting for user input (attempt ${i} of ${waitMax})`);
-    } else {
-      wait = false;
-      logger.warn(`Unknown eventType: ${eventTypeStr}`);
-    }
-  }
-  return startNewScanJob;
-}
-
 export async function executeScanJobs(
   api: DeviceClient,
   scanJobSettings: IScanJobSettings,
@@ -655,8 +624,9 @@ export async function executeScanJobs(
   tempFolder: string,
   scanCount: number,
   scanJobContent: ScanContent,
-  selectedScanTarget: SelectedScanTarget,
+  selectedScanTarget: ScanRequest,
   deviceCapabilities: DeviceCapabilities,
+  scanListener: ScanListener,
   filePattern: string | undefined,
   pageCountingStrategy: PageCountingStrategy,
 ): Promise<void> {
@@ -672,72 +642,34 @@ export async function executeScanJobs(
     pageCountingStrategy,
     deviceCapabilities,
   );
-  const scanTarget = {
-    resourceURI: selectedScanTarget.resourceURI,
-    label: selectedScanTarget.label,
-    isDuplexSingleSide: selectedScanTarget.isDuplexSingleSide,
-  };
-  let lastEvent = selectedScanTarget.event;
+
   if (
-    jobState === JobState.Completed &&
-    lastEvent.compEventURI !== undefined &&
-    inputSource !== InputSource.Adf &&
-    lastEvent.destinationURI !== undefined &&
-    deviceCapabilities.supportsMultiItemScanFromPlaten
+    jobState !== JobState.Completed ||
+    inputSource === InputSource.Adf ||
+    !deviceCapabilities.supportsMultiItemScanFromPlaten
   ) {
-    const nextEvent = await waitForScanEventFromTarget(
+    return;
+  }
+
+  let request = selectedScanTarget;
+  let nextPage = await scanListener.waitForNextPage(request);
+  while (nextPage !== null) {
+    request = nextPage;
+    jobState = await executeScanJob(
       api,
-      scanTarget,
-      lastEvent.agingStamp,
+      scanJobSettings,
+      inputSource,
+      folder,
+      tempFolder,
+      scanCount,
+      scanJobContent,
+      filePattern,
+      pageCountingStrategy,
+      deviceCapabilities,
     );
-    if (nextEvent === undefined) {
+    if (jobState !== JobState.Completed) {
       return;
     }
-    lastEvent = nextEvent;
-    if (lastEvent.compEventURI === undefined) {
-      return;
-    }
-    let startNewScanJob = await waitScanNewPageRequest(
-      api,
-      lastEvent.compEventURI,
-      deviceCapabilities.userActionTimeout,
-    );
-    while (startNewScanJob) {
-      jobState = await executeScanJob(
-        api,
-        scanJobSettings,
-        inputSource,
-        folder,
-        tempFolder,
-        scanCount,
-        scanJobContent,
-        filePattern,
-        pageCountingStrategy,
-        deviceCapabilities,
-      );
-      if (jobState !== JobState.Completed) {
-        return;
-      }
-      if (lastEvent.destinationURI === undefined) {
-        break;
-      }
-      const nextEvent = await waitForScanEventFromTarget(
-        api,
-        scanTarget,
-        lastEvent.agingStamp,
-      );
-      if (nextEvent === undefined) {
-        return;
-      }
-      lastEvent = nextEvent;
-      if (lastEvent.compEventURI === undefined) {
-        return;
-      }
-      startNewScanJob = await waitScanNewPageRequest(
-        api,
-        lastEvent.compEventURI,
-        deviceCapabilities.userActionTimeout,
-      );
-    }
+    nextPage = await scanListener.waitForNextPage(request);
   }
 }

@@ -1,19 +1,22 @@
 import type {
   RegistrationConfig,
-  SelectedScanTarget,
+  ScanTarget,
 } from "../type/scanTargetDefinitions.js";
 import type DeviceClient from "../DeviceClient.js";
 import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
 import type { ScanContent } from "../type/ScanContent.js";
-import { waitScanEvent, waitScanRequest } from "../listening.js";
 import {
   isPdf,
   saveScanFromEvent,
-  tryGetDestination,
   type WalkupDestination,
 } from "../scanProcessing.js";
 import { enqueueScanProcessing } from "../queue/processingQueue.js";
 import PathHelper from "../PathHelper.js";
+import { createScanListener } from "../scanListeners/createScanListener.js";
+import type {
+  ScanListener,
+  ScanRequest,
+} from "../scanListeners/ScanListener.js";
 
 import { DuplexMode } from "../type/duplexMode.js";
 import { TargetDuplexMode } from "../type/targetDuplexMode.js";
@@ -50,104 +53,118 @@ export async function listenCmd(
     scanConfig.preferEscl,
   );
 
+  const scanListener = createScanListener(
+    api,
+    deviceCapabilities,
+    registrationConfigs,
+  );
+
   let scanCount = 0;
   let keepActive = true;
   let errorCount = 0;
-  let lastScanTarget: SelectedScanTarget | undefined = undefined;
+  let lastScanTarget: ScanTarget | undefined = undefined;
 
   let lastDuplexMode: DuplexMode = DuplexMode.Simplex;
 
   let frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null =
     null;
-  while (keepActive) {
-    iteration++;
-    logger.info(`Iteration ${iteration} (Errors so far: ${errorCount})`);
-    try {
-      const selectedScanTarget: SelectedScanTarget | null = await waitScanEvent(
-        api,
-        deviceCapabilities,
-        registrationConfigs,
-      );
 
-      let proceedToScan = true;
-      if (selectedScanTarget?.event.compEventURI !== undefined) {
-        proceedToScan = await waitScanRequest(
+  let shuttingDown = false;
+  const shutdown = (): void => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+    void scanListener.dispose?.().finally(() => process.exit(0));
+  };
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+
+  try {
+    while (keepActive) {
+      iteration++;
+      logger.info(`Iteration ${iteration} (Errors so far: ${errorCount})`);
+      try {
+        const selectedScanTarget: ScanRequest | null =
+          await scanListener.waitForScan();
+
+        if (selectedScanTarget === null) {
+          continue;
+        }
+
+        const proceedToScan =
+          await scanListener.waitForScanStart(selectedScanTarget);
+
+        if (!proceedToScan || selectedScanTarget.shortcut === null) {
+          logger.warn(
+            "No shortcut selected - Impossible to proceed with scan, skipping.",
+          );
+          continue;
+        }
+
+        const r = await processScanWithDestination(
           api,
-          selectedScanTarget.event.compEventURI,
-          deviceCapabilities.userActionTimeout,
+          selectedScanTarget,
+          lastDuplexMode,
+          lastScanTarget,
+          folder,
+          tempFolder,
+          scanConfig,
+          deviceCapabilities,
+          scanListener,
+          scanCount,
+          frontOfDoubleSidedScanContext,
         );
+
+        scanCount = r.scanCount;
+        frontOfDoubleSidedScanContext = r.frontOfDoubleSidedScanContext;
+
+        lastScanTarget = selectedScanTarget;
+        lastDuplexMode = r.duplexMode;
+      } catch (e) {
+        if (await api.isAlive()) {
+          logger.error(e);
+          errorCount++;
+        } else {
+          logger.debug(e);
+          deviceUp = false;
+        }
       }
 
-      let destination: WalkupDestination | null = null;
-
-      if (proceedToScan && selectedScanTarget !== null) {
-        destination = await tryGetDestination(api, selectedScanTarget.event);
-      }
-      if (!destination || selectedScanTarget === null) {
-        logger.warn(
-          "No shortcut selected - Impossible to proceed with scan, skipping.",
-        );
-        continue;
+      if (errorCount === 50) {
+        keepActive = false;
       }
 
-      const r = await processScanWithDestination(
-        api,
-        destination,
-        selectedScanTarget,
-        lastDuplexMode,
-        lastScanTarget,
-        folder,
-        tempFolder,
-        scanConfig,
-        deviceCapabilities,
-        scanCount,
-        frontOfDoubleSidedScanContext,
-      );
-
-      scanCount = r.scanCount;
-      frontOfDoubleSidedScanContext = r.frontOfDoubleSidedScanContext;
-
-      lastScanTarget = selectedScanTarget;
-      lastDuplexMode = r.duplexMode;
-    } catch (e) {
-      if (await api.isAlive()) {
-        logger.error(e);
-        errorCount++;
+      if (!deviceUp) {
+        await api.waitDeviceUp(deviceUpPollingInterval);
       } else {
-        logger.debug(e);
-        deviceUp = false;
+        await api.delay(1000);
       }
     }
-
-    if (errorCount === 50) {
-      keepActive = false;
-    }
-
-    if (!deviceUp) {
-      await api.waitDeviceUp(deviceUpPollingInterval);
-    } else {
-      await api.delay(1000);
-    }
+  } finally {
+    process.off("SIGINT", shutdown);
+    process.off("SIGTERM", shutdown);
+    await scanListener.dispose?.();
   }
 }
 
 export async function processScanWithDestination(
   api: DeviceClient,
-  destination: WalkupDestination,
-  selectedScanTarget: SelectedScanTarget,
+  selectedScanTarget: ScanRequest,
   lastDuplexMode: DuplexMode,
-  lastScanTarget: SelectedScanTarget | undefined,
+  lastScanTarget: ScanTarget | undefined,
   folder: string,
   tempFolder: string,
   scanConfig: ScanConfig,
   deviceCapabilities: DeviceCapabilities,
+  scanListener: ScanListener,
   scanCount: number,
   frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null,
 ) {
-  logger.info(`Selected shortcut: ${destination.shortcut}`);
+  logger.info(`Selected shortcut: ${selectedScanTarget.shortcut}`);
 
   const { duplexMode, targetDuplexMode } = determineDuplexModes(
-    destination,
+    selectedScanTarget,
     selectedScanTarget,
     lastDuplexMode,
     lastScanTarget,
@@ -170,7 +187,7 @@ export async function processScanWithDestination(
   const scanParameters = await setupScanParameters(
     duplexMode,
     targetDuplexMode,
-    destination,
+    selectedScanTarget,
     scanCount,
     folder,
     scanConfig,
@@ -192,13 +209,14 @@ export async function processScanWithDestination(
     tempFolder,
     scanCount,
     deviceCapabilities,
+    scanListener,
     scanConfig,
     targetDuplexMode === TargetDuplexMode.Duplex,
     scanToPdf,
     pageCountingStrategy,
   );
 
-frontOfDoubleSidedScanContext = handleScanResult(
+  frontOfDoubleSidedScanContext = handleScanResult(
     duplexMode,
     frontOfDoubleSidedScanContext,
     scanConfig,
@@ -268,9 +286,9 @@ export function handleScanResult(
 
 export function determineDuplexModes(
   destination: WalkupDestination,
-  selectedScanTarget: SelectedScanTarget,
+  selectedScanTarget: ScanTarget,
   previousDuplexMode: DuplexMode,
-  lastScanTarget: SelectedScanTarget | undefined,
+  lastScanTarget: ScanTarget | undefined,
 ) {
   const isDuplex =
     destination.scanPlexMode !== null &&
@@ -417,8 +435,8 @@ export async function setupScanParameters(
 }
 
 export function processFinishedPartialDuplexScan(
-  lastScanTarget: SelectedScanTarget,
-  selectedScanTarget: SelectedScanTarget,
+  lastScanTarget: ScanTarget,
+  selectedScanTarget: ScanTarget,
   scanCount: number,
   frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext,
 ): void {

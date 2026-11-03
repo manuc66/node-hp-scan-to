@@ -9,6 +9,7 @@ import { ScanFormat } from "../src/type/scanFormat.js";
 import {
   createDefaultScanConfig,
   createDefaultDeviceCapabilities,
+  createDefaultScanListener,
 } from "./testUtils.js";
 import type {
   AdfAutoScanConfig,
@@ -211,15 +212,18 @@ describe("scanProcessing Format Selection", () => {
       await saveScanFromEvent(
         api,
         {
-          event: mockEvent,
+          continuation: mockEvent,
           label: "test",
           resourceURI: "/test",
           isDuplexSingleSide: false,
+          shortcut: null,
+          scanPlexMode: null,
         },
         folder,
         tempFolder,
         scanCount,
         deviceCapabilities,
+        createDefaultScanListener(),
         scanConfig,
         false,
         true, // isPdf = true
