@@ -1,6 +1,7 @@
 - [Protocol](#protocol)
 	- [Recorded Sequence](#recorded-sequence)
 		- [`POST /eSCL/WalkupSubscriptions`](#post-esclwalkupsubscriptions)
+		- [`DELETE /eSCL/WalkupSubscriptions/{id}`](#delete-esclwalkupsubscriptionsid)
 		- [`GET /eSCL/WalkupSubscriptions/{id}/Event`](#get-esclwalkupsubscriptionsidevent)
 		- [`GET /eSCL/eSCLConfig`](#get-esclesclconfig)
 		- [`GET /eSCL/ScannerCapabilities`](#get-esclscannercapabilities)
@@ -8,7 +9,6 @@
 		- [`POST /eSCL/ScanJobs`](#post-esclscanjobs)
 		- [`GET /eSCL/ScanJobs/{id}/NextDocument`](#get-esclscanjobsidnextdocument)
 		- [`GET /eSCL/ScanJobs/{id}/ScanImageInfo`](#get-esclscanjobsidscanimageinfo)
-		- [`DELETE /eSCL/WalkupSubscriptions/{id}`](#delete-esclwalkupsubscriptionsid)
 
 
 
@@ -65,6 +65,34 @@ Location: /eSCL/WalkupSubscriptions/108b7a10-43ef-44b0-97ab-ea2f1274de50        
 Strict-Transport-Security: max-age=31536000; includeSubDomains
 Cache-Control: no-store, max-age=0
 Content-Length: 0
+
+```
+
+---
+
+### `DELETE /eSCL/WalkupSubscriptions/{id}`
+
+Unregisters the host client subscription from the printer, removing it from the control panel destination list.
+this is very useful if you want to add new shortcuts or change the shortcut names, because you cannot update the shortcuts in an existing subscription. You have to delete the subscription and create a new one with the updated shortcuts.
+
+*Request*
+
+```http
+DELETE /eSCL/WalkupSubscriptions/108b7a10-43ef-44b0-97ab-ea2f1274de50 HTTP/1.1
+HOST: 192.168.2.199:443
+User-Agent: HP
+Connection: Keep-Alive
+
+```
+
+*Response*
+
+```http
+HTTP/1.1 200 OK
+Server: nginx
+Date: Mon, 02 Nov 2026 18:05:00 GMT
+Content-Length: 0
+Cache-Control: no-store, max-age=0
 
 ```
 
@@ -715,33 +743,6 @@ Cache-Control: no-store, max-age=0
 
 ---
 
-### `DELETE /eSCL/WalkupSubscriptions/{id}`
-
-Unregisters the host client subscription from the printer, removing it from the control panel destination list.
-this is very useful if you want to add new shortcuts or change the shortcut names, because you cannot update the shortcuts in an existing subscription. You have to delete the subscription and create a new one with the updated shortcuts.
-
-*Request*
-
-```http
-DELETE /eSCL/WalkupSubscriptions/108b7a10-43ef-44b0-97ab-ea2f1274de50 HTTP/1.1
-HOST: 192.168.2.199:443
-User-Agent: HP
-Connection: Keep-Alive
-
-```
-
-*Response*
-
-```http
-HTTP/1.1 200 OK
-Server: nginx
-Date: Mon, 02 Nov 2026 18:05:00 GMT
-Content-Length: 0
-Cache-Control: no-store, max-age=0
-
-```
-
----
 
 # Key Operational Notes
 
