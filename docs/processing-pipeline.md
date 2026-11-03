@@ -31,8 +31,10 @@ the next scan event or trip the printer's `userActionTimeout` /
   it (S3 and Nextcloud only, see the
   [README](../#files-created-beside-the-scan)).
 - **FIFO processing queue** (`src/queue/processingQueue.ts`): each captured
-  scan is enqueued and drained in order by a single background worker. Order
-  is preserved; capture returns to the printer immediately.
+  scan is enqueued and drained in order by a single background worker, in
+  memory. Order is preserved; capture returns to the printer immediately. If
+  the process dies mid-job, the captured files stay on disk (cleanup only runs
+  once delivery finished) and the delivery can be redone by hand.
 - **CPU off the event loop** (`src/pdfMergeWorker.ts`): the jspdf merge runs
   in a worker thread, so health checks and printer HTTP responses stay
   responsive during a big merge.
@@ -40,26 +42,6 @@ the next scan event or trip the printer's `userActionTimeout` /
   completed (success or failure), so the exit code still reflects the upload
   outcome.
 - `--keep-files` is decided at the end of each job, as before.
-
-## Durability
-
-Not in this version, and not planned. The queue is in memory: if the process
-dies mid-job, the captured files stay on disk (cleanup only runs once delivery
-finished) and the delivery can be redone by hand. This is no worse than the
-previous synchronous behavior.
-
-The same holds for every destination: delivery is **best-effort**, with no
-retry and no persisted queue, whether the target is a local folder, Paperless,
-Nextcloud, S3 or the webhook. A failed delivery is logged and its files stay on
-disk; nothing is silently dropped. Keeping that uniform is deliberate — making
-one destination durable while the others are not would treat a notification as
-more important than the document itself.
-
-Webhook events carry an `idempotency-key`, so a consumer that receives the same
-event twice (a manual replay, a restarted sender) can deduplicate it. If you
-need guaranteed delivery, put a queue in front of the receiver — an automation
-platform (n8n, Node-RED) or a small relay — instead of expecting the scanner to
-keep delivery state.
 
 ## Testing
 
