@@ -52,7 +52,9 @@ describe("ScanJobSettings", () => {
       expect(xml).to.contain(
         "<ContextID>40742732-c386-484a-a1d8-0df3212c138e</ContextID>",
       );
-      expect(xml).to.match(/>2\.9<\/Version>/);
+      expect(xml).to.contain(
+        '<Version xmlns="http://www.pwg.org/schemas/2010/12/sm">2.9</Version>',
+      );
       expect(xml).to.contain("<Brightness>4</Brightness>");
       expect(xml).to.contain("<CompressionFactor>50</CompressionFactor>");
       expect(xml).to.contain("<Contrast>4</Contrast>");

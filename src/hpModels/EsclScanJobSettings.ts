@@ -81,7 +81,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
 
     const parsed = await parseXmlString<{
       ScanSettings: {
-        Version: string;
+        Version: string | { _: string; $: { xmlns: string } };
         ContextID?: string;
         Intent: string;
         ScanRegions: {
@@ -122,7 +122,10 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     } else {
       // The Windows HP client scopes a walkup job to the subscription and
       // uses values from the device capabilities.
-      parsed.ScanSettings.Version = "2.9";
+      parsed.ScanSettings.Version = {
+        _: "2.9",
+        $: { xmlns: "http://www.pwg.org/schemas/2010/12/sm" },
+      };
       parsed.ScanSettings.ContextID = this.contextID;
       parsed.ScanSettings.Brightness = 4;
       parsed.ScanSettings.CompressionFactor = 50;
