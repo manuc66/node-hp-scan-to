@@ -396,8 +396,6 @@ async function eSCLScanJobHandling(
 
   let jobStateReason: JobStateReason | null;
   let jobInfo: EsclJobInfo | undefined;
-  let jobUri: string | null = null;
-  let jobUuid: string | null = null;
   do {
     await delay(1000);
 
@@ -425,9 +423,6 @@ async function eSCLScanJobHandling(
 
       const scanImageInfo = await api.getEsclScanImageInfo(jobLocation);
       logger.info(`scanImageInfo: ${scanImageInfo.jobURI}`);
-
-      jobUri ??= scanImageInfo.jobURI;
-      jobUuid ??= scanImageInfo.jobUuid;
 
       const actualHeight = scanImageInfo.actualHeight;
 
@@ -478,9 +473,6 @@ async function eSCLScanJobHandling(
       logger.info(`Page downloaded content-type: ${downloadMeta.contentType}`);
 
       const scanImageInfo = await api.getEsclScanImageInfo(jobLocation);
-
-      jobUri ??= scanImageInfo.jobURI;
-      jobUuid ??= scanImageInfo.jobUuid;
 
       const width = scanImageInfo.actualWidth;
       const height = scanImageInfo.actualHeight;

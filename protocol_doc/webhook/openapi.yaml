@@ -19,11 +19,13 @@ info:
     The payload has two profiles, selected with `--webhook-payload`:
 
     - `full` (default): everything below.
-    - `minimal`: `metadata.device` and `metadata.target` are absent, and
-      `files[].path` is never sent — no scanner IP, no printer destination
-      label, no filesystem path. Settings, page and file descriptors and
-      delivery outcomes are unchanged, so the consumer can still file the
-      document.
+    - `minimal`: `metadata.device` and `metadata.target` are absent,
+      `files[].path` is never sent and `delivery[].error` is replaced by
+      `delivery failed (error redacted)` — no scanner IP, no printer
+      destination label, no filesystem path, no internal host name from a
+      failed upload. Settings, page and file descriptors, sizes, digests,
+      store locations and delivery statuses are unchanged, so the consumer can
+      still file the document.
 
     Every event carries an `idempotency-key` header (the event `id`), so a
     consumer can deduplicate a replay.
@@ -130,7 +132,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/WebhookFileDescriptor'
-          description: One descriptor per scanned file at the time the event was created.
+          description: |
+            One descriptor per file the event can point at. Empty when nothing
+            is fetchable: the paperless PDF modes delete the pages they
+            converted and the PDF they uploaded, so an event from those flows
+            may describe no file at all.
         delivery:
           type: array
           items:
@@ -146,7 +152,10 @@ components:
         scanCount:
           type: integer
           minimum: 0
-          description: Zero-based scan counter for the run.
+          description: |
+            Scan counter for the run: `0` for a single-scan, otherwise the scan
+            number also used in the file name (`1` for the first scan of a
+            listen/adf-autoscan session).
         device:
           allOf:
             - $ref: '#/components/schemas/ScanDeviceInfo'

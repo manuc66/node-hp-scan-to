@@ -199,7 +199,7 @@ export async function processScanWithDestination(
     pageCountingStrategy,
   );
 
-if (scanJobContent.meta) {
+  if (scanJobContent.meta) {
     scanJobContent.meta.settings.duplexMode = duplexMode;
     scanJobContent.meta.settings.targetDuplexMode = targetDuplexMode;
     if (selectedScanTarget.duplexAssemblyMode !== undefined) {

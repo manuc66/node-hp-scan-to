@@ -111,9 +111,11 @@ There is a good chance it also works on other unlisted HP All-in-One Printers.
     generated PDFs included. The event is a metadata notification: a webhook
     on its own never removes the scan (retention follows the delivery targets
     and `keep_files`), and when the files are cleaned up the local `path` is
-    stale. `--webhook-payload minimal` drops the identifiers (scanner IP,
-    destination label) and every local path, for a receiver outside your
-    network. OpenAPI contract:
+    stale, and `files[]` is empty when the delivered files were already
+    removed (the paperless PDF modes delete the pages and the PDF they
+    upload). `--webhook-payload minimal` drops the identifiers (scanner IP,
+    destination label), every local path and the raw delivery error messages,
+    for a receiver outside your network. OpenAPI contract:
     [`protocol_doc/webhook/openapi.yaml`](protocol_doc/webhook/openapi.yaml).
 
 ### Protocol Support
@@ -371,7 +373,7 @@ Summary of the options shared across commands. Each command's own `--help` outpu
 | `--webhook-secret-file`               | File containing the HMAC signing secret. Required unless `--webhook-secret` is used. Takes precedence if both are provided.                                                                                                      | `--webhook-secret-file /path/to/file` (no default)                 |
 | `--webhook-token`                     | Bearer token sent as `Authorization: Bearer <token>`.                                                                                                                                                                            | `--webhook-token tok...` (no default)                              |
 | `--webhook-username` / `--webhook-password` | Basic auth credentials sent as `Authorization: Basic`.                                                                                                                                                                     | `--webhook-username scanner --webhook-password ...` (no default)   |
-| `--webhook-payload`                   | Event profile: `full` (default) or `minimal`. `minimal` drops the scanner IP, the printer destination label and every local file path.                                                                                     | `--webhook-payload minimal` (default: `full`)                       |
+| `--webhook-payload`                   | Event profile: `full` (default) or `minimal`. `minimal` drops the scanner IP, the printer destination label, every local file path and the raw delivery error text.                                                          | `--webhook-payload minimal` (default: `full`)                       |
 
 **Notes:**
 

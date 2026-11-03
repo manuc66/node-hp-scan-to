@@ -56,8 +56,6 @@ interface ScanMetadataInput {
   contentType: "Document" | "Photo";
   format: ImageFormat;
   isPdf: boolean;
-  scanWidth: number | null;
-  scanHeight: number | null;
   isDuplex: boolean;
   pageCountingStrategy: PageCountingStrategy;
   target?: SelectedScanTarget;
@@ -241,8 +239,6 @@ export async function saveScanFromEvent(
       contentType,
       format: imageFormat,
       isPdf,
-      scanWidth,
-      scanHeight,
       isDuplex,
       pageCountingStrategy,
       target: selectedScanTarget,
@@ -321,8 +317,6 @@ export async function scanFromAdf(
       contentType,
       format: imageFormat,
       isPdf: adfAutoScanConfig.generatePdf,
-      scanWidth: effectiveScanWidth,
-      scanHeight: effectiveScanHeight,
       isDuplex: adfAutoScanConfig.isDuplex,
       pageCountingStrategy: PageCountingStrategy.Normal,
     }),
@@ -423,8 +417,6 @@ export async function singleScan(
       contentType,
       format: imageFormat,
       isPdf: scanConfig.generatePdf,
-      scanWidth,
-      scanHeight,
       isDuplex: scanConfig.isDuplex,
       pageCountingStrategy: PageCountingStrategy.Normal,
     }),
