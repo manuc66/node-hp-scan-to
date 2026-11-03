@@ -1,4 +1,5 @@
 import { describe, it, beforeEach } from "mocha";
+import { expect } from "chai";
 import path from "node:path";
 import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import {
@@ -74,6 +75,61 @@ describe("paperless", () => {
         throw new Error("Should not have made a request");
       }
       nock.cleanAll();
+    });
+  });
+
+  describe("upload references", () => {
+    it("returns the task id when paperless answers with a plain id", async () => {
+      nock("http://paperless.example.test")
+        .post("/api/documents/post_document/")
+        .reply(200, "e0d4a3d0-1111-2222-3333-444455556666");
+
+      const taskId = await uploadPdfToPaperless(filePath, paperlessConfig);
+
+      expect(taskId).to.equal("e0d4a3d0-1111-2222-3333-444455556666");
+    });
+
+    it("returns the task id when paperless answers with a task_id object", async () => {
+      nock("http://paperless.example.test")
+        .post("/api/documents/post_document/")
+        .reply(200, { task_id: "7b1f-42" });
+
+      const taskId = await uploadPdfToPaperless(filePath, paperlessConfig);
+
+      expect(taskId).to.equal("7b1f-42");
+    });
+
+    it("returns no reference when the answer carries none", async () => {
+      nock("http://paperless.example.test")
+        .post("/api/documents/post_document/")
+        .reply(200, "");
+
+      const taskId = await uploadPdfToPaperless(filePath, paperlessConfig);
+
+      expect(taskId).to.equal(undefined);
+    });
+
+    it("returns one task id per uploaded image", async () => {
+      const secondPage: ScanPage = {
+        ...scanPage,
+        pageNumber: 2,
+        path: path.join(assetDir, "paperless_sample_2.jpg"),
+      };
+      await fs.writeFile(secondPage.path, "fake-jpg-content-2");
+      scanJobContent.elements.push(secondPage);
+
+      nock("http://paperless.example.test")
+        .post("/api/documents/post_document/")
+        .reply(200, "task-1")
+        .post("/api/documents/post_document/")
+        .reply(200, "task-2");
+
+      const taskIds = await uploadImagesAsSeparateDocumentsToPaperless(
+        scanJobContent,
+        paperlessConfig,
+      );
+
+      expect(taskIds).to.deep.equal(["task-1", "task-2"]);
     });
   });
 

@@ -113,9 +113,12 @@ There is a good chance it also works on other unlisted HP All-in-One Printers.
     and `keep_files`), and when the files are cleaned up the local `path` is
     stale, and `files[]` is empty when the delivered files were already
     removed (the paperless PDF modes delete the pages and the PDF they
-    upload). `--webhook-payload minimal` drops the identifiers (scanner IP,
-    destination label), every local path and the raw delivery error messages,
-    for a receiver outside your network. OpenAPI contract:
+    upload), and each `delivery` entry carries the identifiers the target
+    returned — Paperless task ids, Nextcloud WebDAV URLs, S3 `bucket/key` — so
+    the document stays reachable from the event alone. `--webhook-payload
+    minimal` drops the identifiers (scanner IP, destination label), every local
+    path and the raw delivery error messages, for a receiver outside your
+    network. OpenAPI contract:
     [`protocol_doc/webhook/openapi.yaml`](protocol_doc/webhook/openapi.yaml).
 
 ### Protocol Support

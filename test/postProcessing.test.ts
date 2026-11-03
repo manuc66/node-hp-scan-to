@@ -356,6 +356,67 @@ describe("postProcessing", () => {
       }
     });
 
+    it("reports what each target returned, so the consumer can find the document", async () => {
+      scanConfig.paperlessConfig = paperlessConfig({ keepFiles: true });
+      scanConfig.nextcloudConfig = nextcloudConfig({ keepFiles: true });
+      scanConfig.s3Config = {
+        endpointUrl: "http://s3.example.test",
+        region: "eu-west-1",
+        bucket: "scans",
+        accessKeyId: "key",
+        secretAccessKey: "secret",
+        forcePathStyle: true,
+        keepFiles: true,
+      };
+      nock("http://paperless.example.test")
+        .post("/api/documents/post_document/")
+        .reply(201, "task-1");
+      mockNextcloudFolderExists();
+      nock(nextcloudUrl)
+        .intercept(/\/remote\.php\/dav\/files\/scanner\/scan\/.+\.pdf$/, "PUT")
+        .reply(201);
+      nock("http://s3.example.test")
+        .intercept(/\/scans\/.+\.pdf$/, "PUT")
+        .reply(200);
+      scanJobContent.meta = webhookMeta();
+
+      const capture = await captureWebhook();
+      scanConfig.webhookConfig = capture.config;
+
+      try {
+        await postProcessing(
+          scanConfig,
+          tempFolder,
+          tempFolder,
+          1,
+          scanJobContent,
+          new Date(),
+          true,
+        );
+      } finally {
+        await capture.close();
+        scanConfig.webhookConfig = undefined;
+        scanConfig.s3Config = undefined;
+        scanConfig.nextcloudConfig = undefined;
+        scanConfig.paperlessConfig = undefined;
+      }
+
+      expect(capture.bodies).to.have.length(1);
+      const payload = JSON.parse(capture.bodies[0].toString("utf8")) as {
+        delivery: { target: string; status: string; references?: string[] }[];
+      };
+      const byTarget = Object.fromEntries(
+        payload.delivery.map((entry) => [entry.target, entry]),
+      );
+      expect(byTarget["paperless"].references).to.deep.equal(["task-1"]);
+      expect(byTarget["nextcloud"].references).to.have.lengthOf(1);
+      expect(byTarget["nextcloud"].references?.[0]).to.contain(
+        "/remote.php/dav/files/scanner/scan/",
+      );
+      expect(byTarget["s3"].references).to.have.lengthOf(1);
+      expect(byTarget["s3"].references?.[0]).to.match(/^scans\/.+\.pdf$/);
+    });
+
     it("advertises the target that actually received the pdf, not the configured one", async () => {
       // S3 is configured but rejects the upload, Nextcloud accepts it: the
       // event must point at Nextcloud. Advertising the S3 key would hand the

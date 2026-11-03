@@ -61,6 +61,12 @@ export interface WebhookDeliveryTarget {
   target: string;
   status: "success" | "failed";
   error: string | undefined;
+  /**
+   * Identifiers the target returned for what it accepted: Paperless task ids,
+   * Nextcloud WebDAV URLs or S3 object locations. Absent when the target
+   * returned nothing usable (the local `pdf` entry, a failed upload).
+   */
+  references?: string[];
 }
 
 export interface WebhookEvent {

@@ -408,12 +408,25 @@ describe("webhook", () => {
       config.url = `http://127.0.0.1:${srv.port}`;
       config.payload = "minimal";
 
-      await sendScanEvent(scanContent, [{ path: filePath }], [], config);
+      await sendScanEvent(
+        scanContent,
+        [{ path: filePath }],
+        [
+          {
+            target: "paperless",
+            status: "success",
+            error: undefined,
+            references: ["task-1"],
+          },
+        ],
+        config,
+      );
 
       const payload = JSON.parse(srv.requests[0].body.toString("utf8")) as {
         metadata: Record<string, unknown>;
         pages: unknown[];
         files: { name: string; path?: string }[];
+        delivery: { target: string; references?: string[] }[];
       };
       expect(payload.metadata).to.not.have.property("device");
       expect(payload.metadata).to.not.have.property("target");
@@ -424,6 +437,9 @@ describe("webhook", () => {
       expect(payload.pages).to.have.lengthOf(0);
       expect(payload.files[0].name).to.equal("scan.pdf");
       expect(payload.files[0]).to.not.have.property("path");
+      // A reference is an opaque id the consumer needs to find the document:
+      // the minimal profile drops identifiers, not handles.
+      expect(payload.delivery[0].references).to.deep.equal(["task-1"]);
     });
 
     it("keeps the identifiers in the full payload profile", async () => {

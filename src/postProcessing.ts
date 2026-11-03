@@ -67,6 +67,10 @@ async function notifyWebhook(
 /**
  * Runs one delivery target and records its outcome for the webhook event.
  *
+ * The action returns the identifiers the target gave back for what it
+ * accepted (Paperless task ids, Nextcloud WebDAV URLs, S3 `bucket/key`): they
+ * are what lets a consumer find the document once the local copy is gone.
+ *
  * Returns whether the target succeeded: the sidecar stage only offers files to
  * a target that actually received the scan, so the caller needs the answer.
  */
@@ -74,11 +78,16 @@ async function recordDelivery(
   delivery: WebhookDeliveryTarget[],
   failures: string[],
   target: string,
-  action: () => Promise<void>,
+  action: () => Promise<readonly string[]>,
 ): Promise<boolean> {
   try {
-    await action();
-    delivery.push({ target, status: "success", error: undefined });
+    const references = await action();
+    delivery.push({
+      target,
+      status: "success",
+      error: undefined,
+      ...(references.length > 0 ? { references: [...references] } : {}),
+    });
     return true;
   } catch (e) {
     const message = toFailureMessage(e);
@@ -317,9 +326,13 @@ async function handlePdfPostProcessing(
     delivery.push({ target: "pdf", status: "success", error: undefined });
     displayPdfScan(pdfFilePath, scanJobContent, scanCount);
     if (paperlessConfig) {
-      await recordDelivery(delivery, failures, "paperless", () =>
-        uploadPdfToPaperless(pdfFilePath, paperlessConfig),
-      );
+      await recordDelivery(delivery, failures, "paperless", async () => {
+        const taskId = await uploadPdfToPaperless(
+          pdfFilePath,
+          paperlessConfig,
+        );
+        return taskId === undefined ? [] : [taskId];
+      });
     }
     if (nextcloudConfig) {
       scanDeliveredToNextcloud = await recordDelivery(
@@ -436,7 +449,7 @@ async function deliverSidecars(
   }
 
   const { nextcloudConfig, s3Config } = scanConfig;
-  const targets: Promise<void>[] = [];
+  const targets: Promise<unknown>[] = [];
   if (nextcloudConfig !== undefined && scanDeliveredTo.nextcloud) {
     targets.push(uploadFilesToNextcloud(sidecars, nextcloudConfig));
   }
@@ -544,7 +557,7 @@ async function handleImagePostProcessing(
     // outcome while the generated PDF paths still reach the sidecar scan.
     await recordDelivery(delivery, failures, "paperless", async () => {
       if (paperlessConfig.groupMultiPageScanIntoAPdf) {
-        const pdfFilePath =
+        const { pdfPath, taskId } =
           await mergeToPdfAndUploadAsSingleDocumentToPaperless(
             folder,
             scanCount,
@@ -553,11 +566,13 @@ async function handleImagePostProcessing(
             scanDate,
             paperlessConfig,
           );
-        if (pdfFilePath !== null) {
-          generatedPdfPaths = [pdfFilePath];
+        if (pdfPath !== null) {
+          generatedPdfPaths = [pdfPath];
         }
-      } else if (paperlessConfig.alwaysSendAsPdfFile) {
-        generatedPdfPaths =
+        return taskId === undefined ? [] : [taskId];
+      }
+      if (paperlessConfig.alwaysSendAsPdfFile) {
+        const { pdfPaths, taskIds } =
           await convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
             scanJobContent,
             paperlessConfig,
@@ -565,12 +580,13 @@ async function handleImagePostProcessing(
             scanConfig.postCommandPdf,
             scanConfig.postCommandTimeout,
           );
-      } else {
-        await uploadImagesAsSeparateDocumentsToPaperless(
-          scanJobContent,
-          paperlessConfig,
-        );
+        generatedPdfPaths = pdfPaths;
+        return taskIds;
       }
+      return await uploadImagesAsSeparateDocumentsToPaperless(
+        scanJobContent,
+        paperlessConfig,
+      );
     });
   }
 

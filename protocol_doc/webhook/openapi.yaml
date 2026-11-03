@@ -365,3 +365,18 @@ components:
         error:
           type: string
           nullable: true
+        references:
+          type: array
+          items:
+            type: string
+          description: |
+            Identifiers the target returned for what it accepted, so the
+            consumer can find the document even when no local file is left:
+
+            - `paperless`: the task ids (UUIDs), usable with
+              `GET /api/tasks/?task_id=...` — one per created document;
+            - `nextcloud`: the WebDAV URL of every uploaded file;
+            - `s3`: `bucket/key` of every uploaded object;
+            - `pdf`: absent, the local file is already described in `files[]`.
+
+            Absent when the target returned nothing usable, and on failure.

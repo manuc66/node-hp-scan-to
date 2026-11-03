@@ -66,6 +66,9 @@ All notable changes to this project are documented in this file.
   delivery is best-effort (a single POST, failures are logged). A webhook is
   a notification, not a delivery target: configured alone it never removes the
   scan, retention stays governed by the delivery targets and `keep_files`.
+  Each `delivery` entry also carries the identifiers the target returned —
+  Paperless task ids, Nextcloud WebDAV URLs, S3 `bucket`/`key` — so a consumer
+  can still find the document when no local file is left.
   Two payload profiles: `full` (default, with the scanner IP, the printer
   destination label and the local file paths) and `minimal` (none of those and
   no raw delivery error text, so the event can go to a receiver outside the
