@@ -38,6 +38,7 @@ Users have reported successful scans with these devices:
 - HP OfficeJet Pro 7720 Wide Format All-in-One
 - HP OfficeJet Pro 7730
 - HP OfficeJet Pro 8025e
+- HP OfficeJet Pro 8120e series (8122e; eSCL walkup)
 - HP OfficeJet Pro 9012e
 - HP PageWide 377dw MFP
 

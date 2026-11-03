@@ -8,6 +8,14 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- **eSCL walkup ("Scan to Computer") for devices without `DiscoveryTree.xml`**:
+  printers whose firmware only implements the standard eSCL endpoints can now
+  run in `listen` mode. The app registers a walkup subscription on
+  `/eSCL/WalkupSubscriptions` (HTTP or the device's self-signed HTTPS
+  endpoint), long-polls the printer panel events, and maps the selected
+  shortcut to a scan job. This covers the HP OfficeJet Pro 8120e / 8122e
+  series. Auto-detected when the device does not serve `DiscoveryTree.xml`;
+  `--prefer-eSCL` remains available to force eSCL on dual-protocol devices.
 - **Nix flake** (`flake.nix` + `packaging/nix/package.nix`): installs the
   self-contained Linux binary shipped with each release (x86_64/aarch64) and
   provides a default configuration under
@@ -71,10 +79,11 @@ All notable changes to this project are documented in this file.
 - **eSCL devices without `DiscoveryTree.xml`** (`src/DeviceClient.ts`,
   `src/scanJobHandlers.ts`, `src/hpModels/EsclScanStatus.ts`,
   `src/readDeviceCapabilities.ts`): support scanners whose firmware omits
-  `/DevMgmt/DiscoveryTree.xml` and serve only the standard eSCL endpoints on
-  port 80. DiscoveryTree 404s/405s are tolerated, capabilities are probed at
-  `/eSCL/ScanCapabilities` and `/eSCL/ScannerCapabilities` when eSCL is
-  preferred, `/NextDocument` is fetched on port 80, and the eSCL job loop now
+  `/DevMgmt/DiscoveryTree.xml` and serve only the standard eSCL endpoints.
+  DiscoveryTree 404s/405s are tolerated, capabilities are probed at
+  `/eSCL/ScanCapabilities` and `/eSCL/ScannerCapabilities` when the tree
+  advertises no scan interface (or when eSCL is explicitly preferred),
+  `/NextDocument` is fetched on the device's eSCL base URL, and the eSCL job loop now
   ends on a terminal job state reason instead of `ImagesToTransfer == 0`
   (the latter can be 0 while a multi-page job is still scanning); a 404 from
   `/NextDocument` is treated as the end-of-job signal instead of aborting an

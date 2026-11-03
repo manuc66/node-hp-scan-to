@@ -92,6 +92,7 @@ There is a good chance it also works on other unlisted HP All-in-One Printer.
 Supports both HP proprietary protocols (WalkupScanToComp, WalkupScan, ScanJob) and the standardized eSCL protocol.
 
 - **eSCL-only devices** (e.g., HP ScanJet Pro 4500 fn1): Automatically detected and supported ([#1307](https://github.com/manuc66/node-hp-scan-to/issues/1307))
+- **Newer eSCL firmware** (e.g., HP OfficeJet Pro 8120e / 8122e series) that no longer serves `DiscoveryTree.xml` or the legacy `WalkupScan` endpoints: auto-detected, `single-scan` and `adf-autoscan` fall back to the well-known eSCL endpoints, and `listen` uses standard eSCL walkup subscriptions.
 - **Dual-protocol devices**: Uses HP protocols by default; add `--prefer-eSCL` flag to use eSCL instead
 - See [eSCL protocol documentation](protocol_doc/HP%20PageWide%20Pro%20477dw%20MFP.md) for technical details
 
@@ -167,7 +168,7 @@ Scans are saved under `/var/lib/node-hp-scan-to` by default when running as a se
 
 Linux networking notes:
 
-- the service only makes **outbound** connections: mDNS discovery (UDP 5353 multicast), plain HTTP calls to the printer itself on port 80 (discovery tree, scan job creation and polling), and HTTPS uploads to Paperless-ngx/Nextcloud when configured — nothing listens for the scanning flow itself
+- the service only makes **outbound** connections: mDNS discovery (UDP 5353 multicast), HTTP calls to the printer itself on port 80 (discovery tree, scan job creation and polling), HTTPS to the printer on port 443 when its eSCL endpoint only speaks TLS (self-signed certificate accepted for that local endpoint), and HTTPS uploads to Paperless-ngx/Nextcloud when configured — nothing listens for the scanning flow itself
 - `--health-check` listens on **all interfaces** (port 3000 by default); restrict it with a local firewall rule if that matters to you, or drop the flag from `/usr/lib/systemd/system/node-hp-scan-to.service`
 - the packaged systemd unit runs under a dynamic non-root user with `PrivateTmp`, read-only system paths and an empty capability set
 
