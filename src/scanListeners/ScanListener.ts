@@ -12,6 +12,8 @@ export interface ScanRequest extends ScanTarget {
   readonly shortcut: KnownShortcut | null;
   readonly scanPlexMode: ScanPlexMode | null;
   readonly continuation: unknown;
+  /** eSCL walkup subscription id, sent as ContextID when creating the job. */
+  readonly contextID?: string;
 }
 
 /**

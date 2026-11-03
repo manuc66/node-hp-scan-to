@@ -105,6 +105,7 @@ describe("EsclWalkupScanListener", () => {
     expect(request?.shortcut).to.equal(KnownShortcut.SavePDF);
     expect(request?.scanPlexMode).to.equal(ScanPlexMode.Duplex);
     expect(request?.resourceURI).to.equal("escl-walkup:Paperless duplex");
+    expect(request?.contextID).to.equal("sub-1");
   });
 
   it("falls back to the first target for an unknown shortcut", async () => {

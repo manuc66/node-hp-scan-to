@@ -147,6 +147,7 @@ export async function saveScanFromEvent(
     scanWidth,
     scanHeight,
     isDuplex,
+    selectedScanTarget.contextID,
   );
 
   const scanJobContent: ScanContent = { elements: [] };

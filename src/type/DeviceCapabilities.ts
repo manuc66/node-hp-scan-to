@@ -28,6 +28,7 @@ export interface DeviceCapabilities {
     width: number | null,
     height: number | null,
     isDuplex: boolean,
+    contextID?: string,
   ) => IScanJobSettings;
   submitScanJob: (scanJobSettings: IScanJobSettings) => Promise<string>;
 }

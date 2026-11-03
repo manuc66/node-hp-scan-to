@@ -133,6 +133,7 @@ export async function readDeviceCapabilities(
     width: number | null,
     height: number | null,
     isDuplex: boolean,
+    contextID?: string,
   ): IScanJobSettings => {
     let scanJobSettings: IScanJobSettings;
     if (scanCaps?.isEscl === true) {
@@ -145,6 +146,7 @@ export async function readDeviceCapabilities(
         width,
         height,
         isDuplex,
+        contextID,
       );
     } else {
       scanJobSettings = new ScanJobSettings(

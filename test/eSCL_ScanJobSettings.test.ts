@@ -34,6 +34,30 @@ describe("ScanJobSettings", () => {
         content.trimEnd().replace(/\r\n/g, "\n"),
       );
     });
+    it("includes the eSCL walkup context id and the client-compatible fields", async () => {
+      const scanJobSettings = new EsclScanJobSettings(
+        InputSource.Adf,
+        "Document",
+        createImageFormat(ScanFormat.Jpeg),
+        300,
+        ScanMode.Color,
+        2550,
+        4200,
+        false,
+        "40742732-c386-484a-a1d8-0df3212c138e",
+      );
+
+      const xml = await scanJobSettings.toXML();
+
+      expect(xml).to.contain(
+        "<ContextID>40742732-c386-484a-a1d8-0df3212c138e</ContextID>",
+      );
+      expect(xml).to.match(/>2\.9<\/Version>/);
+      expect(xml).to.contain("<Brightness>4</Brightness>");
+      expect(xml).to.contain("<CompressionFactor>50</CompressionFactor>");
+      expect(xml).to.contain("<Contrast>4</Contrast>");
+    });
+
     it("Allows to describe an platen", async () => {
       const scanJobSettings = new EsclScanJobSettings(
         InputSource.Platen,

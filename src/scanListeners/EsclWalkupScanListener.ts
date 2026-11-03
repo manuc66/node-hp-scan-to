@@ -173,8 +173,12 @@ export default class EsclWalkupScanListener implements ScanListener {
 
   private toScanRequest(event: EsclWalkupEvent): ScanRequest {
     const target = this.findTarget(event.shortcut);
+    const subscriptionURI = this.subscriptionURI ?? event.resourceURI ?? "";
+    const contextID = subscriptionURI.split("/").filter(Boolean).pop();
+
     return {
       ...target,
+      ...(contextID !== undefined && { contextID }),
       shortcut: mapShortcut(event.shortcut ?? target.label),
       scanPlexMode: event.scanPlexMode ?? ScanPlexMode.Simplex,
       continuation: event,
