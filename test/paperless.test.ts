@@ -110,13 +110,9 @@ describe("paperless", () => {
     });
 
     it("returns one task id per uploaded image", async () => {
-      const secondPage: ScanPage = {
-        ...scanPage,
-        pageNumber: 2,
-        path: path.join(assetDir, "paperless_sample_2.jpg"),
-      };
-      await fs.writeFile(secondPage.path, "fake-jpg-content-2");
-      scanJobContent.elements.push(secondPage);
+      // The same asset uploaded twice is enough: what matters is one reference
+      // per created document, not two distinct files.
+      scanJobContent.elements.push({ ...scanPage, pageNumber: 2 });
 
       nock("http://paperless.example.test")
         .post("/api/documents/post_document/")
