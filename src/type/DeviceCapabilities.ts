@@ -3,10 +3,11 @@ import type { IScanJobSettings } from "../hpModels/IScanJobSettings.js";
 import type { InputSource } from "./InputSource.js";
 import type { ScanMode } from "./scanMode.js";
 import type { ImageFormat } from "../imageFormats/index.js";
+import type { WalkupProtocol } from "./WalkupProtocol.js";
 
 export interface DeviceCapabilities {
   supportsMultiItemScanFromPlaten: boolean;
-  useWalkupScanToComp: boolean | undefined;
+  walkupProtocol: WalkupProtocol | null;
   platenMaxWidth: number | null;
   platenMaxHeight: number | null;
   adfMaxWidth: number | null;

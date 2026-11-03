@@ -11,6 +11,7 @@ import ScanJobSettings from "./hpModels/ScanJobSettings.js";
 import type { ScanMode } from "./type/scanMode.js";
 import type { ImageFormat } from "./imageFormats/index.js";
 import type { IScanCaps } from "./IScanCaps.js";
+import { WalkupProtocol } from "./type/WalkupProtocol.js";
 import { getLoggerForFile } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -38,10 +39,11 @@ async function getScanCaps(
     if (scanJobManifest.scanCapsURI !== null) {
       eSclScanCaps = await api.getEsclScanCaps(scanJobManifest.scanCapsURI);
     }
-  } else if (preferEscl) {
-    // No eSCL manifest advertised (or no DiscoveryTree at all): when eSCL
-    // is explicitly preferred, probe the standard eSCL capabilities
-    // endpoints directly.
+  } else if (preferEscl || !discoveryTree.hasScanInterface) {
+    // No eSCL manifest advertised (or no scan interface at all): probe the
+    // standard eSCL capabilities endpoints directly. This also covers
+    // devices that no longer serve DiscoveryTree.xml, without requiring an
+    // explicit --prefer-eSCL.
     eSclScanCaps = await api.getEsclScanCapsFromWellKnownPath();
     if (eSclScanCaps !== null) {
       logger.info("eSCL capabilities discovered via well-known endpoint.");
@@ -63,13 +65,13 @@ export async function readDeviceCapabilities(
   preferEscl: boolean,
 ): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
-  let useWalkupScanToComp: boolean | undefined;
+  let walkupProtocol: WalkupProtocol | null = null;
   let userActionTimeout: number | null = null;
 
   const discoveryTree = await api.getDiscoveryTree();
 
   if (discoveryTree.WalkupScanToCompManifestURI !== null) {
-    useWalkupScanToComp = true;
+    walkupProtocol = WalkupProtocol.WalkupScanToComp;
     const walkupScanToCompManifest = await api.getWalkupScanToCompManifest(
       discoveryTree.WalkupScanToCompManifestURI,
     );
@@ -82,10 +84,18 @@ export async function readDeviceCapabilities(
       userActionTimeout = walkupScanToCompCaps.userActionTimeout;
     }
   } else if (discoveryTree.WalkupScanManifestURI !== null) {
+    walkupProtocol = WalkupProtocol.WalkupScan;
     await api.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
-    useWalkupScanToComp = false;
   }
   const scanCaps = await getScanCaps(api, discoveryTree, preferEscl);
+
+  if (
+    walkupProtocol === null &&
+    scanCaps?.isEscl === true &&
+    (preferEscl || !discoveryTree.hasScanInterface)
+  ) {
+    walkupProtocol = WalkupProtocol.EsclWalkup;
+  }
 
   if (scanCaps === null) {
     logger.warn(
@@ -166,7 +176,7 @@ export async function readDeviceCapabilities(
 
   return {
     supportsMultiItemScanFromPlaten,
-    useWalkupScanToComp,
+    walkupProtocol,
     platenMaxWidth: scanCaps?.platenMaxWidth ?? null,
     platenMaxHeight: scanCaps?.platenMaxHeight ?? null,
     adfMaxWidth: scanCaps?.adfMaxWidth ?? null,

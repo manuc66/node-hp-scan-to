@@ -71,14 +71,14 @@ export class EsclJobInfo {
     );
   }
 
-  getJobStateReason() {
-    const jobStateReasons = this.data["pwg:JobStateReasons"]["0"];
+  getJobStateReason(): JobStateReason | null {
+    const jobStateReasons = this.data["pwg:JobStateReasons"]?.["0"];
+    const reason = jobStateReasons?.["pwg:JobStateReason"]?.["0"];
+    if (reason === undefined) {
+      return null;
+    }
 
-    return EnumUtils.getState(
-      "JobStateReason",
-      JobStateReason,
-      jobStateReasons["pwg:JobStateReason"]["0"],
-    );
+    return EnumUtils.getState("JobStateReason", JobStateReason, reason);
   }
 }
 

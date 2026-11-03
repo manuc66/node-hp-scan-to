@@ -7,6 +7,7 @@ import { InputSource } from "../src/type/InputSource.js";
 import { ScanMode } from "../src/type/scanMode.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
 import { createImageFormat } from "../src/imageFormats/index.js";
+import { WalkupProtocol } from "../src/type/WalkupProtocol.js";
 
 describe("readDeviceCapabilities", () => {
   let api: DeviceClient;
@@ -80,7 +81,7 @@ describe("readDeviceCapabilities", () => {
     expect(caps.platenMaxWidth).to.equal(2550);
     expect(caps.platenMaxHeight).to.equal(3300);
     expect(caps.isEscl).to.be.false;
-    expect(caps.useWalkupScanToComp).to.be.undefined;
+    expect(caps.walkupProtocol).to.be.null;
   });
 
   it("detects eSCL support when preferred", async () => {
@@ -137,6 +138,7 @@ describe("readDeviceCapabilities", () => {
     const caps = await readDeviceCapabilities(api, true);
 
     expect(caps.isEscl).to.be.true;
+    expect(caps.walkupProtocol).to.equal(WalkupProtocol.EsclWalkup);
     expect(caps.platenMaxWidth).to.equal(2550);
     expect(caps.platenMaxHeight).to.equal(3508);
 
@@ -221,16 +223,14 @@ describe("readDeviceCapabilities", () => {
 
     const caps = await readDeviceCapabilities(api, false);
 
-    expect(caps.useWalkupScanToComp).to.be.true;
+    expect(caps.walkupProtocol).to.equal(WalkupProtocol.WalkupScanToComp);
     expect(caps.supportsMultiItemScanFromPlaten).to.be.true;
   });
 
   it("falls back to well-known eSCL capabilities when DiscoveryTree.xml returns 404", async () => {
     // Newer HP firmware omits /DevMgmt/DiscoveryTree.xml entirely; the
     // device serves only the standard eSCL endpoints on port 80.
-    nock("http://127.0.0.1")
-      .get("/DevMgmt/DiscoveryTree.xml")
-      .reply(404);
+    nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(404);
 
     nock("http://127.0.0.1")
       .get("/eSCL/ScannerCapabilities")
@@ -250,16 +250,38 @@ describe("readDeviceCapabilities", () => {
     const caps = await readDeviceCapabilities(api, true);
 
     expect(caps.isEscl).to.be.true;
+    expect(caps.walkupProtocol).to.equal(WalkupProtocol.EsclWalkup);
     expect(caps.platenMaxWidth).to.equal(2550);
     expect(caps.platenMaxHeight).to.equal(3508);
+  });
+
+  it("auto-detects eSCL when DiscoveryTree.xml is absent, without --prefer-eSCL", async () => {
+    nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(404);
+    nock("http://127.0.0.1")
+      .get("/eSCL/ScanCapabilities")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<scan:ScannerCapabilities xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <scan:Platen>
+    <scan:PlatenInputCaps>
+      <scan:MaxWidth>2550</scan:MaxWidth>
+      <scan:MaxHeight>3508</scan:MaxHeight>
+    </scan:PlatenInputCaps>
+  </scan:Platen>
+</scan:ScannerCapabilities>`,
+      );
+
+    const caps = await readDeviceCapabilities(api, false);
+
+    expect(caps.isEscl).to.be.true;
+    expect(caps.walkupProtocol).to.equal(WalkupProtocol.EsclWalkup);
   });
 
   it("fails when DiscoveryTree.xml answers an unexpected status (e.g. 500)", async () => {
     // Only 404/405 mean "no HP-proprietary tree"; any other status is a
     // real error and must not be silently swallowed into an eSCL fallback.
-    nock("http://127.0.0.1")
-      .get("/DevMgmt/DiscoveryTree.xml")
-      .reply(500);
+    nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(500);
 
     let caught: unknown;
     try {

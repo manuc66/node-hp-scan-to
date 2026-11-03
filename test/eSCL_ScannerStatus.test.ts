@@ -210,19 +210,44 @@ describe("EsclScanStatus", () => {
 
     before(async () => {
       const content: string = await fs.readFile(
-        path.resolve(__dirname, "./asset/eSCL_ScannerStatus_noImagesToTransfer.xml"),
+        path.resolve(
+          __dirname,
+          "./asset/eSCL_ScannerStatus_noImagesToTransfer.xml",
+        ),
         { encoding: "utf8" },
       );
       scanStatus = await EsclScanStatus.createScanStatus(content);
     });
 
     it("getImagesToTransfer is defensive: returns 0 when the field is absent", async () => {
-      const job = scanStatus.getJobInfos().find(
-        (x) => x.getJobUri() === "/eSCL/ScanJobs/1",
-      );
+      const job = scanStatus
+        .getJobInfos()
+        .find((x) => x.getJobUri() === "/eSCL/ScanJobs/1");
       expect(job).to.not.be.undefined;
       // A firmware that omits ImagesToTransfer must not crash the job loop.
       expect(job!.getImagesToTransfer()).to.equal(0);
+    });
+  });
+
+  describe("Job state reason", () => {
+    it("returns null when the device omits JobStateReasons", async () => {
+      const scanStatus = await EsclScanStatus.createScanStatus(
+        `<?xml version="1.0"?>
+<scan:ScannerStatus xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <pwg:State>Processing</pwg:State>
+  <scan:Jobs>
+    <scan:JobInfo>
+      <pwg:JobUri>/eSCL/ScanJobs/1</pwg:JobUri>
+      <pwg:JobUuid>job-1</pwg:JobUuid>
+      <scan:Age>1</scan:Age>
+      <pwg:JobState>Processing</pwg:JobState>
+    </scan:JobInfo>
+  </scan:Jobs>
+</scan:ScannerStatus>`,
+      );
+
+      expect(scanStatus.findJobByUri("/eSCL/ScanJobs/1")?.getJobStateReason())
+        .to.be.null;
     });
   });
 });

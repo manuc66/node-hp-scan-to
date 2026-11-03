@@ -5,6 +5,7 @@ import type { IScanStatus } from "../src/hpModels/IScanStatus.js";
 import type { IScanJobSettings } from "../src/hpModels/IScanJobSettings.js";
 
 import { ScanFormat } from "../src/type/scanFormat.js";
+import type { ScanListener } from "../src/scanListeners/ScanListener.js";
 
 export function createDefaultScanConfig(): ScanConfig {
   return {
@@ -28,10 +29,18 @@ export function createDefaultScanConfig(): ScanConfig {
   };
 }
 
+export function createDefaultScanListener(): ScanListener {
+  return {
+    waitForScan: async () => null,
+    waitForScanStart: async () => true,
+    waitForNextPage: async () => null,
+  };
+}
+
 export function createDefaultDeviceCapabilities(): DeviceCapabilities {
   return {
     supportsMultiItemScanFromPlaten: false,
-    useWalkupScanToComp: false,
+    walkupProtocol: null,
     platenMaxWidth: null,
     platenMaxHeight: null,
     adfMaxWidth: null,
