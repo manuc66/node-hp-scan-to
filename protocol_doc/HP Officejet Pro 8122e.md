@@ -1,19 +1,19 @@
-* [Protocol](https://www.google.com/search?q=%23protocol)
-* [Recorded Sequence](https://www.google.com/search?q=%23recorded-sequence)
-* [`POST /eSCL/WalkupSubscriptions`](https://www.google.com/search?q=%23post-esclwalkupsubscriptions)
-* [`GET /eSCL/WalkupSubscriptions/{id}/Event`](https://www.google.com/search?q=%23get-esclwalkupsubscriptionsidevent)
-* [`GET /eSCL/eSCLConfig`](https://www.google.com/search?q=%23get-esclesclconfig)
-* [`GET /eSCL/ScannerCapabilities`](https://www.google.com/search?q=%23get-esclscannercapabilities)
-* [`GET /eSCL/ScannerStatus`](https://www.google.com/search?q=%23get-esclscannerstatus)
-* [`POST /eSCL/ScanJobs`](https://www.google.com/search?q=%23post-esclscanjobs)
-* [`GET /eSCL/ScanJobs/{id}/NextDocument`](https://www.google.com/search?q=%23get-esclscanjobsidnextdocument)
-* [`GET /eSCL/ScanJobs/{id}/ScanImageInfo`](https://www.google.com/search?q=%23get-esclscanjobsidscanimageinfo)
-* [`DELETE /eSCL/WalkupSubscriptions/{id}`](https://www.google.com/search?q=%23delete-esclwalkupsubscriptionsid)
+- [Protocol](#protocol)
+	- [Recorded Sequence](#recorded-sequence)
+		- [`POST /eSCL/WalkupSubscriptions`](#post-esclwalkupsubscriptions)
+		- [`GET /eSCL/WalkupSubscriptions/{id}/Event`](#get-esclwalkupsubscriptionsidevent)
+		- [`GET /eSCL/eSCLConfig`](#get-esclesclconfig)
+		- [`GET /eSCL/ScannerCapabilities`](#get-esclscannercapabilities)
+		- [`GET /eSCL/ScannerStatus`](#get-esclscannerstatus)
+		- [`POST /eSCL/ScanJobs`](#post-esclscanjobs)
+		- [`GET /eSCL/ScanJobs/{id}/NextDocument`](#get-esclscanjobsidnextdocument)
+		- [`GET /eSCL/ScanJobs/{id}/ScanImageInfo`](#get-esclscanjobsidscanimageinfo)
+		- [`DELETE /eSCL/WalkupSubscriptions/{id}`](#delete-esclwalkupsubscriptionsid)
 
 
 
 
-* [Key Operational Notes](https://www.google.com/search?q=%23key-operational-notes)
+* [Key Operational Notes](#key-operational-notes)
 
 # Protocol
 
