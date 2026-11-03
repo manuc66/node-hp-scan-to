@@ -9,10 +9,18 @@ import {
 import {
   uploadPdfToNextcloud,
   uploadImagesToNextcloud,
+  nextcloudWebdavFileUrl,
 } from "./nextcloud/nextcloud.js";
-import { uploadPdfToS3, uploadImagesToS3 } from "./s3/s3.js";
+import { uploadPdfToS3, uploadImagesToS3, s3ObjectLocation } from "./s3/s3.js";
+import {
+  sendScanEvent,
+  type WebhookDeliveryTarget,
+  type WebhookFileSource,
+} from "./webhook/webhook.js";
+import type { WebhookConfig } from "./webhook/WebhookConfig.js";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
+import path from "node:path";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import type { S3Config } from "./s3/S3Config.js";
@@ -36,6 +44,194 @@ export interface PostProcessingResult {
 
 function toFailureMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
+}
+
+/**
+ * Notify the webhook without letting a failure abort the rest of the
+ * post-processing: an unreachable endpoint or a rejected signature must not
+ * stop metadata logging or the cleanup of the scanned files.
+ */
+async function notifyWebhook(
+  scanJobContent: ScanContent,
+  files: WebhookFileSource[],
+  delivery: WebhookDeliveryTarget[],
+  webhookConfig: WebhookConfig,
+): Promise<void> {
+  try {
+    await sendScanEvent(scanJobContent, files, delivery, webhookConfig);
+  } catch (e) {
+    logger.warn(e, "Failed to send the scan webhook event, continuing");
+  }
+}
+
+/**
+ * Runs one delivery target and records its outcome for the webhook event.
+ *
+ * The action returns the identifiers the target gave back for what it
+ * accepted (Paperless task ids, Nextcloud WebDAV URLs, S3 `bucket/key`): they
+ * are what lets a consumer find the document once the local copy is gone.
+ *
+ * Returns whether the target succeeded: the sidecar stage only offers files to
+ * a target that actually received the scan, so the caller needs the answer.
+ */
+async function recordDelivery(
+  delivery: WebhookDeliveryTarget[],
+  failures: string[],
+  target: string,
+  action: () => Promise<readonly string[]>,
+): Promise<boolean> {
+  try {
+    const references = await action();
+    delivery.push({
+      target,
+      status: "success",
+      error: undefined,
+      ...(references.length > 0 ? { references: [...references] } : {}),
+    });
+    return true;
+  } catch (e) {
+    const message = toFailureMessage(e);
+    failures.push(message);
+    delivery.push({ target, status: "failed", error: message });
+    return false;
+  }
+}
+
+/**
+ * Which delivery targets actually received the scan.
+ *
+ * A descriptor must never advertise a store the file never reached: the
+ * consumer would get a dead location and, because `path` is omitted once a
+ * store is set, no way to fetch the file at all.
+ */
+interface DeliveredTargets {
+  s3: boolean;
+  nextcloud: boolean;
+}
+
+function buildWebhookFileSource(
+  file: { path: string; contentType?: string },
+  delivered: DeliveredTargets,
+  s3Config: S3Config | undefined,
+  nextcloudConfig: NextcloudConfig | undefined,
+): WebhookFileSource {
+  const source: WebhookFileSource = { path: file.path };
+  if (file.contentType !== undefined) {
+    source.contentType = file.contentType;
+  }
+  if (s3Config !== undefined && delivered.s3) {
+    source.store = "s3";
+    source.location = s3ObjectLocation(s3Config, path.basename(file.path));
+  } else if (nextcloudConfig !== undefined && delivered.nextcloud) {
+    source.store = "nextcloud";
+    source.location = {
+      webdavUrl: nextcloudWebdavFileUrl(
+        nextcloudConfig,
+        path.basename(file.path),
+      ),
+    };
+  }
+  return source;
+}
+
+/**
+ * Builds the per-file descriptors for a scanned image set: one descriptor per
+ * image, with the store location of the target that actually received it.
+ */
+function webhookFileSourcesForImages(
+  scanJobContent: ScanContent,
+  delivered: DeliveredTargets,
+  s3Config: S3Config | undefined,
+  nextcloudConfig: NextcloudConfig | undefined,
+): WebhookFileSource[] {
+  return scanJobContent.elements.map((element) =>
+    buildWebhookFileSource(
+      {
+        path: element.path,
+        ...(element.contentType !== undefined
+          ? { contentType: element.contentType }
+          : {}),
+      },
+      delivered,
+      s3Config,
+      nextcloudConfig,
+    ),
+  );
+}
+
+/**
+ * Builds the single file descriptor for a generated PDF (when one exists),
+ * with the store location of the target that actually received it.
+ */
+function webhookFileSourcesForPdf(
+  pdfFilePath: string | null,
+  delivered: DeliveredTargets,
+  s3Config: S3Config | undefined,
+  nextcloudConfig: NextcloudConfig | undefined,
+): WebhookFileSource[] {
+  return pdfFilePath === null
+    ? []
+    : [
+        buildWebhookFileSource(
+          { path: pdfFilePath, contentType: "application/pdf" },
+          delivered,
+          s3Config,
+          nextcloudConfig,
+        ),
+      ];
+}
+
+/**
+ * Builds one descriptor per extra file the scan produced — a PDF the paperless
+ * stage generated, a sidecar a hook wrote beside the scan. The content type is
+ * inferred from the extension unless one is given.
+ *
+ * Only files that were actually delivered are described: a sidecar no target
+ * accepted stays on disk, and the event reports what a consumer can fetch.
+ */
+function webhookFileSourcesForExtraFiles(
+  filePaths: readonly string[],
+  contentType: string | undefined,
+  delivered: DeliveredTargets,
+  s3Config: S3Config | undefined,
+  nextcloudConfig: NextcloudConfig | undefined,
+): WebhookFileSource[] {
+  return filePaths.map((filePath) =>
+    buildWebhookFileSource(
+      contentType === undefined
+        ? { path: filePath }
+        : { path: filePath, contentType },
+      delivered,
+      s3Config,
+      nextcloudConfig,
+    ),
+  );
+}
+
+/**
+ * Reports the configured-but-skipped delivery targets after a failed PDF
+ * generation, so the consumer can tell a "never attempted" target from a
+ * failed one.
+ */
+function reportConfiguredButSkippedTargets(
+  delivery: WebhookDeliveryTarget[],
+  paperlessConfig: PaperlessConfig | undefined,
+  nextcloudConfig: NextcloudConfig | undefined,
+  s3Config: S3Config | undefined,
+): void {
+  for (const target of ["paperless", "nextcloud", "s3"] as const) {
+    const configured =
+      (target === "paperless" && paperlessConfig !== undefined) ||
+      (target === "nextcloud" && nextcloudConfig !== undefined) ||
+      (target === "s3" && s3Config !== undefined);
+    if (configured) {
+      delivery.push({
+        target,
+        status: "failed",
+        error: "Skipped: PDF generation failed",
+      });
+    }
+  }
 }
 
 export async function postProcessing(
@@ -77,6 +273,7 @@ async function handlePdfPostProcessing(
   const paperlessConfig = scanConfig.paperlessConfig;
   const nextcloudConfig = scanConfig.nextcloudConfig;
   const s3Config = scanConfig.s3Config;
+  const webhookConfig = scanConfig.webhookConfig;
 
   // The PDF may land in either folder, and the pages live wherever the scan
   // captured them: both are watched for files the hooks leave beside them.
@@ -122,33 +319,51 @@ async function handlePdfPostProcessing(
     : [];
 
   const failures: string[] = [];
+  const delivery: WebhookDeliveryTarget[] = [];
   let scanDeliveredToNextcloud = false;
   let scanDeliveredToS3 = false;
   if (pdfFilePath !== null) {
+    delivery.push({ target: "pdf", status: "success", error: undefined });
     displayPdfScan(pdfFilePath, scanJobContent, scanCount);
     if (paperlessConfig) {
-      try {
-        await uploadPdfToPaperless(pdfFilePath, paperlessConfig);
-      } catch (e) {
-        failures.push(toFailureMessage(e));
-      }
+      await recordDelivery(delivery, failures, "paperless", async () => {
+        const taskId = await uploadPdfToPaperless(
+          pdfFilePath,
+          paperlessConfig,
+        );
+        return taskId === undefined ? [] : [taskId];
+      });
     }
     if (nextcloudConfig) {
-      try {
-        await uploadPdfToNextcloud(pdfFilePath, nextcloudConfig);
-        scanDeliveredToNextcloud = true;
-      } catch (e) {
-        failures.push(toFailureMessage(e));
-      }
+      scanDeliveredToNextcloud = await recordDelivery(
+        delivery,
+        failures,
+        "nextcloud",
+        () => uploadPdfToNextcloud(pdfFilePath, nextcloudConfig),
+      );
     }
     if (s3Config) {
-      try {
-        await uploadPdfToS3(pdfFilePath, s3Config);
-        scanDeliveredToS3 = true;
-      } catch (e) {
-        failures.push(toFailureMessage(e));
-      }
+      scanDeliveredToS3 = await recordDelivery(
+        delivery,
+        failures,
+        "s3",
+        () => uploadPdfToS3(pdfFilePath, s3Config),
+      );
     }
+  } else {
+    delivery.push({
+      target: "pdf",
+      status: "failed",
+      error: "PDF generation failed, nothing was uploaded",
+    });
+    // Report the configured-but-skipped targets so the consumer can tell a
+    // "never attempted" target from a failed one.
+    reportConfiguredButSkippedTargets(
+      delivery,
+      paperlessConfig,
+      nextcloudConfig,
+      s3Config,
+    );
   }
 
   // Sidecars are delivered after the scan itself: the scan is the primary
@@ -157,6 +372,38 @@ async function handlePdfPostProcessing(
     nextcloud: scanDeliveredToNextcloud,
     s3: scanDeliveredToS3,
   });
+  const delivered: DeliveredTargets = {
+    nextcloud: scanDeliveredToNextcloud,
+    s3: scanDeliveredToS3,
+  };
+
+  // The event describes the files as they were delivered, so it is sent once
+  // every target had its turn and before the cleanup removes anything.
+  if (webhookConfig) {
+    await notifyWebhook(
+      scanJobContent,
+      [
+        ...webhookFileSourcesForPdf(
+          pdfFilePath,
+          delivered,
+          s3Config,
+          nextcloudConfig,
+        ),
+        // A sidecar is part of the scan: the consumer must be able to fetch
+        // it, not just the file it was written beside.
+        ...webhookFileSourcesForExtraFiles(
+          deliveredSidecars,
+          undefined,
+          delivered,
+          s3Config,
+          nextcloudConfig,
+        ),
+      ],
+      delivery,
+      webhookConfig,
+    );
+  }
+  await logScanMetadata(scanJobContent, scanDate);
 
   // Only clean up if delivery succeeded, otherwise keep the files.
   if (failures.length === 0) {
@@ -170,6 +417,7 @@ async function handlePdfPostProcessing(
       paperlessConfig,
       nextcloudConfig,
       s3Config,
+      webhookConfig,
     );
   }
   return { uploadSucceeded: failures.length === 0, failures };
@@ -201,7 +449,7 @@ async function deliverSidecars(
   }
 
   const { nextcloudConfig, s3Config } = scanConfig;
-  const targets: Promise<void>[] = [];
+  const targets: Promise<unknown>[] = [];
   if (nextcloudConfig !== undefined && scanDeliveredTo.nextcloud) {
     targets.push(uploadFilesToNextcloud(sidecars, nextcloudConfig));
   }
@@ -276,6 +524,7 @@ async function handleImagePostProcessing(
   const paperlessConfig = scanConfig.paperlessConfig;
   const nextcloudConfig = scanConfig.nextcloudConfig;
   const s3Config = scanConfig.s3Config;
+  const webhookConfig = scanConfig.webhookConfig;
 
   // The hooks run on the pages and, for some paperless modes, on PDFs
   // generated beside them: everything the folders gain belongs to the scan.
@@ -293,6 +542,7 @@ async function handleImagePostProcessing(
 
   displayImageScan(scanJobContent, scanCount);
   const failures: string[] = [];
+  const delivery: WebhookDeliveryTarget[] = [];
 
   await applyPostCommandToImages(scanConfig, scanJobContent);
 
@@ -303,9 +553,11 @@ async function handleImagePostProcessing(
   let generatedPdfPaths: string[] = [];
 
   if (paperlessConfig) {
-    try {
+    // Kept as one closure so the delivery recorder sees a single paperless
+    // outcome while the generated PDF paths still reach the sidecar scan.
+    await recordDelivery(delivery, failures, "paperless", async () => {
       if (paperlessConfig.groupMultiPageScanIntoAPdf) {
-        const pdfFilePath =
+        const { pdfPath, taskId } =
           await mergeToPdfAndUploadAsSingleDocumentToPaperless(
             folder,
             scanCount,
@@ -314,29 +566,28 @@ async function handleImagePostProcessing(
             scanDate,
             paperlessConfig,
           );
-        if (pdfFilePath !== null) {
-          generatedPdfPaths = [pdfFilePath];
+        if (pdfPath !== null) {
+          generatedPdfPaths = [pdfPath];
         }
-      } else {
-        if (paperlessConfig.alwaysSendAsPdfFile) {
-          generatedPdfPaths =
-            await convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
-              scanJobContent,
-              paperlessConfig,
-              scanDate,
-              scanConfig.postCommandPdf,
-              scanConfig.postCommandTimeout,
-            );
-        } else {
-          await uploadImagesAsSeparateDocumentsToPaperless(
+        return taskId === undefined ? [] : [taskId];
+      }
+      if (paperlessConfig.alwaysSendAsPdfFile) {
+        const { pdfPaths, taskIds } =
+          await convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
             scanJobContent,
             paperlessConfig,
+            scanDate,
+            scanConfig.postCommandPdf,
+            scanConfig.postCommandTimeout,
           );
-        }
+        generatedPdfPaths = pdfPaths;
+        return taskIds;
       }
-    } catch (e) {
-      failures.push(toFailureMessage(e));
-    }
+      return await uploadImagesAsSeparateDocumentsToPaperless(
+        scanJobContent,
+        paperlessConfig,
+      );
+    });
   }
 
   // Collected after the paperless stage: the PDFs it generates run the hook
@@ -364,20 +615,17 @@ async function handleImagePostProcessing(
   let scanDeliveredToNextcloud = false;
   let scanDeliveredToS3 = false;
   if (nextcloudConfig) {
-    try {
-      await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
-      scanDeliveredToNextcloud = true;
-    } catch (e) {
-      failures.push(toFailureMessage(e));
-    }
+    scanDeliveredToNextcloud = await recordDelivery(
+      delivery,
+      failures,
+      "nextcloud",
+      () => uploadImagesToNextcloud(scanJobContent, nextcloudConfig),
+    );
   }
   if (s3Config) {
-    try {
-      await uploadImagesToS3(scanJobContent, s3Config);
-      scanDeliveredToS3 = true;
-    } catch (e) {
-      failures.push(toFailureMessage(e));
-    }
+    scanDeliveredToS3 = await recordDelivery(delivery, failures, "s3", () =>
+      uploadImagesToS3(scanJobContent, s3Config),
+    );
   }
   // Sidecars are delivered after the scan itself: the scan is the primary
   // deliverable, and a sidecar must not get in front of it. Only the targets
@@ -386,6 +634,36 @@ async function handleImagePostProcessing(
     nextcloud: scanDeliveredToNextcloud,
     s3: scanDeliveredToS3,
   });
+  const delivered: DeliveredTargets = {
+    nextcloud: scanDeliveredToNextcloud,
+    s3: scanDeliveredToS3,
+  };
+
+  // The event describes the files as they were delivered, so it is sent once
+  // every target had its turn and before the cleanup removes anything.
+  if (webhookConfig) {
+    await notifyWebhook(
+      scanJobContent,
+      [
+        ...webhookFileSourcesForImages(
+          scanJobContent,
+          delivered,
+          s3Config,
+          nextcloudConfig,
+        ),
+        ...webhookFileSourcesForExtraFiles(
+          deliveredSidecars,
+          undefined,
+          delivered,
+          s3Config,
+          nextcloudConfig,
+        ),
+      ],
+      delivery,
+      webhookConfig,
+    );
+  }
+  await logScanMetadata(scanJobContent, scanDate);
 
   // Only clean up if delivery succeeded, otherwise keep the files.
   if (failures.length === 0) {
@@ -397,9 +675,54 @@ async function handleImagePostProcessing(
       paperlessConfig,
       nextcloudConfig,
       s3Config,
+      webhookConfig,
     );
   }
   return { uploadSucceeded: failures.length === 0, failures };
+}
+
+async function logScanMetadata(
+  scanJobContent: ScanContent,
+  scanDate: Date,
+): Promise<void> {
+  const meta = scanJobContent.meta;
+  if (meta === undefined) {
+    return;
+  }
+  const pages = await Promise.all(
+    scanJobContent.elements.map(async (element) => {
+      let sizeBytes: number | undefined;
+      try {
+        sizeBytes = (await fs.stat(element.path)).size;
+      } catch {
+        sizeBytes = undefined;
+      }
+      return {
+        pageNumber: element.pageNumber,
+        path: element.path,
+        format: path.extname(element.path).replace(/^\./, ""),
+        width: element.width,
+        height: element.height,
+        xResolution: element.xResolution,
+        yResolution: element.yResolution,
+        sizeBytes,
+        capturedAt: element.capturedAt,
+        durationMs: element.durationMs,
+        contentType: element.contentType,
+      };
+    }),
+  );
+  logger.info(
+    {
+      metadata: {
+        ...meta,
+        endedAt: new Date().toISOString(),
+        durationMs: Date.now() - scanDate.getTime(),
+      },
+      pages,
+    },
+    "Scan completed",
+  );
 }
 
 function displayPdfScan(
@@ -440,11 +763,13 @@ async function cleanUpFilesIfNeeded(
   paperlessConfig: PaperlessConfig | undefined,
   nextcloudConfig: NextcloudConfig | undefined,
   s3Config: S3Config | undefined,
+  webhookConfig: WebhookConfig | undefined,
 ) {
   const keepFiles: boolean =
     paperlessConfig?.keepFiles ??
     nextcloudConfig?.keepFiles ??
     s3Config?.keepFiles ??
+    webhookConfig?.keepFiles ??
     true;
   if (!keepFiles) {
     await Promise.all(

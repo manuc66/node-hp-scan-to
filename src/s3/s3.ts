@@ -11,8 +11,8 @@ const logger = getLoggerForFile(import.meta.url);
 export async function uploadImagesToS3(
   scanJobContent: ScanContent,
   s3Config: S3Config,
-): Promise<void> {
-  await uploadFilesToS3(
+): Promise<string[]> {
+  return await uploadFilesToS3(
     scanJobContent.elements.map((element) => element.path),
     s3Config,
   );
@@ -25,23 +25,25 @@ export async function uploadImagesToS3(
 export async function uploadFilesToS3(
   filePaths: readonly string[],
   s3Config: S3Config,
-): Promise<void> {
+): Promise<string[]> {
+  const locations: string[] = [];
   for (const filePath of filePaths) {
-    await uploadToS3(filePath, s3Config);
+    locations.push(await uploadToS3(filePath, s3Config));
   }
+  return locations;
 }
 
 export async function uploadPdfToS3(
   pdfFilePath: string | null,
   s3Config: S3Config,
-): Promise<void> {
+): Promise<string[]> {
   if (pdfFilePath !== null) {
-    await uploadToS3(pdfFilePath, s3Config);
-  } else {
-    logger.error(
-      "Pdf generation has failed, nothing is going to be uploaded to S3",
-    );
+    return [await uploadToS3(pdfFilePath, s3Config)];
   }
+  logger.error(
+    "Pdf generation has failed, nothing is going to be uploaded to S3",
+  );
+  return [];
 }
 
 function sha256Hex(data: Buffer | string): string {
@@ -208,7 +210,14 @@ function contentTypeForExtension(ext: string): string {
   }
 }
 
-async function uploadToS3(filePath: string, s3Config: S3Config): Promise<void> {
+/**
+ * Uploads one file and returns `bucket/key`, the handle a consumer of the
+ * webhook event needs to fetch it.
+ */
+async function uploadToS3(
+  filePath: string,
+  s3Config: S3Config,
+): Promise<string> {
   const fileName = path.basename(filePath);
   const key = buildObjectKey(s3Config.prefix, fileName);
   const encodedKey = encodePath(key);
@@ -253,6 +262,7 @@ async function uploadToS3(filePath: string, s3Config: S3Config): Promise<void> {
     logger.info(
       `Document successfully uploaded to S3. (Bucket: ${s3Config.bucket}, Key: ${key})`,
     );
+    return `${s3Config.bucket}/${key}`;
   } catch (error) {
     logger.error(error, "Fail to upload document to S3");
     throw error;

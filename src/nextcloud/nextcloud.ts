@@ -10,8 +10,8 @@ const logger = getLoggerForFile(import.meta.url);
 export async function uploadImagesToNextcloud(
   scanJobContent: ScanContent,
   nextcloudConfig: NextcloudConfig,
-) {
-  await uploadFilesToNextcloud(
+): Promise<string[]> {
+  return await uploadFilesToNextcloud(
     scanJobContent.elements.map((element) => element.path),
     nextcloudConfig,
   );
@@ -24,33 +24,51 @@ export async function uploadImagesToNextcloud(
 export async function uploadFilesToNextcloud(
   filePaths: readonly string[],
   nextcloudConfig: NextcloudConfig,
-): Promise<void> {
-  await checkFolderAndUpload(nextcloudConfig, async () => {
+): Promise<string[]> {
+  return await checkFolderAndUpload(nextcloudConfig, async () => {
+    const urls: string[] = [];
     for (const filePath of filePaths) {
-      await uploadToNextcloud(filePath, nextcloudConfig);
+      urls.push(await uploadToNextcloud(filePath, nextcloudConfig));
     }
+    return urls;
   });
 }
 
 export async function uploadPdfToNextcloud(
   pdfFilePath: string | null,
   nextcloudConfig: NextcloudConfig,
-) {
-  await checkFolderAndUpload(nextcloudConfig, async () => {
-    if (pdfFilePath !== null) {
-      await uploadToNextcloud(pdfFilePath, nextcloudConfig);
-    } else {
+): Promise<string[]> {
+  return await checkFolderAndUpload(nextcloudConfig, async () => {
+    if (pdfFilePath === null) {
       logger.error(
         "Pdf generation has failed, nothing is going to be uploaded to Nextcloud",
       );
+      return [];
     }
+    return [await uploadToNextcloud(pdfFilePath, nextcloudConfig)];
   });
 }
 
+export function nextcloudWebdavFileUrl(
+  nextcloudConfig: NextcloudConfig,
+  fileName: string,
+): string {
+  const folderUrl = buildFolderUrl(
+    nextcloudConfig.baseUrl,
+    nextcloudConfig.username,
+    nextcloudConfig.uploadFolder,
+  );
+  return buildUrl(folderUrl, [fileName]);
+}
+
+/**
+ * Uploads one file and returns the WebDAV URL it now lives at, which is the
+ * handle a consumer of the webhook event needs to fetch it.
+ */
 async function uploadToNextcloud(
   filePath: string,
   nextcloudConfig: NextcloudConfig,
-): Promise<void> {
+): Promise<string> {
   const { baseUrl, username, password, uploadFolder } = nextcloudConfig;
   const fileName = path.basename(filePath);
 
@@ -84,16 +102,17 @@ async function uploadToNextcloud(
     logger.info(
       `Document successfully ${action} file at Nextcloud. (Folder: ${uploadFolder}, File: ${fileName})`,
     );
+    return uploadUrl;
   } catch (error) {
     logger.error(error, "Fail to upload document");
     throw error;
   }
 }
 
-async function checkFolderAndUpload(
+async function checkFolderAndUpload<T>(
   nextcloudConfig: NextcloudConfig,
-  uploadFunction: () => Promise<void>,
-) {
+  uploadFunction: () => Promise<T>,
+): Promise<T> {
   const folderExists = await checkNextcloudFolderExists(nextcloudConfig);
   if (!folderExists) {
     throw new Error(
@@ -101,7 +120,7 @@ async function checkFolderAndUpload(
     );
   }
 
-  await uploadFunction();
+  return await uploadFunction();
 }
 
 async function checkNextcloudFolderExists(

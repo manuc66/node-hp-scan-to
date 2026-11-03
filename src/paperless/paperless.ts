@@ -14,11 +14,15 @@ const logger = getLoggerForFile(import.meta.url);
 export async function uploadImagesAsSeparateDocumentsToPaperless(
   scanJobContent: ScanContent,
   paperlessConfig: PaperlessConfig,
-) {
+): Promise<string[]> {
+  const taskIds: string[] = [];
   for (const item of scanJobContent.elements) {
-    const filePath = item.path;
-    await uploadToPaperless(filePath, paperlessConfig);
+    const taskId = await uploadToPaperless(item.path, paperlessConfig);
+    if (taskId !== undefined) {
+      taskIds.push(taskId);
+    }
   }
+  return taskIds;
 }
 
 export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
@@ -27,10 +31,12 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
   scanDate?: Date,
   postCommandPdf?: PostCommand,
   postCommandTimeout?: number,
-): Promise<string[]> {
-  // Returns the paths of the PDFs that were generated: the caller needs them
-  // to recognise the sidecars a post-command wrote beside each one.
-  const generatedPdfPaths: string[] = [];
+): Promise<{ pdfPaths: string[]; taskIds: string[] }> {
+  // Returns the paths of the PDFs that were generated (the caller needs them
+  // to recognise the sidecars a post-command wrote beside each one) and the
+  // task ids Paperless returned, so the event can point at the documents.
+  const pdfPaths: string[] = [];
+  const taskIds: string[] = [];
   for (const item of scanJobContent.elements) {
     // The page is not deleted here: other delivery targets (Nextcloud, S3)
     // still have to read it after this stage, and the final cleanup removes it
@@ -43,8 +49,11 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
       postCommandTimeout,
     );
     if (pdfFilePath !== null) {
-      generatedPdfPaths.push(pdfFilePath);
-      await uploadToPaperless(pdfFilePath, paperlessConfig);
+      pdfPaths.push(pdfFilePath);
+      const taskId = await uploadToPaperless(pdfFilePath, paperlessConfig);
+      if (taskId !== undefined) {
+        taskIds.push(taskId);
+      }
       await fs.unlink(pdfFilePath);
     } else {
       logger.error(
@@ -52,7 +61,7 @@ export async function convertImagesToPdfAndUploadAsSeparateDocumentsToPaperless(
       );
     }
   }
-  return generatedPdfPaths;
+  return { pdfPaths, taskIds };
 }
 
 export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
@@ -62,7 +71,7 @@ export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
   scanConfig: ScanConfig,
   scanDate: Date,
   paperlessConfig: PaperlessConfig,
-): Promise<string | null> {
+): Promise<{ pdfPath: string | null; taskId: string | undefined }> {
   const pdfFilePath = await mergeToPdf(
     folder,
     scanCount,
@@ -76,8 +85,9 @@ export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
     scanConfig.postCommandPdf,
     scanConfig.postCommandTimeout,
   );
+  let taskId: string | undefined;
   if (pdfFilePath !== null) {
-    await uploadToPaperless(pdfFilePath, paperlessConfig);
+    taskId = await uploadToPaperless(pdfFilePath, paperlessConfig);
     await fs.unlink(pdfFilePath);
     logger.info(
       `Pdf document ${pdfFilePath} has been removed from the filesystem`,
@@ -89,26 +99,47 @@ export async function mergeToPdfAndUploadAsSingleDocumentToPaperless(
   }
   // The path is returned even though the file was removed: it still names the
   // sidecar a post-command may have written beside it.
-  return pdfFilePath;
+  return { pdfPath: pdfFilePath, taskId };
 }
 
 export async function uploadPdfToPaperless(
   pdfFilePath: string | null,
   paperlessConfig: PaperlessConfig,
-) {
+): Promise<string | undefined> {
   if (pdfFilePath !== null) {
-    await uploadToPaperless(pdfFilePath, paperlessConfig);
-  } else {
-    logger.error(
-      "Pdf generation has failed, nothing is going to be uploaded to paperless",
-    );
+    return await uploadToPaperless(pdfFilePath, paperlessConfig);
   }
+  logger.error(
+    "Pdf generation has failed, nothing is going to be uploaded to paperless",
+  );
+  return undefined;
+}
+
+/**
+ * Task id returned by Paperless when a document is accepted, or `undefined`
+ * when the response carries none. The id is the handle a consumer needs to
+ * follow the import (`GET /api/tasks/?task_id=...`); Paperless answers either
+ * with the id as a bare JSON string or with a `{ "task_id": ... }` object
+ * depending on the version.
+ */
+function parseTaskId(data: unknown): string | undefined {
+  if (typeof data === "string") {
+    const value = data.trim();
+    return value === "" ? undefined : value;
+  }
+  if (typeof data === "object" && data !== null) {
+    const taskId = (data as { task_id?: unknown }).task_id;
+    if (typeof taskId === "string" && taskId.trim() !== "") {
+      return taskId.trim();
+    }
+  }
+  return undefined;
 }
 
 async function uploadToPaperless(
   filePath: string,
   paperlessConfig: PaperlessConfig,
-): Promise<void> {
+): Promise<string | undefined> {
   const url = paperlessConfig.postDocumentUrl;
 
   const authToken = paperlessConfig.authToken;
@@ -131,9 +162,11 @@ async function uploadToPaperless(
       { status: response.status },
       "Document successfully uploaded to paperless",
     );
+    return parseTaskId(response.data);
   } catch (error) {
     logger.error(error, "Fail to upload document");
     throw error;
+  } finally {
+    fileStream.close();
   }
-  fileStream.close();
 }

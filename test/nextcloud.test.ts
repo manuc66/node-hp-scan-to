@@ -1,7 +1,9 @@
 import { describe } from "mocha";
+import { expect } from "chai";
 import path from "node:path";
 import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import {
+  nextcloudWebdavFileUrl,
   uploadImagesToNextcloud,
   uploadPdfToNextcloud,
 } from "../src/nextcloud/nextcloud.js";
@@ -87,6 +89,34 @@ describe("nextcloud", () => {
       scanJobContent.elements.push(scanPage);
 
       await uploadImagesToNextcloud(scanJobContent, nextcloudConfig);
+    });
+
+    it("returns the WebDAV url of every uploaded file", async () => {
+      nock(nextcloudUrl)
+        .intercept(
+          `/remote.php/dav/files/${username}/${uploadFolder}`,
+          "PROPFIND",
+        )
+        .reply(
+          207,
+          '<?xml version="1.0"?>\n<d:multistatus xmlns:d="DAV:"></d:multistatus>',
+        )
+        .intercept(
+          `/remote.php/dav/files/${username}/${uploadFolder}/${fileName}`,
+          "PUT",
+        )
+        .reply(201);
+
+      scanJobContent.elements.push(scanPage);
+
+      const references = await uploadImagesToNextcloud(
+        scanJobContent,
+        nextcloudConfig,
+      );
+
+      expect(references).to.deep.equal([
+        nextcloudWebdavFileUrl(nextcloudConfig, fileName),
+      ]);
     });
 
     it("success upload multiple images", async () => {

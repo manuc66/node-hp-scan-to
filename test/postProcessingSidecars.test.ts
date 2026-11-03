@@ -7,10 +7,15 @@ import type { PaperlessConfig } from "../src/paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "../src/nextcloud/NextcloudConfig.js";
 import type { S3Config } from "../src/s3/S3Config.js";
 import nock from "nock";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "url";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { InputSource } from "../src/type/InputSource.js";
+import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
+import { ScanMode } from "../src/type/scanMode.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -326,5 +331,72 @@ describe("postProcessing - sidecar delivery", () => {
       f.endsWith(".pdf.txt"),
     );
     expect(sidecars).to.have.lengthOf.at.least(1);
+  });
+
+  it("lists the delivered sidecar in the webhook event", async () => {
+    scanConfig.s3Config = s3Config({ keepFiles: true });
+    mockS3Uploads();
+    scanJobContent.meta = {
+      command: "listen",
+      scanCount: 1,
+      device: { ip: "127.0.0.1", isEscl: false },
+      target: undefined,
+      settings: {
+        inputSource: InputSource.Adf,
+        contentType: "Photo",
+        format: "jpg",
+        sourceFormat: "jpg",
+        mode: ScanMode.Color,
+        colorDepth: 8,
+        channels: 3,
+        resolution: 200,
+        isDuplex: false,
+        pageCountingStrategy: PageCountingStrategy.Normal,
+        paperSize: undefined,
+        paperDim: undefined,
+      },
+      startedAt: new Date().toISOString(),
+      instance: { id: "test", startedAt: new Date().toISOString() },
+    };
+
+    const bodies: Buffer[] = [];
+    const server = http.createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => chunks.push(c));
+      req.on("end", () => {
+        bodies.push(Buffer.concat(chunks));
+        res.writeHead(200);
+        res.end();
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+    const port = (server.address() as AddressInfo).port;
+    scanConfig.webhookConfig = {
+      url: `http://127.0.0.1:${port}/scan`,
+      auth: "none",
+      authHeader: "x-webhook-signature",
+      payload: "full",
+      keepFiles: true,
+    };
+    nock.enableNetConnect((host: string) => host.startsWith("127.0.0.1"));
+
+    try {
+      await runImageFlow();
+    } finally {
+      server.close();
+      scanConfig.webhookConfig = undefined;
+    }
+
+    expect(bodies).to.have.length(1);
+    const payload = JSON.parse(bodies[0].toString("utf8")) as {
+      files: { name: string; location?: unknown }[];
+    };
+    const names = payload.files.map((file) => file.name);
+    // The scan itself and the file the hook wrote beside it: the consumer
+    // must be able to fetch both from the location each descriptor carries.
+    expect(names).to.have.members(["sidecar_scan.jpg", "sidecar_scan.jpg.txt"]);
+    for (const file of payload.files) {
+      expect(file.location).to.not.equal(undefined);
+    }
   });
 });
