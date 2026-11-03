@@ -6,6 +6,7 @@ import EsclScanStatus from "../src/hpModels/EsclScanStatus.js";
 import { AdfState } from "../src/hpModels/AdfState.js";
 import { ScannerState } from "../src/hpModels/ScannerState.js";
 import { InputSource } from "../src/type/InputSource.js";
+import { JobStateReason } from "../src/hpModels/EsclScanStatus.js";
 
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
@@ -174,6 +175,54 @@ describe("EsclScanStatus", () => {
       expect(
         scanStatus.findJobByUri("/eSCL/ScanJobs/2/")?.getJobUri(),
       ).to.be.eq("/eSCL/ScanJobs/2");
+    });
+  });
+
+  describe("Parsing eSCL_ScannerStatus_processing_noImagesToTransfer.xml", async () => {
+    let scanStatus: EsclScanStatus;
+
+    before(async () => {
+      const content: string = await fs.readFile(
+        path.resolve(
+          __dirname,
+          "./asset/eSCL_ScannerStatus_processing_noImagesToTransfer.xml",
+        ),
+        { encoding: "utf8" },
+      );
+      scanStatus = await EsclScanStatus.createScanStatus(content);
+    });
+
+    it("is still Processing with JobScanning", async () => {
+      expect(scanStatus.scannerState).to.be.eq(ScannerState.Processing);
+    });
+    it("finds the job and ImagesToTransfer is 0", async () => {
+      const job = scanStatus
+        .getJobInfos()
+        .find((x) => x.getJobUri() === "/eSCL/ScanJobs/1");
+      expect(job).to.not.be.undefined;
+      expect(job!.getImagesToTransfer()).to.equal(0);
+      expect(job!.getJobStateReason()).to.be.eq(JobStateReason.JobScanning);
+    });
+  });
+
+  describe("Parsing eSCL_ScannerStatus_noImagesToTransfer.xml", async () => {
+    let scanStatus: EsclScanStatus;
+
+    before(async () => {
+      const content: string = await fs.readFile(
+        path.resolve(__dirname, "./asset/eSCL_ScannerStatus_noImagesToTransfer.xml"),
+        { encoding: "utf8" },
+      );
+      scanStatus = await EsclScanStatus.createScanStatus(content);
+    });
+
+    it("getImagesToTransfer is defensive: returns 0 when the field is absent", async () => {
+      const job = scanStatus.getJobInfos().find(
+        (x) => x.getJobUri() === "/eSCL/ScanJobs/1",
+      );
+      expect(job).to.not.be.undefined;
+      // A firmware that omits ImagesToTransfer must not crash the job loop.
+      expect(job!.getImagesToTransfer()).to.equal(0);
     });
   });
 });
