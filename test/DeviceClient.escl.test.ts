@@ -1,0 +1,245 @@
+import { describe, it, beforeEach, afterEach } from "mocha";
+import { expect } from "chai";
+import nock from "nock";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import DeviceClient from "../src/DeviceClient.js";
+import { ScanPlexMode } from "../src/hpModels/ScanPlexMode.js";
+
+const scannerStatus = `<?xml version="1.0"?>
+<scan:ScannerStatus xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03"
+    xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <pwg:State>Idle</pwg:State>
+</scan:ScannerStatus>`;
+
+const walkupEvent = `<?xml version="1.0"?>
+<scan:WalkupScanEvent xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03"
+    xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <scan:Event>ScanRequested</scan:Event>
+  <scan:Shortcut>Paperless</scan:Shortcut>
+  <scan:ScanSettings><scan:Duplex>false</scan:Duplex></scan:ScanSettings>
+</scan:WalkupScanEvent>`;
+
+function mockEsclBaseDetection(base = "http://127.0.0.1"): nock.Scope {
+  return nock(base).get("/eSCL/ScannerStatus").reply(200, scannerStatus);
+}
+
+describe("DeviceClient eSCL support", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    if (!nock.isActive()) {
+      nock.activate();
+    }
+    nock.cleanAll();
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "device-client-escl-"));
+  });
+
+  afterEach(() => {
+    nock.cleanAll();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  describe("DiscoveryTree fallback", () => {
+    it("returns an empty tree on 404", async () => {
+      nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(404);
+
+      const tree = await new DeviceClient("127.0.0.1").getDiscoveryTree();
+
+      expect(tree.WalkupScanManifestURI).to.be.null;
+      expect(tree.WalkupScanToCompManifestURI).to.be.null;
+      expect(tree.ScanJobManifestURI).to.be.null;
+      expect(tree.EsclManifestURI).to.be.null;
+    });
+
+    it("returns an empty tree on 405", async () => {
+      nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(405);
+
+      const tree = await new DeviceClient("127.0.0.1").getDiscoveryTree();
+
+      expect(tree.ScanJobManifestURI).to.be.null;
+    });
+
+    it("still fails on other statuses", async () => {
+      nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(500);
+
+      await expectRejects(
+        new DeviceClient("127.0.0.1").getDiscoveryTree(),
+        /status 500/,
+      );
+    });
+  });
+
+  describe("device liveness", () => {
+    it("reports a device with no reachable HTTP or HTTPS port as down", async () => {
+      // nock intercepts low-level sockets and would make the connection look
+      // successful; this test needs the real network stack.
+      nock.restore();
+      // 192.0.2.0/24 is reserved for documentation and never routed.
+      const api = new DeviceClient("192.0.2.1");
+
+      expect(await api.isAlive(50)).to.be.false;
+    });
+  });
+
+  describe("eSCL base URL", () => {
+    it("falls back to HTTPS when HTTP does not expose eSCL", async () => {
+      nock("http://127.0.0.1").get("/eSCL/ScannerStatus").reply(404);
+      nock("https://127.0.0.1")
+        .get("/eSCL/ScannerStatus")
+        .times(2)
+        .reply(200, scannerStatus);
+
+      const api = new DeviceClient("127.0.0.1");
+      const base = await api.getEsclBaseUrl();
+      const status = await api.getEsclScanStatus();
+
+      expect(base).to.equal("https://127.0.0.1");
+      expect(status.scannerState).to.equal("Idle");
+    });
+
+    it("retries detection instead of caching a failed probe", async () => {
+      nock("http://127.0.0.1").get("/eSCL/ScannerStatus").twice().reply(404);
+      nock("https://127.0.0.1").get("/eSCL/ScannerStatus").reply(404);
+      nock("https://127.0.0.1")
+        .get("/eSCL/ScannerStatus")
+        .reply(200, scannerStatus);
+
+      const api = new DeviceClient("127.0.0.1");
+
+      expect(await api.getEsclBaseUrl()).to.equal("http://127.0.0.1");
+      expect(await api.getEsclBaseUrl()).to.equal("https://127.0.0.1");
+    });
+
+    it("reuses the origin of an absolute job URL", async () => {
+      const jobUrl = "http://127.0.0.1/eSCL/ScanJobs/1";
+      nock("http://127.0.0.1")
+        .get("/eSCL/ScanJobs/1/ScanImageInfo")
+        .reply(
+          200,
+          fs.readFileSync(
+            path.resolve(__dirname, "./asset/eSCL_ScanImageInfo.xml"),
+            "utf-8",
+          ),
+        );
+      nock("http://127.0.0.1")
+        .get("/eSCL/ScannerStatus")
+        .reply(200, scannerStatus);
+
+      const api = new DeviceClient("127.0.0.1");
+      await api.getEsclScanImageInfo(jobUrl);
+      const status = await api.getEsclScanStatus();
+
+      expect(status.scannerState).to.equal("Idle");
+    });
+  });
+
+  describe("walkup subscription", () => {
+    it("registers, long-polls an event and removes the subscription", async () => {
+      mockEsclBaseDetection();
+      let requestBody = "";
+      nock("http://127.0.0.1")
+        .post("/eSCL/WalkupSubscriptions", (body) => {
+          requestBody = String(body);
+          return true;
+        })
+        .reply(201, "", {
+          Location: "http://127.0.0.1/eSCL/WalkupSubscriptions/sub-1",
+        });
+      nock("http://127.0.0.1")
+        .get("/eSCL/WalkupSubscriptions/sub-1/Event")
+        .query({ timeout: "100" })
+        .reply(200, walkupEvent);
+      nock("http://127.0.0.1")
+        .delete("/eSCL/WalkupSubscriptions/sub-1")
+        .reply(200);
+
+      const api = new DeviceClient("127.0.0.1");
+      const subscriptionURI = await api.registerEsclWalkupSubscription(
+        "homelab",
+        ["Paperless"],
+      );
+      const event = await api.getEsclWalkupEvent(subscriptionURI, 100);
+      await api.removeEsclWalkupSubscription(subscriptionURI);
+
+      expect(subscriptionURI).to.equal("/eSCL/WalkupSubscriptions/sub-1");
+      expect(requestBody).to.contain("homelab");
+      expect(requestBody).to.contain("Paperless");
+      expect(event?.shortcut).to.equal("Paperless");
+      expect(event?.scanPlexMode).to.equal(ScanPlexMode.Simplex);
+    });
+
+    it("returns null when the long-poll times out", async () => {
+      mockEsclBaseDetection();
+      nock("http://127.0.0.1")
+        .get("/eSCL/WalkupSubscriptions/sub-1/Event")
+        .query({ timeout: "100" })
+        .reply(204);
+
+      const api = new DeviceClient("127.0.0.1");
+      const event = await api.getEsclWalkupEvent(
+        "/eSCL/WalkupSubscriptions/sub-1",
+        100,
+      );
+
+      expect(event).to.be.null;
+    });
+
+    it("rejects a registration without a Location header", async () => {
+      mockEsclBaseDetection();
+      nock("http://127.0.0.1").post("/eSCL/WalkupSubscriptions").reply(201, "");
+
+      await expectRejects(
+        new DeviceClient("127.0.0.1").registerEsclWalkupSubscription(
+          "homelab",
+          ["Paperless"],
+        ),
+        /Unexpected status code or location/,
+      );
+    });
+  });
+
+  describe("page download", () => {
+    it("downloads a page with its content type", async () => {
+      nock("http://127.0.0.1")
+        .get("/eSCL/ScanJobs/1/NextDocument")
+        .reply(200, Buffer.from("jpeg-data"), {
+          "Content-Type": "image/jpeg",
+        });
+
+      const destination = path.join(tempDir, "page.jpg");
+      const result = await new DeviceClient("127.0.0.1").downloadEsclPage(
+        "http://127.0.0.1/eSCL/ScanJobs/1",
+        destination,
+      );
+
+      expect(result.contentType).to.equal("image/jpeg");
+      expect(fs.readFileSync(destination, "utf-8")).to.equal("jpeg-data");
+    });
+
+    it("lets the caller detect the end of the job on 404", async () => {
+      nock("http://127.0.0.1").get("/eSCL/ScanJobs/1/NextDocument").reply(404);
+
+      await expectRejects(
+        new DeviceClient("127.0.0.1").downloadEsclPage(
+          "http://127.0.0.1/eSCL/ScanJobs/1",
+          path.join(tempDir, "page.jpg"),
+        ),
+        /status code 404/,
+      );
+    });
+  });
+});
+
+async function expectRejects(
+  promise: Promise<unknown>,
+  expected: RegExp,
+): Promise<void> {
+  try {
+    await promise;
+    expect.fail("Expected the promise to reject");
+  } catch (error) {
+    expect((error as Error).message).to.match(expected);
+  }
+}
