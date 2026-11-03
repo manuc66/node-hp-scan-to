@@ -16,6 +16,9 @@ All notable changes to this project are documented in this file.
   shortcut to a scan job. This covers the HP OfficeJet Pro 8120e / 8122e
   series. Auto-detected when the device does not serve `DiscoveryTree.xml`;
   `--prefer-eSCL` remains available to force eSCL on dual-protocol devices.
+  Walkup support is probed before `listen` selects this protocol, so devices
+  that only implement eSCL scanning keep working with `single-scan` and
+  `adf-autoscan` instead of being mistaken for walkup devices.
 - **Nix flake** (`flake.nix` + `packaging/nix/package.nix`): installs the
   self-contained Linux binary shipped with each release (x86_64/aarch64) and
   provides a default configuration under

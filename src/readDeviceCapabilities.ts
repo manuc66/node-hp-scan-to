@@ -63,6 +63,7 @@ async function getScanCaps(
 export async function readDeviceCapabilities(
   api: DeviceClient,
   preferEscl: boolean,
+  detectWalkup = false,
 ): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
   let walkupProtocol: WalkupProtocol | null = null;
@@ -90,11 +91,17 @@ export async function readDeviceCapabilities(
   const scanCaps = await getScanCaps(api, discoveryTree, preferEscl);
 
   if (
+    detectWalkup &&
     walkupProtocol === null &&
     scanCaps?.isEscl === true &&
-    (preferEscl || !discoveryTree.hasScanInterface)
+    (preferEscl || !discoveryTree.hasScanInterface) &&
+    (await api.supportsEsclWalkup())
   ) {
     walkupProtocol = WalkupProtocol.EsclWalkup;
+  } else if (detectWalkup && walkupProtocol === null && scanCaps?.isEscl) {
+    logger.info(
+      "The device supports eSCL scanning but not eSCL walkup; the listen command is not available for it.",
+    );
   }
 
   if (scanCaps === null) {

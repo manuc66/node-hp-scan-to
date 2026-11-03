@@ -135,7 +135,9 @@ describe("readDeviceCapabilities", () => {
 </scan:ScannerCapabilities>`,
       );
 
-    const caps = await readDeviceCapabilities(api, true);
+    nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(200);
+
+    const caps = await readDeviceCapabilities(api, true, true);
 
     expect(caps.isEscl).to.be.true;
     expect(caps.walkupProtocol).to.equal(WalkupProtocol.EsclWalkup);
@@ -247,7 +249,9 @@ describe("readDeviceCapabilities", () => {
 </scan:ScannerCapabilities>`,
       );
 
-    const caps = await readDeviceCapabilities(api, true);
+    nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(200);
+
+    const caps = await readDeviceCapabilities(api, true, true);
 
     expect(caps.isEscl).to.be.true;
     expect(caps.walkupProtocol).to.equal(WalkupProtocol.EsclWalkup);
@@ -272,10 +276,36 @@ describe("readDeviceCapabilities", () => {
 </scan:ScannerCapabilities>`,
       );
 
-    const caps = await readDeviceCapabilities(api, false);
+    nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(200);
+
+    const caps = await readDeviceCapabilities(api, false, true);
 
     expect(caps.isEscl).to.be.true;
     expect(caps.walkupProtocol).to.equal(WalkupProtocol.EsclWalkup);
+  });
+
+  it("does not expose walkup when the eSCL device has no walkup endpoint", async () => {
+    nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(404);
+    nock("http://127.0.0.1")
+      .get("/eSCL/ScanCapabilities")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<scan:ScannerCapabilities xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <scan:Platen>
+    <scan:PlatenInputCaps>
+      <scan:MaxWidth>2550</scan:MaxWidth>
+      <scan:MaxHeight>3508</scan:MaxHeight>
+    </scan:PlatenInputCaps>
+  </scan:Platen>
+</scan:ScannerCapabilities>`,
+      );
+    nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(404);
+
+    const caps = await readDeviceCapabilities(api, false, true);
+
+    expect(caps.isEscl).to.be.true;
+    expect(caps.walkupProtocol).to.be.null;
   });
 
   it("fails when DiscoveryTree.xml answers an unexpected status (e.g. 500)", async () => {

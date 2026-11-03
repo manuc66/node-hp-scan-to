@@ -746,6 +746,28 @@ export default class DeviceClient {
     }
   }
 
+  /**
+   * Some devices expose eSCL scanning but not the walkup subscription
+   * extension. A GET on the collection is the least invasive way to tell
+   * them apart before registering anything.
+   */
+  async supportsEsclWalkup(): Promise<boolean> {
+    try {
+      const response = await this.callAxios({
+        baseURL: await this.getEsclBaseUrl(),
+        url: "/eSCL/WalkupSubscriptions",
+        method: "GET",
+        responseType: "text",
+        httpsAgent: this.localPrinterHttpsAgent,
+        validateStatus: () => true,
+      });
+      return response.status === 200 || response.status === 405;
+    } catch (error) {
+      logger.debug(`Could not probe eSCL walkup support: ${String(error)}`);
+      return false;
+    }
+  }
+
   async registerEsclWalkupSubscription(
     hostIdentifier: string,
     shortcuts: string[],

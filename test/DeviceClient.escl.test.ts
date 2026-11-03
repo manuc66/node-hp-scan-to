@@ -156,6 +156,17 @@ describe("DeviceClient eSCL support", () => {
   });
 
   describe("walkup subscription", () => {
+    it("reports walkup support only when the collection is served", async () => {
+      mockEsclBaseDetection();
+      nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(200);
+      nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(404);
+
+      const api = new DeviceClient("127.0.0.1");
+
+      expect(await api.supportsEsclWalkup()).to.be.true;
+      expect(await api.supportsEsclWalkup()).to.be.false;
+    });
+
     it("registers, long-polls an event and removes the subscription", async () => {
       mockEsclBaseDetection();
       let requestBody = "";

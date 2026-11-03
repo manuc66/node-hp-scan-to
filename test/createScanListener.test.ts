@@ -50,4 +50,15 @@ describe("createScanListener", () => {
       createScanListener(api, capabilities(null), configs),
     ).to.be.instanceOf(LegacyScanListener);
   });
+
+  it("refuses listen on an eSCL device without walkup", () => {
+    const eSclCapabilities = {
+      ...capabilities(null),
+      isEscl: true,
+    } as DeviceCapabilities;
+
+    expect(() => createScanListener(api, eSclCapabilities, configs)).to.throw(
+      /not scan-to-computer/,
+    );
+  });
 });

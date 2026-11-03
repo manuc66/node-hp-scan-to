@@ -51,6 +51,7 @@ export async function listenCmd(
   const deviceCapabilities = await readDeviceCapabilities(
     api,
     scanConfig.preferEscl,
+    true,
   );
 
   const scanListener = createScanListener(
