@@ -647,6 +647,25 @@ export function getS3Config(
 }
 
 /**
+ * Rejects a webhook URL the request could never reach, at startup rather than
+ * once per scan. The URL itself is not echoed: for n8n, Make or Zapier it is
+ * the credential.
+ */
+function assertWebhookUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(
+      "The webhook url is not a valid absolute URL (expected http:// or https://...)",
+    );
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("The webhook url must use the http or https scheme");
+  }
+}
+
+/**
  * Host of the webhook endpoint, for the startup log.
  *
  * The URL itself is never logged: with n8n, Make or Zapier the URL *is* the
@@ -673,6 +692,7 @@ export function getWebhookConfig(
   if (webhookUrl === undefined) {
     return undefined;
   }
+  assertWebhookUrl(webhookUrl);
 
   // A webhook is a notification, not a delivery target: on its own it must
   // never turn the retention off. Without another target the scan is the only
@@ -689,11 +709,17 @@ export function getWebhookConfig(
     fileConfig.webhook_payload,
     "full",
   );
-  const authHeader = getConfiguredValue(
+  // A blank header name would reach Node as an empty HTTP token and make every
+  // request fail, so it falls back to the default like a blank secret does.
+  const configuredAuthHeader = getConfiguredValue(
     options.webhookAuthHeader,
     fileConfig.webhook_auth_header,
     "x-webhook-signature",
   );
+  const authHeader =
+    configuredAuthHeader.trim() === ""
+      ? "x-webhook-signature"
+      : configuredAuthHeader;
 
   const configSecret = getOptConfiguredValue(
     options.webhookSecret,

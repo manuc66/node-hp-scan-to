@@ -134,6 +134,33 @@ describe("webhook config resolution", () => {
     ).to.equal("none");
   });
 
+  it("falls back to the default signature header when the configured one is blank", () => {
+    const fromCli = getWebhookConfig(
+      buildOptions({ ...url, webhookAuthHeader: "   " }),
+      {},
+    );
+    expect(fromCli?.authHeader).to.equal("x-webhook-signature");
+
+    const fromFile = getWebhookConfig(buildOptions(url), {
+      webhook_auth_header: "",
+    });
+    expect(fromFile?.authHeader).to.equal("x-webhook-signature");
+  });
+
+  it("rejects a webhook url that is not an absolute http(s) URL", () => {
+    const missingScheme = expectConfigError(
+      buildOptions({ webhookUrl: "n8n.example.test/webhook/scan" }),
+      {},
+    );
+    expect(missingScheme.message).to.include("url");
+
+    const wrongScheme = expectConfigError(
+      buildOptions({ webhookUrl: "ftp://n8n.example.test/scan" }),
+      {},
+    );
+    expect(wrongScheme.message).to.include("url");
+  });
+
   it("defaults to the full payload profile", () => {
     const config = getWebhookConfig(buildOptions(url), {});
     expect(config?.payload).to.equal("full");
