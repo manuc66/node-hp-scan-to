@@ -27,15 +27,16 @@ export default class EsclWalkupSubscription {
     });
 
     return builder.buildObject({
-      "scan:WalkupScanSubscription": {
+      WalkupScanSubscription: {
         $: {
-          "xmlns:scan": ESCL_NAMESPACE,
+          xmlns: ESCL_NAMESPACE,
           "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "xsi:schemaLocation": `${ESCL_NAMESPACE} eSCL.xsd`,
         },
-        "scan:HostIdentifier": this.hostIdentifier,
-        "scan:Connection": "Network",
-        "scan:Shortcuts": {
-          "scan:Shortcut": this.shortcuts,
+        HostIdentifier: this.hostIdentifier,
+        Connection: "Network",
+        Shortcuts: {
+          Shortcut: this.shortcuts,
         },
       },
     });

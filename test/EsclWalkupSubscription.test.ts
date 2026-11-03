@@ -19,18 +19,15 @@ describe("EsclWalkupSubscription", () => {
     ]).toXML();
 
     const parsed = await parse(xml);
-    const subscription = parsed["scan:WalkupScanSubscription"] as Record<
-      string,
-      unknown
-    > as {
-      "scan:HostIdentifier": string[];
-      "scan:Connection": string[];
-      "scan:Shortcuts": { "scan:Shortcut": string[] }[];
+    const subscription = parsed["WalkupScanSubscription"] as {
+      HostIdentifier: string[];
+      Connection: string[];
+      Shortcuts: { Shortcut: string[] }[];
     };
 
-    expect(subscription["scan:HostIdentifier"][0]).to.equal("homelab");
-    expect(subscription["scan:Connection"][0]).to.equal("Network");
-    expect(subscription["scan:Shortcuts"][0]["scan:Shortcut"]).to.deep.equal([
+    expect(subscription.HostIdentifier[0]).to.equal("homelab");
+    expect(subscription.Connection[0]).to.equal("Network");
+    expect(subscription.Shortcuts[0].Shortcut).to.deep.equal([
       "Paperless",
       "Paperless duplex",
     ]);
@@ -40,12 +37,10 @@ describe("EsclWalkupSubscription", () => {
     const xml = new EsclWalkupSubscription("host", ["A & B <C>"]).toXML();
 
     const parsed = await parse(xml);
-    const subscription = parsed["scan:WalkupScanSubscription"] as {
-      "scan:Shortcuts": { "scan:Shortcut": string[] }[];
+    const subscription = parsed["WalkupScanSubscription"] as {
+      Shortcuts: { Shortcut: string[] }[];
     };
 
-    expect(subscription["scan:Shortcuts"][0]["scan:Shortcut"][0]).to.equal(
-      "A & B <C>",
-    );
+    expect(subscription.Shortcuts[0].Shortcut[0]).to.equal("A & B <C>");
   });
 });
