@@ -461,6 +461,59 @@ describe("webhook", () => {
         { target: "s3", status: "failed", error: "upload boom" },
       ]);
     });
+
+    it("skips a file it cannot read instead of losing the whole event", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+      const missing = path.join(tempDir, "already-deleted.pdf");
+
+      await sendScanEvent(
+        scanContent,
+        [{ path: missing }, { path: filePath }],
+        [],
+        config,
+      );
+
+      expect(srv.requests).to.have.length(1);
+      const payload = JSON.parse(srv.requests[0].body.toString("utf8")) as {
+        files: { name: string }[];
+      };
+      expect(payload.files.map((file) => file.name)).to.deep.equal([
+        "scan.pdf",
+      ]);
+    });
+
+    it("redacts the delivery errors in the minimal payload profile", async () => {
+      const srv = await startServer([200]);
+      config.url = `http://127.0.0.1:${srv.port}`;
+      config.payload = "minimal";
+
+      await sendScanEvent(
+        scanContent,
+        [{ path: filePath }],
+        [
+          {
+            target: "paperless",
+            status: "failed",
+            error: "connect ECONNREFUSED 192.168.1.10:8000",
+          },
+          { target: "pdf", status: "success", error: undefined },
+        ],
+        config,
+      );
+
+      const payload = JSON.parse(srv.requests[0].body.toString("utf8")) as {
+        delivery: { target: string; status: string; error?: string }[];
+      };
+      expect(payload.delivery).to.deep.equal([
+        {
+          target: "paperless",
+          status: "failed",
+          error: "delivery failed (error redacted)",
+        },
+        { target: "pdf", status: "success" },
+      ]);
+    });
   });
 
 });

@@ -9,6 +9,7 @@ import { InputSource } from "../src/type/InputSource.js";
 import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
 import { ScanMode } from "../src/type/scanMode.js";
 import type { S3Config } from "../src/s3/S3Config.js";
+import type { WebhookConfig } from "../src/webhook/WebhookConfig.js";
 import nock from "nock";
 import path from "node:path";
 import http from "node:http";
@@ -165,6 +166,65 @@ describe("postProcessing", () => {
     nock("http://paperless.example.test")
       .post("/api/documents/post_document/")
       .reply(201, "1");
+  }
+
+  function webhookMeta(): NonNullable<ScanContent["meta"]> {
+    return {
+      command: "listen",
+      scanCount: 1,
+      device: { ip: "127.0.0.1", isEscl: false },
+      target: undefined,
+      settings: {
+        inputSource: InputSource.Adf,
+        contentType: "Document",
+        format: "jpg",
+        sourceFormat: "jpg",
+        mode: ScanMode.Color,
+        colorDepth: 8,
+        channels: 3,
+        resolution: 200,
+        isDuplex: false,
+        pageCountingStrategy: PageCountingStrategy.Normal,
+        paperSize: undefined,
+        paperDim: undefined,
+      },
+      startedAt: new Date().toISOString(),
+      instance: { id: "test", startedAt: new Date().toISOString() },
+    };
+  }
+
+  async function captureWebhook(): Promise<{
+    config: WebhookConfig;
+    bodies: Buffer[];
+    close: () => Promise<void>;
+  }> {
+    const bodies: Buffer[] = [];
+    const server = http.createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => chunks.push(c));
+      req.on("end", () => {
+        bodies.push(Buffer.concat(chunks));
+        res.writeHead(200);
+        res.end();
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+    const port = (server.address() as AddressInfo).port;
+    nock.enableNetConnect((host: string) => host.startsWith("127.0.0.1"));
+    return {
+      config: {
+        url: `http://127.0.0.1:${port}/scan`,
+        auth: "none",
+        authHeader: "x-webhook-signature",
+        payload: "full",
+        keepFiles: true,
+      },
+      bodies,
+      close: () =>
+        new Promise<void>((resolve) => {
+          server.close(() => resolve());
+        }),
+    };
   }
 
   function mockNextcloudFolderExists(): void {
@@ -451,6 +511,83 @@ describe("postProcessing", () => {
       expect(result.uploadSucceeded).to.equal(true);
       expect(result.failures).to.deep.equal([]);
       expect(existsSync(filePath)).to.equal(false);
+    });
+
+    it("sends the event even when the paperless PDF mode already removed every file", async () => {
+      // `--paperless-always-send-as-pdf-file` deletes each page after
+      // converting it, then deletes the generated PDF after the upload: by the
+      // time the event is built there is no file left to describe. The event
+      // must still be delivered, with an empty files[].
+      scanConfig.paperlessConfig = paperlessConfig({
+        alwaysSendAsPdfFile: true,
+        keepFiles: false,
+      });
+      mockPaperlessSuccess();
+      scanJobContent.meta = webhookMeta();
+
+      const capture = await captureWebhook();
+      scanConfig.webhookConfig = capture.config;
+
+      try {
+        await postProcessing(
+          scanConfig,
+          tempFolder,
+          tempFolder,
+          1,
+          scanJobContent,
+          new Date(),
+          false,
+        );
+      } finally {
+        await capture.close();
+        scanConfig.webhookConfig = undefined;
+        scanConfig.paperlessConfig = undefined;
+      }
+
+      expect(capture.bodies).to.have.length(1);
+      const payload = JSON.parse(capture.bodies[0].toString("utf8")) as {
+        files: unknown[];
+      };
+      expect(payload.files).to.deep.equal([]);
+    });
+
+    it("describes the pages, not the PDFs the paperless stage deletes", async () => {
+      // With keepFiles the pages survive the conversion, so they can still be
+      // fetched; the generated PDFs are always unlinked after the upload and
+      // must not appear in files[].
+      scanConfig.paperlessConfig = paperlessConfig({
+        alwaysSendAsPdfFile: true,
+        keepFiles: true,
+      });
+      mockPaperlessSuccess();
+      scanJobContent.meta = webhookMeta();
+
+      const capture = await captureWebhook();
+      scanConfig.webhookConfig = capture.config;
+
+      try {
+        await postProcessing(
+          scanConfig,
+          tempFolder,
+          tempFolder,
+          1,
+          scanJobContent,
+          new Date(),
+          false,
+        );
+      } finally {
+        await capture.close();
+        scanConfig.webhookConfig = undefined;
+        scanConfig.paperlessConfig = undefined;
+      }
+
+      expect(capture.bodies).to.have.length(1);
+      const payload = JSON.parse(capture.bodies[0].toString("utf8")) as {
+        files: { name: string }[];
+      };
+      expect(payload.files.map((file) => file.name)).to.deep.equal([
+        fileName,
+      ]);
     });
 
     it("keeps going when the webhook cannot read the scan file", async () => {

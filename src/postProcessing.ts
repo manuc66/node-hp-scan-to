@@ -100,8 +100,6 @@ interface DeliveredTargets {
   nextcloud: boolean;
 }
 
-const NOT_DELIVERED: DeliveredTargets = { s3: false, nextcloud: false };
-
 function buildWebhookFileSource(
   file: { path: string; contentType?: string },
   delivered: DeliveredTargets,
@@ -634,17 +632,6 @@ async function handleImagePostProcessing(
         ...webhookFileSourcesForImages(
           scanJobContent,
           delivered,
-          s3Config,
-          nextcloudConfig,
-        ),
-        // In the paperless PDF modes the delivered artifact is the generated
-        // PDF, not the pages: describe both, the pages are still uploaded to
-        // S3/Nextcloud. Those PDFs only ever go to Paperless, so they carry no
-        // S3/Nextcloud location.
-        ...webhookFileSourcesForExtraFiles(
-          generatedPdfPaths,
-          "application/pdf",
-          NOT_DELIVERED,
           s3Config,
           nextcloudConfig,
         ),

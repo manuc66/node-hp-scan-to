@@ -18,6 +18,15 @@ const logger = getLoggerForFile(import.meta.url);
 const EVENT_TYPE = "scan-completed";
 const EVENT_DELIVERY_FAILED = "scan-delivery-failed";
 
+/**
+ * What a failed delivery reports in the `minimal` payload profile. The raw
+ * error is an axios message, which routinely carries the internal host and
+ * port of the target (`connect ECONNREFUSED 192.168.1.10:8000`), and that is
+ * exactly what the profile promises not to send. The full error stays in the
+ * sender logs.
+ */
+const REDACTED_DELIVERY_ERROR = "delivery failed (error redacted)";
+
 export interface WebhookFileLocation {
   /** S3 bucket (when store is "s3"). */
   bucket?: string;
@@ -264,7 +273,20 @@ export async function sendScanEvent(
   const deliveryFailed = delivery.some((d) => d.status === "failed");
   const fileDescriptors: WebhookFileDescriptor[] = [];
   for (const file of files) {
-    const { size, sha256 } = await fileDigest(file.path);
+    let digest: { size: number; sha256: string };
+    try {
+      digest = await fileDigest(file.path);
+    } catch (error) {
+      // A file that is already gone (a paperless PDF mode removed it, a hook
+      // cleaned up after itself) must not cost the whole event: describe the
+      // files that are still there and keep the loss in the logs.
+      logger.warn(
+        error,
+        `Webhook file descriptor skipped, the file could not be read: ${file.path}`,
+      );
+      continue;
+    }
+    const { size, sha256 } = digest;
     const contentType = file.contentType ?? inferContentType(file.path);
     const remote = file.store === "s3" || file.store === "nextcloud";
     fileDescriptors.push({
@@ -320,5 +342,10 @@ function withoutIdentifiers(event: WebhookEvent): WebhookEvent {
       delete descriptor.path;
       return descriptor;
     }),
+    delivery: event.delivery.map((target) =>
+      target.status === "failed"
+        ? { ...target, error: REDACTED_DELIVERY_ERROR }
+        : target,
+    ),
   };
 }
