@@ -103,6 +103,23 @@ There is a good chance it also works on other unlisted HP All-in-One Printers.
   - Local folders
   - [Paperless-ngx API](https://docs.paperless-ngx.com/api/) upload
   - [Nextcloud WebDAV](https://docs.Nextcloud.com/server/latest/user_manual/en/files/access_webdav.html) upload
+  - S3-compatible (AWS S3, MinIO, Cloudflare R2, Wasabi...) upload
+  - Webhook notification (JSON event with idempotency key, `scan-completed` /
+    `scan-delivery-failed` event types, per-page descriptors and delivery
+    outcomes). Each delivered file carries `size`/`sha256` plus its location
+    (`local` path, S3 `bucket`/`key` or Nextcloud WebDAV URL), sidecars and
+    generated PDFs included. The event is a metadata notification: a webhook
+    on its own never removes the scan (retention follows the delivery targets
+    and `keep_files`), and when the files are cleaned up the local `path` is
+    stale, and `files[]` is empty when the delivered files were already
+    removed (the paperless PDF modes delete the pages and the PDF they
+    upload), and each `delivery` entry carries the identifiers the target
+    returned — Paperless task ids, Nextcloud WebDAV URLs, S3 `bucket/key` — so
+    the document stays reachable from the event alone. `--webhook-payload
+    minimal` drops the identifiers (scanner IP, destination label), every local
+    path and the raw delivery error messages, for a receiver outside your
+    network. OpenAPI contract:
+    [`protocol_doc/webhook/openapi.yaml`](protocol_doc/webhook/openapi.yaml).
 
 ### Protocol Support
 
@@ -352,6 +369,14 @@ Summary of the options shared across commands. Each command's own `--help` outpu
 | `--s3-prefix`                         | Folder (prefix) inside the bucket. Defaults to the bucket root.                                                                                                                                                                | `--s3-prefix 2026/08`                                             |
 | `--s3-force-path-style`               | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...).                                                                                                                                                    | `--s3-force-path-style` (disabled by default)                     |
 | `--s3-session-token`                  | S3 session token for temporary credentials.                                                                                                                                                                                    | `--s3-session-token ...` (no default)                             |
+| `--webhook-url`                       | Webhook URL to POST scan events to (JSON with idempotency-key header).                                                                                           | `--webhook-url https://n8n.example/webhook/scan` (no default)      |
+| `--webhook-auth`                      | Auth scheme for the webhook request: `none`, `hmac`, `bearer` or `basic` (default: inferred from the configured credentials).                                                                                                    | `--webhook-auth hmac` (auto)                                       |
+| `--webhook-auth-header`               | Header name carrying the HMAC signature.                                                                                                                                                                                         | `x-webhook-signature` (default)                                    |
+| `--webhook-secret`                    | HMAC-SHA256 signing secret, used as-is (not hex-decoded); the resulting signature is sent as hex in the auth header. Required unless `--webhook-secret-file` is used. Overrides if both are provided.                            | `--webhook-secret s3cr3t` (no default)                             |
+| `--webhook-secret-file`               | File containing the HMAC signing secret. Required unless `--webhook-secret` is used. Takes precedence if both are provided.                                                                                                      | `--webhook-secret-file /path/to/file` (no default)                 |
+| `--webhook-token`                     | Bearer token sent as `Authorization: Bearer <token>`.                                                                                                                                                                            | `--webhook-token tok...` (no default)                              |
+| `--webhook-username` / `--webhook-password` | Basic auth credentials sent as `Authorization: Basic`.                                                                                                                                                                     | `--webhook-username scanner --webhook-password ...` (no default)   |
+| `--webhook-payload`                   | Event profile: `full` (default) or `minimal`. `minimal` drops the scanner IP, the printer destination label, every local file path and the raw delivery error text.                                                          | `--webhook-payload minimal` (default: `full`)                       |
 
 **Notes:**
 
@@ -421,6 +446,17 @@ S3 Options:
   --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
   --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
   --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
+Webhook Options:
+  --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON with an idempotency-key header, best-effort delivery)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
+  --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
 
 Device Control Screen Options:
   -l, --label <label>                                              The label to display on the device (the default is the hostname)
@@ -525,6 +561,17 @@ S3 Options:
   --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
   --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
   --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
+Webhook Options:
+  --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON with an idempotency-key header, best-effort delivery)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
+  --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
 
 Auto-scan Options:
   --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
@@ -637,6 +684,17 @@ S3 Options:
   --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
   --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
   --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
+Webhook Options:
+  --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON with an idempotency-key header, best-effort delivery)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
+  --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
 
 Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
@@ -863,6 +921,8 @@ You could however use Docker's [macvlan](https://docs.docker.com/engine/network/
 
 All scanned files are written to the volume `/scan`, the filename can be changed with the `PATTERN` environment variable. For the correct permissions to the volume set the environment variables `PUID` and `PGID` to that of the user running the container (usually `PUID=1000` and `PGID=1000`).
 
+When `WEBHOOK_URL` is set, scan events are sent best-effort: a single POST per event, and failures are logged. Set `WEBHOOK_PAYLOAD=minimal` when the receiver is not on your network: the event then carries no scanner IP, no printer destination label and no local file path.
+
 #### Docker Environment Variables
 
 List of supported environment variables and their meaning, or correspondence with [command-line flags](#cli-options):
@@ -904,6 +964,15 @@ List of supported environment variables and their meaning, or correspondence wit
 | `S3_PREFIX`                   | Folder (prefix) inside the bucket (default bucket root)                                                       | `--s3-prefix`                                                                 |
 | `S3_FORCE_PATH_STYLE`         | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)                                    | `--s3-force-path-style`                                                       |
 | `S3_SESSION_TOKEN`            | S3 session token for temporary credentials                                                                    | `--s3-session-token`                                                          |
+| `WEBHOOK_URL`                 | Webhook URL to POST scan events to (JSON with an idempotency-key header, best-effort delivery)                             | `--webhook-url`                                                               |
+| `WEBHOOK_AUTH`                | Auth scheme: `none`, `hmac`, `bearer` or `basic` (default: inferred from the credentials)                     | `--webhook-auth`                                                              |
+| `WEBHOOK_AUTH_HEADER`         | Header name carrying the HMAC signature (default `x-webhook-signature`)                                       | `--webhook-auth-header`                                                       |
+| `WEBHOOK_SECRET`              | HMAC-SHA256 signing secret (either this or `WEBHOOK_SECRET_FILE` is required; file takes precedence)          |                                                                               |
+| `WEBHOOK_SECRET_FILE`         | File containing the signing secret (preferred for Docker Compose secrets)                                     | Example: `./webhook_secret.secret`                                            |
+| `WEBHOOK_TOKEN`               | Bearer token sent as `Authorization: Bearer`                                                                  | `--webhook-token`                                                             |
+| `WEBHOOK_USERNAME`            | Basic auth username sent as `Authorization: Basic`                                                            | `--webhook-username`                                                          |
+| `WEBHOOK_PASSWORD`            | Basic auth password for `WEBHOOK_USERNAME`                                                                    | `--webhook-password`                                                          |
+| `WEBHOOK_PAYLOAD`             | Event profile: `full` (default) or `minimal` (no scanner IP, destination label or local path)                 | `--webhook-payload`                                                           |
 
 **Additional Notes:**
 

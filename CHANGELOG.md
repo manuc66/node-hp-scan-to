@@ -55,6 +55,28 @@ All notable changes to this project are documented in this file.
   untouched: S3 and Nextcloud receive them next to the scan, Paperless does
   not (an upload there would become a standalone document), and they are
   removed with the scan only once they were actually delivered.
+- **Webhook notifications**: every completed scan POSTs a JSON event
+  (`scan-completed`, or `scan-delivery-failed` when a delivery target failed)
+  to a configurable URL, carrying the scan metadata, per-page descriptors, the
+  outcome of each delivery target and one descriptor per delivered file
+  (name, size, SHA-256 and where to fetch it: local path, S3 `bucket`/`key` or
+  Nextcloud WebDAV URL) — including the sidecars a post-command writes beside
+  the scan and the PDFs the paperless stage generates. Events are signed with HMAC-SHA256 (custom header supported) or
+  authenticated with bearer/basic auth, sent with an `idempotency-key` header;
+  delivery is best-effort (a single POST, failures are logged). A webhook is
+  a notification, not a delivery target: configured alone it never removes the
+  scan, retention stays governed by the delivery targets and `keep_files`.
+  Each `delivery` entry also carries the identifiers the target returned —
+  Paperless task ids, Nextcloud WebDAV URLs, S3 `bucket`/`key` — so a consumer
+  can still find the document when no local file is left.
+  Two payload profiles: `full` (default, with the scanner IP, the printer
+  destination label and the local file paths) and `minimal` (none of those and
+  no raw delivery error text, so the event can go to a receiver outside the
+  local network), selected with `--webhook-payload` / `webhook_payload` /
+  `WEBHOOK_PAYLOAD`.
+  Configured with the new `--webhook-*` CLI options, the matching `webhook_*`
+  config file keys or the `WEBHOOK_*` environment variables (Docker). The
+  event contract is described in `protocol_doc/webhook/openapi.yaml`.
 
 ### Changed
 

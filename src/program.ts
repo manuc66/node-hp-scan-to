@@ -13,6 +13,12 @@ import DeviceClient from "./DeviceClient.js";
 import type { PaperlessConfig } from "./paperless/PaperlessConfig.js";
 import type { NextcloudConfig } from "./nextcloud/NextcloudConfig.js";
 import type { S3Config } from "./s3/S3Config.js";
+import { assertWebhookAuthCredentials } from "./webhook/WebhookConfig.js";
+import type {
+  WebhookAuthType,
+  WebhookConfig,
+  WebhookPayload,
+} from "./webhook/WebhookConfig.js";
 import { startHealthCheckServer } from "./healthcheck.js";
 import fs from "node:fs";
 import { Command, Option } from "@commander-js/extra-typings";
@@ -318,6 +324,64 @@ function setupScanParameters(commandName: string) {
         "--s3-session-token <s3_session_token>",
         "The S3 session token for temporary credentials (optional)",
       ).helpGroup(HelpGroupsHeadings.s3),
+    )
+    .addOption(
+      new Option(
+        "--webhook-url <webhook_url>",
+        "The webhook url to POST scan events to (JSON with an idempotency-key header, best-effort delivery)",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-auth <webhook_auth>",
+        "Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials)",
+      )
+        .choices(["none", "hmac", "bearer", "basic"])
+        .helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-auth-header <webhook_auth_header>",
+        "Header name carrying the HMAC signature (default: x-webhook-signature)",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-secret <webhook_secret>",
+        "Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-secret-file <webhook_secret_file>",
+        "File name that contains the webhook signing secret. Either this or webhook-secret.",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-token <webhook_token>",
+        "Bearer token sent as Authorization: Bearer <token>",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-username <webhook_username>",
+        "Basic auth username sent as Authorization: Basic",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-password <webhook_password>",
+        "Basic auth password for webhook-username",
+      ).helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--webhook-payload <webhook_payload>",
+        "What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path)",
+      )
+        .choices(["full", "minimal"])
+        .helpGroup(HelpGroupsHeadings.webhook),
     );
 }
 
@@ -583,6 +647,161 @@ export function getS3Config(
 }
 
 /**
+ * Rejects a webhook URL the request could never reach, at startup rather than
+ * once per scan. The URL itself is not echoed: for n8n, Make or Zapier it is
+ * the credential.
+ */
+function assertWebhookUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(
+      "The webhook url is not a valid absolute URL (expected http:// or https://...)",
+    );
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("The webhook url must use the http or https scheme");
+  }
+}
+
+/**
+ * Host of the webhook endpoint, for the startup log.
+ *
+ * The URL itself is never logged: with n8n, Make or Zapier the URL *is* the
+ * credential (the path carries the token), and a log line ends up in
+ * `docker logs`, in log shippers and in bug reports. Only the origin is kept,
+ * which also drops any userinfo.
+ */
+function webhookHostForLog(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return "(unparsable url)";
+  }
+}
+
+export function getWebhookConfig(
+  options: AdfAutoscanOptions | ListenOptions | SingleScanOptions,
+  fileConfig: FileConfig,
+): WebhookConfig | undefined {
+  const webhookUrl = getOptConfiguredValue(
+    options.webhookUrl,
+    fileConfig.webhook_url,
+  );
+  if (webhookUrl === undefined) {
+    return undefined;
+  }
+  assertWebhookUrl(webhookUrl);
+
+  // A webhook is a notification, not a delivery target: on its own it must
+  // never turn the retention off. Without another target the scan is the only
+  // copy, and the event advertises its local path, which would be deleted
+  // right after being sent. Retention stays decided by the real delivery
+  // targets, or by an explicit `keep_files: false`.
+  const keepFiles: boolean = getConfiguredValue(
+    options.keepFiles,
+    fileConfig.keep_files,
+    true,
+  );
+  const payload: WebhookPayload = getConfiguredValue(
+    options.webhookPayload,
+    fileConfig.webhook_payload,
+    "full",
+  );
+  // A blank header name would reach Node as an empty HTTP token and make every
+  // request fail, so it falls back to the default like a blank secret does.
+  const configuredAuthHeader = getConfiguredValue(
+    options.webhookAuthHeader,
+    fileConfig.webhook_auth_header,
+    "x-webhook-signature",
+  );
+  const authHeader =
+    configuredAuthHeader.trim() === ""
+      ? "x-webhook-signature"
+      : configuredAuthHeader;
+
+  const configSecret = getOptConfiguredValue(
+    options.webhookSecret,
+    fileConfig.webhook_secret,
+  );
+  const configSecretFile = getOptConfiguredValue(
+    options.webhookSecretFile,
+    fileConfig.webhook_secret_file,
+  );
+  const webhookToken = getOptConfiguredValue(
+    options.webhookToken,
+    fileConfig.webhook_token,
+  );
+  const webhookUsername = getOptConfiguredValue(
+    options.webhookUsername,
+    fileConfig.webhook_username,
+  );
+  const webhookPassword = getOptConfiguredValue(
+    options.webhookPassword,
+    fileConfig.webhook_password,
+  );
+
+  let secret: string | undefined;
+  if (configSecretFile !== undefined) {
+    secret = fs.readFileSync(configSecretFile, "utf8").trimEnd();
+  } else {
+    secret = configSecret;
+  }
+  if (secret?.trim() === "") {
+    secret = undefined;
+  }
+
+  const explicitAuth = getOptConfiguredValue(
+    options.webhookAuth,
+    fileConfig.webhook_auth,
+  );
+  let auth: WebhookAuthType;
+  if (explicitAuth !== undefined) {
+    auth = explicitAuth;
+  } else if (secret !== undefined) {
+    auth = "hmac";
+  } else if (webhookToken !== undefined) {
+    auth = "bearer";
+  } else if (
+    webhookUsername !== undefined ||
+    webhookPassword !== undefined
+  ) {
+    // Either half of the basic credentials is enough to infer basic auth:
+    // assertWebhookAuthCredentials below then rejects the incomplete pair
+    // instead of silently sending the event unauthenticated.
+    auth = "basic";
+  } else {
+    auth = "none";
+  }
+
+  logger.info(
+    `Webhook configuration provided, host: ${webhookHostForLog(webhookUrl)}, auth: ${auth}, authHeader: ${authHeader}, keepFiles: ${keepFiles}`,
+  );
+  const webhookConfig: WebhookConfig = {
+    url: webhookUrl,
+    auth,
+    authHeader,
+    keepFiles,
+    payload,
+  };
+  if (secret !== undefined) {
+    webhookConfig.secret = secret;
+  }
+  if (webhookToken !== undefined) {
+    webhookConfig.token = webhookToken;
+  }
+  if (webhookUsername !== undefined) {
+    webhookConfig.username = webhookUsername;
+  }
+  if (webhookPassword !== undefined) {
+    webhookConfig.password = webhookPassword;
+  }
+  assertWebhookAuthCredentials(webhookConfig);
+  return webhookConfig;
+}
+
+/**
  * Retrieves the configured value based on the provided options.
  * This function prioritizes the configuration from the command line if it is provided.
  * If the command line option is not defined, it checks the value from the config file.
@@ -654,6 +873,7 @@ export function getScanConfiguration(
   const paperlessConfig = getPaperlessConfig(options, fileConfig);
   const nextcloudConfig = getNextcloudConfig(options, fileConfig);
   const s3Config = getS3Config(options, fileConfig);
+  const webhookConfig = getWebhookConfig(options, fileConfig);
 
   const resolution = parseInt(
     getConfiguredValue(
@@ -758,6 +978,7 @@ export function getScanConfiguration(
     paperlessConfig,
     nextcloudConfig,
     s3Config,
+    webhookConfig,
     preferEscl,
     ...(postCommandImage !== undefined && { postCommandImage }),
     ...(postCommandPdf !== undefined && { postCommandPdf }),
