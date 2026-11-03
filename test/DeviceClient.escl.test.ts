@@ -61,6 +61,26 @@ describe("DeviceClient eSCL support", () => {
       expect(tree.ScanJobManifestURI).to.be.null;
     });
 
+    it("falls back to HTTPS when HTTP does not serve the tree", async () => {
+      nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(404);
+      nock("https://127.0.0.1")
+        .get("/DevMgmt/DiscoveryTree.xml")
+        .reply(
+          200,
+          `<?xml version="1.0" encoding="UTF-8"?>
+<ledm:DiscoveryTree xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/discoverytree/2009/03/12" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
+  <ledm:SupportedIfc>
+    <dd:ResourceType>ledm:hpLedmScanJobManifest</dd:ResourceType>
+    <ledm:ManifestURI>/Scan/ScanJobManifest.xml</ledm:ManifestURI>
+  </ledm:SupportedIfc>
+</ledm:DiscoveryTree>`,
+        );
+
+      const tree = await new DeviceClient("127.0.0.1").getDiscoveryTree();
+
+      expect(tree.ScanJobManifestURI).to.equal("/Scan/ScanJobManifest.xml");
+    });
+
     it("still fails on other statuses", async () => {
       nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(500);
 

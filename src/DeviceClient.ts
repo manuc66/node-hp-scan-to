@@ -242,32 +242,57 @@ export default class DeviceClient {
   }
 
   async getDiscoveryTree(): Promise<DiscoveryTree> {
-    const response = await this.callAxios({
-      baseURL: `http://${this.deviceIP}`,
-      url: "/DevMgmt/DiscoveryTree.xml",
-      method: "GET",
-      responseType: "text",
-      // Do not throw on 404: we handle a missing tree explicitly below.
-      validateStatus: () => true,
-    });
+    let lastError: unknown;
+    let sawMissingTree = false;
 
-    if (response.status === 200) {
-      return DiscoveryTree.createDiscoveryTree(response.data);
-    }
+    // Newer firmware only exposes HTTPS 443, while older devices keep the
+    // LEDM document on plain HTTP. Try both before deciding that the tree is
+    // absent.
+    for (const baseURL of [
+      `http://${this.deviceIP}`,
+      `https://${this.deviceIP}`,
+    ]) {
+      let response: AxiosResponse<string>;
+      try {
+        response = await this.callAxios({
+          baseURL,
+          url: "/DevMgmt/DiscoveryTree.xml",
+          method: "GET",
+          responseType: "text",
+          httpsAgent: this.localPrinterHttpsAgent,
+          // Do not throw on 404: we handle a missing tree explicitly below.
+          validateStatus: () => true,
+        });
+      } catch (error) {
+        lastError = error;
+        continue;
+      }
 
-    // Only a missing (404) or not-allowed (405) document means the device
-    // does not serve the HP-proprietary tree and we can fall back to the
-    // standard eSCL endpoints. All other statuses are real errors.
-    if (response.status === 404 || response.status === 405) {
-      logger.warn(
-        `DiscoveryTree.xml not available; falling back to standard eSCL endpoints.`,
+      if (response.status === 200) {
+        return DiscoveryTree.createDiscoveryTree(response.data);
+      }
+
+      if (response.status === 404 || response.status === 405) {
+        sawMissingTree = true;
+        continue;
+      }
+
+      throw new Error(
+        `DiscoveryTree.xml request failed with status ${response.status}`,
       );
-      return DiscoveryTree.empty();
     }
 
-    throw new Error(
-      `DiscoveryTree.xml request failed with status ${response.status}`,
+    if (lastError !== undefined && !sawMissingTree) {
+      if (lastError instanceof Error) {
+        throw lastError;
+      }
+      throw new Error("DiscoveryTree.xml request failed");
+    }
+
+    logger.warn(
+      `DiscoveryTree.xml not available; falling back to standard eSCL endpoints.`,
     );
+    return DiscoveryTree.empty();
   }
 
   /**
