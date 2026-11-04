@@ -721,6 +721,8 @@ Typical uses:
 | **`--post-command-pdf`** | PDF/A archiving (Ghostscript), digital signature, stamping, metadata injection, OCR text layer |
 | **`--post-command-image`** | recompression/resizing, watermarking, EXIF metadata injection, format conversion |
 
+To send a scan somewhere the app does not deliver to, such as mail, chat or another printer, see [Sending scans elsewhere](docs/sending-scans-elsewhere.md).
+
 Each value is a program followed by its arguments, so quote any argument containing spaces. A command takes one of three shapes, and the shape is decided by whether it mentions `{output}`:
 
 **1. Replace the file — write the result to `{output}`.** The command must produce that exact file; it then replaces the scan, atomically.
