@@ -250,7 +250,7 @@ importers:
         version: 12.0.3
       nock:
         specifier: ^15.0.1
-        version: 15.0.5(supports-color@8.1.1)
+        version: 15.0.6(supports-color@8.1.1)
       prettier:
         specifier: ^3.9.6
         version: 3.9.10
@@ -526,8 +526,8 @@ packages:
   '@leichtgewicht/ip-codec@2.0.5':
     resolution: {integrity: sha512-Vo+PSpZG2/fmgmiNzYK9qWRh8h/CHrwD0mo1h1DzL4yzHNSfWYujGTYsWGreD000gcgmZ7K4Ys6Tx9TxtsKdDw==}
 
-  '@mswjs/interceptors@0.44.0':
-    resolution: {integrity: sha512-IYHevRStF4ijM20GI9c9Ndhw483NSAjCydQhUr4/zIB0BNLsTVw3vFAxTo6TlvX4QnV60wEHttUa9539TTAq+A==}
+  '@mswjs/interceptors@0.45.11':
+    resolution: {integrity: sha512-+ISPERIRIHhSVnFQRGCP9jDJXxn0/z2+pWWbXUym6JUfpUCRW2Pvro4P9RBKGYUKTKAULszKurKMTQIsaJUIgQ==}
     engines: {node: '>=22'}
 
   '@open-draft/until@3.0.1':
@@ -1164,8 +1164,8 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  nock@15.0.5:
-    resolution: {integrity: sha512-nVeuZGS2we1PyvqbW082Qj0EB4bd//6pZk/zOPDlaTPU72qcWrqfHg3kx9JcBcH1fJxwJHjmsfuQ4mss42su4w==}
+  nock@15.0.6:
+    resolution: {integrity: sha512-eyOJ1wemcgJZ+PQC3lecfF3gQc2SAmGlQ4mHGfFXcOa/+7v0qjnX+ft/NV2F+4vCwzkXZqik3gS6ZIjh+QcigQ==}
     engines: {node: '>=22.20.0'}
 
   on-exit-leak-free@2.1.2:
@@ -1641,7 +1641,7 @@ snapshots:
 
   '@leichtgewicht/ip-codec@2.0.5': {}
 
-  '@mswjs/interceptors@0.44.0(supports-color@8.1.1)':
+  '@mswjs/interceptors@0.45.11(supports-color@8.1.1)':
     dependencies:
       '@open-draft/until': 3.0.1
       '@types/debug': 4.1.13
@@ -2338,9 +2338,9 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  nock@15.0.5(supports-color@8.1.1):
+  nock@15.0.6(supports-color@8.1.1):
     dependencies:
-      '@mswjs/interceptors': 0.44.0(supports-color@8.1.1)
+      '@mswjs/interceptors': 0.45.11(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
