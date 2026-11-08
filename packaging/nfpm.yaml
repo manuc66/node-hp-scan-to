@@ -43,6 +43,7 @@ contents:
     dst: /usr/lib/systemd/user/node-hp-scan-to.service
   - src: packaging/openrc/node-hp-scan-to
     dst: /etc/init.d/node-hp-scan-to
+    packager: apk
     file_info:
       mode: 0755
   - src: packaging/default.json

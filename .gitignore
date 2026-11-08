@@ -22,3 +22,5 @@ packaging/windows/staging/
 /protocol_doc/capture/tools/hp-mitm-capture/
 # Personal settings merged over config/default.json by the "config" package.
 /config/local.json
+# CocoIndex Code (ccc)
+/.cocoindex_code/

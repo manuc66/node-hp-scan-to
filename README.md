@@ -208,7 +208,7 @@ Scans are saved under `/var/lib/node-hp-scan-to` by default when running as a se
 
 Linux networking notes:
 
-- the service only makes **outbound** connections: mDNS discovery (UDP 5353 multicast), plain HTTP calls to the printer itself on port 80 (discovery tree, scan job creation and polling), and HTTPS uploads to Paperless-ngx/Nextcloud when configured — nothing listens for the scanning flow itself
+- the service only makes **outbound** connections: mDNS discovery (UDP 5353 multicast), plain HTTP calls to the printer itself on port 80 (discovery tree, registration, capabilities, polling) and on port 8080 (scan job creation and page download on the legacy/non-eSCL path), and HTTPS uploads to Paperless-ngx/Nextcloud when configured — nothing listens for the scanning flow itself
 - `--health-check` listens on **all interfaces** (port 3000 by default); restrict it with a local firewall rule if that matters to you, or drop the flag from `/usr/lib/systemd/system/node-hp-scan-to.service`
 - the packaged systemd unit runs under a dynamic non-root user with `PrivateTmp`, read-only system paths and an empty capability set
 
@@ -1145,6 +1145,8 @@ Prefer `-n/--name` over `-a/--address` so a changed DHCP lease does not break th
 **Scans land in `/tmp`.** No output directory was configured — set `-d/--directory` (or `DIR`). The Docker image defaults to `/scan`.
 
 **Permission denied when writing scans.** In Docker, set `PUID`/`PGID` to the owner of the mounted volume.
+
+**Scan fails with "the connection to the computer was lost" / hangs after "ADF status: Loaded".** The legacy (non-eSCL) scan path talks to the printer's scan service on TCP 8080 in addition to port 80. A firewall that only allows port 80 lets registration succeed but blocks job creation, leaving the connection in `SYN-SENT`. Open TCP 8080 (in addition to 80) from the service host to the printer.
 
 **Something else.** Re-run with `-D/--debug` and attach the log to the issue; `LOG_FORMAT=json` produces structured lines for aggregators.
 

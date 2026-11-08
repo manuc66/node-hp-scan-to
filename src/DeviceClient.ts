@@ -525,6 +525,7 @@ export default class DeviceClient {
       headers: { "Content-Type": "text/xml" },
       data: xml,
       responseType: "text",
+      timeout: 30_000,
     });
 
     if (
@@ -583,14 +584,14 @@ export default class DeviceClient {
   async downloadPage(
     binaryURL: string,
     destination: string,
-    timeout?: number,
+    timeout: number = 60_000,
   ): Promise<string> {
     const response = await this.callAxios<Stream>({
       baseURL: `http://${this.deviceIP}:8080`,
       url: binaryURL,
       method: "GET",
       responseType: "stream",
-      ...(timeout !== undefined && { timeout }),
+      timeout,
     });
 
     const data = response.data;
@@ -606,7 +607,7 @@ export default class DeviceClient {
   async downloadPageWithMeta(
     binaryURL: string,
     destination: string,
-    timeout?: number,
+    timeout: number = 60_000,
   ): Promise<{ path: string; contentType: string | undefined }> {
     const { data, headers }: AxiosResponse<Stream> =
       await axios.request<Stream>({
@@ -614,7 +615,7 @@ export default class DeviceClient {
         url: binaryURL,
         method: "GET",
         responseType: "stream",
-        ...(timeout !== undefined && { timeout }),
+        timeout,
       });
 
     const destinationFileStream = fs.createWriteStream(destination);
