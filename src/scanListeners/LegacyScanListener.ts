@@ -20,6 +20,10 @@ import type { ScanListener, ScanRequest } from "./ScanListener.js";
  * behind the ScanListener interface so `listen` can also speak eSCL.
  */
 export default class LegacyScanListener implements ScanListener {
+  /** Target and event of the session being scanned; owned by this listener. */
+  private currentRequest: ScanRequest | null = null;
+  private currentEvent: IEvent | null = null;
+
   constructor(
     private readonly api: DeviceClient,
     private readonly registrationConfigs: RegistrationConfig[],
@@ -55,17 +59,18 @@ export default class LegacyScanListener implements ScanListener {
           }),
           shortcut: destination.shortcut,
           scanPlexMode: destination.scanPlexMode,
-          continuation: selected.event,
         };
+        this.currentRequest = request;
+        this.currentEvent = selected.event;
       }
     }
 
     return request;
   }
 
-  async waitForScanStart(request: ScanRequest): Promise<boolean> {
-    const event = request.continuation as IEvent;
-    if (event.compEventURI === undefined) {
+  async waitForScanStart(): Promise<boolean> {
+    const event = this.currentEvent;
+    if (event?.compEventURI === undefined) {
       return true;
     }
     return await waitScanRequest(
@@ -75,12 +80,10 @@ export default class LegacyScanListener implements ScanListener {
     );
   }
 
-  async waitForNextPage(request: ScanRequest): Promise<ScanRequest | null> {
-    const event = request.continuation as IEvent;
-    if (
-      event.destinationURI === undefined ||
-      event.compEventURI === undefined
-    ) {
+  async waitForNextPage(): Promise<ScanRequest | null> {
+    const request = this.currentRequest;
+    const event = this.currentEvent;
+    if (request === null || event?.compEventURI === undefined) {
       return null;
     }
 
@@ -107,6 +110,7 @@ export default class LegacyScanListener implements ScanListener {
       return null;
     }
 
-    return { ...request, continuation: nextEvent };
+    this.currentEvent = nextEvent;
+    return request;
   }
 }

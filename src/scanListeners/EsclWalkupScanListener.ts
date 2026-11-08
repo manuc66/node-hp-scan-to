@@ -181,7 +181,6 @@ export default class EsclWalkupScanListener implements ScanListener {
       ...(contextID !== undefined && { contextID }),
       shortcut: mapShortcut(event.shortcut ?? target.label),
       scanPlexMode: event.scanPlexMode ?? ScanPlexMode.Simplex,
-      continuation: event,
     };
   }
 

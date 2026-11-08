@@ -5,7 +5,6 @@ import type { IEvent } from "../src/hpModels/Event.js";
 import type { EtagEventTable } from "../src/hpModels/EventTable.js";
 import { EventType } from "../src/hpModels/WalkupScanToCompEvent.js";
 import LegacyScanListener from "../src/scanListeners/LegacyScanListener.js";
-import type { ScanRequest } from "../src/scanListeners/ScanListener.js";
 import { ScanPlexMode } from "../src/hpModels/ScanPlexMode.js";
 import { KnownShortcut } from "../src/type/KnownShortcut.js";
 
@@ -20,27 +19,49 @@ function scanEvent(overrides: Partial<IEvent> = {}): IEvent {
   };
 }
 
-function request(event: IEvent): ScanRequest {
-  return {
-    resourceURI: "/WalkupScan/Destinations/1",
-    label: "host",
-    isDuplexSingleSide: false,
-    shortcut: KnownShortcut.SavePDF,
-    scanPlexMode: ScanPlexMode.Simplex,
-    continuation: event,
-  };
+function eventTable(event: IEvent, etag: string): EtagEventTable {
+  return { etag, eventTable: { events: [event] } };
 }
 
-function eventTable(event: IEvent): EtagEventTable {
-  return { etag: "1", eventTable: { events: [event] } };
-}
-
+/**
+ * Serves the first scan event while `waitForScan` reads the initial table,
+ * then `nextEvent` for the follow-up tables read by `waitForNextPage`.
+ */
 class FakeApi {
-  events: EtagEventTable = eventTable(scanEvent());
+  initialEvent: IEvent = scanEvent();
+  nextEvent: IEvent = scanEvent();
   compEventType: EventType = EventType.ScanRequested;
 
-  async getEvents(): Promise<EtagEventTable> {
-    return this.events;
+  async getWalkupScanDestinations(): Promise<{ destinations: never[] }> {
+    return { destinations: [] };
+  }
+
+  async getWalkupScanToCompDestinations(): Promise<{ destinations: never[] }> {
+    return { destinations: [] };
+  }
+
+  async registerWalkupScanDestination(): Promise<string> {
+    return "/WalkupScan/Destinations/1";
+  }
+
+  async registerWalkupScanToCompDestination(): Promise<string> {
+    return "/WalkupScan/Destinations/1";
+  }
+
+  async getEvents(afterEtag = ""): Promise<EtagEventTable> {
+    return afterEtag === "" || afterEtag === "1"
+      ? eventTable(this.initialEvent, "1")
+      : eventTable(this.nextEvent, "2");
+  }
+
+  async getDestination(): Promise<{
+    shortcut: KnownShortcut;
+    scanPlexMode: ScanPlexMode;
+  }> {
+    return {
+      shortcut: KnownShortcut.SavePDF,
+      scanPlexMode: ScanPlexMode.Simplex,
+    };
   }
 
   async getWalkupScanToCompEvent(): Promise<{ eventType: EventType }> {
@@ -66,92 +87,72 @@ describe("LegacyScanListener", () => {
     globalThis.setTimeout = originalSetTimeout;
   });
 
-  it("returns true immediately when the event has no comp event URI", async () => {
-    const listener = new LegacyScanListener(
-      new FakeApi() as unknown as DeviceClient,
+  function makeListener(
+    api: FakeApi,
+    isScanToComp = false,
+    userActionTimeout: number | null = null,
+  ): LegacyScanListener {
+    return new LegacyScanListener(
+      api as unknown as DeviceClient,
       [{ label: "host", isDuplexSingleSide: false }],
-      false,
-      null,
+      isScanToComp,
+      userActionTimeout,
     );
+  }
 
-    const started = await listener.waitForScanStart(
-      request(scanEvent({ compEventURI: undefined })),
-    );
+  it("returns true immediately when the event has no comp event URI", async () => {
+    const api = new FakeApi();
+    api.initialEvent = scanEvent({ compEventURI: undefined });
+    const listener = makeListener(api);
 
-    expect(started).to.be.true;
+    await listener.waitForScan();
+
+    expect(await listener.waitForScanStart()).to.be.true;
   });
 
   it("waits for ScanRequested on the comp event channel", async () => {
     const api = new FakeApi();
     api.compEventType = EventType.ScanRequested;
-    const listener = new LegacyScanListener(
-      api as unknown as DeviceClient,
-      [{ label: "host", isDuplexSingleSide: false }],
-      true,
-      1,
-    );
+    const listener = makeListener(api, true, 1);
 
-    const started = await listener.waitForScanStart(request(scanEvent()));
+    await listener.waitForScan();
 
-    expect(started).to.be.true;
+    expect(await listener.waitForScanStart()).to.be.true;
   });
 
   it("returns false when no user action arrives in time", async () => {
     const api = new FakeApi();
     api.compEventType = EventType.HostSelected;
-    const listener = new LegacyScanListener(
-      api as unknown as DeviceClient,
-      [{ label: "host", isDuplexSingleSide: false }],
-      true,
-      0,
-    );
+    const listener = makeListener(api, true, 0);
 
-    const started = await listener.waitForScanStart(request(scanEvent()));
+    await listener.waitForScan();
 
-    expect(started).to.be.false;
+    expect(await listener.waitForScanStart()).to.be.false;
   });
 
-  it("ends the session when the event has no destination", async () => {
-    const listener = new LegacyScanListener(
-      new FakeApi() as unknown as DeviceClient,
-      [{ label: "host", isDuplexSingleSide: false }],
-      false,
-      null,
-    );
+  it("returns no next page before any scan was selected", async () => {
+    const listener = makeListener(new FakeApi());
 
-    const next = await listener.waitForNextPage(
-      request(scanEvent({ destinationURI: undefined })),
-    );
-
-    expect(next).to.be.null;
+    expect(await listener.waitForNextPage()).to.be.null;
   });
 
   it("ends the session when the next event has no comp event URI", async () => {
     const api = new FakeApi();
-    api.events = eventTable(scanEvent({ compEventURI: undefined }));
-    const listener = new LegacyScanListener(
-      api as unknown as DeviceClient,
-      [{ label: "host", isDuplexSingleSide: false }],
-      false,
-      null,
-    );
+    api.nextEvent = scanEvent({ compEventURI: undefined });
+    const listener = makeListener(api);
 
-    const next = await listener.waitForNextPage(request(scanEvent()));
+    await listener.waitForScan();
 
-    expect(next).to.be.null;
+    expect(await listener.waitForNextPage()).to.be.null;
   });
 
   it("returns a new request when the user requests another page", async () => {
     const api = new FakeApi();
     api.compEventType = EventType.ScanNewPageRequested;
-    const listener = new LegacyScanListener(
-      api as unknown as DeviceClient,
-      [{ label: "host", isDuplexSingleSide: false }],
-      false,
-      1,
-    );
+    const listener = makeListener(api, false, 1);
 
-    const next = await listener.waitForNextPage(request(scanEvent()));
+    await listener.waitForScan();
+    const next = await listener.waitForNextPage();
 
     expect(next?.resourceURI).to.equal("/WalkupScan/Destinations/1");
   });
@@ -159,14 +160,10 @@ describe("LegacyScanListener", () => {
   it("ends the session when the next event completes the pages", async () => {
     const api = new FakeApi();
     api.compEventType = EventType.ScanPagesComplete;
-    const listener = new LegacyScanListener(
-      api as unknown as DeviceClient,
-      [{ label: "host", isDuplexSingleSide: false }],
-      false,
-      1,
-    );
+    const listener = makeListener(api, false, 1);
 
-    const next = await listener.waitForNextPage(request(scanEvent()));
+    await listener.waitForScan();
+    const next = await listener.waitForNextPage();
 
     expect(next).to.be.null;
   });

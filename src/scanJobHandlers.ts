@@ -1,9 +1,6 @@
 import type DeviceClient from "./DeviceClient.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
-import type {
-  ScanListener,
-  ScanRequest,
-} from "./scanListeners/ScanListener.js";
+import type { ScanListener } from "./scanListeners/ScanListener.js";
 import type { ScanContent, ScanPage } from "./type/ScanContent.js";
 import type Job from "./hpModels/Job.js";
 import { JobState, PageState } from "./hpModels/Job.js";
@@ -672,7 +669,6 @@ export async function executeScanJobs(
   tempFolder: string,
   scanCount: number,
   scanJobContent: ScanContent,
-  selectedScanTarget: ScanRequest,
   deviceCapabilities: DeviceCapabilities,
   scanListener: ScanListener,
   filePattern: string | undefined,
@@ -699,10 +695,8 @@ export async function executeScanJobs(
     return;
   }
 
-  let request = selectedScanTarget;
-  let nextPage = await scanListener.waitForNextPage(request);
+  let nextPage = await scanListener.waitForNextPage();
   while (nextPage !== null) {
-    request = nextPage;
     jobState = await executeScanJob(
       api,
       scanJobSettings,
@@ -718,6 +712,6 @@ export async function executeScanJobs(
     if (jobState !== JobState.Completed) {
       return;
     }
-    nextPage = await scanListener.waitForNextPage(request);
+    nextPage = await scanListener.waitForNextPage();
   }
 }

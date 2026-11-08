@@ -94,8 +94,7 @@ export async function listenCmd(
           continue;
         }
 
-        const proceedToScan =
-          await scanListener.waitForScanStart(selectedScanTarget);
+        const proceedToScan = await scanListener.waitForScanStart();
 
         if (!proceedToScan || selectedScanTarget.shortcut === null) {
           logger.warn(

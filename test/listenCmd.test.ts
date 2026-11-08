@@ -313,7 +313,6 @@ const makeScanRequest = (
   }),
   shortcut: destination.shortcut,
   scanPlexMode: destination.scanPlexMode,
-  continuation: target.event,
 });
 
 const makeDeviceCapabilities = (

@@ -259,7 +259,6 @@ export async function saveScanFromEvent(
     tempFolder,
     scanCount,
     scanJobContent,
-    selectedScanTarget,
     deviceCapabilities,
     scanListener,
     filePattern,
