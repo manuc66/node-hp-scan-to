@@ -220,6 +220,51 @@ describe("scanJobHandlers flows", () => {
       expect(scanJobContent.elements).to.have.lengthOf(1);
     });
 
+    it("treats a ProcessingStopped job as canceled", async () => {
+      nock("http://127.0.0.1")
+        .get("/eSCL/ScannerStatus")
+        .reply(
+          200,
+          `<?xml version="1.0" encoding="UTF-8"?>
+<scan:ScannerStatus xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <pwg:Version>2.63</pwg:Version>
+  <pwg:State>Processing</pwg:State>
+  <scan:Jobs>
+    <scan:JobInfo>
+      <pwg:JobUri>/eSCL/ScanJobs/1</pwg:JobUri>
+      <pwg:JobUuid>job-1</pwg:JobUuid>
+      <scan:Age>0</scan:Age>
+      <pwg:ImagesCompleted>0</pwg:ImagesCompleted>
+      <pwg:ImagesToTransfer>1</pwg:ImagesToTransfer>
+      <pwg:JobState>ProcessingStopped</pwg:JobState>
+      <pwg:JobStateReasons>
+        <pwg:JobStateReason>JobScanning</pwg:JobStateReason>
+      </pwg:JobStateReasons>
+    </scan:JobInfo>
+  </scan:Jobs>
+</scan:ScannerStatus>`,
+        );
+
+      const api = new DeviceClient("127.0.0.1", false);
+      const scanJobContent: ScanContent = { elements: [] };
+
+      const jobState = await executeScanJob(
+        api,
+        jpegSettings(),
+        InputSource.Platen,
+        tempDir,
+        tempDir,
+        0,
+        scanJobContent,
+        "scan",
+        PageCountingStrategy.Normal,
+        esclCapabilities(),
+      );
+
+      expect(jobState).to.equal(JobState.Canceled);
+      expect(scanJobContent.elements).to.have.lengthOf(0);
+    });
+
     it("ends the job when /NextDocument answers 404 (jpeg)", async () => {
       // Some firmwares keep the job in Processing/JobScanning even after the
       // last page was handed over; the 404 from /NextDocument is then the

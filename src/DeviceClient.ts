@@ -10,7 +10,7 @@ import axios, {
 } from "axios";
 import * as stream from "node:stream";
 import type Stream from "node:stream";
-import https from "node:https";
+import type { Agent } from "node:https";
 import EventTable, { type EtagEventTable } from "./hpModels/EventTable.js";
 import Job from "./hpModels/Job.js";
 import ScanStatus from "./hpModels/ScanStatus.js";
@@ -37,26 +37,51 @@ import EsclWalkupEvent from "./hpModels/EsclWalkupEvent.js";
 import EsclWalkupSubscription from "./hpModels/EsclWalkupSubscription.js";
 import PathHelper from "./PathHelper.js";
 import { getLoggerForFile } from "./logger.js";
+import {
+  CertificatePinError,
+  createPrinterHttpsAgent,
+  readConfiguredFingerprint,
+} from "./PrinterHttpsAgent.js";
 
 const logger = getLoggerForFile(import.meta.url);
+
+export interface DeviceClientOptions {
+  /** SHA-256 fingerprint of the printer's eSCL HTTPS certificate. */
+  esclCertificateFingerprint?: string;
+}
 
 export default class DeviceClient {
   readonly deviceIP: string;
   readonly debug: boolean;
   private callCount = 0;
   private esclBaseUrlPromise: Promise<string | null> | null = null;
+  private httpsAgentPromise: Promise<Agent> | null = null;
+  private readonly esclCertificateFingerprint: string | undefined;
 
-  /**
-   * HP printers use a self-signed certificate on their local HTTPS eSCL
-   * endpoint. There is no public CA to validate against on a LAN device.
-   */
-  private readonly localPrinterHttpsAgent = new https.Agent({
-    rejectUnauthorized: false,
-  });
-
-  constructor(deviceIP: string, debug = false) {
+  constructor(
+    deviceIP: string,
+    debug = false,
+    options: DeviceClientOptions = {},
+  ) {
     this.deviceIP = deviceIP;
     this.debug = debug;
+    this.esclCertificateFingerprint =
+      options.esclCertificateFingerprint ?? readConfiguredFingerprint();
+  }
+
+  private async getHttpsAgent(): Promise<Agent> {
+    this.httpsAgentPromise ??= createPrinterHttpsAgent(
+      this.deviceIP,
+      this.esclCertificateFingerprint,
+    );
+    return await this.httpsAgentPromise;
+  }
+
+  private static isHttpsRequest(request: AxiosRequestConfig): boolean {
+    return (
+      (request.baseURL ?? "").startsWith("https:") ||
+      (request.url ?? "").startsWith("https:")
+    );
   }
 
   isDebug(): boolean {
@@ -81,13 +106,20 @@ export default class DeviceClient {
   ): Promise<AxiosResponse<T>> {
     this.callCount++;
 
-    if (request.timeout === 0) {
-      request.timeout = 100_000;
+    const effectiveRequest: AxiosRequestConfig = { ...request };
+    if (
+      effectiveRequest.httpsAgent === undefined &&
+      DeviceClient.isHttpsRequest(effectiveRequest)
+    ) {
+      effectiveRequest.httpsAgent = await this.getHttpsAgent();
     }
-    this.logDebug(this.callCount, true, request);
+    if (effectiveRequest.timeout === 0) {
+      effectiveRequest.timeout = 100_000;
+    }
+    this.logDebug(this.callCount, true, effectiveRequest);
     try {
       const response = await axios({
-        ...request,
+        ...effectiveRequest,
         adapter: "http",
       });
       this.logDebug(this.callCount, false, {
@@ -173,7 +205,6 @@ export default class DeviceClient {
           method: "GET",
           responseType: "text",
           timeout: 3000,
-          httpsAgent: this.localPrinterHttpsAgent,
         });
         if (response.status === 200) {
           return baseURL;
@@ -259,11 +290,13 @@ export default class DeviceClient {
           url: "/DevMgmt/DiscoveryTree.xml",
           method: "GET",
           responseType: "text",
-          httpsAgent: this.localPrinterHttpsAgent,
           // Do not throw on 404: we handle a missing tree explicitly below.
           validateStatus: () => true,
         });
       } catch (error) {
+        if (error instanceof CertificatePinError) {
+          throw error;
+        }
         lastError = error;
         continue;
       }
@@ -310,7 +343,6 @@ export default class DeviceClient {
           url: path,
           method: "GET",
           responseType: "text",
-          httpsAgent: this.localPrinterHttpsAgent,
           // A 404 on the first candidate is expected; probe the next one.
           validateStatus: () => true,
         });
@@ -318,6 +350,9 @@ export default class DeviceClient {
           return await EsclScanCaps.createScanCaps(response.data);
         }
       } catch (error) {
+        if (error instanceof CertificatePinError) {
+          throw error;
+        }
         logger.debug({ error }, `eSCL capabilities probe for ${path} failed`);
       }
     }
@@ -414,7 +449,6 @@ export default class DeviceClient {
       url: uri,
       method: "GET",
       responseType: "text",
-      httpsAgent: this.localPrinterHttpsAgent,
     });
 
     if (response.status !== 200) {
@@ -446,7 +480,6 @@ export default class DeviceClient {
       url: uri,
       method: "GET",
       responseType: "text",
-      httpsAgent: this.localPrinterHttpsAgent,
     });
 
     if (response.status !== 200) {
@@ -680,7 +713,6 @@ export default class DeviceClient {
       url: "/eSCL/ScannerStatus",
       method: "GET",
       responseType: "text",
-      httpsAgent: this.localPrinterHttpsAgent,
     });
 
     if (response.status !== 200) {
@@ -732,7 +764,6 @@ export default class DeviceClient {
       headers: { "Content-Type": "text/xml" },
       data: xml,
       responseType: "text",
-      httpsAgent: this.localPrinterHttpsAgent,
     });
 
     if (
@@ -759,11 +790,13 @@ export default class DeviceClient {
         url: "/eSCL/WalkupSubscriptions",
         method: "GET",
         responseType: "text",
-        httpsAgent: this.localPrinterHttpsAgent,
         validateStatus: () => true,
       });
       return response.status === 200 || response.status === 405;
     } catch (error) {
+      if (error instanceof CertificatePinError) {
+        throw error;
+      }
       logger.debug(`Could not probe eSCL walkup support: ${String(error)}`);
       return false;
     }
@@ -785,7 +818,6 @@ export default class DeviceClient {
       },
       data: subscription.toXML(),
       responseType: "text",
-      httpsAgent: this.localPrinterHttpsAgent,
     });
 
     const location: unknown = response.headers["location"];
@@ -812,7 +844,6 @@ export default class DeviceClient {
       method: "GET",
       responseType: "text",
       timeout: (timeoutSeconds + 10) * 1000,
-      httpsAgent: this.localPrinterHttpsAgent,
     });
 
     if (response.status === 204) {
@@ -834,7 +865,6 @@ export default class DeviceClient {
       url: subscriptionURI,
       method: "DELETE",
       responseType: "text",
-      httpsAgent: this.localPrinterHttpsAgent,
     });
 
     if (response.status !== 200 && response.status !== 204) {
@@ -891,13 +921,16 @@ export default class DeviceClient {
     destination: string,
     timeout: number = 60_000,
   ): Promise<{ path: string; contentType: string | undefined }> {
+    const httpsAgent = baseURL.startsWith("https:")
+      ? await this.getHttpsAgent()
+      : undefined;
     const { data, headers }: AxiosResponse<Stream> =
       await axios.request<Stream>({
         baseURL,
         url: binaryURL,
         method: "GET",
         responseType: "stream",
-        httpsAgent: this.localPrinterHttpsAgent,
+        ...(httpsAgent !== undefined && { httpsAgent }),
         ...(timeout !== undefined && { timeout }),
       });
 
@@ -987,7 +1020,6 @@ export default class DeviceClient {
         url: `${jobUri}/ScanImageInfo`,
         method: "GET",
         responseType: "text",
-        httpsAgent: this.localPrinterHttpsAgent,
       });
 
       if (response.status !== 200) {

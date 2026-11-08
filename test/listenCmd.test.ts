@@ -2,10 +2,12 @@ import { expect } from "chai";
 import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import { describe, it, beforeEach, afterEach } from "mocha";
 import nock from "nock";
+import { AxiosError } from "axios";
 import DeviceClient from "../src/DeviceClient.js";
 import {
   assembleDuplexScan,
   listenCmd,
+  ListenCircuitBreakerError,
   processScanWithDestination,
   handleScanResult,
   processFinishedPartialDuplexScan,
@@ -1210,16 +1212,52 @@ describe("listenCmd", () => {
       return true;
     };
 
-    await listenCmd(
-      api,
-      [{ label: "host", isDuplexSingleSide: false }],
-      makeScanConfig(tempDir),
-      1,
-    );
+    let unexpectedError: unknown;
+    try {
+      await listenCmd(
+        api,
+        [{ label: "host", isDuplexSingleSide: false }],
+        makeScanConfig(tempDir),
+        1,
+      );
+    } catch (e) {
+      unexpectedError = e;
+    }
 
+    expect(unexpectedError).to.be.instanceOf(ListenCircuitBreakerError);
     // isAlive is checked once per failing iteration — must have been called ≥50 times.
     expect(callCount).to.be.greaterThanOrEqual(50);
     void errorsBefore; // suppress unused-variable warning
+  });
+
+  it("stops immediately on a permanent client error instead of retrying 50 times", async () => {
+    nockLedmBootstrap();
+    nock("http://127.0.0.1:80")
+      .persist()
+      .get("/EventMgmt/EventTable")
+      .reply(403);
+
+    let isAliveCalls = 0;
+    api.isAlive = async () => {
+      isAliveCalls++;
+      return true;
+    };
+
+    let unexpectedError: unknown;
+    try {
+      await listenCmd(
+        api,
+        [{ label: "host", isDuplexSingleSide: false }],
+        makeScanConfig(tempDir),
+        1,
+      );
+    } catch (e) {
+      unexpectedError = e;
+    }
+
+    expect(isAliveCalls).to.equal(1);
+    expect(unexpectedError).to.be.instanceOf(AxiosError);
+    expect((unexpectedError as AxiosError).response?.status).to.equal(403);
   });
 
   it("skips scan when waitScanRequest returns false (ScanPagesComplete event)", async () => {
@@ -1278,13 +1316,19 @@ describe("listenCmd", () => {
 
     const jobScope = nockScanJob();
 
-    await listenCmd(
-      api,
-      [{ label: "host", isDuplexSingleSide: false }],
-      makeScanConfig(tempDir),
-      1,
-    );
+    let unexpectedError: unknown;
+    try {
+      await listenCmd(
+        api,
+        [{ label: "host", isDuplexSingleSide: false }],
+        makeScanConfig(tempDir),
+        1,
+      );
+    } catch (e) {
+      unexpectedError = e;
+    }
 
+    expect(unexpectedError).to.be.instanceOf(ListenCircuitBreakerError);
     expect(jobScope.isDone()).to.be.true;
     // The scan was saved to tempDir; at least one file should exist.
     const files = fs.readdirSync(tempDir);
@@ -1306,12 +1350,19 @@ describe("listenCmd", () => {
       throw "non-error-throw";
     };
 
-    await listenCmd(
-      api,
-      [{ label: "host", isDuplexSingleSide: false }],
-      makeScanConfig(tempDir),
-      1,
-    );
+    let unexpectedError: unknown;
+    try {
+      await listenCmd(
+        api,
+        [{ label: "host", isDuplexSingleSide: false }],
+        makeScanConfig(tempDir),
+        1,
+      );
+    } catch (e) {
+      unexpectedError = e;
+    }
+
+    expect(unexpectedError).to.be.instanceOf(ListenCircuitBreakerError);
   });
 
   it("logs debug info when device goes down and debug is enabled", async () => {
@@ -1328,11 +1379,18 @@ describe("listenCmd", () => {
     };
     api.isDebug = () => true;
 
-    await listenCmd(
-      api,
-      [{ label: "host", isDuplexSingleSide: false }],
-      makeScanConfig(tempDir),
-      1,
-    );
+    let unexpectedError: unknown;
+    try {
+      await listenCmd(
+        api,
+        [{ label: "host", isDuplexSingleSide: false }],
+        makeScanConfig(tempDir),
+        1,
+      );
+    } catch (e) {
+      unexpectedError = e;
+    }
+
+    expect(unexpectedError).to.be.instanceOf(ListenCircuitBreakerError);
   });
 });

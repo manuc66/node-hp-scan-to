@@ -44,6 +44,7 @@ class FakeApi {
   readonly registrations: { host: string; shortcuts: string[] }[] = [];
   readonly events: (EsclWalkupEvent | Error | null)[] = [];
   readonly removed: string[] = [];
+  alwaysExpired = false;
 
   async registerEsclWalkupSubscription(
     host: string,
@@ -54,6 +55,9 @@ class FakeApi {
   }
 
   async getEsclWalkupEvent(): Promise<EsclWalkupEvent | null> {
+    if (this.alwaysExpired) {
+      throw notFoundError();
+    }
     const next = this.events.shift();
     if (next instanceof Error) {
       throw next;
@@ -136,6 +140,26 @@ describe("EsclWalkupScanListener", () => {
     expect(request).to.not.be.null;
   });
 
+  it("gives up when a fresh subscription keeps expiring", async () => {
+    const api = new FakeApi();
+    api.alwaysExpired = true;
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+    );
+
+    let error: unknown;
+    try {
+      await listener.waitForScan();
+    } catch (e) {
+      error = e;
+    }
+
+    expect(error).to.be.instanceOf(Error);
+    expect((error as Error).message).to.match(/keeps expiring|giving up/);
+    expect(api.registrations).to.have.lengthOf(2);
+  });
+
   it("limits the registration to the device shortcut limit", async () => {
     const api = new FakeApi();
     const listener = new EsclWalkupScanListener(
@@ -177,6 +201,35 @@ describe("EsclWalkupScanListener", () => {
     const request = await listener.waitForNextPage();
 
     expect(request?.label).to.equal("Paperless");
+  });
+
+  it("re-registers when the subscription expires while waiting for a page", async () => {
+    const api = new FakeApi();
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+    );
+    api.events.push(notFoundError());
+    api.events.push(await scanRequested("Paperless"));
+
+    const request = await listener.waitForNextPage();
+
+    expect(request?.label).to.equal("Paperless");
+    expect(api.registrations).to.have.lengthOf(2);
+  });
+
+  it("ends the next-page wait after the inactivity timeout", async () => {
+    const api = new FakeApi();
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+      5,
+    );
+    const startedAt = Date.now();
+
+    expect(await listener.waitForNextPage()).to.be.null;
+    expect(Date.now() - startedAt).to.be.lessThan(1000);
+    expect(api.registrations).to.have.lengthOf(1);
   });
 
   it("removes the subscription on dispose, once", async () => {

@@ -27,8 +27,44 @@ import { ScanPlexMode } from "../hpModels/ScanPlexMode.js";
 import type { DeviceCapabilities } from "../type/DeviceCapabilities.js";
 import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode.js";
 import { getLoggerForFile } from "../logger.js";
+import { CertificatePinError } from "../PrinterHttpsAgent.js";
+import { AxiosError } from "axios";
 
 const logger = getLoggerForFile(import.meta.url);
+
+const MAX_LISTEN_ERRORS = 50;
+
+/**
+ * A `listen` error is worth retrying when it can plausibly disappear:
+ * network failures, timeouts, server errors and expired subscriptions.
+ * Permanent client errors (bad request, auth, forbidden) will not fix
+ * themselves and should stop the command instead of being retried 50 times.
+ */
+export function isRetryableListenerError(error: unknown): boolean {
+  if (error instanceof CertificatePinError) {
+    return false;
+  }
+  if (!(error instanceof AxiosError)) {
+    return true;
+  }
+
+  const status = error.response?.status ?? error.status;
+  if (status === undefined) {
+    return true;
+  }
+  if (status >= 500) {
+    return true;
+  }
+
+  return status === 404 || status === 408 || status === 410 || status === 429;
+}
+
+export class ListenCircuitBreakerError extends Error {
+  constructor() {
+    super(`listen stopped after ${MAX_LISTEN_ERRORS} consecutive errors`);
+    this.name = "ListenCircuitBreakerError";
+  }
+}
 
 let iteration = 0;
 
@@ -124,6 +160,10 @@ export async function listenCmd(
         lastDuplexMode = r.duplexMode;
       } catch (e) {
         if (await api.isAlive()) {
+          if (!isRetryableListenerError(e)) {
+            logger.error(e);
+            throw e;
+          }
           logger.error(e);
           errorCount++;
         } else {
@@ -132,7 +172,7 @@ export async function listenCmd(
         }
       }
 
-      if (errorCount === 50) {
+      if (errorCount >= MAX_LISTEN_ERRORS) {
         keepActive = false;
       }
 
@@ -141,6 +181,10 @@ export async function listenCmd(
       } else {
         await api.delay(1000);
       }
+    }
+
+    if (errorCount >= MAX_LISTEN_ERRORS) {
+      throw new ListenCircuitBreakerError();
     }
   } finally {
     process.off("SIGINT", shutdown);
@@ -374,9 +418,7 @@ export function assembleDuplexScan(
     }
   }
   const duplexScan: ScanContent =
-    meta === undefined
-      ? { elements: [] }
-      : { elements: [], meta };
+    meta === undefined ? { elements: [] } : { elements: [], meta };
   const maxLength = Math.max(frontContent.length, backContent.length);
 
   // Interleave pages, tolerating missing last back page gracefully

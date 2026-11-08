@@ -60,7 +60,11 @@ async function pollEsclJob(
   }
 
   const jobState = jobInfo.getJobState();
-  if (jobState === eSCLJobState.Canceled || jobState === eSCLJobState.Aborted) {
+  if (
+    jobState === eSCLJobState.Canceled ||
+    jobState === eSCLJobState.Aborted ||
+    jobState === eSCLJobState.ProcessingStopped
+  ) {
     logger.info(`Job ${jobState.toLowerCase()}; ending the scan.`);
     return { kind: "canceled" };
   }

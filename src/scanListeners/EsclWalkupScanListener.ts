@@ -15,6 +15,8 @@ const logger = getLoggerForFile(import.meta.url);
 
 const EVENT_TIMEOUT_SECONDS = 100;
 const MAX_SHORTCUTS = 5;
+const MAX_SUBSCRIPTION_ATTEMPTS = 2;
+const DEFAULT_NEXT_PAGE_TIMEOUT_MS = 60_000;
 
 /**
  * eSCL walkup implementation used by newer HP firmware:
@@ -32,6 +34,7 @@ export default class EsclWalkupScanListener implements ScanListener {
   constructor(
     private readonly api: DeviceClient,
     private readonly registrationConfigs: RegistrationConfig[],
+    private readonly nextPageTimeoutMs = DEFAULT_NEXT_PAGE_TIMEOUT_MS,
   ) {
     this.scanTargets = registrationConfigs.map((config) => ({
       ...config,
@@ -68,25 +71,37 @@ export default class EsclWalkupScanListener implements ScanListener {
     this.subscriptionURI = null;
   }
 
-  private async nextEvent(): Promise<EsclWalkupEvent | null> {
-    const subscriptionURI = await this.getSubscriptionURI();
-    try {
-      return await this.api.getEsclWalkupEvent(
-        subscriptionURI,
-        EVENT_TIMEOUT_SECONDS,
-      );
-    } catch (error) {
-      if (!DeviceClient.isSubscriptionExpired(error)) {
-        throw error;
-      }
+  private async nextEvent(
+    timeoutSeconds = EVENT_TIMEOUT_SECONDS,
+  ): Promise<EsclWalkupEvent | null> {
+    for (let attempt = 0; attempt < MAX_SUBSCRIPTION_ATTEMPTS; attempt++) {
+      const subscriptionURI = await this.getSubscriptionURI();
+      try {
+        return await this.api.getEsclWalkupEvent(
+          subscriptionURI,
+          timeoutSeconds,
+        );
+      } catch (error) {
+        if (!DeviceClient.isSubscriptionExpired(error)) {
+          throw error;
+        }
 
-      logger.warn(
-        "The eSCL walkup subscription expired; registering it again.",
-      );
-      this.invalidateSubscription();
-      // Recurse once per expired subscription, then poll the fresh one.
-      return this.nextEvent();
+        this.invalidateSubscription();
+        if (attempt === MAX_SUBSCRIPTION_ATTEMPTS - 1) {
+          throw new Error(
+            "The eSCL walkup subscription keeps expiring after re-registering; giving up.",
+            { cause: error },
+          );
+        }
+
+        logger.warn(
+          "The eSCL walkup subscription expired; registering it again.",
+        );
+      }
     }
+
+    // Unreachable: the loop either returns, throws, or exhausts its attempts.
+    throw new Error("Could not register an eSCL walkup subscription.");
   }
 
   async waitForScan(): Promise<ScanRequest | null> {
@@ -125,9 +140,23 @@ export default class EsclWalkupScanListener implements ScanListener {
   async waitForNextPage(): Promise<ScanRequest | null> {
     let nextPage: ScanRequest | null = null;
     let sessionComplete = false;
+    const deadline = Date.now() + this.nextPageTimeoutMs;
 
     while (!sessionComplete && nextPage === null) {
-      const event = await this.nextEvent();
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        logger.info(
+          "No further scan page within the user action timeout; ending the session.",
+        );
+        return null;
+      }
+
+      const event = await this.nextEvent(
+        Math.min(
+          EVENT_TIMEOUT_SECONDS,
+          Math.max(1, Math.ceil(remainingMs / 1000)),
+        ),
+      );
       if (event === null) {
         continue;
       }
