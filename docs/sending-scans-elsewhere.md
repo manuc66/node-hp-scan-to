@@ -20,9 +20,13 @@ recipes below are starting points to copy and adapt.
 - **A command runs once per file and before upload.** `--post-command-pdf` runs
   on each generated PDF and `--post-command-image` on each page image. These
   recipes use the PDF one so that a multi-page scan stays one message, and that
-  message goes out even if a later upload fails.
+  message goes out even if a later upload fails. This holds for `--pdf` and
+  merged-PDF flows; with `--paperless-always-send-as-pdf-file`, Paperless gets
+  one PDF per page, so a mail or chat recipe sends one message per page.
 - **Keep secrets off the command line.** A failed command is logged with its
-  arguments, so use the tool's own configuration file or a script.
+  arguments, so use the tool's own configuration file or a script. Keep that
+  file readable only by the account running the scan (`chmod 600`), and mount
+  it as a secret or volume rather than copying it into an image layer.
 - **In the container, the program must be in the image.** The published image
   ships `curl`. For the others, extend it with
   `FROM manuc66/node-hp-scan-to:latest` and `apk add --no-cache mutt` or
