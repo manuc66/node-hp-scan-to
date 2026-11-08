@@ -103,6 +103,9 @@ All notable changes to this project are documented in this file.
   no longer serialize request `config`/`headers`, so SigV4 signatures,
   STS session tokens, Nextcloud basic-auth passwords and Paperless tokens
   cannot appear in logs.
+- **Post-processing commands**: the configured program is now validated to
+  reject shell metacharacters, and the hook is spawned with `shell` explicitly
+  disabled, so a configured command can never be re-parsed as shell syntax.
 
 ### Fixed
 

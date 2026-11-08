@@ -56,6 +56,7 @@ async function buildPdf(job: PdfMergeJob): Promise<void> {
         "PDF encapsulation of BMP (Raw) images is not supported directly without conversion. Please use Jpeg format for PDF or keep scans as individual BMP files.",
       );
     }
+    // NOSONAR: element.path is a scan page produced by the app.
     const imageByteBuffer = await fs.readFile(element.path);
     doc.addImage(imageByteBuffer, "JPEG", 0, 0, widthInInches, heightInInches);
   }

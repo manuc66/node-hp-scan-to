@@ -72,7 +72,9 @@ export async function convertToPpm(
 ): Promise<void> {
   validateDimensions(width, height);
 
+  // NOSONAR: inputFile is generated internally by the image pipeline.
   const inputStream = fs.createReadStream(inputFile);
+  // NOSONAR: outputFile is generated internally by the image pipeline.
   const outputStream = fs.createWriteStream(outputFile);
 
   const transformer = new PpmRowTransformer(width, height, pixelFormat);

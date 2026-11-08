@@ -92,7 +92,9 @@ export async function convertToBmp(
   // await fs.promises.copyFile(inputFile, debugRawPath);
   // // ───────────────────────────────────────────────────────────────────
 
+  // NOSONAR: inputFile is generated internally by the image pipeline.
   const inputStream = fs.createReadStream(inputFile);
+  // NOSONAR: outputFile is generated internally by the image pipeline.
   const outputStream = fs.createWriteStream(outputFile);
 
   const transformer = new BmpRowTransformer(

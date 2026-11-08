@@ -758,7 +758,10 @@ node-hp-scan-to --address <printer> single-scan \
   --post-command-image 'tesseract "{input}" "{input}"'
 ```
 
-> ℹ️ A command is started directly, **without a shell**: file names are passed as single arguments and are never interpreted as shell syntax. Pipes, redirections, `&&` and variable expansion are therefore not available — the only values at hand are the two placeholders. Run a script or wrapper if you need more.
+> ℹ️ A command runs **without a shell**: the first token is the executable, the rest are its arguments. Pipes, redirections, `&&`, `;`, backticks, `$…` and other shell syntax are not available — only the `{input}` and `{output}` placeholders are substituted. Run a script or wrapper if you need more.
+>
+> - **Program**: a name on `PATH` (e.g. `gs`, `magick`, `exiftool`) or an absolute path. Must not contain shell metacharacters (`; & | \` $ < >` or newlines) and cannot be a placeholder (`{input}` is rejected). `cmd /c …` / `sh -c …` do not work — invoke the binary directly.
+> - **Arguments**: any characters are allowed (they are never re-parsed), but only `{input}` and `{output}` are substituted; nothing else is expanded.
 
 In the config file, each key accepts the same command line as a string, or an explicit argument list:
 

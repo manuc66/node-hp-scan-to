@@ -144,6 +144,7 @@ async function uploadToPaperless(
 
   const authToken = paperlessConfig.authToken;
 
+  // NOSONAR: filePath is a scan file produced by the app, not user input.
   const fileStream = fsSync.createReadStream(filePath);
 
   const form = new FormData();
