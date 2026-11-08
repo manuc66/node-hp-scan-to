@@ -61,6 +61,38 @@ describe("FileConfig - Post Command Validation with Zod", () => {
         const result = configSchema.safeParse(config);
         expect(result.success).to.be.false;
       });
+
+      it(`should reject a ${key} whose program contains shell metacharacters`, () => {
+        // The program is spawned without a shell: shell syntax in its name
+        // can only be a misconfiguration or an injection attempt.
+        for (const program of [
+          "gs;",
+          "gs|cat",
+          "gs&&id",
+          "gs`id`",
+          "gs$HOME",
+          "gs>out",
+          "gs\nid",
+        ]) {
+          const result = configSchema.safeParse({
+            [key]: [program, "{input}"],
+          });
+          expect(result.success, `program ${JSON.stringify(program)}`).to.be
+            .false;
+          if (!result.success) {
+            expect(result.error.issues.map((i) => i.message)).to.include(
+              "the post-command must not contain shell metacharacters",
+            );
+          }
+        }
+      });
+
+      it(`should accept a ${key} whose arguments contain shell metacharacters`, () => {
+        // Arguments are passed verbatim to the program, never re-parsed.
+        const config = { [key]: ["exiftool", "a;b|c`d$HOME>e", "{input}"] };
+        const result = configSchema.safeParse(config);
+        expect(result.success).to.be.true;
+      });
     }
   });
 
