@@ -106,6 +106,16 @@ All notable changes to this project are documented in this file.
 - **Post-processing commands**: the configured program is now validated to
   reject shell metacharacters, and the hook is spawned with `shell` explicitly
   disabled, so a configured command can never be re-parsed as shell syntax.
+- **Release workflow downloads**: the nfpm tarball (deb/rpm/apk packaging),
+  the WinSW service wrapper bundled into the Windows installer and the
+  `wingetcreate` tool used to open the winget PR are now checked against
+  pinned SHA-512/SHA-256 hashes before use, so a tampered download fails the
+  build. nfpm was also bumped to 2.48.0, and wingetcreate now comes from a
+  versioned URL instead of the floating `aka.ms/wingetcreate/latest` alias.
+- **Workflow checkout credentials**: every `actions/checkout` step now sets
+  `persist-credentials` explicitly (`false` except for the release job that
+  pushes the Nix/Homebrew bump), so the workflow `GITHUB_TOKEN` is not left
+  in the git configuration for later steps and third-party actions to read.
 
 ### Fixed
 
