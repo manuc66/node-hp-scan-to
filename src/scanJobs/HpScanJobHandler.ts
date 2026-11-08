@@ -86,23 +86,28 @@ export class HpScanJobHandler extends ScanJobHandler {
     }
 
     const startedAt = Date.now();
-    const destinationPath = await this.getDownloadPath(pageNumber);
+    const destinationPath = await this.reserveDownloadPath(pageNumber);
     logger.info(
       `Downloading page ${job.currentPageNumber} → ${destinationPath}`,
     );
 
-    const download = await this.context.api.downloadPageWithMeta(
-      job.binaryURL,
-      destinationPath,
-    );
-    const page = await this.savePage(download, pageNumber, startedAt, {
-      width: job.imageWidth ?? 0,
-      height: job.imageHeight ?? 0,
-      xResolution: job.xResolution ?? 200,
-      yResolution: job.yResolution ?? 200,
-    });
+    try {
+      const download = await this.context.api.downloadPageWithMeta(
+        job.binaryURL,
+        destinationPath,
+      );
+      const page = await this.savePage(download, pageNumber, startedAt, {
+        width: job.imageWidth ?? 0,
+        height: job.imageHeight ?? 0,
+        xResolution: job.xResolution ?? 200,
+        yResolution: job.yResolution ?? 200,
+      });
 
-    logger.info(`Page downloaded to: ${page.path}`);
-    return page;
+      logger.info(`Page downloaded to: ${page.path}`);
+      return page;
+    } catch (error) {
+      await this.releaseReservedFile(destinationPath);
+      throw error;
+    }
   }
 }

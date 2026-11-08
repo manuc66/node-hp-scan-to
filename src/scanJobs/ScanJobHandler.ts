@@ -142,7 +142,7 @@ export abstract class ScanJobHandler {
 
   /** JPEG pages are written to their final folder; other formats are first
    * downloaded raw to the temp folder before being converted. */
-  protected async getDownloadPath(pageNumber: number): Promise<string> {
+  protected async reserveDownloadPath(pageNumber: number): Promise<string> {
     const isJpeg = this.context.scanJobSettings.format.isJpeg();
     return PathHelper.getFileForPage(
       isJpeg ? this.context.folder : this.context.tempFolder,
@@ -152,6 +152,18 @@ export abstract class ScanJobHandler {
       isJpeg ? "jpg" : "raw",
       new Date(),
     );
+  }
+
+  /** Remove a page file whose reservation was never turned into a real page. */
+  protected async releaseReservedFile(filePath: string): Promise<void> {
+    try {
+      await fs.rm(filePath, { force: true });
+    } catch (error) {
+      logger.debug(
+        { err: error },
+        `Could not remove the reserved page file ${filePath}`,
+      );
+    }
   }
 
   protected async savePage(
@@ -189,26 +201,31 @@ export abstract class ScanJobHandler {
       scanJobSettings.format.getExtension(),
       new Date(),
     );
-    const savedImage = await scanJobSettings.format.save(
-      download,
-      dimensions.width,
-      dimensions.height,
-      dimensions.xResolution,
-      scanJobSettings.mode,
-      destinationPath,
-    );
-    return buildScanPage(
-      pageNumber,
-      startedAt,
-      destinationPath,
-      {
-        width: savedImage.width,
-        height: savedImage.height,
-        xResolution: savedImage.xResolution,
-        yResolution: savedImage.yResolution,
-      },
-      download.contentType,
-    );
+    try {
+      const savedImage = await scanJobSettings.format.save(
+        download,
+        dimensions.width,
+        dimensions.height,
+        dimensions.xResolution,
+        scanJobSettings.mode,
+        destinationPath,
+      );
+      return buildScanPage(
+        pageNumber,
+        startedAt,
+        destinationPath,
+        {
+          width: savedImage.width,
+          height: savedImage.height,
+          xResolution: savedImage.xResolution,
+          yResolution: savedImage.yResolution,
+        },
+        download.contentType,
+      );
+    } catch (error) {
+      await this.releaseReservedFile(destinationPath);
+      throw error;
+    }
   }
 
   protected finish(jobState: JobState): JobState {

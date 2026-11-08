@@ -6,7 +6,6 @@ import PathHelper from "../PathHelper.js";
 import type { ScanPage } from "../type/ScanContent.js";
 import { delay } from "../delay.js";
 import { getLoggerForFile } from "../logger.js";
-import fs from "node:fs/promises";
 import { AxiosError } from "axios";
 import { ScanJobHandler, type DownloadedPage } from "./ScanJobHandler.js";
 
@@ -29,16 +28,6 @@ async function downloadNextDocumentOrEnd(
     return await api.downloadEsclPage(jobUrl, destinationFilePath);
   } catch (error) {
     if (error instanceof AxiosError && error.response?.status === 404) {
-      // The destination path is reserved (empty file) before the request;
-      // do not leave that orphan behind when there is no page to write.
-      try {
-        await fs.rm(destinationFilePath, { force: true });
-      } catch (cleanupError) {
-        logger.debug(
-          { err: cleanupError },
-          `Could not remove the reserved eSCL page file ${destinationFilePath}`,
-        );
-      }
       logger.info(
         "No further image available from /NextDocument (404); treating the job as completed.",
       );
@@ -148,27 +137,34 @@ export class EsclScanJobHandler extends ScanJobHandler {
     pageNumber: number,
   ): Promise<RetrievedPage | null> {
     const startedAt = Date.now();
-    const destinationFilePath = await this.getDownloadPath(pageNumber);
+    const destinationFilePath = await this.reserveDownloadPath(pageNumber);
 
-    const download = await downloadNextDocumentOrEnd(
-      this.context.api,
-      jobUrl,
-      destinationFilePath,
-    );
-    if (download === null) {
-      return null;
+    try {
+      const download = await downloadNextDocumentOrEnd(
+        this.context.api,
+        jobUrl,
+        destinationFilePath,
+      );
+      if (download === null) {
+        // No page was written: release the name reservation.
+        await this.releaseReservedFile(destinationFilePath);
+        return null;
+      }
+
+      const scanImageInfo =
+        await this.context.api.getEsclScanImageInfo(jobLocation);
+      const page = await this.savePage(download, pageNumber, startedAt, {
+        width: scanImageInfo.actualWidth,
+        height: scanImageInfo.actualHeight,
+        xResolution: this.context.scanJobSettings.xResolution,
+        yResolution: this.context.scanJobSettings.yResolution,
+      });
+
+      logger.info(`Page downloaded to: ${page.path}`);
+      return { page, scanImageInfo };
+    } catch (error) {
+      await this.releaseReservedFile(destinationFilePath);
+      throw error;
     }
-
-    const scanImageInfo =
-      await this.context.api.getEsclScanImageInfo(jobLocation);
-    const page = await this.savePage(download, pageNumber, startedAt, {
-      width: scanImageInfo.actualWidth,
-      height: scanImageInfo.actualHeight,
-      xResolution: this.context.scanJobSettings.xResolution,
-      yResolution: this.context.scanJobSettings.yResolution,
-    });
-
-    logger.info(`Page downloaded to: ${page.path}`);
-    return { page, scanImageInfo };
   }
 }
