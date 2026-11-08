@@ -2,6 +2,14 @@ allowBuilds:
   esbuild: true
   core-js: true
 
+# minimatch < 11.0.1 is vulnerable to glob pattern amplification
+# (GHSA-g3hv-75wg-m249 / CVE-2026-118764), and minimatch 11 requires
+# glob 14 because glob 13 relies on minimatch returning RegExp instances
+# for magic pattern portions.
+overrides:
+  glob: ^14.0.4
+  minimatch: ^11.0.5
+
 minimumReleaseAgeExclude:
   - '@types/node@26.6.1'
   - 'prettier@3.9.7'

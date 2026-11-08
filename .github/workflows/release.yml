@@ -36,6 +36,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # The push below authenticates explicitly with RELEASE_PAT, so the
+          # checkout does not need to keep the GITHUB_TOKEN in git config.
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v6
         with:

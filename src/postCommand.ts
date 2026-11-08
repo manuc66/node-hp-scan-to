@@ -43,6 +43,13 @@ function findCommandProblem(command: readonly string[]): string | undefined {
     return "must not be empty";
   }
 
+  // The program is spawned as-is, without a shell, but a value carrying shell
+  // metacharacters is never a legitimate executable name: reject it up front so
+  // a misconfigured or hostile value cannot be mistaken for a command.
+  if (/[;&|`$<>\r\n]/.test(command[0])) {
+    return "must not contain shell metacharacters";
+  }
+
   if (!hasInputPlaceholder(command)) {
     return `must contain the ${INPUT_PLACEHOLDER} placeholder in an argument (the program is run as-is), otherwise it cannot run on the generated file`;
   }

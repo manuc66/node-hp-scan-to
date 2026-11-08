@@ -452,6 +452,7 @@ function getPaperlessConfig(
     let paperlessToken: string;
     if (configPaperlessTokenFile !== undefined) {
       paperlessToken = fs
+        // NOSONAR: path comes from trusted config/env, not user input.
         .readFileSync(configPaperlessTokenFile, "utf8")
         .trimEnd();
     } else {
@@ -514,6 +515,7 @@ function getNextcloudConfig(
     let nextcloudPassword: string;
     if (configNextcloudPasswordFile !== undefined) {
       nextcloudPassword = fs
+        // NOSONAR: path comes from trusted config/env, not user input.
         .readFileSync(configNextcloudPasswordFile, "utf8")
         .trimEnd();
     } else {
@@ -621,6 +623,7 @@ export function getS3Config(
     let secretAccessKey: string;
     if (configS3SecretAccessKeyFile !== undefined) {
       secretAccessKey = fs
+        // NOSONAR: path comes from trusted config/env, not user input.
         .readFileSync(configS3SecretAccessKeyFile, "utf8")
         .trimEnd();
     } else {
@@ -744,6 +747,7 @@ export function getWebhookConfig(
 
   let secret: string | undefined;
   if (configSecretFile !== undefined) {
+    // NOSONAR: path comes from trusted config/env, not user input.
     secret = fs.readFileSync(configSecretFile, "utf8").trimEnd();
   } else {
     secret = configSecret;

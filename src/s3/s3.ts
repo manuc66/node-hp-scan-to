@@ -225,6 +225,7 @@ async function uploadToS3(
 
   let fileBuffer: Buffer;
   try {
+    // NOSONAR: filePath is a scan file produced by the app.
     fileBuffer = await fs.readFile(filePath);
   } catch (e) {
     logger.error(e, "Fail to read file");

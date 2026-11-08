@@ -115,6 +115,7 @@ async function fileDigest(
 ): Promise<{ size: number; sha256: string }> {
   const hash = createHash("sha256");
   let size = 0;
+  // NOSONAR: filePath is a scan file produced by the app.
   for await (const chunk of createReadStream(filePath)) {
     const buffer = chunk as Buffer;
     size += buffer.length;

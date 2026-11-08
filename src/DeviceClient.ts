@@ -876,6 +876,7 @@ export default class DeviceClient {
 
     const data = response.data;
 
+    // NOSONAR: destination is generated under the configured output directory, not user input.
     const destinationFileStream = fs.createWriteStream(destination);
     data.pipe(destinationFileStream);
 

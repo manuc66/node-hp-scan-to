@@ -140,6 +140,31 @@ describe("CLI Program - Post Command Options", () => {
         command?.parseOptions(["--post-command-pdf", "{input} --flag"]),
       ).to.throw();
     });
+
+    it("should reject a program containing shell metacharacters", () => {
+      const program = setupProgram(emptyConfig);
+      const command = program.commands.find(
+        (cmd) => cmd.name() === "single-scan",
+      );
+      expect(command, "Command not found: single-scan").to.exist;
+
+      expect(() =>
+        command?.parseOptions(["--post-command-pdf", "gs; {input}"]),
+      ).to.throw(/shell metacharacters/);
+    });
+
+    it("should accept shell metacharacters in arguments", () => {
+      const program = setupProgram(emptyConfig);
+      const opts = parseSubcommandOptions(program, "single-scan", [
+        "--post-command-image",
+        "exiftool a;b|c {input}",
+      ]);
+      expect(opts?.["postCommandImage"]).to.deep.equal([
+        "exiftool",
+        "a;b|c",
+        "{input}",
+      ]);
+    });
   });
 
   describe("post command timeout", () => {

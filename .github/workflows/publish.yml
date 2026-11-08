@@ -19,6 +19,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v6
         with:
@@ -50,6 +52,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v6
         with:
@@ -88,9 +91,19 @@ jobs:
         run: ./scripts/build-binaries.sh "v${{ steps.ver.outputs.version }}"
 
       - name: Install nfpm
+        # The release tarball is fetched from GitHub, so its SHA-512 is
+        # pinned here and checked before extraction: a replaced or corrupted
+        # artifact fails the build instead of being executed.
         run: |
-          NFPM_VERSION=v2.47.0
-          curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/${NFPM_VERSION}/nfpm_$(echo "$NFPM_VERSION" | tr -d v)_Linux_x86_64.tar.gz" | tar -xz -C /usr/local/bin nfpm
+          set -euo pipefail
+          NFPM_VERSION=2.48.0
+          NFPM_SHA512=db7673524a34ca7a645c5e94b7821f176475d4cae9a5ad84e3abce526ac183eeb0ef44167d0ccfbe114f5415d0ac4623d687c95eb857d4f1b9cbecbb94ed6e4e
+          tarball="nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz"
+          curl -fsSL -o "$tarball" \
+            "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/${tarball}"
+          echo "${NFPM_SHA512}  ${tarball}" | sha512sum -c -
+          tar -xzf "$tarball" -C /usr/local/bin nfpm
+          rm -f "$tarball"
 
       - name: Build deb and rpm packages
         # Pre-release versions (e.g. 1.11.0-rc.1) do not map to valid
@@ -100,10 +113,15 @@ jobs:
 
       - name: Stage Windows installer inputs
         run: |
+          set -euo pipefail
           mkdir -p packaging/windows/staging
           cp release/.staging/windows-x64/node-hp-scan-to.exe packaging/windows/staging/
+          # WinSW is downloaded from GitHub at build time; verify the pinned
+          # SHA-512 before it is bundled into the installer (see nfpm above).
+          WINSW_SHA512=844d099f84ecbeb14f301c9d9e61aba6a5d20c8a4d14b0743c0dd854f63ab1002595f2a68191a9dc90c7d4b45d46cd9623a073465bdd68a3aff5441c022772b5
           curl -fsSL -o packaging/windows/staging/WinSW-x64.exe \
             https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe
+          echo "${WINSW_SHA512}  packaging/windows/staging/WinSW-x64.exe" | sha512sum -c -
 
       - name: Build Windows installer
         run: |
@@ -182,6 +200,8 @@ jobs:
       MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Compute version
         id: ver
@@ -253,6 +273,11 @@ jobs:
     needs: [binaries, macos]
     steps:
       - uses: actions/checkout@v7
+        with:
+          # This job pushes the Nix/Homebrew bump to master, falling back to
+          # `git push origin master` with the checkout credentials when
+          # RELEASE_PAT is not set: keep them deliberately.
+          persist-credentials: true
 
       - name: Download binaries
         uses: actions/download-artifact@v8
@@ -477,7 +502,19 @@ jobs:
         run: |
           $version = "${env:GITHUB_REF_NAME}".Substring(1)
           $url = "https://github.com/${env:GITHUB_REPOSITORY}/releases/download/${env:GITHUB_REF_NAME}/setup-node-hp-scan-to-v$version.exe"
-          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
-          ./wingetcreate update manuc66.node-hp-scan-to `
+          # wingetcreate is downloaded from GitHub at build time; verify the
+          # pinned SHA-256 (published as wingetcreate.exe.txt alongside each
+          # release) before running it.
+          $wingetCreateVersion = "1.12.13.0"
+          $wingetCreateSha256 = "24042BD379158056156ECF969AC57C6439124C3FE85823327F5F3FB24BD9FFEA"
+          $wingetCreate = Join-Path $env:RUNNER_TEMP "wingetcreate.exe"
+          Invoke-WebRequest `
+            "https://github.com/microsoft/winget-create/releases/download/v$wingetCreateVersion/wingetcreate.exe" `
+            -OutFile $wingetCreate
+          $actualSha256 = (Get-FileHash -Algorithm SHA256 -Path $wingetCreate).Hash
+          if ($actualSha256 -ne $wingetCreateSha256) {
+            throw "wingetcreate checksum mismatch: expected $wingetCreateSha256, got $actualSha256"
+          }
+          & $wingetCreate update manuc66.node-hp-scan-to `
             --version $version --urls $url `
             --submit --token "$env:WINGET_CREATE_TOKEN"

@@ -229,7 +229,10 @@ function runCommand(
   timeoutMs: number,
 ): Promise<number> {
   return new Promise((resolve) => {
+    // NOSONAR: trusted, validated escape hatch; spawned as an argv array with
+    // shell disabled, so no value is ever re-parsed as shell syntax.
     const child = spawn(program, args, {
+      shell: false,
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
       // A dedicated process group on POSIX lets the timeout kill the whole
@@ -314,6 +317,7 @@ function killProcessTree(child: ChildProcess): void {
   if (process.platform === "win32") {
     try {
       spawn("taskkill", ["/pid", String(pid), "/T", "/F"], {
+        shell: false,
         stdio: "ignore",
         windowsHide: true,
       });

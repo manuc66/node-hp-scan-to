@@ -96,6 +96,7 @@ export default class PathHelper {
 
   private static async tryCreateFile(filePath: string): Promise<boolean> {
     try {
+      // NOSONAR: filePath is generated under the configured output directory.
       const fd = await fs.promises.open(filePath, "wx");
       await fd.close();
       return true;
