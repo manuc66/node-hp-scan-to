@@ -7,10 +7,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import DeviceClient from "../src/DeviceClient.js";
-import {
-  executeScanJob,
-  handleScanProcessingState,
-} from "../src/scanJobHandlers.js";
+import { executeScanJob } from "../src/scanJobHandlers.js";
+import { HpScanJobHandler } from "../src/scanJobs/HpScanJobHandler.js";
 import { JobState, PageState } from "../src/hpModels/Job.js";
 import type Job from "../src/hpModels/Job.js";
 import { InputSource } from "../src/type/InputSource.js";
@@ -442,19 +440,19 @@ describe("scanJobHandlers flows", () => {
     it("waits and returns null when the page state is unknown", async () => {
       const api = new DeviceClient("127.0.0.1", false);
       const job = { pageState: "SomethingUnexpected" } as unknown as Job;
-
-      const page = await handleScanProcessingState(
+      const handler = new HpScanJobHandler({
         api,
-        job,
-        jpegSettings(),
-        InputSource.Platen,
-        tempDir,
-        tempDir,
-        0,
-        1,
-        undefined,
-        new Date(),
-      );
+        scanJobSettings: jpegSettings(),
+        inputSource: InputSource.Platen,
+        folder: tempDir,
+        tempFolder: tempDir,
+        scanCount: 0,
+        scanJobContent: { elements: [] },
+        filePattern: undefined,
+        pageCountingStrategy: PageCountingStrategy.Normal,
+      });
+
+      const page = await handler.handleScanProcessingState(job, 1);
 
       expect(page).to.equal(null);
     });
@@ -483,19 +481,19 @@ describe("scanJobHandlers flows", () => {
         xResolution: 200,
         yResolution: 200,
       } as unknown as IScanJobSettings;
-
-      const page = await handleScanProcessingState(
+      const handler = new HpScanJobHandler({
         api,
-        job,
-        settings,
-        InputSource.Adf,
-        tempDir,
-        tempDir,
-        0,
-        1,
-        undefined,
-        new Date(),
-      );
+        scanJobSettings: settings,
+        inputSource: InputSource.Adf,
+        folder: tempDir,
+        tempFolder: tempDir,
+        scanCount: 0,
+        scanJobContent: { elements: [] },
+        filePattern: undefined,
+        pageCountingStrategy: PageCountingStrategy.Normal,
+      });
+
+      const page = await handler.handleScanProcessingState(job, 1);
 
       expect(page).to.not.equal(null);
       expect(page?.path.endsWith(".bmp")).to.equal(true);
