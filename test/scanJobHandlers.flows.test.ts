@@ -88,8 +88,12 @@ describe("scanJobHandlers flows", () => {
         path.resolve(__dirname, "./asset/adf_bytes_scan.jpg"),
       );
       mockEsclPage(jpegBody);
+      // Once the page has been handed over, /NextDocument answers 404: that
+      // is the end of the transfer, whatever the job state says.
+      nock("http://127.0.0.1").get("/eSCL/ScanJobs/1/NextDocument").reply(404);
       // The job is still scanning on the first poll, so a page is downloaded;
-      // the following poll reports completion and ends the loop.
+      // the following poll still reports completion, but only the 404 above
+      // ends the loop.
       nock("http://127.0.0.1")
         .get("/eSCL/ScannerStatus")
         .reply(200, await readAsset("eSCL_ScannerStatus_scanning.xml"))
@@ -121,10 +125,6 @@ describe("scanJobHandlers flows", () => {
     });
 
     it("marks the job as canceled when the status does not know the job", async () => {
-      const jpegBody = await fsPromises.readFile(
-        path.resolve(__dirname, "./asset/sample.jpg"),
-      );
-      mockEsclPage(jpegBody);
       nock("http://127.0.0.1")
         .get("/eSCL/ScannerStatus")
         .reply(200, await readAsset("eSCL_ScannerStatus_empty.xml"));
@@ -153,13 +153,52 @@ describe("scanJobHandlers flows", () => {
         path.resolve(__dirname, "./asset/adf_bytes_scan.jpg"),
       );
       mockEsclPage(jpegBody);
-      // Real-world intermediate state on some firmwares: the job is still
-      // scanning but ImagesToTransfer is already 0 (it was 1 on the previous
-      // poll). With the fix, this must NOT end the loop — polling continues
-      // until a terminal job state reason is seen.
+      // The job stays in Processing with ImagesToTransfer=0 (a real-world
+      // intermediate state); only the /NextDocument 404 ends the transfer.
+      nock("http://127.0.0.1").get("/eSCL/ScanJobs/1/NextDocument").reply(404);
       nock("http://127.0.0.1")
         .get("/eSCL/ScannerStatus")
-        .reply(200, await readAsset("eSCL_ScannerStatus_processing_noImagesToTransfer.xml"))
+        .reply(
+          200,
+          await readAsset(
+            "eSCL_ScannerStatus_processing_noImagesToTransfer.xml",
+          ),
+        )
+        .get("/eSCL/ScannerStatus")
+        .reply(200, await readAsset("eSCL_ScannerStatus_completed.xml"));
+
+      const api = new DeviceClient("127.0.0.1", false);
+      const scanJobContent: ScanContent = { elements: [] };
+
+      const jobState = await executeScanJob(
+        api,
+        jpegSettings(),
+        InputSource.Adf,
+        tempDir,
+        tempDir,
+        0,
+        scanJobContent,
+        "scan",
+        PageCountingStrategy.Normal,
+        esclCapabilities(),
+      );
+
+      expect(jobState).to.equal(JobState.Completed);
+      expect(scanJobContent.elements).to.have.lengthOf(1);
+    });
+
+    it("does not stop on a Completed status while a page is still available", async () => {
+      // The 404 from /NextDocument is the only end-of-transfer signal. A
+      // status that flips to Completed early (race, firmware inconsistency)
+      // must not make the client drop the last page.
+      const jpegBody = await fsPromises.readFile(
+        path.resolve(__dirname, "./asset/sample.jpg"),
+      );
+      mockEsclPage(jpegBody);
+      nock("http://127.0.0.1").get("/eSCL/ScanJobs/1/NextDocument").reply(404);
+      nock("http://127.0.0.1")
+        .get("/eSCL/ScannerStatus")
+        .reply(200, await readAsset("eSCL_ScannerStatus_completed.xml"))
         .get("/eSCL/ScannerStatus")
         .reply(200, await readAsset("eSCL_ScannerStatus_completed.xml"));
 
@@ -329,7 +368,9 @@ describe("scanJobHandlers flows", () => {
           ),
         )
         .get("/eSCL/ScannerStatus")
-        .reply(200, await readAsset("eSCL_ScannerStatus_completed.xml"));
+        .reply(200, await readAsset("eSCL_ScannerStatus_completed.xml"))
+        .get("/eSCL/ScanJobs/1/NextDocument")
+        .reply(404);
 
       const api = new DeviceClient("127.0.0.1", false);
       const scanJobContent: ScanContent = { elements: [] };

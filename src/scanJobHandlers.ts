@@ -11,7 +11,7 @@ import fs from "node:fs/promises";
 import JpegUtil from "./imageFormats/JpegUtil.js";
 import { PageCountingStrategy } from "./type/pageCountingStrategy.js";
 import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
-import { type EsclJobInfo, JobStateReason } from "./hpModels/EsclScanStatus.js";
+import { type EsclJobInfo, eSCLJobState } from "./hpModels/EsclScanStatus.js";
 import type EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import type { ImageFormat, JobDesc } from "./imageFormats/index.js";
 import { getLoggerForFile } from "./logger.js";
@@ -335,24 +335,7 @@ function logJobInfo(
   logger.debug("From jobInfo:");
   logger.debug(`\tJob Uri: ${jobInfo?.getJobUri() ?? null}`);
   logger.debug(`\tJob Uuid: ${jobInfo?.getJobUuid() ?? null}`);
-  logger.debug(`\tJob state reason: ${jobInfo?.getJobStateReason() ?? null}`);
   logger.debug(`\tJob state: ${jobInfo?.getJobState() ?? null}`);
-}
-
-function mapToJobState(jobStateReason: JobStateReason) {
-  if (jobStateReason === JobStateReason.JobCanceledByUser) {
-    return JobState.Canceled;
-  }
-
-  if (jobStateReason === JobStateReason.JobCompletedSuccessfully) {
-    return JobState.Completed;
-  }
-
-  logger.warn(
-    `Unknown job state reason: ${jobStateReason}, job will be cancelled`,
-  );
-
-  return JobState.Canceled;
 }
 
 async function getAndFixHeightWHenAdf(
@@ -376,6 +359,11 @@ async function getAndFixHeightWHenAdf(
   return sizeFixed;
 }
 
+interface DownloadedPage {
+  readonly path: string;
+  readonly contentType: string | undefined;
+}
+
 /**
  * Fetch the next page from an eSCL job. A 404 from /NextDocument is the
  * device's end-of-job signal: every image has been handed over and there is
@@ -388,7 +376,7 @@ async function downloadNextDocumentOrEnd(
   api: DeviceClient,
   jobUrl: string,
   destinationFilePath: string,
-): Promise<{ path: string; contentType: string | undefined } | null> {
+): Promise<DownloadedPage | null> {
   try {
     return await api.downloadEsclPage(jobUrl, destinationFilePath);
   } catch (error) {
@@ -400,6 +388,199 @@ async function downloadNextDocumentOrEnd(
     }
     throw error;
   }
+}
+
+interface EsclJobContext {
+  readonly api: DeviceClient;
+  readonly jobUrl: string;
+  readonly jobLocation: string;
+  readonly scanJobSettings: IScanJobSettings;
+  readonly inputSource: InputSource;
+  readonly folder: string;
+  readonly tempFolder: string;
+  readonly scanCount: number;
+  readonly filePattern: string | undefined;
+}
+
+type EsclJobPollResult =
+  | { readonly kind: "running"; readonly jobInfo: EsclJobInfo }
+  | { readonly kind: "canceled" }
+  | { readonly kind: "gone" };
+
+/**
+ * Read the device status for the job. The state is only used to stop on an
+ * explicit cancellation: completion is driven by the /NextDocument 404, which
+ * also covers firmwares that keep reporting Processing/JobScanning after the
+ * last page.
+ */
+async function pollEsclJob(
+  context: EsclJobContext,
+): Promise<EsclJobPollResult> {
+  const scannerStatus = await context.api.getEsclScanStatus(context.jobUrl);
+  const jobInfo = scannerStatus.findJobByUri(context.jobLocation);
+  if (jobInfo === undefined) {
+    return { kind: "gone" };
+  }
+
+  const jobState = jobInfo.getJobState();
+  if (jobState === eSCLJobState.Canceled || jobState === eSCLJobState.Aborted) {
+    logger.info(`Job ${jobState.toLowerCase()}; ending the scan.`);
+    return { kind: "canceled" };
+  }
+
+  return { kind: "running", jobInfo };
+}
+
+interface PageDimensions {
+  readonly path: string;
+  readonly width: number;
+  readonly height: number;
+  readonly xResolution: number;
+  readonly yResolution: number;
+  readonly contentType?: string | undefined;
+}
+
+function buildScanPage(
+  pageNumber: number,
+  startedAt: number,
+  dimensions: PageDimensions,
+): ScanPage {
+  const page: ScanPage = {
+    path: dimensions.path,
+    pageNumber,
+    width: dimensions.width,
+    height: dimensions.height,
+    xResolution: dimensions.xResolution,
+    yResolution: dimensions.yResolution,
+    capturedAt: new Date().toISOString(),
+    durationMs: Date.now() - startedAt,
+  };
+  if (dimensions.contentType !== undefined) {
+    page.contentType = dimensions.contentType;
+  }
+  return page;
+}
+
+async function storeNativeJpegPage(
+  context: EsclJobContext,
+  download: DownloadedPage,
+  scanImageInfo: EsclScanImageInfo,
+  pageNumber: number,
+  startedAt: number,
+): Promise<ScanPage> {
+  const adfHeight = await getAndFixHeightWHenAdf(
+    context.inputSource,
+    download.path,
+    scanImageInfo.actualHeight,
+  );
+
+  logger.info(download, "Page downloaded to");
+
+  return buildScanPage(pageNumber, startedAt, {
+    path: download.path,
+    width: scanImageInfo.actualWidth,
+    height: adfHeight ?? scanImageInfo.actualHeight,
+    xResolution: context.scanJobSettings.xResolution,
+    yResolution: context.scanJobSettings.yResolution,
+    contentType: download.contentType,
+  });
+}
+
+async function storeConvertedPage(
+  context: EsclJobContext,
+  download: DownloadedPage,
+  scanImageInfo: EsclScanImageInfo,
+  pageNumber: number,
+  startedAt: number,
+): Promise<ScanPage> {
+  const format = context.scanJobSettings.format;
+
+  logger.info(`Page downloaded content-type: ${download.contentType}`);
+
+  const destinationImagePath = await PathHelper.getFileForPage(
+    context.folder,
+    context.scanCount,
+    pageNumber,
+    context.filePattern,
+    format.getExtension(),
+    new Date(),
+  );
+
+  const savedImage = await format.save(
+    download,
+    scanImageInfo.actualWidth,
+    scanImageInfo.actualHeight,
+    context.scanJobSettings.xResolution,
+    context.scanJobSettings.mode,
+    destinationImagePath,
+  );
+
+  logger.info(`Page downloaded to: ${destinationImagePath}`);
+
+  return buildScanPage(pageNumber, startedAt, {
+    path: destinationImagePath,
+    width: savedImage.width,
+    height: savedImage.height,
+    xResolution: savedImage.xResolution,
+    yResolution: savedImage.yResolution,
+    contentType: download.contentType,
+  });
+}
+
+interface RetrievedPage {
+  readonly page: ScanPage;
+  readonly scanImageInfo: EsclScanImageInfo;
+}
+
+/**
+ * Retrieve and store the next page. Returns null when /NextDocument answers
+ * 404, i.e. when every image has been handed over.
+ */
+async function retrieveNextPage(
+  context: EsclJobContext,
+  pageNumber: number,
+): Promise<RetrievedPage | null> {
+  const isJpeg = context.scanJobSettings.format.isJpeg();
+  const startedAt = Date.now();
+
+  const destinationFilePath = await PathHelper.getFileForPage(
+    isJpeg ? context.folder : context.tempFolder,
+    context.scanCount,
+    pageNumber,
+    context.filePattern,
+    isJpeg ? "jpg" : "raw",
+    new Date(),
+  );
+
+  const download = await downloadNextDocumentOrEnd(
+    context.api,
+    context.jobUrl,
+    destinationFilePath,
+  );
+  if (download === null) {
+    return null;
+  }
+
+  const scanImageInfo = await context.api.getEsclScanImageInfo(
+    context.jobLocation,
+  );
+  const page = isJpeg
+    ? await storeNativeJpegPage(
+        context,
+        download,
+        scanImageInfo,
+        pageNumber,
+        startedAt,
+      )
+    : await storeConvertedPage(
+        context,
+        download,
+        scanImageInfo,
+        pageNumber,
+        startedAt,
+      );
+
+  return { page, scanImageInfo };
 }
 
 async function eSCLScanJobHandling(
@@ -416,177 +597,46 @@ async function eSCLScanJobHandling(
   tempFolder: string,
   scanCount: number,
   filePattern: string | undefined,
-) {
-  const targetImageFormat = scanJobSettings.format;
+): Promise<JobState> {
+  const context: EsclJobContext = {
+    api,
+    jobUrl,
+    jobLocation: PathHelper.getPathFromHttpLocation(jobUrl),
+    scanJobSettings,
+    inputSource,
+    folder,
+    tempFolder,
+    scanCount,
+    filePattern,
+  };
 
-  let jobStateReason: JobStateReason | null;
-  let jobInfo: EsclJobInfo | undefined;
-  do {
+  while (true) {
     await delay(1000);
 
-    const jobLocation = PathHelper.getPathFromHttpLocation(jobUrl);
-
-    // Check the job state *before* downloading: the loop exits on a
-    // terminal job state reason, so it never fetches /NextDocument once the
-    // device has handed over every image (which would otherwise 404).
-    const scannerStatus = await api.getEsclScanStatus(jobUrl);
-    jobInfo = scannerStatus.findJobByUri(jobLocation);
-    jobStateReason = jobInfo?.getJobStateReason() ?? null;
-
-    const isTerminal =
-      jobStateReason === JobStateReason.JobCompletedSuccessfully ||
-      jobStateReason === JobStateReason.JobCanceledByUser;
-
-    if (isTerminal) {
-      logger.info(
-        `Job finished with state ${jobStateReason}; no further pages to transfer.`,
+    const poll = await pollEsclJob(context);
+    if (poll.kind === "gone") {
+      logger.warn(
+        "The device no longer reports this job in its scanner status; marking the scan as canceled.",
       );
-      break;
+      recordJob(scanJobContent, JobState.Canceled);
+      return JobState.Canceled;
+    }
+    if (poll.kind === "canceled") {
+      recordJob(scanJobContent, JobState.Canceled);
+      return JobState.Canceled;
     }
 
-    const currentPageNumber = getPageNumber(
-      pageCountingStrategy,
-      scanJobContent,
-    );
-
-    const pageStartedAt = Date.now();
-
-    if (targetImageFormat.isJpeg()) {
-      const destinationFilePath = await PathHelper.getFileForPage(
-        folder,
-        scanCount,
-        currentPageNumber,
-        filePattern,
-        "jpg",
-        new Date(),
-      );
-
-      const filePath = await downloadNextDocumentOrEnd(
-        api,
-        jobUrl,
-        destinationFilePath,
-      );
-      if (filePath === null) {
-        // The device has handed over every image: treat this as the end of
-        // the job instead of aborting an otherwise successful scan.
-        jobStateReason = JobStateReason.JobCompletedSuccessfully;
-        break;
-      }
-
-      const scanImageInfo = await api.getEsclScanImageInfo(jobLocation);
-      logger.info(`scanImageInfo: ${scanImageInfo.jobURI}`);
-
-      const actualHeight = scanImageInfo.actualHeight;
-
-      const adfHeight = await getAndFixHeightWHenAdf(
-        inputSource,
-        filePath.path,
-        actualHeight,
-      );
-
-      logger.info(filePath, "Page downloaded to");
-
-      const page: ScanPage = {
-        path: filePath.path,
-        pageNumber: currentPageNumber,
-        width: scanImageInfo.actualWidth,
-        height: adfHeight ?? scanImageInfo.actualHeight,
-        xResolution: scanJobSettings.xResolution,
-        yResolution: scanJobSettings.yResolution,
-        capturedAt: new Date().toISOString(),
-        durationMs: Date.now() - pageStartedAt,
-      };
-      if (filePath.contentType !== undefined) {
-        page.contentType = filePath.contentType;
-      }
-
-      scanJobContent.elements.push(page);
-
-      logJobInfo(jobUrl, scanImageInfo, jobInfo);
-    } else {
-      const tempDestinationFilePath = await PathHelper.getFileForPage(
-        tempFolder,
-        scanCount,
-        currentPageNumber,
-        filePattern,
-        "raw",
-        new Date(),
-      );
-
-      logger.info(
-        `Downloading page ${currentPageNumber} → ${tempDestinationFilePath}`,
-      );
-
-      const downloadMeta = await downloadNextDocumentOrEnd(
-        api,
-        jobUrl,
-        tempDestinationFilePath,
-      );
-      if (downloadMeta === null) {
-        jobStateReason = JobStateReason.JobCompletedSuccessfully;
-        break;
-      }
-
-      logger.info(`Page downloaded content-type: ${downloadMeta.contentType}`);
-
-      const scanImageInfo = await api.getEsclScanImageInfo(jobLocation);
-
-      const width = scanImageInfo.actualWidth;
-      const height = scanImageInfo.actualHeight;
-
-      const destinationFilePath = await PathHelper.getFileForPage(
-        folder,
-        scanCount,
-        currentPageNumber,
-        filePattern,
-        targetImageFormat.getExtension(),
-        new Date(),
-      );
-
-      const savedImage = await targetImageFormat.save(
-        downloadMeta,
-        width,
-        height,
-        scanJobSettings.xResolution,
-        scanJobSettings.mode,
-        destinationFilePath,
-      );
-
-      logger.info(`Page downloaded to: ${destinationFilePath}`);
-
-      const page: ScanPage = {
-        path: destinationFilePath,
-        pageNumber: currentPageNumber,
-        width: savedImage.width,
-        height: savedImage.height,
-        xResolution: savedImage.xResolution,
-        yResolution: savedImage.yResolution,
-        capturedAt: new Date().toISOString(),
-        durationMs: Date.now() - pageStartedAt,
-      };
-      if (downloadMeta.contentType !== undefined) {
-        page.contentType = downloadMeta.contentType;
-      }
-
-      scanJobContent.elements.push(page);
-
-      logJobInfo(jobUrl, scanImageInfo, jobInfo);
+    const pageNumber = getPageNumber(pageCountingStrategy, scanJobContent);
+    const retrieved = await retrieveNextPage(context, pageNumber);
+    if (retrieved === null) {
+      // Every image has been handed over: this is the end of the transfer.
+      recordJob(scanJobContent, JobState.Completed);
+      return JobState.Completed;
     }
-  } while (jobStateReason !== null);
 
-  if (jobStateReason === null) {
-    logger.warn(
-      "Job state reason is null, it means that the current " +
-        "job was not found in the device's status, this is probably a bug " +
-        "in the device, the current scan will be marked as cancelled",
-    );
-    recordJob(scanJobContent, JobState.Canceled);
-    return JobState.Canceled;
+    scanJobContent.elements.push(retrieved.page);
+    logJobInfo(jobUrl, retrieved.scanImageInfo, poll.jobInfo);
   }
-
-  const state = mapToJobState(jobStateReason);
-  recordJob(scanJobContent, state);
-  return state;
 }
 
 export async function executeScanJob(

@@ -17,9 +17,12 @@ export enum JobStateReason {
 }
 
 export enum eSCLJobState {
+  Pending = "Pending",
   Processing = "Processing",
+  ProcessingStopped = "ProcessingStopped",
   Completed = "Completed",
   Canceled = "Canceled",
+  Aborted = "Aborted",
 }
 
 interface EsclJobInfoData {
@@ -28,7 +31,7 @@ interface EsclJobInfoData {
   "scan:Age": { "0": string };
   "pwg:ImagesCompleted": { "0": string };
   "pwg:ImagesToTransfer": { "0": string };
-  "pwg:JobState": { "0": string };
+  "pwg:JobState"?: { "0": string };
   "pwg:JobStateReasons": {
     "0": {
       "pwg:JobStateReason": { "0": string };
@@ -63,12 +66,13 @@ export class EsclJobInfo {
     return Number.parseInt(this.data["pwg:ImagesToTransfer"]?.["0"], 10) || 0;
   }
 
-  getJobState() {
-    return EnumUtils.getState(
-      "JobState",
-      eSCLJobState,
-      this.data["pwg:JobState"]["0"],
-    );
+  getJobState(): eSCLJobState | null {
+    const state = this.data["pwg:JobState"]?.["0"];
+    if (state === undefined) {
+      return null;
+    }
+
+    return EnumUtils.getState("JobState", eSCLJobState, state);
   }
 
   getJobStateReason(): JobStateReason | null {
