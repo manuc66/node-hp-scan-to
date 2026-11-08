@@ -41,7 +41,7 @@ export function createDefaultScanListener(): ScanListener {
 export function createDefaultDeviceCapabilities(): DeviceCapabilities {
   return {
     supportsMultiItemScanFromPlaten: false,
-    walkupProtocol: null,
+    createWalkupScanListener: null,
     platenMaxWidth: null,
     platenMaxHeight: null,
     adfMaxWidth: null,

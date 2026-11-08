@@ -11,7 +11,8 @@ import ScanJobSettings from "./hpModels/ScanJobSettings.js";
 import type { ScanMode } from "./type/scanMode.js";
 import type { ImageFormat } from "./imageFormats/index.js";
 import type { IScanCaps } from "./IScanCaps.js";
-import { WalkupProtocol } from "./type/WalkupProtocol.js";
+import LegacyScanListener from "./scanListeners/LegacyScanListener.js";
+import EsclWalkupScanListener from "./scanListeners/EsclWalkupScanListener.js";
 import { getLoggerForFile } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -66,13 +67,13 @@ export async function readDeviceCapabilities(
   detectWalkup = false,
 ): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
-  let walkupProtocol: WalkupProtocol | null = null;
+  let legacyScanToComp: boolean | null = null;
   let userActionTimeout: number | null = null;
 
   const discoveryTree = await api.getDiscoveryTree();
 
   if (discoveryTree.WalkupScanToCompManifestURI !== null) {
-    walkupProtocol = WalkupProtocol.WalkupScanToComp;
+    legacyScanToComp = true;
     const walkupScanToCompManifest = await api.getWalkupScanToCompManifest(
       discoveryTree.WalkupScanToCompManifestURI,
     );
@@ -85,23 +86,46 @@ export async function readDeviceCapabilities(
       userActionTimeout = walkupScanToCompCaps.userActionTimeout;
     }
   } else if (discoveryTree.WalkupScanManifestURI !== null) {
-    walkupProtocol = WalkupProtocol.WalkupScan;
+    legacyScanToComp = false;
     await api.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
   }
   const scanCaps = await getScanCaps(api, discoveryTree, preferEscl);
 
-  if (
-    detectWalkup &&
-    walkupProtocol === null &&
-    scanCaps?.isEscl === true &&
-    (preferEscl || !discoveryTree.hasScanInterface) &&
-    (await api.supportsEsclWalkup())
-  ) {
-    walkupProtocol = WalkupProtocol.EsclWalkup;
-  } else if (detectWalkup && walkupProtocol === null && scanCaps?.isEscl) {
-    logger.info(
-      "The device supports eSCL scanning but not eSCL walkup; the listen command is not available for it.",
-    );
+  let createWalkupScanListener: DeviceCapabilities["createWalkupScanListener"] =
+    null;
+  if (detectWalkup) {
+    if (legacyScanToComp !== null) {
+      const isScanToComp = legacyScanToComp;
+      createWalkupScanListener = (listenerApi, registrationConfigs) =>
+        new LegacyScanListener(
+          listenerApi,
+          registrationConfigs,
+          isScanToComp,
+          userActionTimeout,
+        );
+    } else if (
+      scanCaps?.isEscl === true &&
+      (preferEscl || !discoveryTree.hasScanInterface) &&
+      (await api.supportsEsclWalkup())
+    ) {
+      createWalkupScanListener = (listenerApi, registrationConfigs) =>
+        new EsclWalkupScanListener(listenerApi, registrationConfigs);
+    } else if (scanCaps?.isEscl === true) {
+      logger.info(
+        "The device supports eSCL scanning but not eSCL walkup; the listen command is not available for it.",
+      );
+    } else {
+      logger.warn(
+        "No compatible device capabilities detected. It appears that your device may not support the listen command. While the application will still run, there is a possibility it may crash. If your device includes an automatic document feeder, consider using the adf-autoscan command instead.",
+      );
+      createWalkupScanListener = (listenerApi, registrationConfigs) =>
+        new LegacyScanListener(
+          listenerApi,
+          registrationConfigs,
+          false,
+          userActionTimeout,
+        );
+    }
   }
 
   if (scanCaps === null) {
@@ -185,7 +209,7 @@ export async function readDeviceCapabilities(
 
   return {
     supportsMultiItemScanFromPlaten,
-    walkupProtocol,
+    createWalkupScanListener,
     platenMaxWidth: scanCaps?.platenMaxWidth ?? null,
     platenMaxHeight: scanCaps?.platenMaxHeight ?? null,
     adfMaxWidth: scanCaps?.adfMaxWidth ?? null,

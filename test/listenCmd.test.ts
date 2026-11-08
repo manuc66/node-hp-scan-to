@@ -27,7 +27,6 @@ import { KnownShortcut } from "../src/type/KnownShortcut.js";
 import type { SelectedScanTarget } from "../src/type/scanTargetDefinitions.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
 import type { ScanRequest } from "../src/scanListeners/ScanListener.js";
-import { WalkupProtocol } from "../src/type/WalkupProtocol.js";
 import { InputSource } from "../src/type/InputSource.js";
 import { ScannerState } from "../src/hpModels/ScannerState.js";
 import { AdfState } from "../src/hpModels/AdfState.js";
@@ -319,7 +318,7 @@ const makeDeviceCapabilities = (
   overrides: Partial<DeviceCapabilities> = {},
 ): DeviceCapabilities => ({
   supportsMultiItemScanFromPlaten: false,
-  walkupProtocol: WalkupProtocol.WalkupScan,
+  createWalkupScanListener: () => createDefaultScanListener(),
   platenMaxWidth: null,
   platenMaxHeight: null,
   adfMaxWidth: null,

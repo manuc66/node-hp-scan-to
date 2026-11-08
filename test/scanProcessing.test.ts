@@ -26,7 +26,7 @@ function notIdleStatus(): IScanStatus {
 function makeDeviceCapabilities(): DeviceCapabilities {
   return {
     supportsMultiItemScanFromPlaten: false,
-    walkupProtocol: null,
+    createWalkupScanListener: null,
     platenMaxWidth: null,
     platenMaxHeight: null,
     adfMaxWidth: null,

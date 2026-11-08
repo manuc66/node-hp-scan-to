@@ -1,11 +1,9 @@
 import { describe, it } from "mocha";
 import { expect } from "chai";
 import type DeviceClient from "../src/DeviceClient.js";
-import { WalkupProtocol } from "../src/type/WalkupProtocol.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
+import type { ScanListener } from "../src/scanListeners/ScanListener.js";
 import { createScanListener } from "../src/scanListeners/createScanListener.js";
-import EsclWalkupScanListener from "../src/scanListeners/EsclWalkupScanListener.js";
-import LegacyScanListener from "../src/scanListeners/LegacyScanListener.js";
 
 const configs = [{ label: "Paperless", isDuplexSingleSide: false }];
 
@@ -13,51 +11,36 @@ describe("createScanListener", () => {
   const api = {} as DeviceClient;
 
   function capabilities(
-    walkupProtocol: WalkupProtocol | null,
+    factory: DeviceCapabilities["createWalkupScanListener"],
   ): DeviceCapabilities {
     return {
-      walkupProtocol,
+      createWalkupScanListener: factory,
       userActionTimeout: null,
     } as DeviceCapabilities;
   }
 
-  it("creates the eSCL listener for EsclWalkup", () => {
-    expect(
-      createScanListener(api, capabilities(WalkupProtocol.EsclWalkup), configs),
-    ).to.be.instanceOf(EsclWalkupScanListener);
-  });
+  it("uses the listener factory resolved from the device capabilities", () => {
+    const listener = {} as ScanListener;
+    let receivedApi: DeviceClient | undefined;
+    let receivedConfigs: typeof configs | undefined;
 
-  it("creates a WalkupScanToComp listener", () => {
-    const listener = createScanListener(
+    const created = createScanListener(
       api,
-      capabilities(WalkupProtocol.WalkupScanToComp),
+      capabilities((listenerApi, registrationConfigs) => {
+        receivedApi = listenerApi;
+        receivedConfigs = registrationConfigs;
+        return listener;
+      }),
       configs,
     );
-    expect(listener).to.be.instanceOf(LegacyScanListener);
+
+    expect(created).to.equal(listener);
+    expect(receivedApi).to.equal(api);
+    expect(receivedConfigs).to.equal(configs);
   });
 
-  it("creates a WalkupScan listener", () => {
-    const listener = createScanListener(
-      api,
-      capabilities(WalkupProtocol.WalkupScan),
-      configs,
-    );
-    expect(listener).to.be.instanceOf(LegacyScanListener);
-  });
-
-  it("falls back to the legacy listener when no protocol is advertised", () => {
-    expect(
-      createScanListener(api, capabilities(null), configs),
-    ).to.be.instanceOf(LegacyScanListener);
-  });
-
-  it("refuses listen on an eSCL device without walkup", () => {
-    const eSclCapabilities = {
-      ...capabilities(null),
-      isEscl: true,
-    } as DeviceCapabilities;
-
-    expect(() => createScanListener(api, eSclCapabilities, configs)).to.throw(
+  it("refuses listen when the device has no walkup support", () => {
+    expect(() => createScanListener(api, capabilities(null), configs)).to.throw(
       /not scan-to-computer/,
     );
   });

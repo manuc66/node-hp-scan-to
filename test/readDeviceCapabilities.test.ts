@@ -1,13 +1,19 @@
 import { describe, it, beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
 import nock from "nock";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { readDeviceCapabilities } from "../src/readDeviceCapabilities.js";
 import DeviceClient from "../src/DeviceClient.js";
 import { InputSource } from "../src/type/InputSource.js";
 import { ScanMode } from "../src/type/scanMode.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
 import { createImageFormat } from "../src/imageFormats/index.js";
-import { WalkupProtocol } from "../src/type/WalkupProtocol.js";
+import EsclWalkupScanListener from "../src/scanListeners/EsclWalkupScanListener.js";
+import LegacyScanListener from "../src/scanListeners/LegacyScanListener.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("readDeviceCapabilities", () => {
   let api: DeviceClient;
@@ -76,12 +82,43 @@ describe("readDeviceCapabilities", () => {
 </ScanCaps>`,
       );
 
-    const caps = await readDeviceCapabilities(api, false);
+    const caps = await readDeviceCapabilities(api, false, true);
 
     expect(caps.platenMaxWidth).to.equal(2550);
     expect(caps.platenMaxHeight).to.equal(3300);
     expect(caps.isEscl).to.be.false;
-    expect(caps.walkupProtocol).to.be.null;
+    expect(caps.createWalkupScanListener?.(api, [])).to.be.instanceOf(
+      LegacyScanListener,
+    );
+  });
+
+  it("exposes the legacy WalkupScan listener for devices advertising that manifest", async () => {
+    const walkupScanManifest = await fs.readFile(
+      path.resolve(__dirname, "./asset/walkupScanManifest.xml"),
+      "utf8",
+    );
+
+    nock("http://127.0.0.1")
+      .get("/DevMgmt/DiscoveryTree.xml")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<ledm:DiscoveryTree xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/discoverytree/2009/03/12" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
+  <ledm:SupportedIfc>
+    <dd:ResourceType>hpCnxWalkupScanManifest</dd:ResourceType>
+    <ledm:ManifestURI>/WalkupScan/WalkupScanManifest.xml</ledm:ManifestURI>
+  </ledm:SupportedIfc>
+</ledm:DiscoveryTree>`,
+      );
+    nock("http://127.0.0.1")
+      .get("/WalkupScan/WalkupScanManifest.xml")
+      .reply(200, walkupScanManifest);
+
+    const caps = await readDeviceCapabilities(api, false, true);
+
+    expect(caps.createWalkupScanListener?.(api, [])).to.be.instanceOf(
+      LegacyScanListener,
+    );
   });
 
   it("detects eSCL support when preferred", async () => {
@@ -140,7 +177,9 @@ describe("readDeviceCapabilities", () => {
     const caps = await readDeviceCapabilities(api, true, true);
 
     expect(caps.isEscl).to.be.true;
-    expect(caps.walkupProtocol).to.equal(WalkupProtocol.EsclWalkup);
+    expect(caps.createWalkupScanListener?.(api, [])).to.be.instanceOf(
+      EsclWalkupScanListener,
+    );
     expect(caps.platenMaxWidth).to.equal(2550);
     expect(caps.platenMaxHeight).to.equal(3508);
 
@@ -223,9 +262,11 @@ describe("readDeviceCapabilities", () => {
 </wus:WalkupScanToCompCaps>`,
       );
 
-    const caps = await readDeviceCapabilities(api, false);
+    const caps = await readDeviceCapabilities(api, false, true);
 
-    expect(caps.walkupProtocol).to.equal(WalkupProtocol.WalkupScanToComp);
+    expect(caps.createWalkupScanListener?.(api, [])).to.be.instanceOf(
+      LegacyScanListener,
+    );
     expect(caps.supportsMultiItemScanFromPlaten).to.be.true;
   });
 
@@ -254,7 +295,9 @@ describe("readDeviceCapabilities", () => {
     const caps = await readDeviceCapabilities(api, true, true);
 
     expect(caps.isEscl).to.be.true;
-    expect(caps.walkupProtocol).to.equal(WalkupProtocol.EsclWalkup);
+    expect(caps.createWalkupScanListener?.(api, [])).to.be.instanceOf(
+      EsclWalkupScanListener,
+    );
     expect(caps.platenMaxWidth).to.equal(2550);
     expect(caps.platenMaxHeight).to.equal(3508);
   });
@@ -281,7 +324,9 @@ describe("readDeviceCapabilities", () => {
     const caps = await readDeviceCapabilities(api, false, true);
 
     expect(caps.isEscl).to.be.true;
-    expect(caps.walkupProtocol).to.equal(WalkupProtocol.EsclWalkup);
+    expect(caps.createWalkupScanListener?.(api, [])).to.be.instanceOf(
+      EsclWalkupScanListener,
+    );
   });
 
   it("does not expose walkup when the eSCL device has no walkup endpoint", async () => {
@@ -305,7 +350,7 @@ describe("readDeviceCapabilities", () => {
     const caps = await readDeviceCapabilities(api, false, true);
 
     expect(caps.isEscl).to.be.true;
-    expect(caps.walkupProtocol).to.be.null;
+    expect(caps.createWalkupScanListener).to.be.null;
   });
 
   it("fails when DiscoveryTree.xml answers an unexpected status (e.g. 500)", async () => {

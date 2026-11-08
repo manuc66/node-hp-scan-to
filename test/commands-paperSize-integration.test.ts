@@ -19,7 +19,7 @@ describe("Command Integration - Paper Size Configuration", () => {
   beforeEach(() => {
     baseDeviceCapabilities = {
       supportsMultiItemScanFromPlaten: false,
-      walkupProtocol: null,
+      createWalkupScanListener: null,
       platenMaxWidth: 2550,
       platenMaxHeight: 3300,
       adfMaxWidth: 2550,
