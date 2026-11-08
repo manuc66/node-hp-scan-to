@@ -76,8 +76,11 @@ export async function fetchPeerCertificate(
       {
         host,
         port: 443,
-        // codeql[js/disabling-certificate-validation] The printer serves a per-device self-signed certificate with no SAN. This connection only reads the certificate so its SHA-256 fingerprint can be checked against the user-provided pin; the socket is closed before any data request.
-        rejectUnauthorized: false,
+        // The printer serves a per-device self-signed certificate with no SAN.
+        // This connection only reads that certificate so its SHA-256
+        // fingerprint can be checked against the user-provided pin; it is
+        // closed before any data request.
+        rejectUnauthorized: false, // lgtm[js/disabling-certificate-validation]
       },
       () => {
         const certificate = socket.getPeerCertificate();
@@ -115,8 +118,10 @@ export async function createPrinterHttpsAgent(
       `The eSCL HTTPS certificate is not pinned; accepting the printer's self-signed certificate. Set ${ESCL_CERT_FINGERPRINT_ENV}=<sha256 fingerprint> to verify it.`,
     );
     return new https.Agent({
-      // codeql[js/disabling-certificate-validation] The printer certificate is self-signed and per-device; users can pin it with ESCL_CERT_FINGERPRINT, in which case a CA-validated agent is built below.
-      rejectUnauthorized: false,
+      // The printer certificate is self-signed and per-device. Users who care
+      // can pin it with ESCL_CERT_FINGERPRINT, which builds a CA-validated
+      // agent below; the default unpinned mode logs a warning.
+      rejectUnauthorized: false, // lgtm[js/disabling-certificate-validation]
     });
   }
 
