@@ -55,6 +55,7 @@ Users have reported successful scans with these devices:
 - HP OfficeJet Pro 8022e
 - HP OfficeJet Pro 8025e
 - HP OfficeJet Pro 8500a
+- [HP OfficeJet Pro 8710](https://github.com/manuc66/node-hp-scan-to/issues/1754)
 - HP OfficeJet Pro 9012e
 - HP PageWide 377dw MFP
 - HP ScanJet Pro 4500 fn1
