@@ -183,7 +183,7 @@ importers:
         version: 5.0.1
       dateformat:
         specifier: ^5.0.3
-        version: 5.0.4
+        version: 5.0.5
       form-data:
         specifier: ^4.0.6
         version: 4.0.6
@@ -764,8 +764,8 @@ packages:
   dateformat@4.6.3:
     resolution: {integrity: sha512-2P0p0pFGzHS5EMnhdxQi7aJN+iMheud0UhG4dlE1DLAlvL8JHjJJTX/CSm4JXwV0Ka5nGk3zC5mcb5bUQUxxMA==}
 
-  dateformat@5.0.4:
-    resolution: {integrity: sha512-DnMqBsxDYMXnJ1c6TY8AgalunEVV5LBm1INpkod2A60Ldw/bopC/MGH0bEoK0S+I66Juezz36snGuWrEp9FmNg==}
+  dateformat@5.0.5:
+    resolution: {integrity: sha512-Co60BtcjsM5XBBbzKHdjH86rz9JCGOib8K1Vw22JQxuPhlWXI6vczIuHJo0SZEAJx27oXnd7lZR64KqyQs0GNQ==}
     engines: {node: '>=12.20'}
 
   debug@4.4.3:
@@ -1926,7 +1926,7 @@ snapshots:
 
   dateformat@4.6.3: {}
 
-  dateformat@5.0.4: {}
+  dateformat@5.0.5: {}
 
   debug@4.4.3(supports-color@8.1.1):
     dependencies:
