@@ -23,12 +23,18 @@ the next scan event or trip the printer's `userActionTimeout` /
 ## What changed
 
 - **Staged pipeline** (`src/postProcessing.ts`): `generate PDF → announce →
-  deliver → webhook → log → cleanup`, threaded through a shared context.
-  Future stages (e.g. an external OCR/deskew `--post-command`) plug in before
-  the PDF merge.
+  deliver → deliver sidecars → webhook → log → cleanup`, threaded through a
+  shared context. `--post-command-pdf` runs on each generated PDF as soon as
+  it exists (the merged PDF, so **after** the merge, not before it) and
+  `--post-command-image` on the page images; both always ahead of delivery.
+  Files a command writes beside the scan are detected here and delivered with
+  it (S3 and Nextcloud only, see the
+  [README](../#files-created-beside-the-scan)).
 - **FIFO processing queue** (`src/queue/processingQueue.ts`): each captured
-  scan is enqueued and drained in order by a single background worker. Order
-  is preserved; capture returns to the printer immediately.
+  scan is enqueued and drained in order by a single background worker, in
+  memory. Order is preserved; capture returns to the printer immediately. If
+  the process dies mid-job, the captured files stay on disk (cleanup only runs
+  once delivery finished) and the delivery can be redone by hand.
 - **CPU off the event loop** (`src/pdfMergeWorker.ts`): the jspdf merge runs
   in a worker thread, so health checks and printer HTTP responses stay
   responsive during a big merge.
@@ -36,18 +42,6 @@ the next scan event or trip the printer's `userActionTimeout` /
   completed (success or failure), so the exit code still reflects the upload
   outcome.
 - `--keep-files` is decided at the end of each job, as before.
-
-## Durability
-
-Not in this version. The queue is in memory: if the process dies mid-job, the
-captured files stay on disk (cleanup only runs once delivery finished) and the
-delivery can be redone by hand. This is no worse than the previous synchronous
-behavior.
-
-Durability (surviving a crash, resuming pending jobs at startup) is planned as
-a **conditional** feature: only relevant when a network delivery destination
-is configured (Paperless, Nextcloud, S3, webhook). No new Docker volume or
-constraint is required.
 
 ## Testing
 

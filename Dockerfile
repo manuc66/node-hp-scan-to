@@ -1,23 +1,29 @@
-FROM --platform=$BUILDPLATFORM node:24-alpine AS build
+# Corepack is no longer bundled with Node.js since Node 25, so pnpm is installed
+# explicitly instead. Keep it in sync with the "packageManager" field of
+# package.json.
+ARG PNPM_VERSION=12.14.0
+
+FROM --platform=$BUILDPLATFORM node:26-alpine AS build
+ARG PNPM_VERSION
 WORKDIR /app
 
 COPY . .
 
 RUN apk add --no-cache git \
-    && corepack enable \
+    && npm install -g pnpm@${PNPM_VERSION} \
     && pnpm install --frozen-lockfile \
     && pnpm build \
     && rm dist/*.d.ts dist/*.js.map
 
 # New stage to install only production dependencies
-FROM --platform=$BUILDPLATFORM node:24-alpine AS deps
+FROM --platform=$BUILDPLATFORM node:26-alpine AS deps
+ARG PNPM_VERSION
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY patches/ patches/
-RUN corepack enable \
+RUN npm install -g pnpm@${PNPM_VERSION} \
     && pnpm install --frozen-lockfile --prod
 
-FROM node:24-alpine AS app
+FROM node:26-alpine AS app
 ENV NODE_ENV=production
 ADD root/ /
 

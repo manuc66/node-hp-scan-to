@@ -43,6 +43,21 @@ async function waitDeviceUntilItIsReadyToUploadOrCompleted(
   return job;
 }
 
+function recordJob(
+  scanJobContent: ScanContent,
+  jobState: JobState,
+): void {
+  if (scanJobContent.meta === undefined) {
+    return;
+  }
+  const job = (scanJobContent.meta.job ??= {
+    state: jobState,
+    count: 0,
+  });
+  job.state = jobState;
+  job.count += 1;
+}
+
 async function fixJpegHeight(filePath: string): Promise<number | null> {
   const buffer: Buffer = await fs.readFile(filePath);
 
@@ -64,6 +79,7 @@ async function handleNativeJpegFlow(
   job: JobDesc,
   inputSource: InputSource,
 ) {
+  const pageStartedAt = Date.now();
   const destinationFilePath: string = await PathHelper.getFileForPage(
     folder,
     scanCount,
@@ -76,21 +92,30 @@ async function handleNativeJpegFlow(
     `Downloading page ${job.currentPageNumber} → ${destinationFilePath}`,
   );
 
-  await api.downloadPage(job.binaryURL, destinationFilePath);
+  const downloadMeta = await api.downloadPageWithMeta(
+    job.binaryURL,
+    destinationFilePath,
+  );
   const adfHeight = await getAndFixHeightWHenAdf(
     inputSource,
     destinationFilePath,
     job.imageHeight,
   );
   const height = adfHeight ?? job.imageHeight;
-  return {
+  const page: ScanPage = {
     path: destinationFilePath,
     pageNumber: currentPageNumber,
     width: job.imageWidth,
     height: height,
     xResolution: job.xResolution,
     yResolution: job.yResolution,
+    capturedAt: new Date().toISOString(),
+    durationMs: Date.now() - pageStartedAt,
   };
+  if (downloadMeta.contentType !== undefined) {
+    page.contentType = downloadMeta.contentType;
+  }
+  return page;
 }
 
 async function handleOtherFormatFlow(
@@ -105,6 +130,7 @@ async function handleOtherFormatFlow(
   targetImageFormat: ImageFormat,
   scanJobSettings: IScanJobSettings,
 ) {
+  const pageStartedAt = Date.now();
   const tempDestinationFilePath = await PathHelper.getFileForPage(
     tempFolder,
     scanCount,
@@ -142,14 +168,20 @@ async function handleOtherFormatFlow(
   );
 
   logger.info(`Page downloaded to: ${destinationFilePath}`);
-  return {
+  const page: ScanPage = {
     path: destinationFilePath,
     pageNumber: currentPageNumber,
     width: savedImage.width,
     height: savedImage.height,
     xResolution: savedImage.xResolution,
     yResolution: savedImage.yResolution,
+    capturedAt: new Date().toISOString(),
+    durationMs: Date.now() - pageStartedAt,
   };
+  if (downloadMeta.contentType !== undefined) {
+    page.contentType = downloadMeta.contentType;
+  }
+  return page;
 }
 
 export async function handleScanProcessingState(
@@ -420,6 +452,8 @@ async function eSCLScanJobHandling(
       scanJobContent,
     );
 
+    const pageStartedAt = Date.now();
+
     if (targetImageFormat.isJpeg()) {
       const destinationFilePath = await PathHelper.getFileForPage(
         folder,
@@ -462,7 +496,12 @@ async function eSCLScanJobHandling(
         height: adfHeight ?? scanImageInfo.actualHeight,
         xResolution: scanJobSettings.xResolution,
         yResolution: scanJobSettings.yResolution,
+        capturedAt: new Date().toISOString(),
+        durationMs: Date.now() - pageStartedAt,
       };
+      if (filePath.contentType !== undefined) {
+        page.contentType = filePath.contentType;
+      }
 
       scanJobContent.elements.push(page);
 
@@ -525,7 +564,12 @@ async function eSCLScanJobHandling(
         height: savedImage.height,
         xResolution: savedImage.xResolution,
         yResolution: savedImage.yResolution,
+        capturedAt: new Date().toISOString(),
+        durationMs: Date.now() - pageStartedAt,
       };
+      if (downloadMeta.contentType !== undefined) {
+        page.contentType = downloadMeta.contentType;
+      }
 
       scanJobContent.elements.push(page);
 
@@ -539,10 +583,13 @@ async function eSCLScanJobHandling(
         "job was not found in the device's status, this is probably a bug " +
         "in the device, the current scan will be marked as cancelled",
     );
+    recordJob(scanJobContent, JobState.Canceled);
     return JobState.Canceled;
   }
 
-  return mapToJobState(jobStateReason);
+  const state = mapToJobState(jobStateReason);
+  recordJob(scanJobContent, state);
+  return state;
 }
 
 export async function executeScanJob(
@@ -612,6 +659,7 @@ export async function executeScanJob(
       scanCount,
       filePattern,
     );
+    recordJob(scanJobContent, jobState);
   }
   return jobState;
 }

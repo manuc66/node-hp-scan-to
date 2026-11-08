@@ -27,20 +27,44 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
   - [App Features](#app-features)
   - [Protocol Support](#protocol-support)
   - [Emulated Duplex Scanning Feature](#emulated-duplex-scanning-feature)
+  - [Scope and Limitations](#scope-and-limitations)
 - [Installation](#installation)
   - [Using NodeJS](#using-nodejs)
+  - [Using standalone binaries (Windows, macOS, Linux)](#using-standalone-binaries-windows-macos-linux)
+  - [Using Debian / RPM packages](#using-debian--rpm-packages)
+    - [Alpine Linux](#alpine-linux)
+    - [Saving scans in your own user folder](#saving-scans-in-your-own-user-folder)
+    - [Verifying release artifacts](#verifying-release-artifacts)
   - [Using Docker](#using-docker)
+  - [Using Arch Linux (AUR)](#using-arch-linux-aur)
 - [Usage](#usage)
   - [Command Line (CLI)](#command-line-cli)
+    - [Choosing a mode](#choosing-a-mode)
+    - [Discovering devices](#discovering-devices)
     - [CLI Options](#cli-options)
     - [CLI Commands](#cli-commands)
+      - [`listen`](#listen)
+      - [`adf-autoscan`](#adf-autoscan)
+      - [`clear-registrations`](#clear-registrations)
+      - [`single-scan`](#single-scan)
+    - [Post-Processing Command](#post-processing-command)
+      - [Files created beside the scan](#files-created-beside-the-scan)
+    - [Paper Size Configuration](#paper-size-configuration)
+      - [Preset Paper Sizes](#preset-paper-sizes)
+      - [Custom Sizes](#custom-sizes)
+      - [Configuration Precedence](#configuration-precedence)
+      - [Important Rules](#important-rules)
+      - [Examples](#examples)
+    - [Duplex scanning](#duplex-scanning)
   - [Run with Docker](#run-with-docker)
     - [Public Pre-Built Docker image](#public-pre-built-docker-image)
     - [Docker Environment Variables](#docker-environment-variables)
     - [Example for Docker](#example-for-docker)
     - [Example for Docker Compose](#example-for-docker-compose)
   - [Run with Kubernetes](#run-with-kubernetes)
-  - [Configure](#Configure)
+  - [Paperless-ngx](#paperless-ngx)
+  - [Configure](#configure)
+- [Troubleshooting](#troubleshooting)
 - [Build Source Code](#build-source-code)
   - [Debugging](#debugging)
 - [Reverse Engineering](#reverse-engineering)
@@ -54,18 +78,11 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
 
 ### Supported Devices
 
-This app has been developed and tested with the following HP All-in-One Printers:
+See [SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md) for the HP All-in-One Printers
+this app has been developed and tested with, the additional devices users have
+reported working, and the process for adding a new printer report.
 
-- HP DeskJet 3520
-- HP OfficeJet 6500A Plus
-- HP Smart Tank Plus 570 series
-- HP OfficeJet Pro 9019e
-
-Users have reported it also working on additional devices. See
-[SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md) for the full community-reported list
-and the process for adding a new printer report.
-
-There is a good chance it also works on other unlisted HP All-in-One Printer.
+There is a good chance it also works on other unlisted HP All-in-One Printers.
 
 ### Supported Functions
 
@@ -86,6 +103,23 @@ There is a good chance it also works on other unlisted HP All-in-One Printer.
   - Local folders
   - [Paperless-ngx API](https://docs.paperless-ngx.com/api/) upload
   - [Nextcloud WebDAV](https://docs.Nextcloud.com/server/latest/user_manual/en/files/access_webdav.html) upload
+  - S3-compatible (AWS S3, MinIO, Cloudflare R2, Wasabi...) upload
+  - Webhook notification (JSON event with idempotency key, `scan-completed` /
+    `scan-delivery-failed` event types, per-page descriptors and delivery
+    outcomes). Each delivered file carries `size`/`sha256` plus its location
+    (`local` path, S3 `bucket`/`key` or Nextcloud WebDAV URL), sidecars and
+    generated PDFs included. The event is a metadata notification: a webhook
+    on its own never removes the scan (retention follows the delivery targets
+    and `keep_files`), and when the files are cleaned up the local `path` is
+    stale, and `files[]` is empty when the delivered files were already
+    removed (the paperless PDF modes delete the pages and the PDF they
+    upload), and each `delivery` entry carries the identifiers the target
+    returned — Paperless task ids, Nextcloud WebDAV URLs, S3 `bucket/key` — so
+    the document stays reachable from the event alone. `--webhook-payload
+    minimal` drops the identifiers (scanner IP, destination label), every local
+    path and the raw delivery error messages, for a receiver outside your
+    network. OpenAPI contract:
+    [`protocol_doc/webhook/openapi.yaml`](protocol_doc/webhook/openapi.yaml).
 
 ### Protocol Support
 
@@ -109,6 +143,13 @@ produce an assembled output.
 
 If you decide not to scan the back side immediately, the front side scan will be saved in the system and will remain
 there until you either scan the back side or perform a single side scan instead.
+
+### Scope and Limitations
+
+- **HP scan-capable devices only.** The app drives the scanner by speaking HP's proprietary scan protocols and eSCL. A device used with `listen` must expose **Scan to Computer** (or eSCL); see [SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md).
+- **Reverse-engineered and best-effort.** It is provided as-is (see the disclaimer above) and behaviour varies between models.
+- **It moves scans, it does not process them.** Output targets are a local folder, Paperless-ngx, Nextcloud and S3. OCR, document splitting, duplicate detection and blank-page removal are the destination's job (Paperless-ngx features or scripts), not this app's.
+- **Docker needs the printer IP.** mDNS discovery does not work on the default Docker network, so the printer must be given explicitly (or the container put on a macvlan network).
 
 ## Installation
 
@@ -168,7 +209,7 @@ Scans are saved under `/var/lib/node-hp-scan-to` by default when running as a se
 
 Linux networking notes:
 
-- the service only makes **outbound** connections: mDNS discovery (UDP 5353 multicast), HTTP calls to the printer itself on port 80 (discovery tree, scan job creation and polling), HTTPS to the printer on port 443 when its eSCL endpoint only speaks TLS (self-signed certificate accepted for that local endpoint), and HTTPS uploads to Paperless-ngx/Nextcloud when configured — nothing listens for the scanning flow itself
+- the service only makes **outbound** connections: mDNS discovery (UDP 5353 multicast), plain HTTP calls to the printer itself on port 80 (discovery tree, registration, capabilities, polling, eSCL scan job creation and page download), HTTP on port 8080 for scan job creation and page download on the legacy/non-eSCL path, HTTPS to the printer on port 443 when its eSCL endpoint only speaks TLS (self-signed certificate accepted for that local endpoint), and HTTPS uploads to Paperless-ngx/Nextcloud when configured — nothing listens for the scanning flow itself
 - `--health-check` listens on **all interfaces** (port 3000 by default); restrict it with a local firewall rule if that matters to you, or drop the flag from `/usr/lib/systemd/system/node-hp-scan-to.service`
 - the packaged systemd unit runs under a dynamic non-root user with `PrivateTmp`, read-only system paths and an empty capability set
 
@@ -258,6 +299,20 @@ Example usage:
 
 `npx node-hp-scan-to -a 192.168.0.5 -d ~/scans`
 
+#### Choosing a mode
+
+The command you run decides what triggers a scan:
+
+| Command                  | A scan starts when…                                            | On the printer panel                                     |
+| ------------------------ | -------------------------------------------------------------- | -------------------------------------------------------- |
+| `listen` *(default)*     | you pick the app in **Scan to Computer** and start the job      | the app appears under its `--label` (default: hostname)  |
+| `adf-autoscan`           | paper is loaded into the document feeder                        | nothing                                                   |
+| `single-scan`            | you run the command; it scans once, then exits                  | nothing                                                   |
+| `discover`               | – it only lists the HP devices found on the network             | nothing                                                   |
+| `clear-registrations`    | – it only clears the targets this app registered on the device  | nothing                                                   |
+
+With no command, `listen` runs. In Docker, select the command with the `MAIN_COMMAND` environment variable.
+
 #### Discovering devices
 
 `npx node-hp-scan-to discover`
@@ -268,7 +323,7 @@ Options: `--timeout <seconds>` (browsing window, default 5), `--json` (machine-r
 
 #### CLI Options
 
-Run `npx node-hp-scan-to --help` to see the full list of options below:
+Summary of the options shared across commands. Each command's own `--help` output (see [CLI Commands](#cli-commands)) is the authoritative list; options that only apply to some commands or modes are marked in the description.
 
 | Option                                | Description                                                                                                                                                                                                                    | Example/Default                                                   |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
@@ -276,42 +331,470 @@ Run `npx node-hp-scan-to --help` to see the full list of options below:
 | `-d`, `--directory`                   | Directory to save scanned documents. Defaults to `/tmp/scan-to-pc<random value>` if not set.                                                                                                                                   | `-d /tmp/scan-to-pc1234`                                          |
 | `-D`, `--debug`                       | Enable debug logging.                                                                                                                                                                                                          | `-D` (disabled by default)                                        |
 | `-f`, `--image-format`                | Image format for scans (when not PDF).                                                                                                                                                                                         | `-f Jpeg` (choices: Jpeg, Bmp)                                    |
-| `-h`, `--height`                      | Scan height in pixels. Defaults to 3507.                                                                                                                                                                                       | `-h 3507`                                                         |
+| `-h`, `--height`                      | Scan height in pixels. Defaults to `max` (the device maximum).                                                                                                                                                                 | `-h 3507`                                                         |
 | `-k`, `--keep-files`                  | Retain scanned files after uploading to Paperless-ngx or Nextcloud (disabled by default).                                                                                                                                      | `-k` (disabled by default)                                        |
 | `-l`, `--label`                       | The name of the computer running this app. Defaults to the hostname.                                                                                                                                                           | `-l <hostname>` (default: system hostname)                        |
 | `-n`, `--name`                        | Printer name (quote if it contains spaces).                                                                                                                                                                                    | `-n "Officejet 6500 E710n-z"` (no default)                        |
-| `-o`, `--paperless-token`             | The paperless token. Required unless `----paperless-token-file` is used. Overrides if both are provided.                                                                                                                       | `-o xxxxxxxxxxxx` (no default)                                    |
-| `--paperless-token-file`              | File name that contains the paperless token. Required unless `---paperless-token` is used. Takes precedence if both are provided.                                                                                              | `--paperless-token-file some/path/to/file` (no default)           |
+| `-o`, `--paperless-token`             | The paperless token. Required unless `--paperless-token-file` is used. Overrides if both are provided.                                                                                                                         | `-o xxxxxxxxxxxx` (no default)                                    |
+| `--paperless-token-file`              | File name that contains the paperless token. Required unless `--paperless-token` is used. Takes precedence if both are provided.                                                                                               | `--paperless-token-file some/path/to/file` (no default)           |
 | `-p`, `--pattern`                     | Filename pattern (no extension). Use quotes for static text, supports date/time masks (see [dateformat docs](https://www.npmjs.com/package/dateformat#mask-options)). Defaults to `scan<increasing number>_page<page number>`. | `-p scan1_page1`                                                  |
 | `-r`, `--resolution`                  | Scan resolution in DPI. Defaults to 200.                                                                                                                                                                                       | `-r 200`                                                          |
-| `--mode <mode> `                      | Selects the scan mode (default: Color) (choices: "Gray", "Color").                                                                                                                                                             | `--mode Gray`                                                     |
+| `--mode <mode>`                       | Selects the scan mode (default: Color) (choices: "Gray", "Color").                                                                                                                                                             | `--mode Gray`                                                     |
 | `--paper-size <size>`                 | Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive). Cannot be used with `--paper-dim`.                                                                                                          | `--paper-size Letter`                                             |
 | `--paper-orientation <orientation>`   | Paper orientation: portrait (default) or landscape. Applied to `--paper-size` only.                                                                                                                                            | `--paper-orientation landscape`                                   |
 | `--paper-dim <dimensions>`            | Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with `--paper-size`.                                                                                                                  | `--paper-dim 8.5x11in`                                            |
 | `-s`, `--paperless-post-document-url` | Paperless-ngx API URL for uploading documents.                                                                                                                                                                                 | `-s https://domain.tld/api/documents/post_document/` (no default) |
 | `-t`, `--temp-directory`              | Temporary directory for processing. Defaults to `/tmp/scan-to-pc<random value>` if not set.                                                                                                                                    | `-t /tmp/scan-to-pc5678`                                          |
-| `-w`, `--width`                       | Scan width in pixels. Defaults to 2481.                                                                                                                                                                                        | `-w 2481`                                                         |
+| `-w`, `--width`                       | Scan width in pixels. Defaults to `max` (the device maximum).                                                                                                                                                                  | `-w 2481`                                                         |
 | `--device-up-polling-interval`        | Polling interval (in milliseconds) to check if the printer is online.                                                                                                                                                          | `--device-up-polling-interval 5000` (no default)                  |
+| `--pdf`                               | Force the scan result to be a PDF document (the default depends on the device choice). `single-scan` and `adf-autoscan` only.                                                                                                  | `--pdf` (disabled by default)                                     |
+| `--duplex`                            | Scan both sides if the device supports it. `single-scan` and `adf-autoscan` only; in `listen` mode duplex is chosen on the device panel.                                                                                       | `--duplex` (disabled by default)                                  |
+| `--prefer-eSCL`                       | Prefer the eSCL protocol when the device supports both eSCL and the HP protocols.                                                                                                                                              | `--prefer-eSCL` (disabled by default)                             |
+| `--add-emulated-duplex [mode]`        | Add an extra scan target that emulates duplex on devices without native duplex. `listen` mode only. Mode: `document-wise` (default), `page-wise`, `reverse-front` or `reverse-both`.                                           | `--add-emulated-duplex page-wise`                                 |
+| `--emulated-duplex-label <label>`     | Label of the emulated duplex target. Defaults to the main label with a `duplex` suffix. Only with `--add-emulated-duplex`.                                                                                                     | `--emulated-duplex-label "Duplex"`                                |
+| `--health-check`                      | Start an HTTP health-check endpoint (listens on all interfaces).                                                                                                                                                               | `--health-check` (disabled by default)                            |
+| `--health-check-port <port>`          | Port for the HTTP health-check endpoint.                                                                                                                                                                                       | `--health-check-port 3000` (default: 3000)                        |
+| `--pollingInterval <ms>`              | Time interval between each lookup for content in the ADF. `adf-autoscan` only.                                                                                                                                                 | `--pollingInterval 1000` (default: 1000)                          |
+| `--start-scan-delay <ms>`             | Wait delay before triggering the scan once paper is detected in the ADF. `adf-autoscan` only.                                                                                                                                  | `--start-scan-delay 5000` (default: 5000)                         |
 | `--nextcloud-password`                | Nextcloud app password. Required unless `--nextcloud-password-file` is used. Overrides if both are provided.                                                                                                                   | `--nextcloud-password mypassword` (no default)                    |
 | `--nextcloud-password-file`           | File containing the Nextcloud app password. Required unless `--nextcloud-password` is used. Takes precedence if both are provided.                                                                                             | `--nextcloud-password-file /path/to/file` (no default)            |
 | `--nextcloud-upload-folder`           | Nextcloud folder for uploads. Defaults to `scan`.                                                                                                                                                                              | `--nextcloud-upload-folder scan`                                  |
 | `--nextcloud-url`                     | Nextcloud instance URL.                                                                                                                                                                                                        | `--nextcloud-url https://domain.tld` (no default)                 |
 | `--nextcloud-username`                | Nextcloud username with write access to the upload folder.                                                                                                                                                                     | `--nextcloud-username user` (no default)                          |
 | `--s3-url`                            | S3-compatible endpoint URL.                                                                                                                                                                                                    | `--s3-url https://s3.us-east-1.amazonaws.com` (no default)        |
-| `--s3-region`                         | S3 region used for request signing. Defaults to `us-east-1`.                                                                                                                                                                   | `--s3-region eu-west-1`                                            |
+| `--s3-region`                         | S3 region used for request signing. Defaults to `us-east-1`.                                                                                                                                                                   | `--s3-region eu-west-1`                                           |
 | `--s3-access-key-id`                  | S3 access key id.                                                                                                                                                                                                              | `--s3-access-key-id AKIA...` (no default)                         |
-| `--s3-secret-access-key`              | S3 secret access key. Required unless `--s3-secret-access-key-file` is used. Overrides if both are provided.                                                                                                                    | `--s3-secret-access-key ...` (no default)                         |
-| `--s3-secret-access-key-file`         | File containing the S3 secret access key. Required unless `--s3-secret-access-key` is used. Takes precedence if both are provided.                                                                                              | `--s3-secret-access-key-file /path/to/file` (no default)          |
+| `--s3-secret-access-key`              | S3 secret access key. Required unless `--s3-secret-access-key-file` is used. Overrides if both are provided.                                                                                                                   | `--s3-secret-access-key ...` (no default)                         |
+| `--s3-secret-access-key-file`         | File containing the S3 secret access key. Required unless `--s3-secret-access-key` is used. Takes precedence if both are provided.                                                                                             | `--s3-secret-access-key-file /path/to/file` (no default)          |
 | `--s3-bucket`                         | S3 bucket to upload scans into.                                                                                                                                                                                                | `--s3-bucket scans` (no default)                                  |
-| `--s3-prefix`                         | Folder (prefix) inside the bucket. Defaults to the bucket root.                                                                                                                                                                | `--s3-prefix 2026/08`                                              |
+| `--s3-prefix`                         | Folder (prefix) inside the bucket. Defaults to the bucket root.                                                                                                                                                                | `--s3-prefix 2026/08`                                             |
 | `--s3-force-path-style`               | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...).                                                                                                                                                    | `--s3-force-path-style` (disabled by default)                     |
 | `--s3-session-token`                  | S3 session token for temporary credentials.                                                                                                                                                                                    | `--s3-session-token ...` (no default)                             |
+| `--webhook-url`                       | Webhook URL to POST scan events to (JSON with idempotency-key header).                                                                                           | `--webhook-url https://n8n.example/webhook/scan` (no default)      |
+| `--webhook-auth`                      | Auth scheme for the webhook request: `none`, `hmac`, `bearer` or `basic` (default: inferred from the configured credentials).                                                                                                    | `--webhook-auth hmac` (auto)                                       |
+| `--webhook-auth-header`               | Header name carrying the HMAC signature.                                                                                                                                                                                         | `x-webhook-signature` (default)                                    |
+| `--webhook-secret`                    | HMAC-SHA256 signing secret, used as-is (not hex-decoded); the resulting signature is sent as hex in the auth header. Required unless `--webhook-secret-file` is used. Overrides if both are provided.                            | `--webhook-secret s3cr3t` (no default)                             |
+| `--webhook-secret-file`               | File containing the HMAC signing secret. Required unless `--webhook-secret` is used. Takes precedence if both are provided.                                                                                                      | `--webhook-secret-file /path/to/file` (no default)                 |
+| `--webhook-token`                     | Bearer token sent as `Authorization: Bearer <token>`.                                                                                                                                                                            | `--webhook-token tok...` (no default)                              |
+| `--webhook-username` / `--webhook-password` | Basic auth credentials sent as `Authorization: Basic`.                                                                                                                                                                     | `--webhook-username scanner --webhook-password ...` (no default)   |
+| `--webhook-payload`                   | Event profile: `full` (default) or `minimal`. `minimal` drops the scanner IP, the printer destination label, every local file path and the raw delivery error text.                                                          | `--webhook-payload minimal` (default: `full`)                       |
 
 **Notes:**
 
 - Date/time patterns for `--pattern` follow the [dateformat](https://www.npmjs.com/package/dateformat) library's "Mask options" section.
 
 - Defaults like `/tmp/scan-to-pc<random value>` include a random suffix in practice (e.g., `/tmp/scan-to-pc1234`).
+
+#### CLI Commands
+
+##### `listen`
+
+By default, this app runs the `listen` command as the default mode. It will listen to the print for new job and trigger based on the selection on the device.
+
+Run `npx node-hp-scan-to listen --help` to get the full list of command options.
+
+<!-- BEGIN HELP command: listen -->
+```text
+Usage:  listen [options]
+
+Listen the device for new scan job to save to this target
+
+Output Options:
+  -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
+  -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
+  -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+  --post-command-pdf <command>                                     Command run on every generated PDF, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
+  --post-command-image <command>                                   Command run on every delivered image page, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it).
+  --post-command-timeout <milliseconds>                            Timeout in milliseconds for the post-command hooks before they are killed (default: 300000)
+
+Scan Options:
+  -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
+  --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
+  -w, --width <width>                                              Width in pixels of the scans (default: max)
+  -h, --height <height>                                            Height in pixels of the scans (default: max)
+  --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
+  --paper-orientation <orientation>                                Paper orientation: portrait (default) or landscape. Applied to --paper-size only. (choices: "portrait", "landscape")
+  --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
+  -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
+  --prefer-eSCL                                                    Prefer eSCL protocol if available
+
+Options:
+  --device-up-polling-interval <deviceUpPollingInterval>           Device up polling interval in milliseconds
+  --help                                                           display help for command
+
+Paperless Options:
+  -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
+  -o, --paperless-token <paperless_token>                          The paperless token. Either this or paperless-token-file is required for paperless integration.
+  --paperless-token-file <paperless_token_file>                    File name that contains the paperless token. Either this or paperless-token is required for paperless integration.
+  --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
+  --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
+
+Nextcloud Options:
+  --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
+  --nextcloud-username <nextcloud_username>                        The nextcloud username
+  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.
+  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
+  --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
+
+S3 Options:
+  --s3-url <s3_url>                                                The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)
+  --s3-region <s3_region>                                          The S3 region used for request signing (default: us-east-1)
+  --s3-access-key-id <s3_access_key_id>                            The S3 access key id
+  --s3-secret-access-key <s3_secret_access_key>                    The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.
+  --s3-secret-access-key-file <s3_secret_access_key_file>          File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.
+  --s3-bucket <s3_bucket>                                          The S3 bucket where scans are uploaded
+  --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
+  --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
+  --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
+Webhook Options:
+  --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON with an idempotency-key header, best-effort delivery)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
+  --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
+
+Device Control Screen Options:
+  -l, --label <label>                                              The label to display on the device (the default is the hostname)
+  --add-emulated-duplex [mode]                                     Enable emulated duplex scanning, with optional assembly mode (default: document-wise) (choices: "page-wise", "document-wise", "reverse-front", "reverse-both")
+  --emulated-duplex-label <label>                                  The emulated duplex label to display on the device (the default is to suffix the main label with duplex)
+
+Global Options:
+  -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
+  -n, --name <name>                                                Name of the device to lookup for on the network
+  -D, --debug                                                      Enable debug
+  --health-check                                                   Start an http health check endpoint
+  --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
+```
+<!-- END HELP command: listen -->
+
+In `listen` (and `adf-autoscan`) mode, scans are delivered on a background queue and the PDF merge runs in a worker thread, so the loop keeps responding to the printer while processing — see the [processing pipeline](docs/processing-pipeline.md) page.
+
+##### `adf-autoscan`
+
+Running `npx node-hp-scan-to adf-autoscan` will automatically trigger a scan job as soon as the ADF (automatic document feeder) on the printer's scanner is loaded with paper.
+
+You can also set the environment variable `MAIN_COMMAND="adf-autoscan"` with Docker. Example:
+
+```sh
+docker run -e MAIN_COMMAND="adf-autoscan" -e CMDLINE=--debug docker.io/manuc66/node-hp-scan-to:latest
+```
+
+###### Logging
+
+Logs go to stdout. The default output is **backward compatible** with the
+previous plain-text messages (one message per line), so existing scripts that
+parse stdout keep working unchanged. In an interactive terminal they are
+formatted for humans instead.
+
+Structured JSON lines are available **opt-in** via `LOG_FORMAT=json` — the
+recommended choice for docker log drivers and aggregators such as Loki or ELK.
+
+| Env var      | Values                            | Effect                                                                                                                                                                                                                                                   |
+| ------------ | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LOG_LEVEL`  | `trace` … `fatal`                 | Minimum level to emit (default `info`). `debug` shows HTTP traces too.                                                                                                                                                                                   |
+| `LOG_FORMAT` | `auto`, `pretty`, `plain`, `json` | `auto` (default): pretty in a terminal, legacy plain message text otherwise. `pretty` forces time/level/module output anywhere (no ANSI in non-TTY). `plain` forces the legacy message-only text anywhere. `json` forces structured JSON lines anywhere. |
+
+Sensitive fields (`password`, `token`, `authToken`, `Authorization`) are
+redacted as `[Redacted]` in every log line.
+
+Run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help.
+
+<!-- BEGIN HELP command: adf-autoscan -->
+```text
+Usage:  adf-autoscan [options]
+
+Automatically trigger a new scan job to this target once paper is detected in
+the automatic document feeder (adf)
+
+Output Options:
+  -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
+  -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
+  -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+  --post-command-pdf <command>                                     Command run on every generated PDF, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
+  --post-command-image <command>                                   Command run on every delivered image page, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it).
+  --post-command-timeout <milliseconds>                            Timeout in milliseconds for the post-command hooks before they are killed (default: 300000)
+  --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
+
+Scan Options:
+  -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
+  --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
+  -w, --width <width>                                              Width in pixels of the scans (default: max)
+  -h, --height <height>                                            Height in pixels of the scans (default: max)
+  --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
+  --paper-orientation <orientation>                                Paper orientation: portrait (default) or landscape. Applied to --paper-size only. (choices: "portrait", "landscape")
+  --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
+  -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
+  --prefer-eSCL                                                    Prefer eSCL protocol if available
+  --duplex                                                         If specified, all the scans will be in duplex if the device support it
+
+Options:
+  --device-up-polling-interval <deviceUpPollingInterval>           Device up polling interval in milliseconds
+  --help                                                           display help for command
+
+Paperless Options:
+  -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
+  -o, --paperless-token <paperless_token>                          The paperless token. Either this or paperless-token-file is required for paperless integration.
+  --paperless-token-file <paperless_token_file>                    File name that contains the paperless token. Either this or paperless-token is required for paperless integration.
+  --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
+  --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
+
+Nextcloud Options:
+  --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
+  --nextcloud-username <nextcloud_username>                        The nextcloud username
+  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.
+  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
+  --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
+
+S3 Options:
+  --s3-url <s3_url>                                                The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)
+  --s3-region <s3_region>                                          The S3 region used for request signing (default: us-east-1)
+  --s3-access-key-id <s3_access_key_id>                            The S3 access key id
+  --s3-secret-access-key <s3_secret_access_key>                    The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.
+  --s3-secret-access-key-file <s3_secret_access_key_file>          File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.
+  --s3-bucket <s3_bucket>                                          The S3 bucket where scans are uploaded
+  --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
+  --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
+  --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
+Webhook Options:
+  --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON with an idempotency-key header, best-effort delivery)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
+  --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
+
+Auto-scan Options:
+  --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
+  --start-scan-delay <startScanDelay>                              Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan
+
+Global Options:
+  -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
+  -n, --name <name>                                                Name of the device to lookup for on the network
+  -D, --debug                                                      Enable debug
+  --health-check                                                   Start an http health check endpoint
+  --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
+```
+<!-- END HELP command: adf-autoscan -->
+
+##### `clear-registrations`
+
+Running `npx node-hp-scan-to clear-registrations` will clear all registered targets on the device (useful for trial and error and debugging).
+
+Run `npx node-hp-scan-to clear-registrations --help` to get command line usage help.
+
+You can also set the environment variable `MAIN_COMMAND="clear-registrations"` with Docker. Example:
+
+```sh
+docker run -e MAIN_COMMAND="clear-registrations" docker.io/manuc66/node-hp-scan-to:latest
+```
+
+<!-- BEGIN HELP command: clear-registrations -->
+```text
+Usage:  clear-registrations [options]
+
+Clear the list or registered target on the device
+
+Options:
+  -h, --help                               display help for command
+
+Global Options:
+  -a, --address <ip>                       IP address of the device, when specified, the ip will be used instead of the name
+  -n, --name <name>                        Name of the device to lookup for on the network
+  -D, --debug                              Enable debug
+  --health-check                           Start an http health check endpoint
+  --health-check-port <health-check-port>  Define the port for the HTTP health check endpoint
+```
+<!-- END HELP command: clear-registrations -->
+
+##### `single-scan`
+
+Running `npx node-hp-scan-to single-scan` will directly issue a single scan job
+
+Run `npx node-hp-scan-to single-scan --help` to get command line usage help.
+
+You can also set the environment variable `MAIN_COMMAND="single-scan"` with Docker. Example:
+
+```sh
+docker run -e MAIN_COMMAND="single-scan" docker.io/manuc66/node-hp-scan-to:latest
+```
+
+<!-- BEGIN HELP command: single-scan -->
+```text
+Usage:  single-scan [options]
+
+Trigger a new scan job
+
+Output Options:
+  -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
+  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
+  -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
+  -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+  --post-command-pdf <command>                                     Command run on every generated PDF, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
+  --post-command-image <command>                                   Command run on every delivered image page, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it).
+  --post-command-timeout <milliseconds>                            Timeout in milliseconds for the post-command hooks before they are killed (default: 300000)
+  --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
+
+Scan Options:
+  -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
+  --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
+  -w, --width <width>                                              Width in pixels of the scans (default: max)
+  -h, --height <height>                                            Height in pixels of the scans (default: max)
+  --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
+  --paper-orientation <orientation>                                Paper orientation: portrait (default) or landscape. Applied to --paper-size only. (choices: "portrait", "landscape")
+  --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
+  -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
+  --prefer-eSCL                                                    Prefer eSCL protocol if available
+  --duplex                                                         If specified, all the scans will be in duplex if the device support it
+
+Options:
+  --device-up-polling-interval <deviceUpPollingInterval>           Device up polling interval in milliseconds
+  --help                                                           display help for command
+
+Paperless Options:
+  -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
+  -o, --paperless-token <paperless_token>                          The paperless token. Either this or paperless-token-file is required for paperless integration.
+  --paperless-token-file <paperless_token_file>                    File name that contains the paperless token. Either this or paperless-token is required for paperless integration.
+  --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
+  --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
+
+Nextcloud Options:
+  --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
+  --nextcloud-username <nextcloud_username>                        The nextcloud username
+  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.
+  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
+  --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
+
+S3 Options:
+  --s3-url <s3_url>                                                The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)
+  --s3-region <s3_region>                                          The S3 region used for request signing (default: us-east-1)
+  --s3-access-key-id <s3_access_key_id>                            The S3 access key id
+  --s3-secret-access-key <s3_secret_access_key>                    The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.
+  --s3-secret-access-key-file <s3_secret_access_key_file>          File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.
+  --s3-bucket <s3_bucket>                                          The S3 bucket where scans are uploaded
+  --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
+  --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
+  --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
+
+Webhook Options:
+  --webhook-url <webhook_url>                                      The webhook url to POST scan events to (JSON with an idempotency-key header, best-effort delivery)
+  --webhook-auth <webhook_auth>                                    Auth scheme for the webhook request: none, hmac, bearer or basic (default: inferred from the configured credentials) (choices: "none", "hmac", "bearer", "basic")
+  --webhook-auth-header <webhook_auth_header>                      Header name carrying the HMAC signature (default: x-webhook-signature)
+  --webhook-secret <webhook_secret>                                Secret used to sign the payload (HMAC-SHA256, hex) sent in the webhook-auth-header. Either this or webhook-secret-file.
+  --webhook-secret-file <webhook_secret_file>                      File name that contains the webhook signing secret. Either this or webhook-secret.
+  --webhook-token <webhook_token>                                  Bearer token sent as Authorization: Bearer <token>
+  --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
+  --webhook-password <webhook_password>                            Basic auth password for webhook-username
+  --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
+
+Global Options:
+  -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
+  -n, --name <name>                                                Name of the device to lookup for on the network
+  -D, --debug                                                      Enable debug
+  --health-check                                                   Start an http health check endpoint
+  --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
+```
+<!-- END HELP command: single-scan -->
+
+#### Post-Processing Command
+
+Every generated scan file can be handed to an external command **before it is uploaded or cleaned up**. Two independent commands are available, one per file type:
+
+- `--post-command-pdf` (or `post_command_pdf`) runs on the generated **PDFs** — the `--pdf` output mode, and the Paperless `--paperless-always-send-as-pdf-file` / `--paperless-group-multi-page-scan-into-a-pdf` flows;
+- `--post-command-image` (or `post_command_image`) runs on the **image pages** (Jpeg/Bmp) — each scan page kept on disk or uploaded as an image.
+
+Each command only ever receives the type it was configured for, so a PDF tool is never handed a Jpeg. Set either or both; leaving both unset disables post-processing.
+
+Typical uses:
+
+| Command | Examples |
+|---|---|
+| **`--post-command-pdf`** | PDF/A archiving (Ghostscript), digital signature, stamping, metadata injection, OCR text layer |
+| **`--post-command-image`** | recompression/resizing, watermarking, EXIF metadata injection, format conversion |
+
+To send a scan somewhere the app does not deliver to, such as mail, chat or another printer, see [Sending scans elsewhere](docs/sending-scans-elsewhere.md).
+
+Each value is a program followed by its arguments, so quote any argument containing spaces. A command takes one of three shapes, and the shape is decided by whether it mentions `{output}`:
+
+**1. Replace the file — write the result to `{output}`.** The command must produce that exact file; it then replaces the scan, atomically.
+
+```sh
+# PDF/A archiving — `gs` on Linux/macOS, `gswin64c` on Windows
+node-hp-scan-to --address <printer> single-scan --pdf \
+  --post-command-pdf 'gs -dPDFA=2 -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -o "{output}" "{input}"'
+
+# Optimise / linearise an existing PDF
+node-hp-scan-to --address <printer> single-scan --pdf \
+  --post-command-pdf 'qpdf --linearize "{input}" "{output}"'
+
+# Stamp a watermark on every image page
+node-hp-scan-to --address <printer> single-scan \
+  --post-command-image 'magick "{input}" -gravity center -pointsize 48 -annotate +0+0 DRAFT "{output}"'
+```
+
+**2. Edit the file in place — do not use `{output}`.** The command updates `{input}` and must leave it there.
+
+```sh
+# EXIF metadata on a Jpeg; -overwrite_original avoids leaving a .jpg_original
+node-hp-scan-to --address <printer> single-scan \
+  --post-command-image 'exiftool -overwrite_original -XResolution=200 "{input}"'
+```
+
+**3. Produce a companion file beside the scan.** The command leaves `{input}` alone and drops a new file next to it. That file travels with the scan — see [Files created beside the scan](#files-created-beside-the-scan).
+
+```sh
+# OCR the page to <page>.txt beside it. tesseract takes an output *base*
+# name and appends `.txt`, hence {input} is passed twice.
+node-hp-scan-to --address <printer> single-scan \
+  --post-command-image 'tesseract "{input}" "{input}"'
+```
+
+> ℹ️ A command is started directly, **without a shell**: file names are passed as single arguments and are never interpreted as shell syntax. Pipes, redirections, `&&` and variable expansion are therefore not available — the only values at hand are the two placeholders. Run a script or wrapper if you need more.
+
+In the config file, each key accepts the same command line as a string, or an explicit argument list:
+
+```json
+{
+  "post_command_pdf": ["gs", "-dPDFA=2", "-dBATCH", "-dNOPAUSE", "-sDEVICE=pdfwrite", "-o", "{output}", "{input}"],
+  "post_command_image": ["exiftool", "-overwrite_original", "-XResolution=200", "{input}"]
+}
+```
+
+A command supports two placeholders:
+
+- `{input}`: the absolute path of the generated file. It is **required**: a command without it cannot run on the scan and is rejected at startup.
+- `{output}`: an absolute temporary file path. When the command contains `{output}`, the resulting file **replaces the original file** if the command succeeds. A command that cannot overwrite its input in place (Ghostscript is one) should therefore write to `{output}`.
+
+When the command does not use `{output}`, it is expected to modify the file in place.
+
+Failure policy: the scan flow never fails because of a hook. If a command cannot be started, exits with a non-zero code, runs longer than the timeout, produces no `{output}` file, or leaves an empty file (or a symbolic link) in place of the scan, the original file is kept and an error is logged — the flow continues as if that command had not been configured.
+
+The timeout is shared by both commands and defaults to 5 minutes, generous enough for a conversion over a large multi-page scan. It can be changed with `--post-command-timeout <milliseconds>` or `post_command_timeout` in the config file (at most `2147483647`, the largest delay a timer honours, so a value that would be silently cut to 1 ms is refused); the `POST_COMMAND_TIMEOUT` environment variable (milliseconds) sets the fallback default when neither is given, and an unusable value there falls back to the default too. Precedence is the usual **CLI flag → config file → environment/default**, e.g. `node-hp-scan-to ... --post-command-timeout 60000`.
+
+In the container, the two commands are set with the `POST_COMMAND_PDF` and `POST_COMMAND_IMAGE` environment variables, and `POST_COMMAND_TIMEOUT` sets the fallback timeout — see [Docker Environment Variables](#docker-environment-variables). The command runs **inside** the container, so the program must be part of the image: the published image ships no converter, extend it with the tools you need (`FROM manuc66/node-hp-scan-to:latest` then `apk add --no-cache ghostscript`, for example).
+
+##### Files created beside the scan
+
+A command is free to write additional files next to its input (an OCR text, a signature, a manifest). A file is recognized as one of them by its name: it must be named after the file the command received (`page.jpg` → `page.jpg.txt`, `scan.pdf` → `scan.pdf.p7s`). Any other file appearing beside the scan while it is being processed — written by another program, or by the next scan in `listen` — is left untouched: neither delivered nor removed.
+
+Files recognized as sidecars belong to the scan, so:
+
+- **S3 and Nextcloud** receive them alongside the scan itself, and only when they actually received that scan: a sidecar is never sent to a target where the scan itself is missing;
+- **Paperless does not**: every upload there becomes a standalone document, and a sidecar would appear as an unrelated entry rather than a companion of the scan.
+
+A sidecar is removed with the scan only when `keep_files` is false **and** it was actually delivered somewhere. If no target accepts it (Paperless-only setup), or if its upload failed, it stays on disk: the hook's output is never thrown away without being sent anywhere.
+
+A failed sidecar upload is reported as a warning only: the scan itself already reached its targets, so the scan is not marked failed and its files are cleaned up normally. In a Paperless-only setup there is nowhere for sidecars to go, so they stay on disk while the scan is cleaned up and accumulate over successive scans; configure an S3 or Nextcloud target if the hook produces files you want delivered (a warning naming the kept files is logged).
 
 #### Paper Size Configuration
 
@@ -399,282 +882,25 @@ environment:
 }
 ```
 
-##### `listen`
+#### Duplex scanning
 
-By default, this app runs the `listen` command as the default mode. It will listen to the print for new job and trigger based on the selection on the device.
+If the device can scan both sides by itself (duplex ADF):
 
-Run `npx node-hp-scan-to listen --help` to get the full list of command options.
+- `single-scan` and `adf-autoscan`: add `--duplex`.
+- `listen`: choose the duplex option on the printer panel for the job.
 
-<!-- BEGIN HELP command: listen -->
-```text
-Usage:  listen [options]
+If it can only scan one side, `--add-emulated-duplex` (listen mode only) adds a second destination, suffixed with `duplex`. The first time you select it the front side is scanned; selecting it again scans the back side and the app assembles both sides into one document. The pending front side is kept until you scan the back side or start a single-sided job.
 
-Listen the device for new scan job to save to this target
+`--add-emulated-duplex <mode>` says how the two passes are assembled (default `document-wise`). Feeder models differ in the order in which each pass comes out, so pick the mode that matches yours:
 
-Output Options:
-  -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
-  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
-  -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
-  -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
+| Mode            | Front pass | Back pass |
+| --------------- | ---------- | --------- |
+| `page-wise`     | in order   | in order  |
+| `document-wise` | in order   | reversed  |
+| `reverse-front` | reversed   | in order  |
+| `reverse-both`  | reversed   | reversed  |
 
-Scan Options:
-  -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
-  --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
-  -w, --width <width>                                              Width in pixels of the scans (default: max)
-  -h, --height <height>                                            Height in pixels of the scans (default: max)
-  --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
-  --paper-orientation <orientation>                                Paper orientation: portrait (default) or landscape. Applied to --paper-size only. (choices: "portrait", "landscape")
-  --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
-  -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
-  --prefer-eSCL                                                    Prefer eSCL protocol if available
-
-Options:
-  --device-up-polling-interval <deviceUpPollingInterval>           Device up polling interval in milliseconds
-  --help                                                           display help for command
-
-Paperless Options:
-  -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
-  -o, --paperless-token <paperless_token>                          The paperless token. Either this or paperless-token-file is required for paperless integration.
-  --paperless-token-file <paperless_token_file>                    File name that contains the paperless token. Either this or paperless-token is required for paperless integration.
-  --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
-  --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
-
-Nextcloud Options:
-  --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
-  --nextcloud-username <nextcloud_username>                        The nextcloud username
-  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.
-  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
-  --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
-
-S3 Options:
-  --s3-url <s3_url>                                                The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)
-  --s3-region <s3_region>                                          The S3 region used for request signing (default: us-east-1)
-  --s3-access-key-id <s3_access_key_id>                            The S3 access key id
-  --s3-secret-access-key <s3_secret_access_key>                    The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.
-  --s3-secret-access-key-file <s3_secret_access_key_file>          File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.
-  --s3-bucket <s3_bucket>                                          The S3 bucket where scans are uploaded
-  --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
-  --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
-  --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
-
-Device Control Screen Options:
-  -l, --label <label>                                              The label to display on the device (the default is the hostname)
-  --add-emulated-duplex [mode]                                     Enable emulated duplex scanning, with optional assembly mode (default: document-wise) (choices: "page-wise", "document-wise", "reverse-front", "reverse-both")
-  --emulated-duplex-label <label>                                  The emulated duplex label to display on the device (the default is to suffix the main label with duplex)
-
-Global Options:
-  -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
-  -n, --name <name>                                                Name of the device to lookup for on the network
-  -D, --debug                                                      Enable debug
-  --health-check                                                   Start an http health check endpoint
-  --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
-```
-<!-- END HELP command: listen -->
-
-In `listen` (and `adf-autoscan`) mode, scans are delivered on a background queue and the PDF merge runs in a worker thread, so the loop keeps responding to the printer while processing — see the [processing pipeline](docs/processing-pipeline.md) page.
-
-##### `adf-autoscan`
-
-Running `npx node-hp-scan-to adf-autoscan` will automatically trigger a scan job as soon as the ADF (automatic document feeder) on the printer's scanner is loaded with paper.
-
-You can also set the environment variable `MAIN_COMMAND="adf-autoscan"` with Docker. Example:
-
-```sh
-docker run -e MAIN_COMMAND="adf-autoscan" -e CMDLINE=--debug docker.io/manuc66/node-hp-scan-to:latest
-```
-
-###### Logging
-
-Logs go to stdout. The default output is **backward compatible** with the
-previous plain-text messages (one message per line), so existing scripts that
-parse stdout keep working unchanged. In an interactive terminal they are
-formatted for humans instead.
-
-Structured JSON lines are available **opt-in** via `LOG_FORMAT=json` — the
-recommended choice for docker log drivers and aggregators such as Loki or ELK.
-
-| Env var      | Values                            | Effect                                                                                                                                                                                                                                                   |
-| ------------ | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LOG_LEVEL`  | `trace` … `fatal`                 | Minimum level to emit (default `info`). `debug` shows HTTP traces too.                                                                                                                                                                                   |
-| `LOG_FORMAT` | `auto`, `pretty`, `plain`, `json` | `auto` (default): pretty in a terminal, legacy plain message text otherwise. `pretty` forces time/level/module output anywhere (no ANSI in non-TTY). `plain` forces the legacy message-only text anywhere. `json` forces structured JSON lines anywhere. |
-
-Sensitive fields (`password`, `token`, `authToken`, `Authorization`) are
-redacted as `[Redacted]` in every log line.
-
-Run `npx node-hp-scan-to adf-autoscan --help` to get command line usage help.
-
-<!-- BEGIN HELP command: adf-autoscan -->
-```text
-Usage:  adf-autoscan [options]
-
-Automatically trigger a new scan job to this target once paper is detected in
-the automatic document feeder (adf)
-
-Output Options:
-  -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
-  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
-  -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
-  -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
-  --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
-
-Scan Options:
-  -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
-  --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
-  -w, --width <width>                                              Width in pixels of the scans (default: max)
-  -h, --height <height>                                            Height in pixels of the scans (default: max)
-  --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
-  --paper-orientation <orientation>                                Paper orientation: portrait (default) or landscape. Applied to --paper-size only. (choices: "portrait", "landscape")
-  --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
-  -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
-  --prefer-eSCL                                                    Prefer eSCL protocol if available
-  --duplex                                                         If specified, all the scans will be in duplex if the device support it
-
-Options:
-  --device-up-polling-interval <deviceUpPollingInterval>           Device up polling interval in milliseconds
-  --help                                                           display help for command
-
-Paperless Options:
-  -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
-  -o, --paperless-token <paperless_token>                          The paperless token. Either this or paperless-token-file is required for paperless integration.
-  --paperless-token-file <paperless_token_file>                    File name that contains the paperless token. Either this or paperless-token is required for paperless integration.
-  --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
-  --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
-
-Nextcloud Options:
-  --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
-  --nextcloud-username <nextcloud_username>                        The nextcloud username
-  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.
-  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
-  --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
-
-S3 Options:
-  --s3-url <s3_url>                                                The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)
-  --s3-region <s3_region>                                          The S3 region used for request signing (default: us-east-1)
-  --s3-access-key-id <s3_access_key_id>                            The S3 access key id
-  --s3-secret-access-key <s3_secret_access_key>                    The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.
-  --s3-secret-access-key-file <s3_secret_access_key_file>          File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.
-  --s3-bucket <s3_bucket>                                          The S3 bucket where scans are uploaded
-  --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
-  --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
-  --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
-
-Auto-scan Options:
-  --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
-  --start-scan-delay <startScanDelay>                              Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan
-
-Global Options:
-  -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
-  -n, --name <name>                                                Name of the device to lookup for on the network
-  -D, --debug                                                      Enable debug
-  --health-check                                                   Start an http health check endpoint
-  --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
-```
-<!-- END HELP command: adf-autoscan -->
-
-##### `clear-registrations`
-
-Running `npx node-hp-scan-to clear-registratons` will clear all registered targets on the device (useful for trial and error and debugging).
-
-Run `npx node-hp-scan-to clear-registrations --help` to get command line usage help.
-
-You can also set the environment variable `MAIN_COMMAND="clear-registrations"` with Docker. Example:
-
-```sh
-docker run -e MAIN_COMMAND="clear-registrations" docker.io/manuc66/node-hp-scan-to:latest
-```
-
-<!-- BEGIN HELP command: clear-registrations -->
-```text
-Usage:  clear-registrations [options]
-
-Clear the list or registered target on the device
-
-Options:
-  -h, --help                               display help for command
-
-Global Options:
-  -a, --address <ip>                       IP address of the device, when specified, the ip will be used instead of the name
-  -n, --name <name>                        Name of the device to lookup for on the network
-  -D, --debug                              Enable debug
-  --health-check                           Start an http health check endpoint
-  --health-check-port <health-check-port>  Define the port for the HTTP health check endpoint
-```
-<!-- END HELP command: clear-registrations -->
-
-##### `single-scan`
-
-Running `npx node-hp-scan-to single-scan` will directly issue a single scan job
-
-Run `npx node-hp-scan-to single-scan --help` to get command line usage help.
-
-You can also set the environment variable `MAIN_COMMAND="single-scan"` with Docker. Example:
-
-```sh
-docker run -e MAIN_COMMAND="single-scan" docker.io/manuc66/node-hp-scan-to:latest
-```
-
-<!-- BEGIN HELP command: single-scan -->
-```text
-Usage:  single-scan [options]
-
-Trigger a new scan job
-
-Output Options:
-  -d, --directory <dir>                                            Directory where scans are saved (default: /tmp/scan-to-pcRANDOM)
-  -p, --pattern <pattern>                                          Pattern for filename (i.e. "scan"_dd.mm.yyyy_HHMMss, default would be scanPageNUMBER), make sure that the pattern is enclosed in extra quotes, avoid ":" as it is invalid on windows
-  -f, --image-format <format>                                      Image format for scans (when not PDF): Jpeg (default) or Bmp
-  -k, --keep-files                                                 Keep the scan files on the file system when sent to external systems for local backup and easy access (default: false)
-  --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
-
-Scan Options:
-  -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
-  --mode <mode>                                                    Selects the scan mode (default: Color) (choices: "Gray", "Color")
-  -w, --width <width>                                              Width in pixels of the scans (default: max)
-  -h, --height <height>                                            Height in pixels of the scans (default: max)
-  --paper-size <size>                                              Paper size preset: A4 (default), Letter, Legal, A5, B5, or Max (case-insensitive)
-  --paper-orientation <orientation>                                Paper orientation: portrait (default) or landscape. Applied to --paper-size only. (choices: "portrait", "landscape")
-  --paper-dim <dimensions>                                         Custom paper dimensions with unit (e.g., 21x29.7cm, 8.5x11in, 210x297mm). Cannot be used with --paper-size.
-  -t, --temp-directory <dir>                                       Temp directory used for processing (default: /tmp/scan-to-pcRANDOM)
-  --prefer-eSCL                                                    Prefer eSCL protocol if available
-  --duplex                                                         If specified, all the scans will be in duplex if the device support it
-
-Options:
-  --device-up-polling-interval <deviceUpPollingInterval>           Device up polling interval in milliseconds
-  --help                                                           display help for command
-
-Paperless Options:
-  -s, --paperless-post-document-url <paperless_post_document_url>  The paperless post document url (example: https://domain.tld/api/documents/post_document/)
-  -o, --paperless-token <paperless_token>                          The paperless token. Either this or paperless-token-file is required for paperless integration.
-  --paperless-token-file <paperless_token_file>                    File name that contains the paperless token. Either this or paperless-token is required for paperless integration.
-  --paperless-group-multi-page-scan-into-a-pdf                     Combine multiple scanned images into a single PDF document
-  --paperless-always-send-as-pdf-file                              Always convert scan job to pdf before sending to paperless
-
-Nextcloud Options:
-  --nextcloud-url <nextcloud_url>                                  The nextcloud url (example: https://domain.tld)
-  --nextcloud-username <nextcloud_username>                        The nextcloud username
-  --nextcloud-password <nextcloud_app_password>                    The nextcloud app password for username. Either this or nextcloud-password-file is required for nextcloud integration.
-  --nextcloud-password-file <nextcloud_app_password_file>          File name that contains the nextcloud app password for username. Either this or nextcloud-password is required for nextcloud integration.
-  --nextcloud-upload-folder <nextcloud_upload_folder>              The upload folder where documents or images are uploaded (default: scan)
-
-S3 Options:
-  --s3-url <s3_url>                                                The S3-compatible endpoint url (example: https://s3.us-east-1.amazonaws.com)
-  --s3-region <s3_region>                                          The S3 region used for request signing (default: us-east-1)
-  --s3-access-key-id <s3_access_key_id>                            The S3 access key id
-  --s3-secret-access-key <s3_secret_access_key>                    The S3 secret access key. Either this or s3-secret-access-key-file is required for the s3 integration.
-  --s3-secret-access-key-file <s3_secret_access_key_file>          File name that contains the S3 secret access key. Either this or s3-secret-access-key is required for the s3 integration.
-  --s3-bucket <s3_bucket>                                          The S3 bucket where scans are uploaded
-  --s3-prefix <s3_prefix>                                          The folder (prefix) inside the bucket where scans are uploaded (default: bucket root)
-  --s3-force-path-style                                            Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)
-  --s3-session-token <s3_session_token>                            The S3 session token for temporary credentials (optional)
-
-Global Options:
-  -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
-  -n, --name <name>                                                Name of the device to lookup for on the network
-  -D, --debug                                                      Enable debug
-  --health-check                                                   Start an http health check endpoint
-  --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
-```
-<!-- END HELP command: single-scan -->
+"Reversed" means the sheets come out of the feeder back to front. Whatever the mode, the assembled document is in page order 1, 2, 3, …
 
 ### Run with Docker
 
@@ -698,6 +924,8 @@ You could however use Docker's [macvlan](https://docs.docker.com/engine/network/
 
 All scanned files are written to the volume `/scan`, the filename can be changed with the `PATTERN` environment variable. For the correct permissions to the volume set the environment variables `PUID` and `PGID` to that of the user running the container (usually `PUID=1000` and `PGID=1000`).
 
+When `WEBHOOK_URL` is set, scan events are sent best-effort: a single POST per event, and failures are logged. Set `WEBHOOK_PAYLOAD=minimal` when the receiver is not on your network: the event then carries no scanner IP, no printer destination label and no local file path.
+
 #### Docker Environment Variables
 
 List of supported environment variables and their meaning, or correspondence with [command-line flags](#cli-options):
@@ -708,6 +936,9 @@ List of supported environment variables and their meaning, or correspondence wit
 | `DIR`                         | Directory to use                                                                                              | `-d` / `--directory`                                                          |
 | `IP`                          | IP address for the program                                                                                    | `-a` / `--address`                                                            |
 | `KEEP_FILES`                  | If set, scanned files are not deleted after uploading to Paperless-ngx or Nextcloud                           |                                                                               |
+| `POST_COMMAND_PDF`            | Command run on every generated PDF before it is uploaded or cleaned up (e.g. a Ghostscript PDF/A conversion)  | `--post-command-pdf`                                                          |
+| `POST_COMMAND_IMAGE`          | Command run on every delivered image page before it is uploaded or cleaned up                                 | `--post-command-image`                                                        |
+| `POST_COMMAND_TIMEOUT`        | Fallback timeout in milliseconds for those commands when the flag or the config file sets none                | `--post-command-timeout`                                                      |
 | `LABEL`                       | Label to set on the device's display as a scan target                                                         | `-l` / `--label`                                                              |
 | `NAME`                        | Name of the device to lookup for on the network                                                               | `-n` / `--name`                                                               |
 | `ADD_EMULATED_DUPLEX`         | Enable emulated duplex scanning, with optional assembly mode (default: document-wise)                         | `--add-emulated-duplex [mode]`                                                |
@@ -717,8 +948,8 @@ List of supported environment variables and their meaning, or correspondence wit
 | `NEXTCLOUD_URL`               | Nextcloud URL                                                                                                 | Example: `https://nextcloud.example.tld`                                      |
 | `NEXTCLOUD_USERNAME`          | Nextcloud username                                                                                            |                                                                               |
 | `PAPERLESS_POST_DOCUMENT_URL` | Paperless-ngx post document URL (if provided with token, a PDF is uploaded)                                   | Example: `http://<paperless-host>:<port>/api/documents/post_document/`        |
-| `PAPERLESS_TOKEN`             | Paperless-ngx API token (either this or `NEXTCLOUD_PASSWORD_FILE` is required; file takes precedence)         | Example: `xxxxxxxxxxxx...`                                                    |
-| `PAPERLESS_TOKEN_FILE`        | File containing paperless-ngx API token (either this or `PAPERLESS_TOKEN_FILE` is required; takes precedence) | Example: `./paperless_token.secret` (preferred for Docker Compose secrets)    |
+| `PAPERLESS_TOKEN`             | Paperless-ngx API token (either this or `PAPERLESS_TOKEN_FILE` is required; file takes precedence)         | Example: `xxxxxxxxxxxx...`                                                    |
+| `PAPERLESS_TOKEN_FILE`        | File containing paperless-ngx API token (either this or `PAPERLESS_TOKEN` is required; takes precedence) | Example: `./paperless_token.secret` (preferred for Docker Compose secrets)    |
 | `PATTERN`                     | Pattern to use                                                                                                | `-p` / `--pattern`                                                            |
 | `PGID`                        | ID of the group that will run the program                                                                     |                                                                               |
 | `PUID`                        | ID of the user that will run the program                                                                      |                                                                               |
@@ -736,6 +967,15 @@ List of supported environment variables and their meaning, or correspondence wit
 | `S3_PREFIX`                   | Folder (prefix) inside the bucket (default bucket root)                                                       | `--s3-prefix`                                                                 |
 | `S3_FORCE_PATH_STYLE`         | Force path-style addressing (required for MinIO, Cloudflare R2, Wasabi...)                                    | `--s3-force-path-style`                                                       |
 | `S3_SESSION_TOKEN`            | S3 session token for temporary credentials                                                                    | `--s3-session-token`                                                          |
+| `WEBHOOK_URL`                 | Webhook URL to POST scan events to (JSON with an idempotency-key header, best-effort delivery)                             | `--webhook-url`                                                               |
+| `WEBHOOK_AUTH`                | Auth scheme: `none`, `hmac`, `bearer` or `basic` (default: inferred from the credentials)                     | `--webhook-auth`                                                              |
+| `WEBHOOK_AUTH_HEADER`         | Header name carrying the HMAC signature (default `x-webhook-signature`)                                       | `--webhook-auth-header`                                                       |
+| `WEBHOOK_SECRET`              | HMAC-SHA256 signing secret (either this or `WEBHOOK_SECRET_FILE` is required; file takes precedence)          |                                                                               |
+| `WEBHOOK_SECRET_FILE`         | File containing the signing secret (preferred for Docker Compose secrets)                                     | Example: `./webhook_secret.secret`                                            |
+| `WEBHOOK_TOKEN`               | Bearer token sent as `Authorization: Bearer`                                                                  | `--webhook-token`                                                             |
+| `WEBHOOK_USERNAME`            | Basic auth username sent as `Authorization: Basic`                                                            | `--webhook-username`                                                          |
+| `WEBHOOK_PASSWORD`            | Basic auth password for `WEBHOOK_USERNAME`                                                                    | `--webhook-password`                                                          |
+| `WEBHOOK_PAYLOAD`             | Event profile: `full` (default) or `minimal` (no scanner IP, destination label or local path)                 | `--webhook-payload`                                                           |
 
 **Additional Notes:**
 
@@ -841,11 +1081,77 @@ spec:
             claimName: incoming-scans
 ```
 
+### Paperless-ngx
+
+There are two ways to get scans into Paperless-ngx.
+
+**Through the API.** Point the app at the Paperless upload endpoint and give it a token:
+
+```sh
+npx node-hp-scan-to -a 192.168.0.5 \
+  --paperless-post-document-url https://paperless.example.tld/api/documents/post_document/ \
+  --paperless-token-file /run/secrets/paperless_token
+```
+
+Each scan is uploaded to Paperless' `post_document` endpoint — no shared folder required. How a multi-page scan is turned into documents is controlled by:
+
+| Options                                        | Result                                    |
+| ---------------------------------------------- | ----------------------------------------- |
+| *(none)*                                       | one image document per page               |
+| `--paperless-always-send-as-pdf-file`          | one PDF document per page                 |
+| `--paperless-group-multi-page-scan-into-a-pdf` | a single PDF document for the whole scan  |
+
+The upload does not go through Paperless' `consume` folder, so Paperless' **`preconsume` and `postconsume` scripts do not run** on documents uploaded this way.
+
+**Through the consume folder.** Share Paperless' `consume` directory (SMB, FTP…) and point `--directory` at it. The files are ingested like any other drop and the `preconsume`/`postconsume` scripts *do* run — at the price of a shared folder.
+
+`--keep-files` keeps the local copy after a successful upload. Document splitting (barcode/separator pages), duplicate detection, OCR and blank-page removal are Paperless features or scripts, not options of this app.
+
 ### Configure
 
-Configuration can be done in a config file instead of using command line switches or environment variables in docker. The schema of the configuration file can be found in [FileConfig](src/type/FileConfig.ts)
+Settings can live in a JSON file instead of CLI flags. The file is read with the [`config`](https://www.npmjs.com/package/config) package; the shipped default is `config/default.json`, standalone binaries look for a `config` folder next to the executable, and `NODE_CONFIG_DIR` overrides the location.
 
-The configuration file is handled by https://www.npmjs.com/package/config
+```json
+{
+  "name": "Officejet 6500 E710n-z",
+  "directory": "/var/lib/node-hp-scan-to/scans",
+  "pattern": "scan_yyyy-mm-dd_HHMMss",
+  "resolution": 300,
+  "mode": "Gray",
+  "paper_size": "Letter",
+  "add_emulated_duplex": true,
+  "emulated_duplex_assembly_mode": "document-wise",
+  "paperless_post_document_url": "https://paperless.example.tld/api/documents/post_document/",
+  "paperless_token_file": "/run/secrets/paperless_token",
+  "keep_files": false
+}
+```
+
+Keep your own settings out of the tracked file: `config/local.json` is read on top of `config/default.json` and is ignored by git, so personal values (device address, output directory, credentials) are never committed. To keep the file outside the checkout altogether, point `NODE_CONFIG_DIR` at another directory — that is what the standalone binaries do with the `config` folder next to the executable.
+
+Precedence, highest first: **CLI flag → config file → built-in default**. (The Docker image's environment variables are translated into CLI flags by its entrypoint, so from the app's point of view they are flags; `CMDLINE` is appended last and therefore wins over them.)
+
+Keys and types are validated at startup against [`src/type/FileConfig.ts`](src/type/FileConfig.ts). `paper_size` and `paper_dim` are mutually exclusive, as are `width`/`height` and `paper_size`/`paper_dim`.
+
+## Troubleshooting
+
+**The printer no longer lists the app as a destination.** HP devices sometimes drop a registered target. Restart the app; if the entry is stale on the printer, clear the registrations and let the app register itself again:
+
+```sh
+npx node-hp-scan-to clear-registrations --address 192.168.0.5
+```
+
+Prefer `-n/--name` over `-a/--address` so a changed DHCP lease does not break the link; `discover` lists the devices currently reachable.
+
+**Nothing shows up in "Scan to Computer".** In Docker, discovery over multicast does not work on the default network, so the app cannot register itself: pass the printer IP (`IP`/`--address`), or attach the container to a [macvlan network](#run-with-docker) and use `NAME`.
+
+**Scans land in `/tmp`.** No output directory was configured — set `-d/--directory` (or `DIR`). The Docker image defaults to `/scan`.
+
+**Permission denied when writing scans.** In Docker, set `PUID`/`PGID` to the owner of the mounted volume.
+
+**Scan fails with "the connection to the computer was lost" / hangs after "ADF status: Loaded".** The legacy (non-eSCL) scan path talks to the printer's scan service on TCP 8080 in addition to port 80. A firewall that only allows port 80 lets registration succeed but blocks job creation, leaving the connection in `SYN-SENT`. Open TCP 8080 (in addition to 80) from the service host to the printer.
+
+**Something else.** Re-run with `-D/--debug` and attach the log to the issue; `LOG_FORMAT=json` produces structured lines for aggregators.
 
 ## Build Source Code
 

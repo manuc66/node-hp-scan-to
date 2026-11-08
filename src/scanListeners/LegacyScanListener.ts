@@ -92,6 +92,7 @@ export default class LegacyScanListener implements ScanListener {
         isDuplexSingleSide: request.isDuplexSingleSide,
       },
       event.agingStamp,
+      this.userActionTimeout,
     );
     if (nextEvent?.compEventURI === undefined) {
       return null;

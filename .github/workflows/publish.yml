@@ -22,11 +22,11 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 12.4.2
+          version: 12.18.0
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version: '26'
           registry-url: 'https://registry.npmjs.org/'
           cache: 'pnpm'
 
@@ -53,16 +53,16 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 12.4.2
+          version: 12.18.0
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version: '26'
           cache: 'pnpm'
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: '1.4.2'
+          bun-version: '1.4.4'
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
@@ -282,7 +282,7 @@ jobs:
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
 
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0.24.2
+        uses: anchore/sbom-action@v0.24.3
         with:
           path: .
           format: cyclonedx-json

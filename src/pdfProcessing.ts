@@ -4,6 +4,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
 import { getLoggerForFile } from "./logger.js";
+import { runFilePostProcessing } from "./filePostProcessing.js";
+import type { PostCommand } from "./postCommand.js";
 
 const logger = getLoggerForFile(import.meta.url);
 
@@ -14,6 +16,8 @@ export async function mergeToPdf(
   filePattern: string | undefined,
   date: Date,
   deleteFiles: boolean,
+  postCommandPdf?: PostCommand,
+  postCommandTimeout?: number,
 ): Promise<string | null> {
   if (scanJobContent.elements.length > 0) {
     const pdfFilePath: string = await PathHelper.getFileForScan(
@@ -23,7 +27,13 @@ export async function mergeToPdf(
       "pdf",
       date,
     );
-    await createPdfFrom(scanJobContent, pdfFilePath, date);
+    await createPdfFrom(
+      scanJobContent,
+      pdfFilePath,
+      date,
+      postCommandPdf,
+      postCommandTimeout,
+    );
     if (deleteFiles) {
       await Promise.all(scanJobContent.elements.map((e) => fs.unlink(e.path)));
     }
@@ -37,11 +47,19 @@ export async function convertToPdf(
   scanPage: ScanPage,
   deleteFile: boolean,
   date?: Date,
+  postCommandPdf?: PostCommand,
+  postCommandTimeout?: number,
 ): Promise<string | null> {
   const fileName = path.basename(scanPage.path, path.extname(scanPage.path));
   const pdfFilePath = path.join(path.dirname(scanPage.path), `${fileName}.pdf`);
 
-  await createPdfFrom({ elements: [scanPage] }, pdfFilePath, date);
+  await createPdfFrom(
+    { elements: [scanPage] },
+    pdfFilePath,
+    date,
+    postCommandPdf,
+    postCommandTimeout,
+  );
   if (deleteFile) {
     await fs.unlink(scanPage.path);
   }
@@ -52,12 +70,21 @@ export async function createPdfFrom(
   scanContent: ScanContent,
   destination: string,
   date?: Date,
+  postCommandPdf?: PostCommand,
+  postCommandTimeout?: number,
 ) {
   await runPdfMerge({
     pages: scanContent.elements,
     destination,
     date: date?.toISOString(),
   });
+  if (postCommandPdf !== undefined) {
+    await runFilePostProcessing(
+      postCommandPdf,
+      destination,
+      postCommandTimeout,
+    );
+  }
 }
 
 interface PdfMergeJobInput {
@@ -66,9 +93,7 @@ interface PdfMergeJobInput {
   date: string | undefined;
 }
 
-type PdfMergeWorkerOutcome =
-  | { ok: true }
-  | { ok: false; error: string };
+type PdfMergeWorkerOutcome = { ok: true } | { ok: false; error: string };
 
 /**
  * Builds the PDF in a worker thread: jspdf works synchronously in-process, so
@@ -97,9 +122,7 @@ function runPdfMerge(job: PdfMergeJobInput): Promise<void> {
       void worker.terminate();
     };
     worker.once("message", (message: PdfMergeWorkerOutcome) => {
-      finish(() =>
-        message.ok ? resolve() : reject(new Error(message.error)),
-      );
+      finish(() => (message.ok ? resolve() : reject(new Error(message.error))));
     });
     worker.once("error", (error: Error) => {
       finish(() => reject(error));

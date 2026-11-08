@@ -41,6 +41,53 @@ All notable changes to this project are documented in this file.
   universal `.dmg` on both Intel and Apple Silicon Macs. Its version and DMG
   checksum are refreshed automatically on master after each stable release
   (same mechanism as the Nix flake hashes).
+- **Post-processing commands**: `--post-command-pdf` and
+  `--post-command-image` (or `post_command_pdf` / `post_command_image` in the
+  config file) run external commands over the generated PDFs and the image
+  pages respectively, before they are uploaded or cleaned up, e.g. to produce
+  PDF/A archives, sign documents, inject metadata or watermark images, without
+  bundling or maintaining any of those tools in the project. Each command only
+  receives the file type it was configured for. It is given as a program and
+  its arguments (the config keys also accept an explicit argument list) and
+  supports `{input}` (the file path) and `{output}` (a temp file that replaces
+  the file on success); without `{output}` the command is expected to modify
+  the file in place. It runs without a shell, so file names are never
+  interpreted as shell syntax, and it is stopped if it runs for too long (the
+  timeout is configurable with `--post-command-timeout` /
+  `post_command_timeout`, with `POST_COMMAND_TIMEOUT` as the fallback default;
+  a value a timer cannot honour is refused rather than silently cut to 1 ms).
+  Commands that fail never block the flow: the original file is kept and the
+  error is logged, and a command leaving an empty file or a symbolic link in
+  place of the scan counts as a failure. In the container the commands are set
+  with the `POST_COMMAND_PDF` / `POST_COMMAND_IMAGE` environment variables
+  (`POST_COMMAND_TIMEOUT` for the fallback timeout). Files a command writes
+  beside the scan are treated as part of it — recognized by taking their name
+  from the scan file, any other file appearing beside the scan is left
+  untouched: S3 and Nextcloud receive them next to the scan, Paperless does
+  not (an upload there would become a standalone document), and they are
+  removed with the scan only once they were actually delivered.
+- **Webhook notifications**: every completed scan POSTs a JSON event
+  (`scan-completed`, or `scan-delivery-failed` when a delivery target failed)
+  to a configurable URL, carrying the scan metadata, per-page descriptors, the
+  outcome of each delivery target and one descriptor per delivered file
+  (name, size, SHA-256 and where to fetch it: local path, S3 `bucket`/`key` or
+  Nextcloud WebDAV URL) — including the sidecars a post-command writes beside
+  the scan and the PDFs the paperless stage generates. Events are signed with HMAC-SHA256 (custom header supported) or
+  authenticated with bearer/basic auth, sent with an `idempotency-key` header;
+  delivery is best-effort (a single POST, failures are logged). A webhook is
+  a notification, not a delivery target: configured alone it never removes the
+  scan, retention stays governed by the delivery targets and `keep_files`.
+  Each `delivery` entry also carries the identifiers the target returned —
+  Paperless task ids, Nextcloud WebDAV URLs, S3 `bucket`/`key` — so a consumer
+  can still find the document when no local file is left.
+  Two payload profiles: `full` (default, with the scanner IP, the printer
+  destination label and the local file paths) and `minimal` (none of those and
+  no raw delivery error text, so the event can go to a receiver outside the
+  local network), selected with `--webhook-payload` / `webhook_payload` /
+  `WEBHOOK_PAYLOAD`.
+  Configured with the new `--webhook-*` CLI options, the matching `webhook_*`
+  config file keys or the `WEBHOOK_*` environment variables (Docker). The
+  event contract is described in `protocol_doc/webhook/openapi.yaml`.
 
 ### Changed
 
@@ -54,6 +101,12 @@ All notable changes to this project are documented in this file.
   thus rejected on Windows but still fine on POSIX systems. The documented
   pattern example (`--pattern` help, README) was updated to the `: `-free
   `"scan"_dd.mm.yyyy_HHMMss` form, which works everywhere.
+- **Default configuration**: the tracked `config/default.json` no longer
+  carries a hardcoded device address, so the shipped default works for any
+  device instead of pointing at one network. Personal settings belong in
+  `config/local.json`, which the `config` package merges over the default and
+  git now ignores, or in a directory of your own via `NODE_CONFIG_DIR`; the
+  README documents both.
 
 ### Security
 
@@ -64,6 +117,20 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- **Flatbed multi-page scans no longer crash when the printer drops the idle
+  connection**: `waitForScanEventFromTarget` (the wait between pages on the
+  platen) now finalizes the current scan instead of propagating the
+  `ECONNRESET`/`504` when the printer cuts the connection, and bounds the
+  wait using the printer-reported `UserActionTimeout` (issue #1802, builds
+  on #1543).
+- **Debian/RPM packages no longer ship the OpenRC init script**, which made
+  `systemctl enable` fail on systemd distributions: the entry in
+  `packaging/nfpm.yaml` is now restricted to the `apk` packager
+  (issue #1803).
+- **Documentation mentions port 8080**: the Linux networking notes and a
+  troubleshooting entry now state that scan job creation/page download use
+  TCP 8080 in addition to port 80, and `postJob()`/`downloadPage*()` use
+  timeouts so a filtered port fails with a clear error (issue #1804).
 - **Tests on Windows**: the suite now runs green again on Windows. The README
   help snapshot test compares line endings that git may convert to CRLF, the
   `~` home expansion produced mixed path separators, and the read-only folder

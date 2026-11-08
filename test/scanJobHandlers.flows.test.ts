@@ -318,19 +318,16 @@ describe("scanJobHandlers flows", () => {
         .get("/eSCL/ScanJobs/1/NextDocument")
         .reply(200, jpegBody, { "Content-Type": "image/jpeg" })
         .get("/eSCL/ScanJobs/1/ScanImageInfo")
-        .reply(function () {
-          // This scope only answers http://127.0.0.1 (port 80). Axios omits
-          // the port from the Host header there, but keeps it for 8080 —
-          // so the header proves the download used the port-80 base URL.
-          expect(this.req.headers["host"]).to.equal("127.0.0.1");
-          return [
-            200,
-            fs.readFileSync(
-              path.resolve(__dirname, "./asset/eSCL_ScanImageInfo.xml"),
-              "utf-8",
-            ),
-          ];
-        })
+        // This scope only answers http://127.0.0.1, and nock keys scopes on
+        // the full origin including the port, so this interceptor matches
+        // only when the request went to port 80 — not to 8080.
+        .reply(
+          200,
+          fs.readFileSync(
+            path.resolve(__dirname, "./asset/eSCL_ScanImageInfo.xml"),
+            "utf-8",
+          ),
+        )
         .get("/eSCL/ScannerStatus")
         .reply(200, await readAsset("eSCL_ScannerStatus_completed.xml"));
 

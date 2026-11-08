@@ -181,6 +181,24 @@ describe("s3", () => {
       }
     });
 
+    it("returns the object location of every uploaded file", async () => {
+      const server = await startVerifyingServer();
+      try {
+        const port = (server.address() as AddressInfo).port;
+        const s3Config = buildS3Config(`http://127.0.0.1:${port}`, true);
+        scanJobContent.elements.push(scanPage);
+
+        const references = await uploadImagesToS3(scanJobContent, s3Config);
+
+        const location = s3ObjectLocation(s3Config, fileName);
+        expect(references).to.deep.equal([
+          `${location.bucket}/${location.key}`,
+        ]);
+      } finally {
+        server.close();
+      }
+    });
+
     it("uploads multiple images", async () => {
       const server = await startVerifyingServer();
       try {
@@ -272,7 +290,8 @@ describe("s3", () => {
       nock("https://s3.example.test")
         .matchHeader(
           "x-amz-security-token",
-          (value) => value === undefined,
+          // nock 15 exposes missing headers as null (nock 14 used undefined).
+          (value) => value === undefined || value === null,
         )
         .put("/scans/2026/08/s3_sample.jpg", Buffer.from("fake-jpg-content"))
         .reply(200);

@@ -2,6 +2,10 @@ import { z } from "zod";
 import { DuplexAssemblyMode } from "./DuplexAssemblyMode.js";
 import { ScanFormat, parseScanFormat } from "./scanFormat.js";
 import { parseScanMode, ScanMode } from "./scanMode.js";
+import {
+  postCommandSchema,
+  MAX_POST_PROCESSING_TIMEOUT_MS,
+} from "../postCommand.js";
 
 // Configuration schema for the config file
 export const configSchema = z
@@ -127,9 +131,34 @@ export const configSchema = z
     s3_session_token: z.string().optional(), // Session token for temporary credentials
 
     ///
+    /// Webhook Integration
+    ///
+    webhook_url: z.string().optional(), // Webhook URL to POST scan events to
+    webhook_auth: z
+      .enum(["none", "hmac", "bearer", "basic"])
+      .optional(), // Auth scheme for the webhook request
+    webhook_auth_header: z.string().optional(), // Header name carrying the HMAC signature
+    webhook_secret: z.string().optional(), // HMAC-SHA256 signing secret
+    webhook_secret_file: z.string().optional(), // Path to file containing the signing secret
+    webhook_token: z.string().optional(), // Bearer token
+    webhook_username: z.string().optional(), // Basic auth username
+    webhook_password: z.string().optional(), // Basic auth password
+    webhook_payload: z
+      .enum(["full", "minimal"])
+      .optional(), // Event profile: full (identifiers) or minimal (no identifiers)
+
+    ///
     /// Common to external destination (paperless & nextcloud)
     ///
     keep_files: z.boolean().optional(), // Keep scanned files locally after upload
+    post_command_image: postCommandSchema.optional(), // External command run on delivered image pages
+    post_command_pdf: postCommandSchema.optional(), // External command run on generated PDFs
+    post_command_timeout: z
+      .number()
+      .int()
+      .positive()
+      .max(MAX_POST_PROCESSING_TIMEOUT_MS)
+      .optional(), // Timeout for the post-commands, in milliseconds
 
     ///
     /// Health Check

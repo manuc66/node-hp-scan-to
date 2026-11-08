@@ -1,5 +1,6 @@
 import type DeviceClient from "./DeviceClient.js";
 import type { IEvent } from "./hpModels/Event.js";
+import type { EtagEventTable } from "./hpModels/EventTable.js";
 import Destination from "./hpModels/Destination.js";
 import type {
   RegistrationConfig,
@@ -43,9 +44,19 @@ export async function waitForScanEventFromTarget(
   api: DeviceClient,
   scanTarget: ScanTarget,
   afterEtag: string,
+  userActionTimeout: number | null = null,
 ): Promise<IEvent | undefined> {
   logger.info("Waiting for additional pages or scan completion...");
-  return (await waitForScanEventInternal(api, [scanTarget], afterEtag))?.event;
+  const timeoutMs = resolveUserActionTimeoutMs(userActionTimeout);
+  return (
+    await waitForScanEventInternal(
+      api,
+      [scanTarget],
+      afterEtag,
+      timeoutMs,
+      true,
+    )
+  )?.event;
 }
 
 export async function waitForScanEvent(
@@ -59,20 +70,69 @@ export async function waitForScanEvent(
   const since = afterEtag !== null ? ` since event ${afterEtag}` : "";
   logger.info(`Waiting for scan event from: ${targetList}${since}`);
 
-  return await waitForScanEventInternal(api, scanTargets, afterEtag);
+  return await waitForScanEventInternal(api, scanTargets, afterEtag, null, false);
 }
 
 async function waitForScanEventInternal(
   api: DeviceClient,
   scanTargets: ScanTarget[],
   afterEtag: string | null = null,
+  timeoutMs: number | null = null,
+  swallowErrors: boolean = false,
 ): Promise<SelectedScanTarget | null> {
-  let eventTable = await api.getEvents(afterEtag ?? "");
+  let eventTable: EtagEventTable;
+  try {
+    eventTable = await api.getEvents(afterEtag ?? "");
+  } catch (error) {
+    if (!swallowErrors) {
+      throw error;
+    }
+    logger.warn(
+      { err: error },
+      "Connection lost while waiting for scan event; finalizing current scan",
+    );
+    return null;
+  }
   let acceptedScanEvent: IEvent | undefined = undefined;
   let scanTarget: ScanTarget | undefined = undefined;
   let currentEtag = eventTable.etag;
+  const deadline = timeoutMs !== null ? Date.now() + timeoutMs : null;
+
   while (acceptedScanEvent === undefined) {
-    eventTable = await api.getEvents(currentEtag, 1200);
+    if (deadline !== null && Date.now() >= deadline) {
+      logger.warn(
+        "Timed out waiting for next scan event; finalizing current scan",
+      );
+      return null;
+    }
+
+    const remainingMs =
+      deadline !== null ? Math.max(0, deadline - Date.now()) : 120_000;
+    if (deadline !== null && remainingMs <= 0) {
+      logger.warn(
+        "Timed out waiting for next scan event; finalizing current scan",
+      );
+      return null;
+    }
+    const deciseconds = Math.max(
+      10,
+      Math.min(1200, Math.floor(remainingMs / 100)),
+    );
+
+    let nextTable: EtagEventTable;
+    try {
+      nextTable = await api.getEvents(currentEtag, deciseconds);
+    } catch (error) {
+      if (!swallowErrors) {
+        throw error;
+      }
+      logger.warn(
+        { err: error },
+        "Connection lost while waiting for next scan event; finalizing current scan",
+      );
+      return null;
+    }
+    eventTable = nextTable;
     currentEtag = eventTable.etag;
 
     for (
@@ -92,6 +152,19 @@ async function waitForScanEventInternal(
     return null;
   }
   return { event: acceptedScanEvent, ...scanTarget };
+}
+
+function resolveUserActionTimeoutMs(
+  userActionTimeout: number | null,
+): number | null {
+  if (userActionTimeout === null || userActionTimeout === undefined) {
+    return null;
+  }
+  const ms = userActionTimeout * 1000;
+  // Clamp to a sane range to avoid waiting forever or finalizing instantly.
+  const MIN_MS = 1_000;
+  const MAX_MS = 300_000;
+  return Math.min(MAX_MS, Math.max(MIN_MS, ms));
 }
 
 export async function registerWalkupScanDestination(
