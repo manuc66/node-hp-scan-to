@@ -687,6 +687,7 @@ export async function executeScanJobs(
       api,
       scanTarget,
       lastEvent.agingStamp,
+      deviceCapabilities.userActionTimeout,
     );
     if (nextEvent === undefined) {
       return;
@@ -723,6 +724,7 @@ export async function executeScanJobs(
         api,
         scanTarget,
         lastEvent.agingStamp,
+        deviceCapabilities.userActionTimeout,
       );
       if (nextEvent === undefined) {
         return;

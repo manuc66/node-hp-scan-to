@@ -106,6 +106,20 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- **Flatbed multi-page scans no longer crash when the printer drops the idle
+  connection**: `waitForScanEventFromTarget` (the wait between pages on the
+  platen) now finalizes the current scan instead of propagating the
+  `ECONNRESET`/`504` when the printer cuts the connection, and bounds the
+  wait using the printer-reported `UserActionTimeout` (issue #1802, builds
+  on #1543).
+- **Debian/RPM packages no longer ship the OpenRC init script**, which made
+  `systemctl enable` fail on systemd distributions: the entry in
+  `packaging/nfpm.yaml` is now restricted to the `apk` packager
+  (issue #1803).
+- **Documentation mentions port 8080**: the Linux networking notes and a
+  troubleshooting entry now state that scan job creation/page download use
+  TCP 8080 in addition to port 80, and `postJob()`/`downloadPage*()` use
+  timeouts so a filtered port fails with a clear error (issue #1804).
 - **Tests on Windows**: the suite now runs green again on Windows. The README
   help snapshot test compares line endings that git may convert to CRLF, the
   `~` home expansion produced mixed path separators, and the read-only folder

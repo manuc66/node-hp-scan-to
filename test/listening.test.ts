@@ -1,6 +1,10 @@
 import { describe, it, beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
-import { waitForScanEvent, waitScanRequest } from "../src/listening.js";
+import {
+  waitForScanEvent,
+  waitForScanEventFromTarget,
+  waitScanRequest,
+} from "../src/listening.js";
 import DeviceClient from "../src/DeviceClient.js";
 import { EventType } from "../src/hpModels/WalkupScanToCompEvent.js";
 import type WalkupScanToCompEvent from "../src/hpModels/WalkupScanToCompEvent.js";
@@ -110,5 +114,48 @@ describe("waitScanRequest", () => {
     const result = await waitScanRequest(api, "uri", 3);
     expect(result).to.be.false;
     expect(callCount).to.be.eq(3);
+  });
+});
+
+describe("waitForScanEventFromTarget (graceful finalize)", () => {
+  it("returns undefined when the connection drops while waiting for the next page", async () => {
+    const api = new DeviceClient("127.0.0.1", false);
+    api.getEvents = async () => {
+      throw new Error("socket hang up");
+    };
+    const scanTarget = {
+      label: "T",
+      resourceURI: "/WalkupScan/WalkupScanDestinations/T",
+      destination: "scan",
+      isDuplexSingleSide: false,
+    };
+    const result = await waitForScanEventFromTarget(
+      api,
+      scanTarget as never,
+      "etag-0",
+      60,
+    );
+    expect(result).to.be.undefined;
+  });
+
+  it("finalizes (returns undefined) when no next-page event arrives within the timeout", async () => {
+    const api = new DeviceClient("127.0.0.1", false);
+    api.getEvents = async () => ({
+      etag: "e",
+      eventTable: { events: [] },
+    }) as never;
+    const scanTarget = {
+      label: "T",
+      resourceURI: "/WalkupScan/WalkupScanDestinations/T",
+      destination: "scan",
+      isDuplexSingleSide: false,
+    };
+    const result = await waitForScanEventFromTarget(
+      api,
+      scanTarget as never,
+      "etag-0",
+      1,
+    );
+    expect(result).to.be.undefined;
   });
 });
