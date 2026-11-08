@@ -6,6 +6,7 @@ import PathHelper from "../PathHelper.js";
 import type { ScanPage } from "../type/ScanContent.js";
 import { delay } from "../delay.js";
 import { getLoggerForFile } from "../logger.js";
+import fs from "node:fs/promises";
 import { AxiosError } from "axios";
 import { ScanJobHandler, type DownloadedPage } from "./ScanJobHandler.js";
 
@@ -28,6 +29,16 @@ async function downloadNextDocumentOrEnd(
     return await api.downloadEsclPage(jobUrl, destinationFilePath);
   } catch (error) {
     if (error instanceof AxiosError && error.response?.status === 404) {
+      // The destination path is reserved (empty file) before the request;
+      // do not leave that orphan behind when there is no page to write.
+      try {
+        await fs.rm(destinationFilePath, { force: true });
+      } catch (cleanupError) {
+        logger.debug(
+          { err: cleanupError },
+          `Could not remove the reserved eSCL page file ${destinationFilePath}`,
+        );
+      }
       logger.info(
         "No further image available from /NextDocument (404); treating the job as completed.",
       );

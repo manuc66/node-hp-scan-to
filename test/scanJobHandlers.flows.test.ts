@@ -248,6 +248,8 @@ describe("scanJobHandlers flows", () => {
 
       expect(jobState).to.equal(JobState.Completed);
       expect(scanJobContent.elements).to.have.lengthOf(0);
+      // The reserved destination file must not survive the 404.
+      expect(fs.readdirSync(tempDir)).to.be.empty;
     });
 
     it("ends the job when /NextDocument answers 404 (raw formats)", async () => {
@@ -281,6 +283,7 @@ describe("scanJobHandlers flows", () => {
 
       expect(jobState).to.equal(JobState.Completed);
       expect(scanJobContent.elements).to.have.lengthOf(0);
+      expect(fs.readdirSync(tempDir)).to.be.empty;
     });
 
     it("downloads eSCL pages on port 80 for relative job URLs", async () => {
