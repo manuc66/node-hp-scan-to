@@ -31,6 +31,7 @@ class FakeApi {
   initialEvent: IEvent = scanEvent();
   nextEvent: IEvent = scanEvent();
   compEventType: EventType = EventType.ScanRequested;
+  readonly callOrder: string[] = [];
 
   async getWalkupScanDestinations(): Promise<{ destinations: never[] }> {
     return { destinations: [] };
@@ -58,6 +59,7 @@ class FakeApi {
     shortcut: KnownShortcut;
     scanPlexMode: ScanPlexMode;
   }> {
+    this.callOrder.push("getDestination");
     return {
       shortcut: KnownShortcut.SavePDF,
       scanPlexMode: ScanPlexMode.Simplex,
@@ -65,6 +67,7 @@ class FakeApi {
   }
 
   async getWalkupScanToCompEvent(): Promise<{ eventType: EventType }> {
+    this.callOrder.push("getWalkupScanToCompEvent");
     return { eventType: this.compEventType };
   }
 }
@@ -120,14 +123,26 @@ describe("LegacyScanListener", () => {
     expect(await listener.waitForScanStart()).to.be.true;
   });
 
-  it("returns false when no user action arrives in time", async () => {
+  it("waits for the scan request before reading the destination shortcut", async () => {
+    const api = new FakeApi();
+    api.compEventType = EventType.ScanRequested;
+    const listener = makeListener(api, true, 1);
+
+    const request = await listener.waitForScan();
+
+    expect(request).to.not.be.null;
+    expect(api.callOrder).to.deep.equal([
+      "getWalkupScanToCompEvent",
+      "getDestination",
+    ]);
+  });
+
+  it("returns no request when no user action arrives in time", async () => {
     const api = new FakeApi();
     api.compEventType = EventType.HostSelected;
     const listener = makeListener(api, true, 0);
 
-    await listener.waitForScan();
-
-    expect(await listener.waitForScanStart()).to.be.false;
+    expect(await listener.waitForScan()).to.be.null;
   });
 
   it("returns no next page before any scan was selected", async () => {

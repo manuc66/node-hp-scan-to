@@ -48,6 +48,20 @@ export default class LegacyScanListener implements ScanListener {
         return null;
       }
 
+      // Match the historical order: wait for the user to start the scan on
+      // the comp-event channel *before* reading the destination. Some devices
+      // only publish the shortcut once the host has acknowledged that start.
+      if (selected.event.compEventURI !== undefined) {
+        const proceedToScan = await waitScanRequest(
+          this.api,
+          selected.event.compEventURI,
+          this.userActionTimeout,
+        );
+        if (!proceedToScan) {
+          return null;
+        }
+      }
+
       const destination = await tryGetDestination(this.api, selected.event);
       if (destination !== null) {
         request = {
@@ -68,16 +82,9 @@ export default class LegacyScanListener implements ScanListener {
     return request;
   }
 
-  async waitForScanStart(): Promise<boolean> {
-    const event = this.currentEvent;
-    if (event?.compEventURI === undefined) {
-      return true;
-    }
-    return await waitScanRequest(
-      this.api,
-      event.compEventURI,
-      this.userActionTimeout,
-    );
+  waitForScanStart(): Promise<boolean> {
+    // `waitForScan` already waited for the comp-event start signal.
+    return Promise.resolve(true);
   }
 
   async waitForNextPage(): Promise<ScanRequest | null> {
