@@ -128,7 +128,12 @@ export async function createPrinterHttpsAgent(
   }
 
   const certificate = await fetchCertificate(host);
-  return new https.Agent(
-    buildPinnedAgentOptions(certificate, expectedFingerprint),
+  const agentOptions = buildPinnedAgentOptions(
+    certificate,
+    expectedFingerprint,
   );
+  logger.info(
+    `eSCL HTTPS certificate pinned (SHA-256 ${normalizeFingerprint(certificate.fingerprint256)}).`,
+  );
+  return new https.Agent(agentOptions);
 }

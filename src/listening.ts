@@ -70,7 +70,13 @@ export async function waitForScanEvent(
   const since = afterEtag !== null ? ` since event ${afterEtag}` : "";
   logger.info(`Waiting for scan event from: ${targetList}${since}`);
 
-  return await waitForScanEventInternal(api, scanTargets, afterEtag, null, false);
+  return await waitForScanEventInternal(
+    api,
+    scanTargets,
+    afterEtag,
+    null,
+    false,
+  );
 }
 
 async function waitForScanEventInternal(
@@ -78,7 +84,7 @@ async function waitForScanEventInternal(
   scanTargets: ScanTarget[],
   afterEtag: string | null = null,
   timeoutMs: number | null = null,
-  swallowErrors: boolean = false,
+  swallowErrors = false,
 ): Promise<SelectedScanTarget | null> {
   let eventTable: EtagEventTable;
   try {

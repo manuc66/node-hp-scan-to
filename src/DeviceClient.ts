@@ -116,7 +116,11 @@ export default class DeviceClient {
     if (effectiveRequest.timeout === 0) {
       effectiveRequest.timeout = 100_000;
     }
-    this.logDebug(this.callCount, true, effectiveRequest);
+    const debugRequest: Record<string, unknown> = { ...effectiveRequest };
+    if (debugRequest["httpsAgent"] !== undefined) {
+      debugRequest["httpsAgent"] = "[printer https agent]";
+    }
+    this.logDebug(this.callCount, true, debugRequest);
     try {
       const response = await axios({
         ...effectiveRequest,
@@ -191,6 +195,9 @@ export default class DeviceClient {
     }
 
     this.esclBaseUrlPromise = null;
+    logger.debug(
+      `No eSCL HTTPS endpoint detected; falling back to http://${this.deviceIP}`,
+    );
     return `http://${this.deviceIP}`;
   }
 
@@ -207,11 +214,15 @@ export default class DeviceClient {
           timeout: 3000,
         });
         if (response.status === 200) {
+          logger.info(`Using eSCL base URL: ${baseURL}`);
           return baseURL;
         }
-      } catch {
-        // Try the next scheme; the final fallback preserves the historical
-        // HTTP behaviour and lets callers report the real device error.
+        logger.debug(
+          { baseURL, status: response.status },
+          "eSCL base URL probe did not succeed",
+        );
+      } catch (error) {
+        logger.debug({ baseURL, err: error }, "eSCL base URL probe failed");
       }
     }
 
@@ -894,7 +905,7 @@ export default class DeviceClient {
   async downloadPage(
     binaryURL: string,
     destination: string,
-    timeout: number = 60_000,
+    timeout = 60_000,
   ): Promise<string> {
     const response = await this.callAxios<Stream>({
       baseURL: `http://${this.deviceIP}:8080`,
@@ -919,32 +930,51 @@ export default class DeviceClient {
     baseURL: string,
     binaryURL: string,
     destination: string,
-    timeout: number = 60_000,
+    timeout = 60_000,
   ): Promise<{ path: string; contentType: string | undefined }> {
     const httpsAgent = baseURL.startsWith("https:")
       ? await this.getHttpsAgent()
       : undefined;
-    const { data, headers }: AxiosResponse<Stream> =
-      await axios.request<Stream>({
-        baseURL,
-        url: binaryURL,
-        method: "GET",
-        responseType: "stream",
-        ...(httpsAgent !== undefined && { httpsAgent }),
-        ...(timeout !== undefined && { timeout }),
-      });
+    const requestUrl = binaryURL.startsWith("http")
+      ? binaryURL
+      : `${baseURL}${binaryURL}`;
+    logger.debug({ url: requestUrl, destination }, "Downloading scan page");
+    try {
+      const { data, headers, status }: AxiosResponse<Stream> =
+        await axios.request<Stream>({
+          baseURL,
+          url: binaryURL,
+          method: "GET",
+          responseType: "stream",
+          ...(httpsAgent !== undefined && { httpsAgent }),
+          ...(timeout !== undefined && { timeout }),
+        });
+      logger.debug({ url: requestUrl, status, headers }, "Scan page response");
 
-    const destinationFileStream = fs.createWriteStream(destination);
-    data.pipe(destinationFileStream);
+      const destinationFileStream = fs.createWriteStream(destination);
+      data.pipe(destinationFileStream);
 
-    await promisify(stream.finished)(destinationFileStream);
+      await promisify(stream.finished)(destinationFileStream);
 
-    const contentType =
-      typeof headers["content-type"] === "string"
-        ? headers["content-type"]
-        : undefined;
+      const contentType =
+        typeof headers["content-type"] === "string"
+          ? headers["content-type"]
+          : undefined;
 
-    return { path: destination, contentType };
+      return { path: destination, contentType };
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      logger.debug(
+        {
+          url: requestUrl,
+          status: axiosError.response?.status,
+          statusText: axiosError.response?.statusText,
+          headers: axiosError.response?.headers,
+        },
+        "Scan page download failed",
+      );
+      throw error;
+    }
   }
 
   async downloadPageWithMeta(
