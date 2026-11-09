@@ -120,7 +120,9 @@ export async function createPrinterHttpsAgent(
     return new https.Agent({
       // The printer certificate is self-signed and per-device. Users who care
       // can pin it with ESCL_CERT_FINGERPRINT, which builds a CA-validated
-      // agent below; the default unpinned mode logs a warning.
+      // agent below; the default unpinned mode logs a warning. This fallback
+      // is dismissed in the repository's CodeQL alerts (no CA can validate a
+      // per-device self-signed LAN certificate).
       rejectUnauthorized: false, // lgtm[js/disabling-certificate-validation]
     });
   }
