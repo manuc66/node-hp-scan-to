@@ -49,6 +49,7 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
       - [`single-scan`](#single-scan)
     - [Post-Processing Command](#post-processing-command)
       - [Files created beside the scan](#files-created-beside-the-scan)
+    - [Revealing the Scan](#revealing-the-scan)
     - [Paper Size Configuration](#paper-size-configuration)
       - [Preset Paper Sizes](#preset-paper-sizes)
       - [Custom Sizes](#custom-sizes)
@@ -406,6 +407,7 @@ Output Options:
   --post-command-pdf <command>                                     Command run on every generated PDF, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
   --post-command-image <command>                                   Command run on every delivered image page, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it).
   --post-command-timeout <milliseconds>                            Timeout in milliseconds for the post-command hooks before they are killed (default: 300000)
+  --reveal                                                         Open the system file manager on each scan that stays on disk, with the file selected (desktop sessions only; skipped in containers and headless sessions) (default: false)
 
 Scan Options:
   -r, --resolution <dpi>                                           Resolution in DPI of the scans (default: 200)
@@ -519,6 +521,7 @@ Output Options:
   --post-command-pdf <command>                                     Command run on every generated PDF, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
   --post-command-image <command>                                   Command run on every delivered image page, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it).
   --post-command-timeout <milliseconds>                            Timeout in milliseconds for the post-command hooks before they are killed (default: 300000)
+  --reveal                                                         Open the system file manager on each scan that stays on disk, with the file selected (desktop sessions only; skipped in containers and headless sessions) (default: false)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
 
 Scan Options:
@@ -642,6 +645,7 @@ Output Options:
   --post-command-pdf <command>                                     Command run on every generated PDF, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it, e.g. a Ghostscript PDF/A conversion).
   --post-command-image <command>                                   Command run on every delivered image page, given as a program and its arguments ({input} is the file path; when the command contains {output} the output file replaces it).
   --post-command-timeout <milliseconds>                            Timeout in milliseconds for the post-command hooks before they are killed (default: 300000)
+  --reveal                                                         Open the system file manager on each scan that stays on disk, with the file selected (desktop sessions only; skipped in containers and headless sessions) (default: false)
   --pdf                                                            If specified, the scan result will always be a pdf document, the default depends on the device choice
 
 Scan Options:
@@ -797,6 +801,14 @@ Files recognized as sidecars belong to the scan, so:
 A sidecar is removed with the scan only when `keep_files` is false **and** it was actually delivered somewhere. If no target accepts it (Paperless-only setup), or if its upload failed, it stays on disk: the hook's output is never thrown away without being sent anywhere.
 
 A failed sidecar upload is reported as a warning only: the scan itself already reached its targets, so the scan is not marked failed and its files are cleaned up normally. In a Paperless-only setup there is nowhere for sidecars to go, so they stay on disk while the scan is cleaned up and accumulate over successive scans; configure an S3 or Nextcloud target if the hook produces files you want delivered (a warning naming the kept files is logged).
+
+#### Revealing the Scan
+
+`--reveal` (or `"reveal": true` in the config file) opens the system file manager on each scan once it has been processed, with the file selected: `open -R` on macOS, `explorer.exe /select,` on Windows, and on Linux the freedesktop `FileManager1` D-Bus interface (Nautilus, Dolphin, Nemo and others), falling back to `xdg-open` on the containing folder. It is off by default.
+
+Only a scan that is still on disk once delivery and cleanup are done is revealed: with `keep_files: false` and a successful upload there is nothing left to show. An image scan opens one window on its first page, not one per page, and in `listen` or `adf-autoscan` a folder that was revealed less than 10 seconds ago is not revealed again, so a run of scans does not keep stealing focus.
+
+The file manager runs on the machine that runs `node-hp-scan-to`, so the option does nothing in a container (the Docker image), on a Linux server without a graphical session (no `DISPLAY` or `WAYLAND_DISPLAY`), or when the file manager cannot be started; the scan itself is never affected.
 
 #### Paper Size Configuration
 
