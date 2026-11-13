@@ -2,7 +2,10 @@ import { describe, it } from "mocha";
 import { expect } from "chai";
 import { AxiosError, type AxiosResponse } from "axios";
 import { CertificatePinError } from "../src/PrinterHttpsAgent.js";
-import { isRetryableListenerError } from "../src/commands/listenCmd.js";
+import {
+  getListenerRetryDelayMs,
+  isRetryableListenerError,
+} from "../src/commands/listenCmd.js";
 import { PermanentScanListenerError } from "../src/scanListeners/ScanListener.js";
 
 function httpError(status: number): AxiosError {
@@ -59,5 +62,27 @@ describe("isRetryableListenerError", () => {
     expect(
       isRetryableListenerError(new CertificatePinError("fingerprint mismatch")),
     ).to.be.false;
+  });
+});
+
+describe("getListenerRetryDelayMs", () => {
+  it("honours the device Retry-After", () => {
+    const error = new AxiosError(
+      "Service Unavailable",
+      "ERR_BAD_RESPONSE",
+      undefined,
+      undefined,
+      {
+        status: 503,
+        headers: { "retry-after": "3" },
+      } as unknown as AxiosResponse,
+    );
+
+    expect(getListenerRetryDelayMs(error)).to.equal(3000);
+  });
+
+  it("falls back to the default delay", () => {
+    expect(getListenerRetryDelayMs(httpError(503))).to.equal(1000);
+    expect(getListenerRetryDelayMs(new Error("unexpected"))).to.equal(1000);
   });
 });

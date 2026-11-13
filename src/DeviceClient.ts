@@ -171,6 +171,44 @@ export default class DeviceClient {
     return DeviceClient.isHttpStatus(error, [503]);
   }
 
+  /**
+   * Parse `Retry-After` (delay in seconds or an HTTP date) from a failed
+   * response. The value is clamped so a broken header cannot stall `listen`.
+   * Returns `null` when the header is absent or unusable.
+   */
+  static getRetryAfterMs(error: unknown): number | null {
+    if (!(error instanceof AxiosError)) {
+      return null;
+    }
+    const raw: unknown = error.response?.headers?.["retry-after"];
+    if (raw === undefined || raw === null) {
+      return null;
+    }
+
+    const value = String(raw).trim();
+    if (value.length === 0) {
+      return null;
+    }
+
+    const seconds = Number(value);
+    if (Number.isFinite(seconds)) {
+      return seconds < 0
+        ? null
+        : Math.min(seconds * 1000, DeviceClient.MAX_RETRY_AFTER_MS);
+    }
+
+    const retryAt = Date.parse(value);
+    if (Number.isNaN(retryAt)) {
+      return null;
+    }
+    return Math.min(
+      Math.max(retryAt - Date.now(), 0),
+      DeviceClient.MAX_RETRY_AFTER_MS,
+    );
+  }
+
+  private static readonly MAX_RETRY_AFTER_MS = 60_000;
+
   private rememberEsclBaseUrlFrom(uri: string): void {
     if (this.esclBaseUrlPromise !== null || !/^https?:\/\//.test(uri)) {
       return;

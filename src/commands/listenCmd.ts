@@ -2,7 +2,7 @@ import type {
   RegistrationConfig,
   ScanTarget,
 } from "../type/scanTargetDefinitions.js";
-import type DeviceClient from "../DeviceClient.js";
+import DeviceClient from "../DeviceClient.js";
 import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
 import type { ScanContent } from "../type/ScanContent.js";
 import {
@@ -34,6 +34,15 @@ import { AxiosError } from "axios";
 const logger = getLoggerForFile(import.meta.url);
 
 const MAX_LISTEN_ERRORS = 50;
+const DEFAULT_LISTEN_RETRY_DELAY_MS = 1000;
+
+/**
+ * Delay before the next `listen` iteration: honour the device's `Retry-After`
+ * when it sends one (a 503 typically does) instead of polling at a fixed rate.
+ */
+export function getListenerRetryDelayMs(error: unknown): number {
+  return DeviceClient.getRetryAfterMs(error) ?? DEFAULT_LISTEN_RETRY_DELAY_MS;
+}
 
 /**
  * A `listen` error is worth retrying when it can plausibly disappear:
@@ -104,6 +113,7 @@ export async function listenCmd(
   let scanCount = 0;
   let keepActive = true;
   let errorCount = 0;
+  let retryDelayMs = DEFAULT_LISTEN_RETRY_DELAY_MS;
   let lastScanTarget: ScanTarget | undefined = undefined;
 
   let lastDuplexMode: DuplexMode = DuplexMode.Simplex;
@@ -170,6 +180,7 @@ export async function listenCmd(
           }
           logger.error(e);
           errorCount++;
+          retryDelayMs = getListenerRetryDelayMs(e);
         } else {
           logger.debug(e);
           deviceUp = false;
@@ -183,8 +194,9 @@ export async function listenCmd(
       if (!deviceUp) {
         await api.waitDeviceUp(deviceUpPollingInterval);
       } else {
-        await api.delay(1000);
+        await api.delay(retryDelayMs);
       }
+      retryDelayMs = DEFAULT_LISTEN_RETRY_DELAY_MS;
     }
 
     if (errorCount >= MAX_LISTEN_ERRORS) {

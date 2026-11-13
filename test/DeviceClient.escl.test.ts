@@ -318,6 +318,51 @@ describe("DeviceClient eSCL support", () => {
   });
 });
 
+describe("DeviceClient Retry-After", () => {
+  function unavailable(headers: Record<string, string>): AxiosError {
+    return new AxiosError(
+      "Service Unavailable",
+      "ERR_BAD_RESPONSE",
+      undefined,
+      undefined,
+      { status: 503, headers } as AxiosResponse,
+    );
+  }
+
+  it("reads a delay in seconds", () => {
+    expect(
+      DeviceClient.getRetryAfterMs(unavailable({ "retry-after": "2" })),
+    ).to.equal(2000);
+  });
+
+  it("reads an HTTP date", () => {
+    const retryAt = new Date(Date.now() + 5000).toUTCString();
+
+    const delay = DeviceClient.getRetryAfterMs(
+      unavailable({ "retry-after": retryAt }),
+    );
+
+    expect(delay).to.be.within(3000, 5100);
+  });
+
+  it("clamps a very long delay", () => {
+    expect(
+      DeviceClient.getRetryAfterMs(unavailable({ "retry-after": "9999" })),
+    ).to.equal(60_000);
+  });
+
+  it("ignores a missing or unusable header", () => {
+    expect(DeviceClient.getRetryAfterMs(unavailable({}))).to.be.null;
+    expect(DeviceClient.getRetryAfterMs(unavailable({ "retry-after": "soon" })))
+      .to.be.null;
+    expect(DeviceClient.getRetryAfterMs(unavailable({ "retry-after": "-1" })))
+      .to.be.null;
+    expect(DeviceClient.getRetryAfterMs(unavailable({ "retry-after": "" }))).to
+      .be.null;
+    expect(DeviceClient.getRetryAfterMs(new Error("network"))).to.be.null;
+  });
+});
+
 async function expectRejects(
   promise: Promise<unknown>,
   expected: RegExp,

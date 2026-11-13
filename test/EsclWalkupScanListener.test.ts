@@ -2,7 +2,6 @@ import { describe, it } from "mocha";
 import { expect } from "chai";
 import os from "node:os";
 import { AxiosError, type AxiosResponse } from "axios";
-import { delay } from "../src/delay.js";
 import type DeviceClient from "../src/DeviceClient.js";
 import EsclWalkupEvent from "../src/hpModels/EsclWalkupEvent.js";
 import { KnownShortcut } from "../src/type/KnownShortcut.js";
@@ -10,7 +9,10 @@ import { ScanPlexMode } from "../src/hpModels/ScanPlexMode.js";
 import EsclWalkupScanListener, {
   mapShortcut,
 } from "../src/scanListeners/EsclWalkupScanListener.js";
-import { PermanentScanListenerError } from "../src/scanListeners/ScanListener.js";
+import {
+  PermanentScanListenerError,
+  type ScanRequest,
+} from "../src/scanListeners/ScanListener.js";
 import {
   EsclWalkupProbe,
   type EsclWalkupProbeResult,
@@ -61,7 +63,7 @@ class FakeApi {
   alwaysExpired = false;
   expiredError: AxiosError = notFoundError();
   alwaysUnavailable = false;
-  eventDelayMs = 0;
+  getEventCalls = 0;
   probeResult: EsclWalkupProbeResult = EsclWalkupProbe.Supported;
   probeCalls = 0;
   removeError: Error | null = null;
@@ -75,9 +77,7 @@ class FakeApi {
   }
 
   async getEsclWalkupEvent(): Promise<EsclWalkupEvent | null> {
-    if (this.eventDelayMs > 0) {
-      await delay(this.eventDelayMs);
-    }
+    this.getEventCalls++;
     if (this.alwaysUnavailable) {
       throw httpError(503);
     }
@@ -295,7 +295,28 @@ describe("EsclWalkupScanListener", () => {
     expect(api.registrations).to.have.lengthOf(2);
   });
 
-  it("recovers from a wedged event channel", async () => {
+  it("keeps the subscription until the 503 threshold is reached", async () => {
+    const api = new FakeApi();
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+    );
+    api.events.push(httpError(503));
+    api.events.push(httpError(503));
+
+    expect(await rejectionOf(listener.waitForScan())).to.be.instanceOf(
+      AxiosError,
+    );
+    expect(await rejectionOf(listener.waitForScan())).to.be.instanceOf(
+      AxiosError,
+    );
+
+    expect(api.getEventCalls).to.equal(2);
+    expect(api.registrations).to.have.lengthOf(1);
+    expect(api.removed).to.be.empty;
+  });
+
+  it("recovers the subscription after consecutive 503s", async () => {
     const api = new FakeApi();
     const listener = new EsclWalkupScanListener(
       api as unknown as DeviceClient,
@@ -306,49 +327,36 @@ describe("EsclWalkupScanListener", () => {
     api.events.push(httpError(503));
     api.events.push(await scanRequested());
 
-    const request = await listener.waitForScan();
+    const request = await waitForScanWithRetries(listener);
 
+    expect(api.getEventCalls).to.equal(4);
     expect(api.probeCalls).to.equal(1);
     expect(api.registrations).to.have.lengthOf(2);
     expect(api.removed).to.deep.equal(["/eSCL/WalkupSubscriptions/sub-1"]);
     expect(request?.contextID).to.equal("sub-2");
   });
 
-  it("retries a single 503 without re-registering", async () => {
+  it("resets the 503 counter after a successful poll", async () => {
     const api = new FakeApi();
     const listener = new EsclWalkupScanListener(
       api as unknown as DeviceClient,
       configs,
     );
     api.events.push(httpError(503));
+    api.events.push(httpError(503));
+    api.events.push(await simpleEvent("HostSelected"));
+    api.events.push(httpError(503));
+    api.events.push(httpError(503));
     api.events.push(await scanRequested());
 
-    const request = await listener.waitForScan();
+    const request = await waitForScanWithRetries(listener);
 
     expect(request).to.not.be.null;
     expect(api.registrations).to.have.lengthOf(1);
     expect(api.removed).to.be.empty;
   });
 
-  it("treats a slow 503 as a transient device error", async () => {
-    const api = new FakeApi();
-    api.eventDelayMs = 20;
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-      60_000,
-      10,
-    );
-    api.events.push(httpError(503));
-
-    const error = await rejectionOf(listener.waitForScan());
-
-    expect(error).to.not.be.instanceOf(PermanentScanListenerError);
-    expect(api.registrations).to.have.lengthOf(1);
-    expect(api.removed).to.be.empty;
-  });
-
-  it("gives up when a fresh subscription is still wedged", async () => {
+  it("gives up after repeated recovery cycles", async () => {
     const api = new FakeApi();
     api.alwaysUnavailable = true;
     const listener = new EsclWalkupScanListener(
@@ -356,11 +364,11 @@ describe("EsclWalkupScanListener", () => {
       configs,
     );
 
-    const error = await rejectionOf(listener.waitForScan());
+    const error = await rejectionOf(waitForScanWithRetries(listener, 30));
 
     expect(error).to.be.instanceOf(PermanentScanListenerError);
     expect((error as Error).message).to.match(/503/);
-    expect(api.registrations).to.have.lengthOf(2);
+    expect(api.registrations).to.have.lengthOf(3);
   });
 
   it("limits the registration to the device shortcut limit", async () => {
@@ -491,6 +499,27 @@ describe("mapShortcut", () => {
     expect(mapShortcut("Paperless")).to.equal(KnownShortcut.SavePDF);
   });
 });
+
+/**
+ * Mimics the `listen` loop: each failed poll is retried on the next call.
+ */
+async function waitForScanWithRetries(
+  listener: EsclWalkupScanListener,
+  attempts = 20,
+): Promise<ScanRequest | null> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const request = await listener.waitForScan();
+      if (request !== null) {
+        return request;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError ?? new Error("No scan request after retries");
+}
 
 async function rejectionOf(promise: Promise<unknown>): Promise<unknown> {
   try {
