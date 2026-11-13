@@ -102,6 +102,7 @@ export async function listenCmd(
     api,
     scanConfig.preferEscl,
     true,
+    true,
   );
 
   const scanListener = createScanListener(
