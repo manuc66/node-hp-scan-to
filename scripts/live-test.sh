@@ -82,6 +82,16 @@ else
 fi
 kill "$HPID" 2>/dev/null || true
 
+echo "--- listen --prefer-eSCL (brief: waits for the panel)"
+rc=0
+timeout 8 $BIN --address "$IP" listen --prefer-eSCL \
+  >"$WORK/listen-escl.log" 2>&1 || rc=$?
+if [ "$rc" -eq 0 ] || [ "$rc" -eq 124 ]; then
+  ok "listen --prefer-eSCL started and registered its target"
+else
+  bad "listen --prefer-eSCL failed to start (rc=$rc, see $WORK/listen-escl.log)"
+fi
+
 echo "--- adf-autoscan (brief: waits for the feeder)"
 mkdir -p "$WORK/adf"
 # exit 124 = killed by timeout while waiting for the feeder: expected.

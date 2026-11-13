@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scan:ScannerStatus xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+    <pwg:Version>2.5</pwg:Version>
+    <pwg:State>Processing</pwg:State>
+    <scan:AdfState>ScannerAdfLoaded</scan:AdfState>
+    <scan:Jobs>
+        <scan:JobInfo>
+            <pwg:JobUri>/eSCL/ScanJobs/1</pwg:JobUri>
+            <pwg:JobUuid>1876-0001</pwg:JobUuid>
+            <scan:Age>0</scan:Age>
+            <pwg:ImagesCompleted>1</pwg:ImagesCompleted>
+            <pwg:ImagesToTransfer>1</pwg:ImagesToTransfer>
+            <pwg:JobState>Processing</pwg:JobState>
+            <pwg:JobStateReasons>
+                <pwg:JobStateReason>JobScanning</pwg:JobStateReason>
+            </pwg:JobStateReasons>
+        </scan:JobInfo>
+    </scan:Jobs>
+</scan:ScannerStatus>

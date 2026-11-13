@@ -20,6 +20,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
   private readonly height: number | null;
   private readonly isDuplex: boolean;
   private readonly _format: ImageFormat;
+  private readonly contextID: string | undefined;
 
   constructor(
     inputSource: InputSource,
@@ -30,6 +31,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     width: number | null,
     height: number | null,
     isDuplex: boolean,
+    contextID?: string,
   ) {
     this.inputSource = inputSource;
     this.contentType = contentType;
@@ -39,6 +41,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
     this.width = width;
     this.height = height;
     this.isDuplex = isDuplex;
+    this.contextID = contextID;
   }
 
   async toXML(): Promise<string> {
@@ -46,6 +49,7 @@ export default class EsclScanJobSettings implements IScanJobSettings {
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       '<ScanSettings xmlns="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.hp.com/imaging/escl/2011/05/03 Scan Schema - 0.26.xsd">\n' +
       '\t<Version xmlns="http://www.pwg.org/schemas/2010/12/sm">2.62</Version>\n' +
+      "\t<ContextID></ContextID>\n" +
       "\t<Intent>Document</Intent>\n" +
       '\t<ScanRegions xmlns="http://www.pwg.org/schemas/2010/12/sm" xmlns:n0="http://www.pwg.org/schemas/2010/12/sm" n0:MustHonor="false">\n' +
       "\t\t<ScanRegion>\n" +
@@ -77,7 +81,8 @@ export default class EsclScanJobSettings implements IScanJobSettings {
 
     const parsed = await parseXmlString<{
       ScanSettings: {
-        Version: string;
+        Version: string | { _: string; $: { xmlns: string } };
+        ContextID?: string;
         Intent: string;
         ScanRegions: {
           ScanRegion: {
@@ -111,6 +116,21 @@ export default class EsclScanJobSettings implements IScanJobSettings {
         Threshold?: number;
       };
     }>(rawJob);
+
+    if (this.contextID === undefined) {
+      delete parsed.ScanSettings.ContextID;
+    } else {
+      // The Windows HP client scopes a walkup job to the subscription and
+      // uses values from the device capabilities.
+      parsed.ScanSettings.Version = {
+        _: "2.9",
+        $: { xmlns: "http://www.pwg.org/schemas/2010/12/sm" },
+      };
+      parsed.ScanSettings.ContextID = this.contextID;
+      parsed.ScanSettings.Brightness = 4;
+      parsed.ScanSettings.CompressionFactor = 50;
+      parsed.ScanSettings.Contrast = 4;
+    }
 
     parsed.ScanSettings.XResolution = this.resolution;
     parsed.ScanSettings.YResolution = this.resolution;

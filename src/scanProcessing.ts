@@ -1,7 +1,6 @@
 import type { IEvent } from "./hpModels/Event.js";
-import type WalkupScanDestination from "./hpModels/WalkupScanDestination.js";
-import type WalkupScanToCompDestination from "./hpModels/WalkupScanToCompDestination.js";
 import type DeviceClient from "./DeviceClient.js";
+import type { HpWalkupDevice } from "./type/WalkupDevice.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type { ScanContent } from "./type/ScanContent.js";
 import { InputSource } from "./type/InputSource.js";
@@ -13,6 +12,10 @@ import type { PostProcessingResult } from "./postProcessing.js";
 import { getScanDimensions } from "./scanDimensions.js";
 import type { SelectedScanTarget } from "./type/scanTargetDefinitions.js";
 import { executeScanJob, executeScanJobs } from "./scanJobHandlers.js";
+import type {
+  ScanListener,
+  ScanRequest,
+} from "./scanListeners/ScanListener.js";
 import { KnownShortcut } from "./type/KnownShortcut.js";
 import type {
   AdfAutoScanConfig,
@@ -58,11 +61,11 @@ interface ScanMetadataInput {
   isPdf: boolean;
   isDuplex: boolean;
   pageCountingStrategy: PageCountingStrategy;
-  target?: SelectedScanTarget;
+  target?: Pick<SelectedScanTarget, "label" | "resourceURI">;
 }
 
 function buildScanMetadataInputTarget(
-  target: SelectedScanTarget,
+  target: Pick<SelectedScanTarget, "label" | "resourceURI">,
 ): ScanTargetInfo {
   return {
     label: target.label,
@@ -118,11 +121,10 @@ export interface WalkupDestination {
 }
 
 export async function tryGetDestination(
-  api: DeviceClient,
+  api: Pick<HpWalkupDevice, "getDestination">,
   event: IEvent,
 ): Promise<WalkupDestination | null> {
-  let destination: WalkupScanDestination | WalkupScanToCompDestination | null =
-    null;
+  let destination: WalkupDestination | null = null;
 
   for (let i = 0; i < 20; i++) {
     const destinationURI = event.destinationURI;
@@ -167,11 +169,12 @@ export function isPdf(destination: WalkupDestination): boolean {
 
 export async function saveScanFromEvent(
   api: DeviceClient,
-  selectedScanTarget: SelectedScanTarget,
+  selectedScanTarget: ScanRequest,
   folder: string,
   tempFolder: string,
   scanCount: number,
   deviceCapabilities: DeviceCapabilities,
+  scanListener: ScanListener,
   scanConfig: ScanConfig,
   isDuplex: boolean,
   isPdf: boolean,
@@ -225,6 +228,7 @@ export async function saveScanFromEvent(
     scanWidth,
     scanHeight,
     isDuplex,
+    selectedScanTarget.contextID,
   );
 
   const scanJobContent: ScanContent = {
@@ -253,8 +257,8 @@ export async function saveScanFromEvent(
     tempFolder,
     scanCount,
     scanJobContent,
-    selectedScanTarget,
     deviceCapabilities,
+    scanListener,
     filePattern,
     pageCountingStrategy,
   );

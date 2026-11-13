@@ -11,7 +11,8 @@ import { ScanMode } from "../src/type/scanMode.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
 import { PageCountingStrategy } from "../src/type/pageCountingStrategy.js";
 import type { ScanConfig, SingleScanConfig } from "../src/type/scanConfigs.js";
-import type { SelectedScanTarget } from "../src/type/scanTargetDefinitions.js";
+import type { ScanRequest } from "../src/scanListeners/ScanListener.js";
+import { createDefaultScanListener } from "./testUtils.js";
 
 function notIdleStatus(): IScanStatus {
   return {
@@ -25,7 +26,7 @@ function notIdleStatus(): IScanStatus {
 function makeDeviceCapabilities(): DeviceCapabilities {
   return {
     supportsMultiItemScanFromPlaten: false,
-    useWalkupScanToComp: false,
+    createWalkupScanListener: null,
     platenMaxWidth: null,
     platenMaxHeight: null,
     adfMaxWidth: null,
@@ -75,7 +76,7 @@ describe("scanProcessing", () => {
   describe("saveScanFromEvent", () => {
     it("aborts and returns empty content when the scanner is not Idle (regression: the pino branch only logged and continued)", async () => {
       const api = {} as DeviceClient;
-      const selectedScanTarget = {} as SelectedScanTarget;
+      const selectedScanTarget = {} as ScanRequest;
 
       const content = await saveScanFromEvent(
         api,
@@ -84,6 +85,7 @@ describe("scanProcessing", () => {
         "/tmp",
         1,
         makeDeviceCapabilities(),
+        createDefaultScanListener(),
         scanConfig,
         false,
         true,

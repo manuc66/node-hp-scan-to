@@ -1,8 +1,7 @@
-import type DeviceClient from "./DeviceClient.js";
+import type { HpWalkupDevice } from "./type/WalkupDevice.js";
 import type { IEvent } from "./hpModels/Event.js";
 import type { EtagEventTable } from "./hpModels/EventTable.js";
 import Destination from "./hpModels/Destination.js";
-import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type {
   RegistrationConfig,
   ScanTarget,
@@ -14,7 +13,7 @@ import { getLoggerForFile } from "./logger.js";
 const logger = getLoggerForFile(import.meta.url);
 
 export async function waitScanRequest(
-  api: DeviceClient,
+  api: HpWalkupDevice,
   compEventURI: string,
   userActionTimeout: number | null = null,
 ): Promise<boolean> {
@@ -42,7 +41,7 @@ export async function waitScanRequest(
 }
 
 export async function waitForScanEventFromTarget(
-  api: DeviceClient,
+  api: HpWalkupDevice,
   scanTarget: ScanTarget,
   afterEtag: string,
   userActionTimeout: number | null = null,
@@ -61,7 +60,7 @@ export async function waitForScanEventFromTarget(
 }
 
 export async function waitForScanEvent(
-  api: DeviceClient,
+  api: HpWalkupDevice,
   scanTargets: ScanTarget[],
   afterEtag: string | null = null,
 ): Promise<SelectedScanTarget | null> {
@@ -71,15 +70,21 @@ export async function waitForScanEvent(
   const since = afterEtag !== null ? ` since event ${afterEtag}` : "";
   logger.info(`Waiting for scan event from: ${targetList}${since}`);
 
-  return await waitForScanEventInternal(api, scanTargets, afterEtag, null, false);
+  return await waitForScanEventInternal(
+    api,
+    scanTargets,
+    afterEtag,
+    null,
+    false,
+  );
 }
 
 async function waitForScanEventInternal(
-  api: DeviceClient,
+  api: HpWalkupDevice,
   scanTargets: ScanTarget[],
   afterEtag: string | null = null,
   timeoutMs: number | null = null,
-  swallowErrors: boolean = false,
+  swallowErrors = false,
 ): Promise<SelectedScanTarget | null> {
   let eventTable: EtagEventTable;
   try {
@@ -168,8 +173,8 @@ function resolveUserActionTimeoutMs(
   return Math.min(MAX_MS, Math.max(MIN_MS, ms));
 }
 
-async function registerWalkupScanDestination(
-  api: DeviceClient,
+export async function registerWalkupScanDestination(
+  api: HpWalkupDevice,
   registrationConfigs: RegistrationConfig[],
   isScanToComp = false,
 ): Promise<ScanTarget[]> {
@@ -213,26 +218,34 @@ async function registerWalkupScanDestination(
   return scanTargets;
 }
 
-export async function waitScanEvent(
-  api: DeviceClient,
-  deviceCapabilities: DeviceCapabilities,
-  registrationConfigs: RegistrationConfig[],
-): Promise<SelectedScanTarget | null> {
-  let useWalkupScanToComp: boolean;
-  if (deviceCapabilities.useWalkupScanToComp !== undefined) {
-    useWalkupScanToComp = deviceCapabilities.useWalkupScanToComp;
-  } else {
-    logger.warn(
-      "No compatible device capabilities detected. It appears that your device may not support the listen command. While the application will still run, there is a possibility it may crash. If your device includes an automatic document feeder, consider using the adf-autoscan command instead.",
-    );
-    useWalkupScanToComp = false;
+export async function waitScanNewPageRequest(
+  api: HpWalkupDevice,
+  compEventURI: string,
+  userActionTimeout: number | null = null,
+): Promise<boolean> {
+  let startNewScanJob = false;
+  let wait = true;
+  const waitMax = userActionTimeout ?? 50;
+  let i = 0;
+  while (wait && i < waitMax) {
+    i++;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const walkupScanToCompEvent =
+      await api.getWalkupScanToCompEvent(compEventURI);
+    const eventType = walkupScanToCompEvent.eventType;
+    const eventTypeStr = eventType.toString();
+    if (eventType === EventType.ScanNewPageRequested) {
+      startNewScanJob = true;
+      wait = false;
+    } else if (eventType === EventType.ScanPagesComplete) {
+      wait = false;
+    } else if (eventType === EventType.ScanRequested) {
+      logger.info(`Waiting for user input (attempt ${i} of ${waitMax})`);
+    } else {
+      wait = false;
+      logger.warn(`Unknown eventType: ${eventTypeStr}`);
+    }
   }
-
-  const scanTargets = await registerWalkupScanDestination(
-    api,
-    registrationConfigs,
-    useWalkupScanToComp,
-  );
-
-  return await waitForScanEvent(api, scanTargets);
+  return startNewScanJob;
 }
