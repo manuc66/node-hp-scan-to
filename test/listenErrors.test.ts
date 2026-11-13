@@ -1,6 +1,6 @@
 import { describe, it } from "mocha";
 import { expect } from "chai";
-import { AxiosError, type AxiosResponse } from "axios";
+import { AxiosError, AxiosHeaders, type AxiosResponse } from "axios";
 import { CertificatePinError } from "../src/PrinterHttpsAgent.js";
 import {
   getListenerRetryDelayMs,
@@ -73,9 +73,12 @@ describe("getListenerRetryDelayMs", () => {
       undefined,
       undefined,
       {
+        data: "",
         status: 503,
+        statusText: "Service Unavailable",
         headers: { "retry-after": "3" },
-      } as unknown as AxiosResponse,
+        config: { headers: new AxiosHeaders() },
+      } as AxiosResponse,
     );
 
     expect(getListenerRetryDelayMs(error)).to.equal(3000);

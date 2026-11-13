@@ -11,11 +11,12 @@ import {
 } from "../src/PrinterHttpsAgent.js";
 
 const rawCertificate = Buffer.from("fake-der-certificate");
-const certificate = {
+const certificate = Object.create(null) as PeerCertificate;
+Object.assign(certificate, {
   fingerprint256: "B2:2B:9E:B1",
   subject: { CN: "HP6927CC" },
   raw: rawCertificate,
-} as unknown as PeerCertificate;
+});
 
 describe("PrinterHttpsAgent", () => {
   it("normalizes fingerprints", () => {

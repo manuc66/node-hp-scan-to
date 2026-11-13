@@ -1,6 +1,5 @@
 import { describe, it, beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
-import type DeviceClient from "../src/DeviceClient.js";
 import type { IEvent } from "../src/hpModels/Event.js";
 import type { EtagEventTable } from "../src/hpModels/EventTable.js";
 import { EventType } from "../src/hpModels/WalkupScanToCompEvent.js";
@@ -82,7 +81,7 @@ describe("LegacyScanListener", () => {
       ...args: unknown[]
     ) => {
       cb(...args);
-      return 0 as unknown as ReturnType<typeof setTimeout>;
+      return originalSetTimeout(() => undefined, 0);
     }) as typeof setTimeout;
   });
 
@@ -96,7 +95,7 @@ describe("LegacyScanListener", () => {
     userActionTimeout: number | null = null,
   ): LegacyScanListener {
     return new LegacyScanListener(
-      api as unknown as DeviceClient,
+      api,
       [{ label: "host", isDuplexSingleSide: false }],
       isScanToComp,
       userActionTimeout,

@@ -1,4 +1,4 @@
-import type DeviceClient from "../DeviceClient.js";
+import type { LegacyWalkupDevice } from "../type/WalkupDevice.js";
 import type { IEvent } from "../hpModels/Event.js";
 import type {
   RegistrationConfig,
@@ -25,7 +25,7 @@ export default class LegacyScanListener implements ScanListener {
   private currentEvent: IEvent | null = null;
 
   constructor(
-    private readonly api: DeviceClient,
+    private readonly api: LegacyWalkupDevice,
     private readonly registrationConfigs: RegistrationConfig[],
     private readonly isScanToComp: boolean,
     private readonly userActionTimeout: number | null,

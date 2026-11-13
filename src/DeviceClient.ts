@@ -185,6 +185,9 @@ export default class DeviceClient {
       return null;
     }
 
+    if (typeof raw !== "string" && typeof raw !== "number") {
+      return null;
+    }
     const value = String(raw).trim();
     if (value.length === 0) {
       return null;

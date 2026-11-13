@@ -1,5 +1,6 @@
 import os from "node:os";
 import DeviceClient from "../DeviceClient.js";
+import type { EsclWalkupDevice } from "../type/WalkupDevice.js";
 import type EsclWalkupEvent from "../hpModels/EsclWalkupEvent.js";
 import { EsclWalkupEventType } from "../hpModels/EsclWalkupEvent.js";
 import { ScanPlexMode } from "../hpModels/ScanPlexMode.js";
@@ -48,7 +49,7 @@ export default class EsclWalkupScanListener implements ScanListener {
   private readonly scanTargets: ScanTarget[];
 
   constructor(
-    private readonly api: DeviceClient,
+    private readonly api: EsclWalkupDevice,
     private readonly registrationConfigs: RegistrationConfig[],
     private readonly nextPageTimeoutMs = DEFAULT_NEXT_PAGE_TIMEOUT_MS,
   ) {
@@ -74,13 +75,14 @@ export default class EsclWalkupScanListener implements ScanListener {
       );
     }
 
-    this.subscriptionURI = await this.api.registerEsclWalkupSubscription(
+    const subscriptionURI = await this.api.registerEsclWalkupSubscription(
       os.hostname(),
       shortcuts,
     );
-    logger.info(`Registered eSCL walkup subscription: ${this.subscriptionURI}`);
+    this.subscriptionURI = subscriptionURI;
+    logger.info(`Registered eSCL walkup subscription: ${subscriptionURI}`);
 
-    return this.subscriptionURI;
+    return subscriptionURI;
   }
 
   private invalidateSubscription(): void {

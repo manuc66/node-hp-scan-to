@@ -18,6 +18,8 @@ import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
 import type { ScanContent } from "../src/type/ScanContent.js";
 import { createImageFormat } from "../src/imageFormats/index.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
+import { ScanMode } from "../src/type/scanMode.js";
+import type { ImageFormat } from "../src/imageFormats/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +35,43 @@ function jpegSettings(): IScanJobSettings {
     xResolution: 200,
     yResolution: 200,
   } as unknown as IScanJobSettings;
+}
+
+function scanJobSettings(format: ImageFormat): IScanJobSettings {
+  return {
+    format,
+    mode: ScanMode.Color,
+    xResolution: 200,
+    yResolution: 200,
+    toXML: async () => "<scan-settings/>",
+  };
+}
+
+function deviceCapabilities(
+  overrides: Partial<DeviceCapabilities>,
+): DeviceCapabilities {
+  return {
+    supportsMultiItemScanFromPlaten: false,
+    createWalkupScanListener: null,
+    platenMaxWidth: null,
+    platenMaxHeight: null,
+    adfMaxWidth: null,
+    adfMaxHeight: null,
+    adfDuplexMaxWidth: null,
+    adfDuplexMaxHeight: null,
+    hasAdfDetectPaperLoaded: false,
+    hasAdfDuplex: false,
+    userActionTimeout: null,
+    isEscl: false,
+    getScanStatus: async () => {
+      throw new Error("Not used in this test");
+    },
+    createScanJobSettings: () => {
+      throw new Error("Not used in this test");
+    },
+    submitScanJob: async () => "unused",
+    ...overrides,
+  };
 }
 
 describe("scanJobHandlers flows", () => {
@@ -306,12 +345,7 @@ describe("scanJobHandlers flows", () => {
 
       const api = new DeviceClient("127.0.0.1", false);
       const scanJobContent: ScanContent = { elements: [] };
-      const bmpSettings = {
-        format: createImageFormat(ScanFormat.Bmp),
-        mode: "Color",
-        xResolution: 200,
-        yResolution: 200,
-      } as unknown as IScanJobSettings;
+      const bmpSettings = scanJobSettings(createImageFormat(ScanFormat.Bmp));
 
       const jobState = await executeScanJob(
         api,
@@ -421,11 +455,11 @@ describe("scanJobHandlers flows", () => {
       const api = new DeviceClient("127.0.0.1", false);
       const scanJobContent: ScanContent = { elements: [] };
 
-      const capabilities = {
+      const capabilities = deviceCapabilities({
         isEscl: true,
         submitScanJob: async () => "/eSCL/ScanJobs/1",
         userActionTimeout: 1,
-      } as unknown as DeviceCapabilities;
+      });
 
       const jobState = await executeScanJob(
         api,
@@ -523,12 +557,7 @@ describe("scanJobHandlers flows", () => {
         xResolution: 200,
         yResolution: 200,
       } as unknown as Job;
-      const settings = {
-        format: createImageFormat(ScanFormat.Bmp),
-        mode: "Color",
-        xResolution: 200,
-        yResolution: 200,
-      } as unknown as IScanJobSettings;
+      const settings = scanJobSettings(createImageFormat(ScanFormat.Bmp));
       const handler = new HpScanJobHandler({
         api,
         scanJobSettings: settings,

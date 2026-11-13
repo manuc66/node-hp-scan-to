@@ -2,7 +2,6 @@ import { describe, it } from "mocha";
 import { expect } from "chai";
 import os from "node:os";
 import { AxiosError, type AxiosResponse } from "axios";
-import type DeviceClient from "../src/DeviceClient.js";
 import EsclWalkupEvent from "../src/hpModels/EsclWalkupEvent.js";
 import { KnownShortcut } from "../src/type/KnownShortcut.js";
 import { ScanPlexMode } from "../src/hpModels/ScanPlexMode.js";
@@ -114,10 +113,7 @@ const configs = [
 describe("EsclWalkupScanListener", () => {
   it("registers one subscription with the configured shortcuts", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(await scanRequested());
 
     await listener.waitForScan();
@@ -132,10 +128,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("skips HostSelected and returns the requested shortcut", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(await simpleEvent("HostSelected"));
     api.events.push(await scanRequested("Paperless duplex", "true"));
 
@@ -150,10 +143,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("falls back to the first target for an unknown shortcut", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(await scanRequested("Panel shortcut"));
 
     const request = await listener.waitForScan();
@@ -163,10 +153,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("re-registers when the subscription expired", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(notFoundError());
     api.events.push(await scanRequested());
 
@@ -179,10 +166,7 @@ describe("EsclWalkupScanListener", () => {
   it("gives up when a fresh subscription keeps expiring", async () => {
     const api = new FakeApi();
     api.alwaysExpired = true;
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
 
     let error: unknown;
     try {
@@ -198,10 +182,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("re-registers and deletes the stale subscription after a 403", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(httpError(403));
     api.events.push(await scanRequested());
 
@@ -216,10 +197,7 @@ describe("EsclWalkupScanListener", () => {
   it("does not touch the subscription when the device is not ready", async () => {
     const api = new FakeApi();
     api.probeResult = EsclWalkupProbe.Refused;
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(httpError(403));
 
     const error = await rejectionOf(listener.waitForScan());
@@ -234,10 +212,7 @@ describe("EsclWalkupScanListener", () => {
   it("fails permanently when the device stops serving the walkup route", async () => {
     const api = new FakeApi();
     api.probeResult = EsclWalkupProbe.Missing;
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(httpError(404));
 
     const error = await rejectionOf(listener.waitForScan());
@@ -250,10 +225,7 @@ describe("EsclWalkupScanListener", () => {
   it("keeps the subscription when the device cannot be reached", async () => {
     const api = new FakeApi();
     api.probeResult = EsclWalkupProbe.Unreachable;
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(httpError(404));
 
     const error = await rejectionOf(listener.waitForScan());
@@ -266,10 +238,7 @@ describe("EsclWalkupScanListener", () => {
   it("re-registers even when deleting the stale subscription fails", async () => {
     const api = new FakeApi();
     api.removeError = httpError(403);
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(httpError(403));
     api.events.push(await scanRequested());
 
@@ -283,10 +252,7 @@ describe("EsclWalkupScanListener", () => {
     const api = new FakeApi();
     api.alwaysExpired = true;
     api.expiredError = httpError(403);
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
 
     const error = await rejectionOf(listener.waitForScan());
 
@@ -297,10 +263,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("keeps the subscription until the 503 threshold is reached", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(httpError(503));
     api.events.push(httpError(503));
 
@@ -318,10 +281,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("recovers the subscription after consecutive 503s", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(httpError(503));
     api.events.push(httpError(503));
     api.events.push(httpError(503));
@@ -338,10 +298,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("resets the 503 counter after a successful poll", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(httpError(503));
     api.events.push(httpError(503));
     api.events.push(await simpleEvent("HostSelected"));
@@ -359,10 +316,7 @@ describe("EsclWalkupScanListener", () => {
   it("gives up after repeated recovery cycles", async () => {
     const api = new FakeApi();
     api.alwaysUnavailable = true;
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
 
     const error = await rejectionOf(waitForScanWithRetries(listener, 30));
 
@@ -374,7 +328,7 @@ describe("EsclWalkupScanListener", () => {
   it("limits the registration to the device shortcut limit", async () => {
     const api = new FakeApi();
     const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
+      api,
       Array.from({ length: 6 }, (_, i) => ({
         label: `shortcut-${i}`,
         isDuplexSingleSide: false,
@@ -389,10 +343,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("treats ScanPagesComplete and HostSelected as end of session", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(await simpleEvent("ScanPagesComplete"));
 
     expect(await listener.waitForNextPage()).to.be.null;
@@ -403,10 +354,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("returns a new request when the user adds a page", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(await scanRequested("Paperless"));
 
     const request = await listener.waitForNextPage();
@@ -416,10 +364,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("re-registers when the subscription expires while waiting for a page", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(notFoundError());
     api.events.push(await scanRequested("Paperless"));
 
@@ -431,11 +376,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("ends the next-page wait after the inactivity timeout", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-      5,
-    );
+    const listener = new EsclWalkupScanListener(api, configs, 5);
     const startedAt = Date.now();
 
     expect(await listener.waitForNextPage()).to.be.null;
@@ -445,10 +386,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("removes the subscription on dispose, once", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(await scanRequested());
     await listener.waitForScan();
 
@@ -460,10 +398,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("does nothing on dispose when no subscription was registered", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
 
     await listener.dispose();
 
@@ -472,10 +407,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("ScanRequested is already the start signal", async () => {
     const api = new FakeApi();
-    const listener = new EsclWalkupScanListener(
-      api as unknown as DeviceClient,
-      configs,
-    );
+    const listener = new EsclWalkupScanListener(api, configs);
     api.events.push(await scanRequested());
 
     const request = await listener.waitForScan();
@@ -507,7 +439,7 @@ async function waitForScanWithRetries(
   listener: EsclWalkupScanListener,
   attempts = 20,
 ): Promise<ScanRequest | null> {
-  let lastError: unknown;
+  let lastError: Error | undefined;
   for (let i = 0; i < attempts; i++) {
     try {
       const request = await listener.waitForScan();
@@ -515,7 +447,7 @@ async function waitForScanWithRetries(
         return request;
       }
     } catch (error) {
-      lastError = error;
+      lastError = error instanceof Error ? error : new Error(String(error));
     }
   }
   throw lastError ?? new Error("No scan request after retries");
