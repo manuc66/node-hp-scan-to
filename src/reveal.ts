@@ -168,9 +168,18 @@ function runWithTimeout(
  * Opens the system file manager on `filePath`, selecting it where the
  * platform allows. Best effort: a missing desktop session is skipped quietly,
  * a failure is only logged, and the scan flow never waits for the file
- * manager itself.
+ * manager itself. Never rejects: the reveal is decoration, the delivered scan
+ * is what matters.
  */
 export async function revealScan(filePath: string): Promise<void> {
+  try {
+    await openFileManager(filePath);
+  } catch (error) {
+    logger.debug(`Could not reveal ${filePath}: ${String(error)}`);
+  }
+}
+
+async function openFileManager(filePath: string): Promise<void> {
   const { platform, env } = revealRuntime;
   if (!isDesktopSession(platform, env, revealRuntime.inDocker())) {
     logger.debug("Not revealing the scan: no desktop session");
@@ -219,4 +228,9 @@ export async function revealFirstKept(
       return;
     }
   }
+  // The expected outcome of the default upload setup (`keep_files: false`):
+  // say why nothing opened, otherwise `--reveal` looks broken.
+  logger.info(
+    "Not revealing the scan: no file is left on disk (it was uploaded and removed, or keep_files is false)",
+  );
 }

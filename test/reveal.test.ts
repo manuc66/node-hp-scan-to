@@ -190,6 +190,20 @@ describe("reveal", () => {
       expect(programs).to.deep.equal(["dbus-send", "xdg-open"]);
     });
 
+    it("never rejects when an unexpected error escapes the platform code", async () => {
+      desktop("darwin");
+      const calls = recordSpawns();
+      revealRuntime.now = () => {
+        throw new Error("unexpected");
+      };
+
+      // The scan was already delivered when the reveal runs: an error here
+      // must be swallowed, never turned into a failed scan.
+      await revealScan("/Users/me/scans/scan1.pdf");
+
+      expect(calls).to.deep.equal([]);
+    });
+
     it("does not fall back when the D-Bus call succeeds", async () => {
       desktop("linux", linuxSession);
       const calls = recordSpawns((call) => call.child.emit("exit", 0));
