@@ -10,6 +10,7 @@ import axios, {
 } from "axios";
 import * as stream from "node:stream";
 import type Stream from "node:stream";
+import type { Agent } from "node:https";
 import EventTable, { type EtagEventTable } from "./hpModels/EventTable.js";
 import Job from "./hpModels/Job.js";
 import ScanStatus from "./hpModels/ScanStatus.js";
@@ -32,19 +33,59 @@ import EsclScanCaps from "./hpModels/EsclScanCaps.js";
 import EsclScanStatus from "./hpModels/EsclScanStatus.js";
 import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
 import EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
+import EsclWalkupEvent from "./hpModels/EsclWalkupEvent.js";
+import EsclWalkupSubscription from "./hpModels/EsclWalkupSubscription.js";
+import {
+  EsclWalkupProbe,
+  type EsclWalkupProbeResult,
+} from "./type/EsclWalkupProbe.js";
 import PathHelper from "./PathHelper.js";
 import { getLoggerForFile } from "./logger.js";
+import {
+  CertificatePinError,
+  createPrinterHttpsAgent,
+  readConfiguredFingerprint,
+} from "./PrinterHttpsAgent.js";
 
 const logger = getLoggerForFile(import.meta.url);
+
+export interface DeviceClientOptions {
+  /** SHA-256 fingerprint of the printer's eSCL HTTPS certificate. */
+  esclCertificateFingerprint?: string;
+}
 
 export default class DeviceClient {
   readonly deviceIP: string;
   readonly debug: boolean;
   private callCount = 0;
+  private esclBaseUrlPromise: Promise<string | null> | null = null;
+  private httpsAgentPromise: Promise<Agent> | null = null;
+  private readonly esclCertificateFingerprint: string | undefined;
 
-  constructor(deviceIP: string, debug = false) {
+  constructor(
+    deviceIP: string,
+    debug = false,
+    options: DeviceClientOptions = {},
+  ) {
     this.deviceIP = deviceIP;
     this.debug = debug;
+    this.esclCertificateFingerprint =
+      options.esclCertificateFingerprint ?? readConfiguredFingerprint();
+  }
+
+  private async getHttpsAgent(): Promise<Agent> {
+    this.httpsAgentPromise ??= createPrinterHttpsAgent(
+      this.deviceIP,
+      this.esclCertificateFingerprint,
+    );
+    return await this.httpsAgentPromise;
+  }
+
+  private static isHttpsRequest(request: AxiosRequestConfig): boolean {
+    return (
+      (request.baseURL ?? "").startsWith("https:") ||
+      (request.url ?? "").startsWith("https:")
+    );
   }
 
   isDebug(): boolean {
@@ -69,13 +110,24 @@ export default class DeviceClient {
   ): Promise<AxiosResponse<T>> {
     this.callCount++;
 
-    if (request.timeout === 0) {
-      request.timeout = 100_000;
+    const effectiveRequest: AxiosRequestConfig = { ...request };
+    if (
+      effectiveRequest.httpsAgent === undefined &&
+      DeviceClient.isHttpsRequest(effectiveRequest)
+    ) {
+      effectiveRequest.httpsAgent = await this.getHttpsAgent();
     }
-    this.logDebug(this.callCount, true, request);
+    if (effectiveRequest.timeout === 0) {
+      effectiveRequest.timeout = 100_000;
+    }
+    const debugRequest: Record<string, unknown> = { ...effectiveRequest };
+    if (debugRequest["httpsAgent"] !== undefined) {
+      debugRequest["httpsAgent"] = "[printer https agent]";
+    }
+    this.logDebug(this.callCount, true, debugRequest);
     try {
       const response = await axios({
-        ...request,
+        ...effectiveRequest,
         adapter: "http",
       });
       this.logDebug(this.callCount, false, {
@@ -100,10 +152,138 @@ export default class DeviceClient {
     }
   }
 
-  async isAlive(timeout: number | null = null): Promise<boolean> {
-    const definedTimeout = timeout ?? 10000;
+  private static isHttpStatus(error: unknown, statuses: number[]): boolean {
+    if (!(error instanceof AxiosError)) {
+      return false;
+    }
+    const status = error.response?.status ?? error.status;
+    return status !== undefined && statuses.includes(status);
+  }
+
+  static isSubscriptionExpired(error: unknown): boolean {
+    // A printer that rebooted clears its subscriptions and answers 403 on the
+    // stale id (observed on the OfficeJet Pro 8120e series), while other
+    // firmware answers 404/410. All three mean "register again".
+    return DeviceClient.isHttpStatus(error, [403, 404, 410]);
+  }
+
+  static isServiceUnavailable(error: unknown): boolean {
+    return DeviceClient.isHttpStatus(error, [503]);
+  }
+
+  /**
+   * Parse `Retry-After` (delay in seconds or an HTTP date) from a failed
+   * response. The value is clamped so a broken header cannot stall `listen`.
+   * Returns `null` when the header is absent or unusable.
+   */
+  static getRetryAfterMs(error: unknown): number | null {
+    if (!(error instanceof AxiosError)) {
+      return null;
+    }
+    const raw: unknown = error.response?.headers?.["retry-after"];
+    if (raw === undefined || raw === null) {
+      return null;
+    }
+
+    if (typeof raw !== "string" && typeof raw !== "number") {
+      return null;
+    }
+    const value = String(raw).trim();
+    if (value.length === 0) {
+      return null;
+    }
+
+    const seconds = Number(value);
+    if (Number.isFinite(seconds)) {
+      return seconds < 0
+        ? null
+        : Math.min(seconds * 1000, DeviceClient.MAX_RETRY_AFTER_MS);
+    }
+
+    const retryAt = Date.parse(value);
+    if (Number.isNaN(retryAt)) {
+      return null;
+    }
+    return Math.min(
+      Math.max(retryAt - Date.now(), 0),
+      DeviceClient.MAX_RETRY_AFTER_MS,
+    );
+  }
+
+  private static readonly MAX_RETRY_AFTER_MS = 60_000;
+
+  private rememberEsclBaseUrlFrom(uri: string): void {
+    if (this.esclBaseUrlPromise !== null || !/^https?:\/\//.test(uri)) {
+      return;
+    }
+
+    const url = new URL(uri);
+    this.esclBaseUrlPromise = Promise.resolve(`${url.protocol}//${url.host}`);
+  }
+
+  private async getEsclBaseUrlForJob(jobUri: string): Promise<string> {
+    this.rememberEsclBaseUrlFrom(jobUri);
+    if (this.esclBaseUrlPromise !== null) {
+      return await this.getEsclBaseUrl();
+    }
+
+    // A relative job URI carries no scheme. Keep the HTTP fallback unless a
+    // base was already resolved when the job was created.
+    return `http://${this.deviceIP}`;
+  }
+
+  /**
+   * Resolve the base URL used by the standard eSCL endpoints.
+   *
+   * Older firmware serves eSCL over plain HTTP on port 80; newer devices only
+   * expose it over HTTPS on port 443. The result is cached so probing happens
+   * at most once per client; a failed probe is retried on the next call.
+   */
+  async getEsclBaseUrl(): Promise<string> {
+    this.esclBaseUrlPromise ??= this.detectEsclBaseUrl();
+    const detected = await this.esclBaseUrlPromise;
+    if (detected !== null) {
+      return detected;
+    }
+
+    this.esclBaseUrlPromise = null;
+    logger.debug(
+      `No eSCL HTTPS endpoint detected; falling back to http://${this.deviceIP}`,
+    );
+    return `http://${this.deviceIP}`;
+  }
+
+  private async detectEsclBaseUrl(): Promise<string | null> {
+    const candidates = [`http://${this.deviceIP}`, `https://${this.deviceIP}`];
+
+    for (const baseURL of candidates) {
+      try {
+        const response = await this.callAxios({
+          baseURL,
+          url: "/eSCL/ScannerStatus",
+          method: "GET",
+          responseType: "text",
+          timeout: 3000,
+        });
+        if (response.status === 200) {
+          logger.info(`Using eSCL base URL: ${baseURL}`);
+          return baseURL;
+        }
+        logger.debug(
+          { baseURL, status: response.status },
+          "eSCL base URL probe did not succeed",
+        );
+      } catch (error) {
+        logger.debug({ baseURL, err: error }, "eSCL base URL probe failed");
+      }
+    }
+
+    return null;
+  }
+
+  private async isPortOpen(port: number, timeout: number): Promise<boolean> {
     return new Promise((resolve) => {
-      const socket = net.createConnection(80, this.deviceIP, () => {
+      const socket = net.createConnection(port, this.deviceIP, () => {
         clearTimeout(timer);
         resolve(true);
         socket.end();
@@ -111,11 +291,29 @@ export default class DeviceClient {
       const timer = setTimeout(() => {
         resolve(false);
         socket.end();
-      }, definedTimeout);
+      }, timeout);
       socket.on("error", () => {
         clearTimeout(timer);
         resolve(false);
       });
+    });
+  }
+
+  async isAlive(timeout: number | null = null): Promise<boolean> {
+    const definedTimeout = timeout ?? 10000;
+    // Some eSCL-only firmware only listens on HTTPS 443, while older devices
+    // only use HTTP 80. Probe both in parallel and resolve as soon as one
+    // answers, so an open device is not delayed by the other port.
+    return new Promise((resolve) => {
+      let pending = 2;
+      const finish = (alive: boolean): void => {
+        if (alive || --pending === 0) {
+          resolve(alive);
+        }
+      };
+
+      void this.isPortOpen(80, definedTimeout).then(finish);
+      void this.isPortOpen(443, definedTimeout).then(finish);
     });
   }
 
@@ -138,18 +336,92 @@ export default class DeviceClient {
   }
 
   async getDiscoveryTree(): Promise<DiscoveryTree> {
-    const response = await this.callAxios({
-      baseURL: `http://${this.deviceIP}`,
-      url: "/DevMgmt/DiscoveryTree.xml",
-      method: "GET",
-      responseType: "text",
-    });
+    let lastError: unknown;
+    let sawMissingTree = false;
 
-    if (response.status !== 200) {
-      throw new Error(response.statusText);
-    } else {
-      return DiscoveryTree.createDiscoveryTree(response.data);
+    // Newer firmware only exposes HTTPS 443, while older devices keep the
+    // LEDM document on plain HTTP. Try both before deciding that the tree is
+    // absent.
+    for (const baseURL of [
+      `http://${this.deviceIP}`,
+      `https://${this.deviceIP}`,
+    ]) {
+      let response: AxiosResponse<string>;
+      try {
+        response = await this.callAxios({
+          baseURL,
+          url: "/DevMgmt/DiscoveryTree.xml",
+          method: "GET",
+          responseType: "text",
+          // Do not throw on 404: we handle a missing tree explicitly below.
+          validateStatus: () => true,
+        });
+      } catch (error) {
+        if (error instanceof CertificatePinError) {
+          throw error;
+        }
+        lastError = error;
+        continue;
+      }
+
+      if (response.status === 200) {
+        return DiscoveryTree.createDiscoveryTree(response.data);
+      }
+
+      if (response.status === 404 || response.status === 405) {
+        sawMissingTree = true;
+        continue;
+      }
+
+      throw new Error(
+        `DiscoveryTree.xml request failed with status ${response.status}`,
+      );
     }
+
+    if (lastError !== undefined && !sawMissingTree) {
+      if (lastError instanceof Error) {
+        throw lastError;
+      }
+      throw new Error("DiscoveryTree.xml request failed");
+    }
+
+    // Factual only: whether the standard eSCL endpoints are probed is decided
+    // by readDeviceCapabilities.getScanCaps(), which knows the caller options.
+    logger.debug(
+      "DiscoveryTree.xml is not served over HTTP or HTTPS; returning an empty tree.",
+    );
+    return DiscoveryTree.empty();
+  }
+
+  /**
+   * Standard eSCL capabilities path. Some devices serve
+   * /eSCL/ScanCapabilities, others (HP firmware) only /eSCL/ScannerCapabilities.
+   */
+  async getEsclScanCapsFromWellKnownPath(): Promise<EsclScanCaps | null> {
+    for (const path of [
+      "/eSCL/ScanCapabilities",
+      "/eSCL/ScannerCapabilities",
+    ]) {
+      try {
+        const response = await this.callAxios({
+          baseURL: await this.getEsclBaseUrl(),
+          url: path,
+          method: "GET",
+          responseType: "text",
+          // A 404 on the first candidate is expected; probe the next one.
+          validateStatus: () => true,
+        });
+        if (response.status === 200) {
+          return await EsclScanCaps.createScanCaps(response.data);
+        }
+      } catch (error) {
+        if (error instanceof CertificatePinError) {
+          throw error;
+        }
+        logger.debug({ error }, `eSCL capabilities probe for ${path} failed`);
+      }
+    }
+    return null;
   }
 
   async getWalkupScanDestinations(
@@ -236,8 +508,9 @@ export default class DeviceClient {
   }
 
   async getEsclScanJobManifest(uri: string): Promise<EsclScanJobManifest> {
+    this.rememberEsclBaseUrlFrom(uri);
     const response = await this.callAxios({
-      baseURL: `http://${this.deviceIP}`,
+      baseURL: await this.getEsclBaseUrl(),
       url: uri,
       method: "GET",
       responseType: "text",
@@ -266,8 +539,9 @@ export default class DeviceClient {
   }
 
   async getEsclScanCaps(uri: string): Promise<EsclScanCaps> {
+    this.rememberEsclBaseUrlFrom(uri);
     const response = await this.callAxios({
-      baseURL: `http://${this.deviceIP}`,
+      baseURL: await this.getEsclBaseUrl(),
       url: uri,
       method: "GET",
       responseType: "text",
@@ -493,9 +767,14 @@ export default class DeviceClient {
     }
   }
 
-  async getEsclScanStatus(): Promise<EsclScanStatus> {
+  async getEsclScanStatus(jobUri?: string): Promise<EsclScanStatus> {
+    const baseURL =
+      jobUri === undefined
+        ? await this.getEsclBaseUrl()
+        : await this.getEsclBaseUrlForJob(jobUri);
+
     const response = await this.callAxios({
-      baseURL: `http://${this.deviceIP}`,
+      baseURL,
       url: "/eSCL/ScannerStatus",
       method: "GET",
       responseType: "text",
@@ -544,7 +823,7 @@ export default class DeviceClient {
     await this.delay(500);
     const xml = await job.toXML();
     const response = await this.callAxios({
-      baseURL: `http://${this.deviceIP}`,
+      baseURL: await this.getEsclBaseUrl(),
       url: "/eSCL/ScanJobs",
       method: "POST",
       headers: { "Content-Type": "text/xml" },
@@ -560,6 +839,125 @@ export default class DeviceClient {
     } else {
       throw new Error(
         `Unexpected status code or location when posting job: ${response.status} - ${response.headers["location"]}`,
+      );
+    }
+  }
+
+  /**
+   * Some devices expose eSCL scanning but not the walkup subscription
+   * extension. A GET on the collection is the least invasive way to tell
+   * them apart before registering anything.
+   *
+   * The result is deliberately not a boolean: a 403/5xx usually means the
+   * printer is still booting (or refuses this host), which is not the same as
+   * a device that does not implement walkup at all. `listen` uses that
+   * distinction before deleting or re-creating a subscription.
+   */
+  async probeEsclWalkup(): Promise<EsclWalkupProbeResult> {
+    try {
+      const response = await this.callAxios({
+        baseURL: await this.getEsclBaseUrl(),
+        url: "/eSCL/WalkupSubscriptions",
+        method: "GET",
+        responseType: "text",
+        validateStatus: () => true,
+      });
+      if (response.status === 200 || response.status === 405) {
+        return EsclWalkupProbe.Supported;
+      }
+      if (response.status === 404) {
+        return EsclWalkupProbe.Missing;
+      }
+      if (response.status === 401 || response.status === 403) {
+        return EsclWalkupProbe.Refused;
+      }
+      return EsclWalkupProbe.Unreachable;
+    } catch (error) {
+      if (error instanceof CertificatePinError) {
+        throw error;
+      }
+      logger.debug(`Could not probe eSCL walkup support: ${String(error)}`);
+      return EsclWalkupProbe.Unreachable;
+    }
+  }
+
+  async supportsEsclWalkup(): Promise<boolean> {
+    return (await this.probeEsclWalkup()) === EsclWalkupProbe.Supported;
+  }
+
+  async registerEsclWalkupSubscription(
+    hostIdentifier: string,
+    shortcuts: string[],
+  ): Promise<string> {
+    const subscription = new EsclWalkupSubscription(hostIdentifier, shortcuts);
+    const url = "/eSCL/WalkupSubscriptions";
+    const response = await this.callAxios({
+      baseURL: await this.getEsclBaseUrl(),
+      url,
+      method: "POST",
+      headers: {
+        "Content-Type": "text/xml",
+        "Cache-Control": "no-cache",
+      },
+      data: subscription.toXML(),
+      responseType: "text",
+    });
+
+    const location: unknown = response.headers["location"];
+    // Some firmware answers 200 (instead of 201) when the host already has a
+    // subscription, including the one it just kept for a stale id.
+    if (
+      (response.status !== 201 && response.status !== 200) ||
+      typeof location !== "string"
+    ) {
+      throw new Error(
+        `Unexpected status code or location when registering to ${url}: ${response.status} - ${String(location)}`,
+      );
+    }
+
+    return PathHelper.getPathFromHttpLocation(location);
+  }
+
+  async getEsclWalkupEvent(
+    subscriptionURI: string,
+    timeoutSeconds = 100,
+  ): Promise<EsclWalkupEvent | null> {
+    const url = DeviceClient.appendTimeout(
+      `${subscriptionURI}/Event`,
+      timeoutSeconds,
+    );
+    const response = await this.callAxios({
+      baseURL: await this.getEsclBaseUrl(),
+      url,
+      method: "GET",
+      responseType: "text",
+      timeout: (timeoutSeconds + 10) * 1000,
+    });
+
+    if (response.status === 204) {
+      return null;
+    }
+
+    if (response.status !== 200) {
+      throw new Error(
+        `Unexpected status code when getting ${subscriptionURI}: ${response.status}`,
+      );
+    }
+
+    return await EsclWalkupEvent.create(response.data);
+  }
+
+  async removeEsclWalkupSubscription(subscriptionURI: string): Promise<void> {
+    const response = await this.callAxios({
+      baseURL: await this.getEsclBaseUrl(),
+      url: subscriptionURI,
+      method: "DELETE",
+      responseType: "text",
+    });
+
+    if (response.status !== 200 && response.status !== 204) {
+      throw new Error(
+        `Unexpected status code when removing ${subscriptionURI}: ${response.status}`,
       );
     }
   }
@@ -584,7 +982,7 @@ export default class DeviceClient {
   async downloadPage(
     binaryURL: string,
     destination: string,
-    timeout: number = 60_000,
+    timeout = 60_000,
   ): Promise<string> {
     const response = await this.callAxios<Stream>({
       baseURL: `http://${this.deviceIP}:8080`,
@@ -605,31 +1003,69 @@ export default class DeviceClient {
     return destination;
   }
 
+  private async downloadPageWithMetaFrom(
+    baseURL: string,
+    binaryURL: string,
+    destination: string,
+    timeout = 60_000,
+  ): Promise<{ path: string; contentType: string | undefined }> {
+    const httpsAgent = baseURL.startsWith("https:")
+      ? await this.getHttpsAgent()
+      : undefined;
+    const requestUrl = binaryURL.startsWith("http")
+      ? binaryURL
+      : `${baseURL}${binaryURL}`;
+    logger.debug({ url: requestUrl, destination }, "Downloading scan page");
+    try {
+      const { data, headers, status }: AxiosResponse<Stream> =
+        await axios.request<Stream>({
+          baseURL,
+          url: binaryURL,
+          method: "GET",
+          responseType: "stream",
+          ...(httpsAgent !== undefined && { httpsAgent }),
+          ...(timeout !== undefined && { timeout }),
+        });
+      logger.debug({ url: requestUrl, status, headers }, "Scan page response");
+
+      const destinationFileStream = fs.createWriteStream(destination);
+      data.pipe(destinationFileStream);
+
+      await promisify(stream.finished)(destinationFileStream);
+
+      const contentType =
+        typeof headers["content-type"] === "string"
+          ? headers["content-type"]
+          : undefined;
+
+      return { path: destination, contentType };
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      logger.debug(
+        {
+          url: requestUrl,
+          status: axiosError.response?.status,
+          statusText: axiosError.response?.statusText,
+          headers: axiosError.response?.headers,
+        },
+        "Scan page download failed",
+      );
+      throw error;
+    }
+  }
+
   async downloadPageWithMeta(
     binaryURL: string,
     destination: string,
-    timeout: number = 60_000,
+    timeout?: number,
+    port = 8080,
   ): Promise<{ path: string; contentType: string | undefined }> {
-    const { data, headers }: AxiosResponse<Stream> =
-      await axios.request<Stream>({
-        baseURL: `http://${this.deviceIP}:8080`,
-        url: binaryURL,
-        method: "GET",
-        responseType: "stream",
-        timeout,
-      });
-
-    const destinationFileStream = fs.createWriteStream(destination);
-    data.pipe(destinationFileStream);
-
-    await promisify(stream.finished)(destinationFileStream);
-
-    const contentType =
-      typeof headers["content-type"] === "string"
-        ? headers["content-type"]
-        : undefined;
-
-    return { path: destination, contentType };
+    return await this.downloadPageWithMetaFrom(
+      `http://${this.deviceIP}:${port}`,
+      binaryURL,
+      destination,
+      timeout,
+    );
   }
 
   async esclWaitDeviceBusy<T>(fn: () => Promise<T>): Promise<T> {
@@ -654,19 +1090,40 @@ export default class DeviceClient {
     jobUri: string,
     destination: string,
   ): Promise<{ path: string; contentType: string | undefined }> {
+    const baseURL = await this.getEsclBaseUrlForJob(jobUri);
     return await this.esclWaitDeviceBusy(async () => {
-      return await this.downloadPageWithMeta(
+      return await this.downloadEsclPageWithMeta(
         `${jobUri}/NextDocument`,
         destination,
         60_000,
+        baseURL,
       );
     });
   }
 
+  /**
+   * eSCL is not served on the HP-proprietary port 8080: older devices use
+   * port 80, newer firmware only exposes HTTPS 443.
+   */
+  async downloadEsclPageWithMeta(
+    url: string,
+    destination: string,
+    timeout?: number,
+    baseURL?: string,
+  ): Promise<{ path: string; contentType: string | undefined }> {
+    return await this.downloadPageWithMetaFrom(
+      baseURL ?? (await this.getEsclBaseUrl()),
+      url,
+      destination,
+      timeout,
+    );
+  }
+
   async getEsclScanImageInfo(jobUri: string): Promise<EsclScanImageInfo> {
+    const baseURL = await this.getEsclBaseUrlForJob(jobUri);
     return await this.esclWaitDeviceBusy(async () => {
       const response = await this.callAxios({
-        baseURL: `http://${this.deviceIP}`,
+        baseURL,
         url: `${jobUri}/ScanImageInfo`,
         method: "GET",
         responseType: "text",

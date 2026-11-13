@@ -8,6 +8,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 describe("DiscoveryTree", () => {
+  it("an empty tree advertises no scan interface", () => {
+    const discoveryTree = DiscoveryTree.empty();
+
+    expect(discoveryTree.isEmpty).to.be.true;
+    expect(discoveryTree.hasScanInterface).to.be.false;
+  });
+
   describe("Parsing discoveryTree.xml", async () => {
     let discoveryTree: DiscoveryTree;
 

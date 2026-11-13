@@ -9,6 +9,7 @@ import { ScanFormat } from "../src/type/scanFormat.js";
 import {
   createDefaultScanConfig,
   createDefaultDeviceCapabilities,
+  createDefaultScanListener,
 } from "./testUtils.js";
 import type {
   AdfAutoScanConfig,
@@ -24,7 +25,6 @@ import { InputSource } from "../src/type/InputSource.js";
 import type { IScanJobSettings } from "../src/hpModels/IScanJobSettings.js";
 import type { ScanMode } from "../src/type/scanMode.js";
 
-import type { IEvent } from "../src/hpModels/Event.js";
 import type { ImageFormat } from "../src/imageFormats/index.js";
 
 describe("scanProcessing Format Selection", () => {
@@ -32,14 +32,6 @@ describe("scanProcessing Format Selection", () => {
   const tempFolder = "/tmp/temp";
   const scanCount = 1;
   const date = new Date();
-
-  const mockEvent: IEvent = {
-    unqualifiedEventCategory: "ScanEvent",
-    agingStamp: "1",
-    destinationURI: "/test",
-    compEventURI: "/test",
-    isScanEvent: true,
-  };
 
   let api: DeviceClient;
 
@@ -211,15 +203,17 @@ describe("scanProcessing Format Selection", () => {
       await saveScanFromEvent(
         api,
         {
-          event: mockEvent,
           label: "test",
           resourceURI: "/test",
           isDuplexSingleSide: false,
+          shortcut: null,
+          scanPlexMode: null,
         },
         folder,
         tempFolder,
         scanCount,
         deviceCapabilities,
+        createDefaultScanListener(),
         scanConfig,
         false,
         true, // isPdf = true

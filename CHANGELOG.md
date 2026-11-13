@@ -8,6 +8,21 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- **eSCL walkup ("Scan to Computer") for devices without `DiscoveryTree.xml`**:
+  printers whose firmware only implements the standard eSCL endpoints can now
+  run in `listen` mode. The app registers a walkup subscription on
+  `/eSCL/WalkupSubscriptions` (HTTP or the device's self-signed HTTPS
+  endpoint), long-polls the printer panel events, and maps the selected
+  shortcut to a scan job. This covers the HP OfficeJet Pro 8120e / 8122e
+  series. Auto-detected from the device's eSCL endpoints, whether or not it
+  serves `DiscoveryTree.xml`; `--prefer-eSCL` remains available to force eSCL
+  on dual-protocol devices.
+  When the eSCL endpoint is HTTPS-only, its self-signed certificate is
+  accepted by default with a warning; set `ESCL_CERT_FINGERPRINT` to the
+  certificate's SHA-256 fingerprint to pin and verify it.
+  Walkup support is probed before `listen` selects this protocol, so devices
+  that only implement eSCL scanning keep working with `single-scan` and
+  `adf-autoscan` instead of being mistaken for walkup devices.
 - **Nix flake** (`flake.nix` + `packaging/nix/package.nix`): installs the
   self-contained Linux binary shipped with each release (x86_64/aarch64) and
   provides a default configuration under
@@ -147,6 +162,22 @@ All notable changes to this project are documented in this file.
     `icacls` deny on Windows (ACLs) and keep the `chmod` approach on POSIX.
   - Timestamp patterns containing `:` cannot produce a valid file name on
     Windows; that formatting case is skipped there.
+
+- **eSCL devices without `DiscoveryTree.xml`** (`src/DeviceClient.ts`,
+  `src/scanJobHandlers.ts`, `src/hpModels/EsclScanStatus.ts`,
+  `src/readDeviceCapabilities.ts`): support scanners whose firmware omits
+  `/DevMgmt/DiscoveryTree.xml` and serve only the standard eSCL endpoints.
+  DiscoveryTree 404s/405s are tolerated, capabilities are probed at
+  `/eSCL/ScanCapabilities` and `/eSCL/ScannerCapabilities` when the tree
+  advertises no scan interface (or when eSCL is explicitly preferred),
+  `/NextDocument` is fetched on the device's eSCL base URL, and the eSCL job loop now
+  ends on a terminal job state reason instead of `ImagesToTransfer == 0`
+  (the latter can be 0 while a multi-page job is still scanning); a 404 from
+  `/NextDocument` is treated as the end-of-job signal instead of aborting an
+  otherwise successful scan. Only
+  `single-scan` from the platen was verified on hardware; the shared ADF/duplex
+  job loop is covered by unit tests, including the in-progress `ImagesToTransfer=0`
+  case and relative job URLs over port 80.
 
 ## [1.11.1] - 2026-08-29
 

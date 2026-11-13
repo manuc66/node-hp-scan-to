@@ -1,19 +1,23 @@
 import type {
   RegistrationConfig,
-  SelectedScanTarget,
+  ScanTarget,
 } from "../type/scanTargetDefinitions.js";
-import type DeviceClient from "../DeviceClient.js";
+import DeviceClient from "../DeviceClient.js";
 import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
 import type { ScanContent } from "../type/ScanContent.js";
-import { waitScanEvent, waitScanRequest } from "../listening.js";
 import {
   isPdf,
   saveScanFromEvent,
-  tryGetDestination,
   type WalkupDestination,
 } from "../scanProcessing.js";
 import { enqueueScanProcessing } from "../queue/processingQueue.js";
 import PathHelper from "../PathHelper.js";
+import { createScanListener } from "../scanListeners/createScanListener.js";
+import {
+  PermanentScanListenerError,
+  type ScanListener,
+  type ScanRequest,
+} from "../scanListeners/ScanListener.js";
 
 import { DuplexMode } from "../type/duplexMode.js";
 import { TargetDuplexMode } from "../type/targetDuplexMode.js";
@@ -24,8 +28,56 @@ import { ScanPlexMode } from "../hpModels/ScanPlexMode.js";
 import type { DeviceCapabilities } from "../type/DeviceCapabilities.js";
 import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode.js";
 import { getLoggerForFile } from "../logger.js";
+import { CertificatePinError } from "../PrinterHttpsAgent.js";
+import { AxiosError } from "axios";
 
 const logger = getLoggerForFile(import.meta.url);
+
+const MAX_LISTEN_ERRORS = 50;
+const DEFAULT_LISTEN_RETRY_DELAY_MS = 1000;
+
+/**
+ * Delay before the next `listen` iteration: honour the device's `Retry-After`
+ * when it sends one (a 503 typically does) instead of polling at a fixed rate.
+ */
+export function getListenerRetryDelayMs(error: unknown): number {
+  return DeviceClient.getRetryAfterMs(error) ?? DEFAULT_LISTEN_RETRY_DELAY_MS;
+}
+
+/**
+ * A `listen` error is worth retrying when it can plausibly disappear:
+ * network failures, timeouts, server errors and expired subscriptions.
+ * Permanent client errors (bad request, auth, forbidden) will not fix
+ * themselves and should stop the command instead of being retried 50 times.
+ */
+export function isRetryableListenerError(error: unknown): boolean {
+  if (error instanceof CertificatePinError) {
+    return false;
+  }
+  if (error instanceof PermanentScanListenerError) {
+    return false;
+  }
+  if (!(error instanceof AxiosError)) {
+    return true;
+  }
+
+  const status = error.response?.status ?? error.status;
+  if (status === undefined) {
+    return true;
+  }
+  if (status >= 500) {
+    return true;
+  }
+
+  return status === 404 || status === 408 || status === 410 || status === 429;
+}
+
+export class ListenCircuitBreakerError extends Error {
+  constructor() {
+    super(`listen stopped after ${MAX_LISTEN_ERRORS} consecutive errors`);
+    this.name = "ListenCircuitBreakerError";
+  }
+}
 
 let iteration = 0;
 
@@ -49,106 +101,131 @@ export async function listenCmd(
   const deviceCapabilities = await readDeviceCapabilities(
     api,
     scanConfig.preferEscl,
+    true,
+  );
+
+  const scanListener = createScanListener(
+    api,
+    deviceCapabilities,
+    registrationConfigs,
   );
 
   let scanCount = 0;
   let keepActive = true;
   let errorCount = 0;
-  let lastScanTarget: SelectedScanTarget | undefined = undefined;
+  let retryDelayMs = DEFAULT_LISTEN_RETRY_DELAY_MS;
+  let lastScanTarget: ScanTarget | undefined = undefined;
 
   let lastDuplexMode: DuplexMode = DuplexMode.Simplex;
 
   let frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null =
     null;
-  while (keepActive) {
-    iteration++;
-    logger.info(`Iteration ${iteration} (Errors so far: ${errorCount})`);
-    try {
-      const selectedScanTarget: SelectedScanTarget | null = await waitScanEvent(
-        api,
-        deviceCapabilities,
-        registrationConfigs,
-      );
 
-      let proceedToScan = true;
-      if (selectedScanTarget?.event.compEventURI !== undefined) {
-        proceedToScan = await waitScanRequest(
+  let shuttingDown = false;
+  const shutdown = (): void => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+    void scanListener.dispose?.().finally(() => process.exit(0));
+  };
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+
+  try {
+    while (keepActive) {
+      iteration++;
+      logger.info(`Iteration ${iteration} (Errors so far: ${errorCount})`);
+      try {
+        const selectedScanTarget: ScanRequest | null =
+          await scanListener.waitForScan();
+
+        if (selectedScanTarget === null) {
+          continue;
+        }
+
+        const proceedToScan = await scanListener.waitForScanStart();
+
+        if (!proceedToScan || selectedScanTarget.shortcut === null) {
+          logger.warn(
+            "No shortcut selected - Impossible to proceed with scan, skipping.",
+          );
+          continue;
+        }
+
+        const r = await processScanWithDestination(
           api,
-          selectedScanTarget.event.compEventURI,
-          deviceCapabilities.userActionTimeout,
+          selectedScanTarget,
+          lastDuplexMode,
+          lastScanTarget,
+          folder,
+          tempFolder,
+          scanConfig,
+          deviceCapabilities,
+          scanListener,
+          scanCount,
+          frontOfDoubleSidedScanContext,
         );
+
+        scanCount = r.scanCount;
+        frontOfDoubleSidedScanContext = r.frontOfDoubleSidedScanContext;
+
+        lastScanTarget = selectedScanTarget;
+        lastDuplexMode = r.duplexMode;
+      } catch (e) {
+        if (await api.isAlive()) {
+          if (!isRetryableListenerError(e)) {
+            logger.error(e);
+            throw e;
+          }
+          logger.error(e);
+          errorCount++;
+          retryDelayMs = getListenerRetryDelayMs(e);
+        } else {
+          logger.debug(e);
+          deviceUp = false;
+        }
       }
 
-      let destination: WalkupDestination | null = null;
-
-      if (proceedToScan && selectedScanTarget !== null) {
-        destination = await tryGetDestination(api, selectedScanTarget.event);
-      }
-      if (!destination || selectedScanTarget === null) {
-        logger.warn(
-          "No shortcut selected - Impossible to proceed with scan, skipping.",
-        );
-        continue;
+      if (errorCount >= MAX_LISTEN_ERRORS) {
+        keepActive = false;
       }
 
-      const r = await processScanWithDestination(
-        api,
-        destination,
-        selectedScanTarget,
-        lastDuplexMode,
-        lastScanTarget,
-        folder,
-        tempFolder,
-        scanConfig,
-        deviceCapabilities,
-        scanCount,
-        frontOfDoubleSidedScanContext,
-      );
-
-      scanCount = r.scanCount;
-      frontOfDoubleSidedScanContext = r.frontOfDoubleSidedScanContext;
-
-      lastScanTarget = selectedScanTarget;
-      lastDuplexMode = r.duplexMode;
-    } catch (e) {
-      if (await api.isAlive()) {
-        logger.error(e);
-        errorCount++;
+      if (!deviceUp) {
+        await api.waitDeviceUp(deviceUpPollingInterval);
       } else {
-        logger.debug(e);
-        deviceUp = false;
+        await api.delay(retryDelayMs);
       }
+      retryDelayMs = DEFAULT_LISTEN_RETRY_DELAY_MS;
     }
 
-    if (errorCount === 50) {
-      keepActive = false;
+    if (errorCount >= MAX_LISTEN_ERRORS) {
+      throw new ListenCircuitBreakerError();
     }
-
-    if (!deviceUp) {
-      await api.waitDeviceUp(deviceUpPollingInterval);
-    } else {
-      await api.delay(1000);
-    }
+  } finally {
+    process.off("SIGINT", shutdown);
+    process.off("SIGTERM", shutdown);
+    await scanListener.dispose?.();
   }
 }
 
 export async function processScanWithDestination(
   api: DeviceClient,
-  destination: WalkupDestination,
-  selectedScanTarget: SelectedScanTarget,
+  selectedScanTarget: ScanRequest,
   lastDuplexMode: DuplexMode,
-  lastScanTarget: SelectedScanTarget | undefined,
+  lastScanTarget: ScanTarget | undefined,
   folder: string,
   tempFolder: string,
   scanConfig: ScanConfig,
   deviceCapabilities: DeviceCapabilities,
+  scanListener: ScanListener,
   scanCount: number,
   frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null,
 ) {
-  logger.info(`Selected shortcut: ${destination.shortcut}`);
+  logger.info(`Selected shortcut: ${selectedScanTarget.shortcut}`);
 
   const { duplexMode, targetDuplexMode } = determineDuplexModes(
-    destination,
+    selectedScanTarget,
     selectedScanTarget,
     lastDuplexMode,
     lastScanTarget,
@@ -171,7 +248,7 @@ export async function processScanWithDestination(
   const scanParameters = await setupScanParameters(
     duplexMode,
     targetDuplexMode,
-    destination,
+    selectedScanTarget,
     scanCount,
     folder,
     scanConfig,
@@ -193,6 +270,7 @@ export async function processScanWithDestination(
     tempFolder,
     scanCount,
     deviceCapabilities,
+    scanListener,
     scanConfig,
     targetDuplexMode === TargetDuplexMode.Duplex,
     scanToPdf,
@@ -278,9 +356,9 @@ export function handleScanResult(
 
 export function determineDuplexModes(
   destination: WalkupDestination,
-  selectedScanTarget: SelectedScanTarget,
+  selectedScanTarget: ScanTarget,
   previousDuplexMode: DuplexMode,
-  lastScanTarget: SelectedScanTarget | undefined,
+  lastScanTarget: ScanTarget | undefined,
 ) {
   const isDuplex =
     destination.scanPlexMode !== null &&
@@ -356,9 +434,7 @@ export function assembleDuplexScan(
     }
   }
   const duplexScan: ScanContent =
-    meta === undefined
-      ? { elements: [] }
-      : { elements: [], meta };
+    meta === undefined ? { elements: [] } : { elements: [], meta };
   const maxLength = Math.max(frontContent.length, backContent.length);
 
   // Interleave pages, tolerating missing last back page gracefully
@@ -444,8 +520,8 @@ export async function setupScanParameters(
 }
 
 export function processFinishedPartialDuplexScan(
-  lastScanTarget: SelectedScanTarget,
-  selectedScanTarget: SelectedScanTarget,
+  lastScanTarget: ScanTarget,
+  selectedScanTarget: ScanTarget,
   scanCount: number,
   frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext,
 ): void {

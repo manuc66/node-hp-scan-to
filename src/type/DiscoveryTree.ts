@@ -23,6 +23,40 @@ export default class DiscoveryTree {
     return new DiscoveryTree(parsed);
   }
 
+  /**
+   * A tree with no manifests at all. Used when the device does not serve
+   * /DevMgmt/DiscoveryTree.xml (e.g. newer HP firmware that only exposes the
+   * standard eSCL endpoints), so callers can fall back to well-known paths.
+   */
+  static empty(): DiscoveryTree {
+    return new DiscoveryTree({
+      "ledm:DiscoveryTree": { "ledm:SupportedIfc": [] },
+    });
+  }
+
+  /**
+   * True when the device served no supported interface at all.
+   */
+  get isEmpty(): boolean {
+    return (
+      (this.data["ledm:DiscoveryTree"]["ledm:SupportedIfc"]?.length ?? 0) === 0
+    );
+  }
+
+  /**
+   * True when the tree advertises at least one scan interface we know how to
+   * drive. A non-empty tree that only contains unrelated services still
+   * counts as "no scan interface" and allows the eSCL probe.
+   */
+  get hasScanInterface(): boolean {
+    return (
+      this.WalkupScanToCompManifestURI !== null ||
+      this.WalkupScanManifestURI !== null ||
+      this.ScanJobManifestURI !== null ||
+      this.EsclManifestURI !== null
+    );
+  }
+
   private getManifestURI(resourceType: string): string | null {
     const manifest = this.data["ledm:DiscoveryTree"]["ledm:SupportedIfc"].find(
       (x) => x["dd:ResourceType"][0] === resourceType,

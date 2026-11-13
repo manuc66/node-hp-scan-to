@@ -2,10 +2,12 @@ import { expect } from "chai";
 import type { ScanContent, ScanPage } from "../src/type/ScanContent.js";
 import { describe, it, beforeEach, afterEach } from "mocha";
 import nock from "nock";
+import { AxiosError } from "axios";
 import DeviceClient from "../src/DeviceClient.js";
 import {
   assembleDuplexScan,
   listenCmd,
+  ListenCircuitBreakerError,
   processScanWithDestination,
   handleScanResult,
   processFinishedPartialDuplexScan,
@@ -26,10 +28,12 @@ import type { WalkupDestination } from "../src/scanProcessing.js";
 import { KnownShortcut } from "../src/type/KnownShortcut.js";
 import type { SelectedScanTarget } from "../src/type/scanTargetDefinitions.js";
 import type { DeviceCapabilities } from "../src/type/DeviceCapabilities.js";
+import type { ScanRequest } from "../src/scanListeners/ScanListener.js";
 import { InputSource } from "../src/type/InputSource.js";
 import { ScannerState } from "../src/hpModels/ScannerState.js";
 import { AdfState } from "../src/hpModels/AdfState.js";
 import PathHelper from "../src/PathHelper.js";
+import { createDefaultScanListener } from "./testUtils.js";
 import { fileURLToPath } from "url";
 import fs from "node:fs";
 import os from "node:os";
@@ -298,11 +302,25 @@ const makeScanTarget = (
   ...overrides,
 });
 
+const makeScanRequest = (
+  destination: WalkupDestination,
+  target: SelectedScanTarget,
+): ScanRequest => ({
+  resourceURI: target.resourceURI,
+  label: target.label,
+  isDuplexSingleSide: target.isDuplexSingleSide,
+  ...(target.duplexAssemblyMode !== undefined && {
+    duplexAssemblyMode: target.duplexAssemblyMode,
+  }),
+  shortcut: destination.shortcut,
+  scanPlexMode: destination.scanPlexMode,
+});
+
 const makeDeviceCapabilities = (
   overrides: Partial<DeviceCapabilities> = {},
 ): DeviceCapabilities => ({
   supportsMultiItemScanFromPlaten: false,
-  useWalkupScanToComp: false,
+  createWalkupScanListener: () => createDefaultScanListener(),
   platenMaxWidth: null,
   platenMaxHeight: null,
   adfMaxWidth: null,
@@ -1044,14 +1062,17 @@ describe("processScanWithDestination", () => {
 
     const result = await processScanWithDestination(
       api,
-      makeDestination({ scanPlexMode: null }),
-      makeScanTarget({ isDuplexSingleSide: false }),
+      makeScanRequest(
+        makeDestination({ scanPlexMode: null }),
+        makeScanTarget({ isDuplexSingleSide: false }),
+      ),
       DuplexMode.Simplex,
       undefined,
       tempDir,
       tempDir,
       makeScanConfig(tempDir),
       makeDeviceCapabilities(),
+      createDefaultScanListener(),
       0,
       null,
     );
@@ -1068,11 +1089,16 @@ describe("processScanWithDestination", () => {
 
     const result = await processScanWithDestination(
       api,
-      makeDestination({ shortcut: KnownShortcut.SaveJPEG, scanPlexMode: null }),
-      makeScanTarget({
-        resourceURI: "/WalkupScan/Destinations/2",
-        isDuplexSingleSide: false,
-      }),
+      makeScanRequest(
+        makeDestination({
+          shortcut: KnownShortcut.SaveJPEG,
+          scanPlexMode: null,
+        }),
+        makeScanTarget({
+          resourceURI: "/WalkupScan/Destinations/2",
+          isDuplexSingleSide: false,
+        }),
+      ),
       DuplexMode.FrontOfDoubleSided,
       makeScanTarget({
         resourceURI: "/WalkupScan/Destinations/1",
@@ -1082,6 +1108,7 @@ describe("processScanWithDestination", () => {
       tempDir,
       makeScanConfig(tempDir),
       makeDeviceCapabilities(),
+      createDefaultScanListener(),
       1,
       makeFrontContext(tempDir, {
         scanCount: 0,
@@ -1108,11 +1135,13 @@ describe("processScanWithDestination", () => {
 
     const result = await processScanWithDestination(
       api,
-      makeDestination({ scanPlexMode: ScanPlexMode.Duplex }),
-      makeScanTarget({
-        resourceURI: "/WalkupScan/Destinations/2",
-        isDuplexSingleSide: false,
-      }),
+      makeScanRequest(
+        makeDestination({ scanPlexMode: ScanPlexMode.Duplex }),
+        makeScanTarget({
+          resourceURI: "/WalkupScan/Destinations/2",
+          isDuplexSingleSide: false,
+        }),
+      ),
       DuplexMode.FrontOfDoubleSided,
       makeScanTarget({
         resourceURI: "/WalkupScan/Destinations/1",
@@ -1122,6 +1151,7 @@ describe("processScanWithDestination", () => {
       tempDir,
       makeScanConfig(tempDir),
       makeDeviceCapabilities(),
+      createDefaultScanListener(),
       1,
       makeFrontContext(tempDir, {
         scanCount: 0,
@@ -1182,16 +1212,52 @@ describe("listenCmd", () => {
       return true;
     };
 
-    await listenCmd(
-      api,
-      [{ label: "host", isDuplexSingleSide: false }],
-      makeScanConfig(tempDir),
-      1,
-    );
+    let unexpectedError: unknown;
+    try {
+      await listenCmd(
+        api,
+        [{ label: "host", isDuplexSingleSide: false }],
+        makeScanConfig(tempDir),
+        1,
+      );
+    } catch (e) {
+      unexpectedError = e;
+    }
 
+    expect(unexpectedError).to.be.instanceOf(ListenCircuitBreakerError);
     // isAlive is checked once per failing iteration — must have been called ≥50 times.
     expect(callCount).to.be.greaterThanOrEqual(50);
     void errorsBefore; // suppress unused-variable warning
+  });
+
+  it("stops immediately on a permanent client error instead of retrying 50 times", async () => {
+    nockLedmBootstrap();
+    nock("http://127.0.0.1:80")
+      .persist()
+      .get("/EventMgmt/EventTable")
+      .reply(403);
+
+    let isAliveCalls = 0;
+    api.isAlive = async () => {
+      isAliveCalls++;
+      return true;
+    };
+
+    let unexpectedError: unknown;
+    try {
+      await listenCmd(
+        api,
+        [{ label: "host", isDuplexSingleSide: false }],
+        makeScanConfig(tempDir),
+        1,
+      );
+    } catch (e) {
+      unexpectedError = e;
+    }
+
+    expect(isAliveCalls).to.equal(1);
+    expect(unexpectedError).to.be.instanceOf(AxiosError);
+    expect((unexpectedError as AxiosError).response?.status).to.equal(403);
   });
 
   it("skips scan when waitScanRequest returns false (ScanPagesComplete event)", async () => {
@@ -1250,13 +1316,19 @@ describe("listenCmd", () => {
 
     const jobScope = nockScanJob();
 
-    await listenCmd(
-      api,
-      [{ label: "host", isDuplexSingleSide: false }],
-      makeScanConfig(tempDir),
-      1,
-    );
+    let unexpectedError: unknown;
+    try {
+      await listenCmd(
+        api,
+        [{ label: "host", isDuplexSingleSide: false }],
+        makeScanConfig(tempDir),
+        1,
+      );
+    } catch (e) {
+      unexpectedError = e;
+    }
 
+    expect(unexpectedError).to.be.instanceOf(ListenCircuitBreakerError);
     expect(jobScope.isDone()).to.be.true;
     // The scan was saved to tempDir; at least one file should exist.
     const files = fs.readdirSync(tempDir);
@@ -1278,12 +1350,19 @@ describe("listenCmd", () => {
       throw "non-error-throw";
     };
 
-    await listenCmd(
-      api,
-      [{ label: "host", isDuplexSingleSide: false }],
-      makeScanConfig(tempDir),
-      1,
-    );
+    let unexpectedError: unknown;
+    try {
+      await listenCmd(
+        api,
+        [{ label: "host", isDuplexSingleSide: false }],
+        makeScanConfig(tempDir),
+        1,
+      );
+    } catch (e) {
+      unexpectedError = e;
+    }
+
+    expect(unexpectedError).to.be.instanceOf(ListenCircuitBreakerError);
   });
 
   it("logs debug info when device goes down and debug is enabled", async () => {
@@ -1300,11 +1379,18 @@ describe("listenCmd", () => {
     };
     api.isDebug = () => true;
 
-    await listenCmd(
-      api,
-      [{ label: "host", isDuplexSingleSide: false }],
-      makeScanConfig(tempDir),
-      1,
-    );
+    let unexpectedError: unknown;
+    try {
+      await listenCmd(
+        api,
+        [{ label: "host", isDuplexSingleSide: false }],
+        makeScanConfig(tempDir),
+        1,
+      );
+    } catch (e) {
+      unexpectedError = e;
+    }
+
+    expect(unexpectedError).to.be.instanceOf(ListenCircuitBreakerError);
   });
 });
