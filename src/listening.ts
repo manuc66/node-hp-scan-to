@@ -1,4 +1,4 @@
-import type { LegacyWalkupDevice } from "./type/WalkupDevice.js";
+import type { HpWalkupDevice } from "./type/WalkupDevice.js";
 import type { IEvent } from "./hpModels/Event.js";
 import type { EtagEventTable } from "./hpModels/EventTable.js";
 import Destination from "./hpModels/Destination.js";
@@ -13,7 +13,7 @@ import { getLoggerForFile } from "./logger.js";
 const logger = getLoggerForFile(import.meta.url);
 
 export async function waitScanRequest(
-  api: LegacyWalkupDevice,
+  api: HpWalkupDevice,
   compEventURI: string,
   userActionTimeout: number | null = null,
 ): Promise<boolean> {
@@ -41,7 +41,7 @@ export async function waitScanRequest(
 }
 
 export async function waitForScanEventFromTarget(
-  api: LegacyWalkupDevice,
+  api: HpWalkupDevice,
   scanTarget: ScanTarget,
   afterEtag: string,
   userActionTimeout: number | null = null,
@@ -60,7 +60,7 @@ export async function waitForScanEventFromTarget(
 }
 
 export async function waitForScanEvent(
-  api: LegacyWalkupDevice,
+  api: HpWalkupDevice,
   scanTargets: ScanTarget[],
   afterEtag: string | null = null,
 ): Promise<SelectedScanTarget | null> {
@@ -80,7 +80,7 @@ export async function waitForScanEvent(
 }
 
 async function waitForScanEventInternal(
-  api: LegacyWalkupDevice,
+  api: HpWalkupDevice,
   scanTargets: ScanTarget[],
   afterEtag: string | null = null,
   timeoutMs: number | null = null,
@@ -174,7 +174,7 @@ function resolveUserActionTimeoutMs(
 }
 
 export async function registerWalkupScanDestination(
-  api: LegacyWalkupDevice,
+  api: HpWalkupDevice,
   registrationConfigs: RegistrationConfig[],
   isScanToComp = false,
 ): Promise<ScanTarget[]> {
@@ -219,7 +219,7 @@ export async function registerWalkupScanDestination(
 }
 
 export async function waitScanNewPageRequest(
-  api: LegacyWalkupDevice,
+  api: HpWalkupDevice,
   compEventURI: string,
   userActionTimeout: number | null = null,
 ): Promise<boolean> {

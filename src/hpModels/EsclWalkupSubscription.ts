@@ -7,7 +7,7 @@ export const ESCL_NAMESPACE = "http://schemas.hp.com/imaging/escl/2011/05/03";
 /**
  * Request body for `POST /eSCL/WalkupSubscriptions`.
  *
- * A walkup subscription is the eSCL equivalent of the legacy WalkupScan
+ * A walkup subscription is the eSCL equivalent of the HP WalkupScan
  * destination: it makes the host visible on the printer panel and declares
  * the shortcuts the user can pick from.
  */

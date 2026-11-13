@@ -22,8 +22,8 @@ export interface WalkupDestinationsInfo {
   readonly destinations: readonly WalkupDestinationInfo[];
 }
 
-/** Subset of DeviceClient used by the legacy WalkupScan protocols. */
-export interface LegacyWalkupDevice {
+/** Subset of DeviceClient used by the HP WalkupScan protocols. */
+export interface HpWalkupDevice {
   getEvents(etag?: string, timeout?: number): Promise<EtagEventTable>;
   getWalkupScanDestinations(): Promise<WalkupDestinationsInfo>;
   getWalkupScanToCompDestinations(): Promise<WalkupDestinationsInfo>;

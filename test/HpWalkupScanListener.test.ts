@@ -3,7 +3,7 @@ import { expect } from "chai";
 import type { IEvent } from "../src/hpModels/Event.js";
 import type { EtagEventTable } from "../src/hpModels/EventTable.js";
 import { EventType } from "../src/hpModels/WalkupScanToCompEvent.js";
-import LegacyScanListener from "../src/scanListeners/LegacyScanListener.js";
+import HpWalkupScanListener from "../src/scanListeners/HpWalkupScanListener.js";
 import { ScanPlexMode } from "../src/hpModels/ScanPlexMode.js";
 import { KnownShortcut } from "../src/type/KnownShortcut.js";
 
@@ -71,7 +71,7 @@ class FakeApi {
   }
 }
 
-describe("LegacyScanListener", () => {
+describe("HpWalkupScanListener", () => {
   const originalSetTimeout = globalThis.setTimeout;
 
   beforeEach(() => {
@@ -93,8 +93,8 @@ describe("LegacyScanListener", () => {
     api: FakeApi,
     isScanToComp = false,
     userActionTimeout: number | null = null,
-  ): LegacyScanListener {
-    return new LegacyScanListener(
+  ): HpWalkupScanListener {
+    return new HpWalkupScanListener(
       api,
       [{ label: "host", isDuplexSingleSide: false }],
       isScanToComp,

@@ -11,7 +11,7 @@ import { ScanMode } from "../src/type/scanMode.js";
 import { ScanFormat } from "../src/type/scanFormat.js";
 import { createImageFormat } from "../src/imageFormats/index.js";
 import EsclWalkupScanListener from "../src/scanListeners/EsclWalkupScanListener.js";
-import LegacyScanListener from "../src/scanListeners/LegacyScanListener.js";
+import HpWalkupScanListener from "../src/scanListeners/HpWalkupScanListener.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -88,11 +88,11 @@ describe("readDeviceCapabilities", () => {
     expect(caps.platenMaxHeight).to.equal(3300);
     expect(caps.isEscl).to.be.false;
     expect(caps.createWalkupScanListener?.(api, [])).to.be.instanceOf(
-      LegacyScanListener,
+      HpWalkupScanListener,
     );
   });
 
-  it("exposes the legacy WalkupScan listener for devices advertising that manifest", async () => {
+  it("exposes the HP WalkupScan listener for devices advertising that manifest", async () => {
     const walkupScanManifest = await fs.readFile(
       path.resolve(__dirname, "./asset/walkupScanManifest.xml"),
       "utf8",
@@ -117,7 +117,7 @@ describe("readDeviceCapabilities", () => {
     const caps = await readDeviceCapabilities(api, false, true);
 
     expect(caps.createWalkupScanListener?.(api, [])).to.be.instanceOf(
-      LegacyScanListener,
+      HpWalkupScanListener,
     );
   });
 
@@ -265,7 +265,7 @@ describe("readDeviceCapabilities", () => {
     const caps = await readDeviceCapabilities(api, false, true);
 
     expect(caps.createWalkupScanListener?.(api, [])).to.be.instanceOf(
-      LegacyScanListener,
+      HpWalkupScanListener,
     );
     expect(caps.supportsMultiItemScanFromPlaten).to.be.true;
   });

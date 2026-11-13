@@ -126,7 +126,7 @@ There is a good chance it also works on other unlisted HP All-in-One Printers.
 Supports both HP proprietary protocols (WalkupScanToComp, WalkupScan, ScanJob) and the standardized eSCL protocol.
 
 - **eSCL-only devices** (e.g., HP ScanJet Pro 4500 fn1): Automatically detected and supported ([#1307](https://github.com/manuc66/node-hp-scan-to/issues/1307))
-- **Newer eSCL firmware** (e.g., HP OfficeJet Pro 8120e / 8122e series) that no longer serves `DiscoveryTree.xml` or the legacy `WalkupScan` endpoints: auto-detected, `single-scan` and `adf-autoscan` fall back to the well-known eSCL endpoints, and `listen` uses standard eSCL walkup subscriptions. When eSCL is only reachable over HTTPS, the printer's self-signed certificate is accepted by default and a warning is logged; set `ESCL_CERT_FINGERPRINT` to the certificate's SHA-256 fingerprint to pin and verify it.
+- **Newer eSCL firmware** (e.g., HP OfficeJet Pro 8120e / 8122e series) that no longer serves `DiscoveryTree.xml` or the HP-proprietary `WalkupScan` endpoints: auto-detected, `single-scan` and `adf-autoscan` fall back to the well-known eSCL endpoints, and `listen` uses standard eSCL walkup subscriptions. When eSCL is only reachable over HTTPS, the printer's self-signed certificate is accepted by default and a warning is logged; set `ESCL_CERT_FINGERPRINT` to the certificate's SHA-256 fingerprint to pin and verify it.
 - **Dual-protocol devices**: Uses HP protocols by default; add `--prefer-eSCL` flag to use eSCL instead
 - See [eSCL protocol documentation](protocol_doc/HP%20PageWide%20Pro%20477dw%20MFP.md) for technical details
 
@@ -209,7 +209,7 @@ Scans are saved under `/var/lib/node-hp-scan-to` by default when running as a se
 
 Linux networking notes:
 
-- the service only makes **outbound** connections: mDNS discovery (UDP 5353 multicast), plain HTTP calls to the printer itself on port 80 (discovery tree, registration, capabilities, polling, eSCL scan job creation and page download), HTTP on port 8080 for scan job creation and page download on the legacy/non-eSCL path, HTTPS to the printer on port 443 when its eSCL endpoint only speaks TLS (the local self-signed certificate is accepted with a warning unless `ESCL_CERT_FINGERPRINT` pins it; read the fingerprint with `openssl s_client -connect <printer>:443 </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256`), and HTTPS uploads to Paperless-ngx/Nextcloud when configured — nothing listens for the scanning flow itself
+- the service only makes **outbound** connections: mDNS discovery (UDP 5353 multicast), plain HTTP calls to the printer itself on port 80 (discovery tree, registration, capabilities, polling, eSCL scan job creation and page download), HTTP on port 8080 for scan job creation and page download on the non-eSCL path, HTTPS to the printer on port 443 when its eSCL endpoint only speaks TLS (the local self-signed certificate is accepted with a warning unless `ESCL_CERT_FINGERPRINT` pins it; read the fingerprint with `openssl s_client -connect <printer>:443 </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256`), and HTTPS uploads to Paperless-ngx/Nextcloud when configured — nothing listens for the scanning flow itself
 - `--health-check` listens on **all interfaces** (port 3000 by default); restrict it with a local firewall rule if that matters to you, or drop the flag from `/usr/lib/systemd/system/node-hp-scan-to.service`
 - the packaged systemd unit runs under a dynamic non-root user with `PrivateTmp`, read-only system paths and an empty capability set
 

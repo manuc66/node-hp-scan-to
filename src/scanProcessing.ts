@@ -1,6 +1,6 @@
 import type { IEvent } from "./hpModels/Event.js";
 import type DeviceClient from "./DeviceClient.js";
-import type { LegacyWalkupDevice } from "./type/WalkupDevice.js";
+import type { HpWalkupDevice } from "./type/WalkupDevice.js";
 import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import type { ScanContent } from "./type/ScanContent.js";
 import { InputSource } from "./type/InputSource.js";
@@ -121,7 +121,7 @@ export interface WalkupDestination {
 }
 
 export async function tryGetDestination(
-  api: Pick<LegacyWalkupDevice, "getDestination">,
+  api: Pick<HpWalkupDevice, "getDestination">,
   event: IEvent,
 ): Promise<WalkupDestination | null> {
   let destination: WalkupDestination | null = null;

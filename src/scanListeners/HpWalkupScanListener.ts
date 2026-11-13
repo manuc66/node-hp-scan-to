@@ -1,4 +1,4 @@
-import type { LegacyWalkupDevice } from "../type/WalkupDevice.js";
+import type { HpWalkupDevice } from "../type/WalkupDevice.js";
 import type { IEvent } from "../hpModels/Event.js";
 import type {
   RegistrationConfig,
@@ -16,16 +16,16 @@ import type { ScanListener, ScanRequest } from "./ScanListener.js";
 
 /**
  * Adapter for the HP-proprietary WalkupScan and WalkupScanToComp protocols.
- * Behaviour is identical to the historical implementation; it is only hidden
+ * Behaviour is identical to the previous implementation; it is only hidden
  * behind the ScanListener interface so `listen` can also speak eSCL.
  */
-export default class LegacyScanListener implements ScanListener {
+export default class HpWalkupScanListener implements ScanListener {
   /** Target and event of the session being scanned; owned by this listener. */
   private currentRequest: ScanRequest | null = null;
   private currentEvent: IEvent | null = null;
 
   constructor(
-    private readonly api: LegacyWalkupDevice,
+    private readonly api: HpWalkupDevice,
     private readonly registrationConfigs: RegistrationConfig[],
     private readonly isScanToComp: boolean,
     private readonly userActionTimeout: number | null,
@@ -34,7 +34,7 @@ export default class LegacyScanListener implements ScanListener {
   async waitForScan(): Promise<ScanRequest | null> {
     // Re-discover the destinations on every iteration (cheap HTTP calls).
     // The device may have rebooted and lost the registrations since the
-    // previous scan, exactly like the historical implementation.
+    // previous scan, exactly like the previous implementation.
     const scanTargets: ScanTarget[] = await registerWalkupScanDestination(
       this.api,
       this.registrationConfigs,
@@ -48,7 +48,7 @@ export default class LegacyScanListener implements ScanListener {
         return null;
       }
 
-      // Match the historical order: wait for the user to start the scan on
+      // Match the previous order: wait for the user to start the scan on
       // the comp-event channel *before* reading the destination. Some devices
       // only publish the shortcut once the host has acknowledged that start.
       if (selected.event.compEventURI !== undefined) {

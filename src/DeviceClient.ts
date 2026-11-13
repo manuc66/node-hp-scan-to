@@ -227,8 +227,8 @@ export default class DeviceClient {
       return await this.getEsclBaseUrl();
     }
 
-    // A relative job URI carries no scheme. Keep the historical HTTP
-    // fallback unless a base was already resolved when the job was created.
+    // A relative job URI carries no scheme. Keep the HTTP fallback unless a
+    // base was already resolved when the job was created.
     return `http://${this.deviceIP}`;
   }
 

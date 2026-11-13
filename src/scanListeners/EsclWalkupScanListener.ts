@@ -38,7 +38,7 @@ const MAX_RECOVERY_CYCLES = 2;
  * `POST /eSCL/WalkupSubscriptions` then long-poll
  * `GET /eSCL/WalkupSubscriptions/{id}/Event`.
  *
- * Unlike the legacy protocol, the event already carries the chosen shortcut,
+ * Unlike the HP WalkupScan protocol, the event already carries the chosen shortcut,
  * so there is no destination resource to fetch and no separate "comp event"
  * channel to poll for the next page.
  */
@@ -324,7 +324,7 @@ export default class EsclWalkupScanListener implements ScanListener {
 
 /**
  * eSCL shortcuts are free-form labels chosen on the printer, unlike the
- * legacy enum. Keep the historical PDF/JPEG decision explicit and predictable.
+ * fixed KnownShortcut enum. Keep the PDF/JPEG decision explicit and predictable.
  */
 export function mapShortcut(shortcut: string): KnownShortcut {
   if (Object.values(KnownShortcut).includes(shortcut as KnownShortcut)) {

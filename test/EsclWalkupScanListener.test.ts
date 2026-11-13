@@ -417,7 +417,7 @@ describe("EsclWalkupScanListener", () => {
 });
 
 describe("mapShortcut", () => {
-  it("keeps legacy enum values", () => {
+  it("keeps the built-in shortcut names", () => {
     expect(mapShortcut("SaveJPEG")).to.equal(KnownShortcut.SaveJPEG);
     expect(mapShortcut("SavePDF")).to.equal(KnownShortcut.SavePDF);
   });

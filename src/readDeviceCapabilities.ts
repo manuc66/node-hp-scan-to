@@ -7,7 +7,7 @@ import type { DeviceCapabilities } from "./type/DeviceCapabilities.js";
 import EsclScanJobSettings from "./hpModels/EsclScanJobSettings.js";
 import ScanJobSettings from "./hpModels/ScanJobSettings.js";
 import type { IScanCaps } from "./IScanCaps.js";
-import LegacyScanListener from "./scanListeners/LegacyScanListener.js";
+import HpWalkupScanListener from "./scanListeners/HpWalkupScanListener.js";
 import EsclWalkupScanListener from "./scanListeners/EsclWalkupScanListener.js";
 import { getLoggerForFile } from "./logger.js";
 
@@ -68,20 +68,20 @@ async function resolveWalkupScanListener(
   scanCaps: IScanCaps | null,
   preferEscl: boolean,
   detectWalkup: boolean,
-  legacyScanToComp: boolean | null,
+  hpScanToComp: boolean | null,
   userActionTimeout: number | null,
 ): Promise<DeviceCapabilities["createWalkupScanListener"]> {
   if (!detectWalkup) {
     return null;
   }
 
-  if (legacyScanToComp !== null) {
-    const isScanToComp = legacyScanToComp;
+  if (hpScanToComp !== null) {
+    const isScanToComp = hpScanToComp;
     logger.info(
       `Using ${isScanToComp ? "WalkupScanToComp" : "WalkupScan"} walkup listener.`,
     );
     return (listenerApi, registrationConfigs) =>
-      new LegacyScanListener(
+      new HpWalkupScanListener(
         listenerApi,
         registrationConfigs,
         isScanToComp,
@@ -110,7 +110,7 @@ async function resolveWalkupScanListener(
     "No compatible device capabilities detected. It appears that your device may not support the listen command. While the application will still run, there is a possibility it may crash. If your device includes an automatic document feeder, consider using the adf-autoscan command instead.",
   );
   return (listenerApi, registrationConfigs) =>
-    new LegacyScanListener(
+    new HpWalkupScanListener(
       listenerApi,
       registrationConfigs,
       false,
@@ -181,13 +181,13 @@ export async function readDeviceCapabilities(
   detectWalkup = false,
 ): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
-  let legacyScanToComp: boolean | null = null;
+  let hpScanToComp: boolean | null = null;
   let userActionTimeout: number | null = null;
 
   const discoveryTree = await api.getDiscoveryTree();
 
   if (discoveryTree.WalkupScanToCompManifestURI !== null) {
-    legacyScanToComp = true;
+    hpScanToComp = true;
     const walkupScanToCompManifest = await api.getWalkupScanToCompManifest(
       discoveryTree.WalkupScanToCompManifestURI,
     );
@@ -200,7 +200,7 @@ export async function readDeviceCapabilities(
       userActionTimeout = walkupScanToCompCaps.userActionTimeout;
     }
   } else if (discoveryTree.WalkupScanManifestURI !== null) {
-    legacyScanToComp = false;
+    hpScanToComp = false;
     await api.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
   }
   const scanCaps = await getScanCaps(api, discoveryTree, preferEscl);
@@ -211,7 +211,7 @@ export async function readDeviceCapabilities(
     scanCaps,
     preferEscl,
     detectWalkup,
-    legacyScanToComp,
+    hpScanToComp,
     userActionTimeout,
   );
 
