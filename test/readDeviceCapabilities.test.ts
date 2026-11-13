@@ -399,6 +399,67 @@ describe("readDeviceCapabilities", () => {
     );
   });
 
+  it("retries the capability probe when the printer answers 403 while still booting", async () => {
+    // The printer's TCP port is open but its eSCL stack is not ready yet: the
+    // first probe round is refused on both well-known paths.
+    api.delay = async () => {};
+    nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(404);
+    nock("http://127.0.0.1").get("/eSCL/ScanCapabilities").reply(403);
+    nock("http://127.0.0.1").get("/eSCL/ScannerCapabilities").reply(403);
+    nock("http://127.0.0.1")
+      .get("/eSCL/ScanCapabilities")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<scan:ScannerCapabilities xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <scan:Platen>
+    <scan:PlatenInputCaps>
+      <scan:MaxWidth>2550</scan:MaxWidth>
+      <scan:MaxHeight>3508</scan:MaxHeight>
+    </scan:PlatenInputCaps>
+  </scan:Platen>
+</scan:ScannerCapabilities>`,
+      );
+    nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(200);
+
+    const caps = await readDeviceCapabilities(api, false, true, true);
+
+    expect(caps.isEscl).to.be.true;
+    expect(caps.createWalkupScanListener?.(api, [])).to.be.instanceOf(
+      EsclWalkupScanListener,
+    );
+  });
+
+  it("does not retry the capability probe on 404 (unsupported) answers", async () => {
+    const delays: number[] = [];
+    api.delay = async (ms: number) => {
+      delays.push(ms);
+    };
+    nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(404);
+    nock("http://127.0.0.1").get("/eSCL/ScanCapabilities").reply(404);
+    nock("http://127.0.0.1").get("/eSCL/ScannerCapabilities").reply(405);
+
+    const caps = await readDeviceCapabilities(api, false, false, true);
+
+    expect(caps.isEscl).to.be.false;
+    expect(delays).to.deep.equal([]);
+  });
+
+  it("does not retry a 403 probe unless the caller opts in", async () => {
+    const delays: number[] = [];
+    api.delay = async (ms: number) => {
+      delays.push(ms);
+    };
+    nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(404);
+    nock("http://127.0.0.1").get("/eSCL/ScanCapabilities").reply(403);
+    nock("http://127.0.0.1").get("/eSCL/ScannerCapabilities").reply(403);
+
+    const caps = await readDeviceCapabilities(api, false, false);
+
+    expect(caps.isEscl).to.be.false;
+    expect(delays).to.deep.equal([]);
+  });
+
   it("does not expose walkup when the eSCL device has no walkup endpoint", async () => {
     nock("http://127.0.0.1").get("/DevMgmt/DiscoveryTree.xml").reply(404);
     nock("http://127.0.0.1")

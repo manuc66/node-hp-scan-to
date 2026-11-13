@@ -54,6 +54,16 @@ export interface DeviceClientOptions {
   esclCertificateFingerprint?: string;
 }
 
+/**
+ * Result of probing the well-known eSCL capabilities paths. `notReady` is true
+ * when a candidate answered 401/403/5xx or could not be reached, i.e. the
+ * device may still be booting, as opposed to not offering the endpoint at all.
+ */
+export interface EsclScanCapsProbe {
+  scanCaps: EsclScanCaps | null;
+  notReady: boolean;
+}
+
 export default class DeviceClient {
   readonly deviceIP: string;
   readonly debug: boolean;
@@ -397,7 +407,8 @@ export default class DeviceClient {
    * Standard eSCL capabilities path. Some devices serve
    * /eSCL/ScanCapabilities, others (HP firmware) only /eSCL/ScannerCapabilities.
    */
-  async getEsclScanCapsFromWellKnownPath(): Promise<EsclScanCaps | null> {
+  async getEsclScanCapsFromWellKnownPath(): Promise<EsclScanCapsProbe> {
+    let notReady = false;
     for (const path of [
       "/eSCL/ScanCapabilities",
       "/eSCL/ScannerCapabilities",
@@ -412,16 +423,29 @@ export default class DeviceClient {
           validateStatus: () => true,
         });
         if (response.status === 200) {
-          return await EsclScanCaps.createScanCaps(response.data);
+          return {
+            scanCaps: await EsclScanCaps.createScanCaps(response.data),
+            notReady: false,
+          };
+        }
+        // 401/403/5xx mean the eSCL stack is not serving yet (e.g. booting),
+        // whereas 404/405 mean the endpoint is simply not offered.
+        if (
+          response.status === 401 ||
+          response.status === 403 ||
+          response.status >= 500
+        ) {
+          notReady = true;
         }
       } catch (error) {
         if (error instanceof CertificatePinError) {
           throw error;
         }
+        notReady = true;
         logger.debug({ error }, `eSCL capabilities probe for ${path} failed`);
       }
     }
-    return null;
+    return { scanCaps: null, notReady };
   }
 
   async getWalkupScanDestinations(

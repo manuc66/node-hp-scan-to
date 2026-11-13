@@ -13,11 +13,17 @@ import { getLoggerForFile } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
 
+interface ScanCapsProbe {
+  scanCaps: IScanCaps | null;
+  /** The eSCL well-known probe hit a not-yet-ready answer (401/403/5xx/network). */
+  notReady: boolean;
+}
+
 async function getScanCaps(
   api: DeviceClient,
   discoveryTree: DiscoveryTree,
   preferEscl: boolean,
-): Promise<IScanCaps | null> {
+): Promise<ScanCapsProbe> {
   let scanCaps: ScanCaps | null = null;
   if (discoveryTree.ScanJobManifestURI !== null) {
     const scanJobManifest = await api.getScanJobManifest(
@@ -29,6 +35,7 @@ async function getScanCaps(
   }
 
   let eSclScanCaps: EsclScanCaps | null = null;
+  let notReady = false;
   if (discoveryTree.EsclManifestURI !== null) {
     const scanJobManifest = await api.getEsclScanJobManifest(
       discoveryTree.EsclManifestURI,
@@ -46,20 +53,50 @@ async function getScanCaps(
         ? "Probing the well-known eSCL capabilities endpoints because eSCL is preferred."
         : "The device advertises no scan interface; probing the well-known eSCL capabilities endpoints.",
     );
-    eSclScanCaps = await api.getEsclScanCapsFromWellKnownPath();
+    const wellKnown = await api.getEsclScanCapsFromWellKnownPath();
+    eSclScanCaps = wellKnown.scanCaps;
+    notReady = wellKnown.notReady;
     if (eSclScanCaps !== null) {
       logger.info("eSCL capabilities discovered via well-known endpoint.");
     }
   }
 
   if (preferEscl && eSclScanCaps !== null) {
-    return eSclScanCaps;
+    return { scanCaps: eSclScanCaps, notReady };
   }
   if (scanCaps !== null) {
-    return scanCaps;
+    return { scanCaps, notReady };
   }
 
-  return eSclScanCaps;
+  return { scanCaps: eSclScanCaps, notReady };
+}
+
+/**
+ * Backoff between capability probes when the printer answered "not ready"
+ * (401/403/5xx or unreachable eSCL) while listening. A printer that has just
+ * powered on can answer its TCP ports before its eSCL services are ready, so
+ * give it a bounded window to finish booting. Definitive "not offered"
+ * answers (404/405) are not retried.
+ */
+const SCAN_CAPS_RETRY_DELAYS_MS = [2000, 4000, 8000, 16000];
+
+async function getScanCapsWithRetry(
+  api: DeviceClient,
+  discoveryTree: DiscoveryTree,
+  preferEscl: boolean,
+): Promise<IScanCaps | null> {
+  let probe = await getScanCaps(api, discoveryTree, preferEscl);
+  for (const delayMs of SCAN_CAPS_RETRY_DELAYS_MS) {
+    if (probe.scanCaps !== null || !probe.notReady) {
+      break;
+    }
+    logger.warn(
+      `The device is not ready to report its scan capabilities yet; retrying in ${delayMs / 1000}s.`,
+    );
+    await api.delay(delayMs);
+    probe = await getScanCaps(api, discoveryTree, preferEscl);
+  }
+  return probe.scanCaps;
 }
 
 async function resolveWalkupScanListener(
@@ -180,6 +217,7 @@ export async function readDeviceCapabilities(
   api: DeviceClient,
   preferEscl: boolean,
   detectWalkup = false,
+  retryWhileNotReady = false,
 ): Promise<DeviceCapabilities> {
   let supportsMultiItemScanFromPlaten = true;
   let hpScanToComp: boolean | null = null;
@@ -204,7 +242,9 @@ export async function readDeviceCapabilities(
     hpScanToComp = false;
     await api.getWalkupScanManifest(discoveryTree.WalkupScanManifestURI);
   }
-  const scanCaps = await getScanCaps(api, discoveryTree, preferEscl);
+  const scanCaps = retryWhileNotReady
+    ? await getScanCapsWithRetry(api, discoveryTree, preferEscl)
+    : (await getScanCaps(api, discoveryTree, preferEscl)).scanCaps;
 
   const createWalkupScanListener = await resolveWalkupScanListener(
     api,
