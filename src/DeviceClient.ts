@@ -346,8 +346,10 @@ export default class DeviceClient {
       throw new Error("DiscoveryTree.xml request failed");
     }
 
-    logger.warn(
-      `DiscoveryTree.xml not available; falling back to standard eSCL endpoints.`,
+    // Factual only: whether the standard eSCL endpoints are probed is decided
+    // by readDeviceCapabilities.getScanCaps(), which knows the caller options.
+    logger.debug(
+      "DiscoveryTree.xml is not served over HTTP or HTTPS; returning an empty tree.",
     );
     return DiscoveryTree.empty();
   }

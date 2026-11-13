@@ -41,6 +41,11 @@ async function getScanCaps(
     // standard eSCL capabilities endpoints directly. This also covers
     // devices that no longer serve DiscoveryTree.xml, without requiring an
     // explicit --prefer-eSCL.
+    logger.info(
+      preferEscl
+        ? "Probing the well-known eSCL capabilities endpoints because eSCL is preferred."
+        : "The device advertises no scan interface; probing the well-known eSCL capabilities endpoints.",
+    );
     eSclScanCaps = await api.getEsclScanCapsFromWellKnownPath();
     if (eSclScanCaps !== null) {
       logger.info("eSCL capabilities discovered via well-known endpoint.");
