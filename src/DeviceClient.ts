@@ -50,6 +50,16 @@ export interface DeviceClientOptions {
   esclCertificateFingerprint?: string;
 }
 
+/**
+ * Outcome of probing `/eSCL/WalkupSubscriptions`:
+ * - `supported`: the device implements the walkup extension;
+ * - `missing`: the route does not exist (404);
+ * - `refused`: the device answers 401/403 (booting, access control, ...);
+ * - `unreachable`: any other status or a network error.
+ */
+export type EsclWalkupProbeResult =
+  "supported" | "missing" | "refused" | "unreachable";
+
 export default class DeviceClient {
   readonly deviceIP: string;
   readonly debug: boolean;
@@ -157,7 +167,10 @@ export default class DeviceClient {
   }
 
   static isSubscriptionExpired(error: unknown): boolean {
-    return DeviceClient.isHttpStatus(error, [404, 410]);
+    // A printer that rebooted clears its subscriptions and answers 403 on the
+    // stale id (observed on the OfficeJet Pro 8120e series), while other
+    // firmware answers 404/410. All three mean "register again".
+    return DeviceClient.isHttpStatus(error, [403, 404, 410]);
   }
 
   private rememberEsclBaseUrlFrom(uri: string): void {
@@ -793,8 +806,13 @@ export default class DeviceClient {
    * Some devices expose eSCL scanning but not the walkup subscription
    * extension. A GET on the collection is the least invasive way to tell
    * them apart before registering anything.
+   *
+   * The result is deliberately not a boolean: a 403/5xx usually means the
+   * printer is still booting (or refuses this host), which is not the same as
+   * a device that does not implement walkup at all. `listen` uses that
+   * distinction before deleting or re-creating a subscription.
    */
-  async supportsEsclWalkup(): Promise<boolean> {
+  async probeEsclWalkup(): Promise<EsclWalkupProbeResult> {
     try {
       const response = await this.callAxios({
         baseURL: await this.getEsclBaseUrl(),
@@ -803,14 +821,27 @@ export default class DeviceClient {
         responseType: "text",
         validateStatus: () => true,
       });
-      return response.status === 200 || response.status === 405;
+      if (response.status === 200 || response.status === 405) {
+        return "supported";
+      }
+      if (response.status === 404) {
+        return "missing";
+      }
+      if (response.status === 401 || response.status === 403) {
+        return "refused";
+      }
+      return "unreachable";
     } catch (error) {
       if (error instanceof CertificatePinError) {
         throw error;
       }
       logger.debug(`Could not probe eSCL walkup support: ${String(error)}`);
-      return false;
+      return "unreachable";
     }
+  }
+
+  async supportsEsclWalkup(): Promise<boolean> {
+    return (await this.probeEsclWalkup()) === "supported";
   }
 
   async registerEsclWalkupSubscription(
@@ -832,7 +863,12 @@ export default class DeviceClient {
     });
 
     const location: unknown = response.headers["location"];
-    if (response.status !== 201 || typeof location !== "string") {
+    // Some firmware answers 200 (instead of 201) when the host already has a
+    // subscription, including the one it just kept for a stale id.
+    if (
+      (response.status !== 201 && response.status !== 200) ||
+      typeof location !== "string"
+    ) {
       throw new Error(
         `Unexpected status code or location when registering to ${url}: ${response.status} - ${String(location)}`,
       );

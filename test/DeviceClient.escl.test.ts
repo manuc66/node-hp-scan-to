@@ -1,6 +1,7 @@
 import { describe, it, beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
 import nock from "nock";
+import { AxiosError, type AxiosResponse } from "axios";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -165,6 +166,60 @@ describe("DeviceClient eSCL support", () => {
 
       expect(await api.supportsEsclWalkup()).to.be.true;
       expect(await api.supportsEsclWalkup()).to.be.false;
+    });
+
+    it("classifies the walkup collection probe", async () => {
+      mockEsclBaseDetection();
+      nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(200);
+      nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(405);
+      nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(404);
+      nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(403);
+      nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(500);
+      nock("http://127.0.0.1")
+        .get("/eSCL/WalkupSubscriptions")
+        .replyWithError("connection refused");
+
+      const api = new DeviceClient("127.0.0.1");
+
+      expect(await api.probeEsclWalkup()).to.equal("supported");
+      expect(await api.probeEsclWalkup()).to.equal("supported");
+      expect(await api.probeEsclWalkup()).to.equal("missing");
+      expect(await api.probeEsclWalkup()).to.equal("refused");
+      expect(await api.probeEsclWalkup()).to.equal("unreachable");
+      expect(await api.probeEsclWalkup()).to.equal("unreachable");
+    });
+
+    it("treats 403, 404 and 410 as an expired subscription", () => {
+      const status = (code: number): AxiosError =>
+        new AxiosError(
+          `Request failed with status code ${code}`,
+          "ERR_BAD_REQUEST",
+          undefined,
+          undefined,
+          { status: code } as AxiosResponse,
+        );
+
+      expect(DeviceClient.isSubscriptionExpired(status(403))).to.be.true;
+      expect(DeviceClient.isSubscriptionExpired(status(404))).to.be.true;
+      expect(DeviceClient.isSubscriptionExpired(status(410))).to.be.true;
+      expect(DeviceClient.isSubscriptionExpired(status(401))).to.be.false;
+      expect(DeviceClient.isSubscriptionExpired(status(500))).to.be.false;
+      expect(DeviceClient.isSubscriptionExpired(new Error("boom"))).to.be.false;
+    });
+
+    it("accepts a 200 when re-registering an existing subscription", async () => {
+      mockEsclBaseDetection();
+      nock("http://127.0.0.1")
+        .post("/eSCL/WalkupSubscriptions")
+        .reply(200, "", {
+          Location: "http://127.0.0.1/eSCL/WalkupSubscriptions/sub-1",
+        });
+
+      const subscriptionURI = await new DeviceClient(
+        "127.0.0.1",
+      ).registerEsclWalkupSubscription("homelab", ["Paperless"]);
+
+      expect(subscriptionURI).to.equal("/eSCL/WalkupSubscriptions/sub-1");
     });
 
     it("registers, long-polls an event and removes the subscription", async () => {

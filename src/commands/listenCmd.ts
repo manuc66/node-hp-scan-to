@@ -13,9 +13,10 @@ import {
 import { enqueueScanProcessing } from "../queue/processingQueue.js";
 import PathHelper from "../PathHelper.js";
 import { createScanListener } from "../scanListeners/createScanListener.js";
-import type {
-  ScanListener,
-  ScanRequest,
+import {
+  PermanentScanListenerError,
+  type ScanListener,
+  type ScanRequest,
 } from "../scanListeners/ScanListener.js";
 
 import { DuplexMode } from "../type/duplexMode.js";
@@ -42,6 +43,9 @@ const MAX_LISTEN_ERRORS = 50;
  */
 export function isRetryableListenerError(error: unknown): boolean {
   if (error instanceof CertificatePinError) {
+    return false;
+  }
+  if (error instanceof PermanentScanListenerError) {
     return false;
   }
   if (!(error instanceof AxiosError)) {

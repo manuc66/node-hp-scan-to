@@ -3,6 +3,18 @@ import type { ScanPlexMode } from "../hpModels/ScanPlexMode.js";
 import type { ScanTarget } from "../type/scanTargetDefinitions.js";
 
 /**
+ * An error that retrying cannot fix: the device no longer exposes the
+ * protocol, the credentials are refused, ... `listen` stops instead of
+ * burning its retry budget on it.
+ */
+export class PermanentScanListenerError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "PermanentScanListenerError";
+  }
+}
+
+/**
  * A normalised "the user asked this host to scan" event.
  *
  * Protocol-specific state (the legacy walkup event, the eSCL subscription

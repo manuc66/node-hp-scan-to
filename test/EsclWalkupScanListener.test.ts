@@ -9,6 +9,7 @@ import { ScanPlexMode } from "../src/hpModels/ScanPlexMode.js";
 import EsclWalkupScanListener, {
   mapShortcut,
 } from "../src/scanListeners/EsclWalkupScanListener.js";
+import { PermanentScanListenerError } from "../src/scanListeners/ScanListener.js";
 
 function event(xml: string): Promise<EsclWalkupEvent> {
   return EsclWalkupEvent.create(xml);
@@ -34,10 +35,18 @@ function simpleEvent(type: string): Promise<EsclWalkupEvent> {
 </scan:WalkupScanEvent>`);
 }
 
+function httpError(status: number): AxiosError {
+  return new AxiosError(
+    `Request failed with status code ${status}`,
+    "ERR_BAD_REQUEST",
+    undefined,
+    undefined,
+    { status } as AxiosResponse,
+  );
+}
+
 function notFoundError(): AxiosError {
-  return new AxiosError("Not Found", "ERR_BAD_REQUEST", undefined, undefined, {
-    status: 404,
-  } as AxiosResponse);
+  return httpError(404);
 }
 
 class FakeApi {
@@ -45,6 +54,11 @@ class FakeApi {
   readonly events: (EsclWalkupEvent | Error | null)[] = [];
   readonly removed: string[] = [];
   alwaysExpired = false;
+  expiredError: AxiosError = notFoundError();
+  probeResult: "supported" | "missing" | "refused" | "unreachable" =
+    "supported";
+  probeCalls = 0;
+  removeError: Error | null = null;
 
   async registerEsclWalkupSubscription(
     host: string,
@@ -56,7 +70,7 @@ class FakeApi {
 
   async getEsclWalkupEvent(): Promise<EsclWalkupEvent | null> {
     if (this.alwaysExpired) {
-      throw notFoundError();
+      throw this.expiredError;
     }
     const next = this.events.shift();
     if (next instanceof Error) {
@@ -65,7 +79,17 @@ class FakeApi {
     return next ?? null;
   }
 
+  async probeEsclWalkup(): Promise<
+    "supported" | "missing" | "refused" | "unreachable"
+  > {
+    this.probeCalls++;
+    return this.probeResult;
+  }
+
   async removeEsclWalkupSubscription(uri: string): Promise<void> {
+    if (this.removeError !== null) {
+      throw this.removeError;
+    }
     this.removed.push(uri);
   }
 }
@@ -157,6 +181,105 @@ describe("EsclWalkupScanListener", () => {
 
     expect(error).to.be.instanceOf(Error);
     expect((error as Error).message).to.match(/keeps expiring|giving up/);
+    expect(api.registrations).to.have.lengthOf(2);
+  });
+
+  it("re-registers and deletes the stale subscription after a 403", async () => {
+    const api = new FakeApi();
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+    );
+    api.events.push(httpError(403));
+    api.events.push(await scanRequested());
+
+    const request = await listener.waitForScan();
+
+    expect(api.probeCalls).to.equal(1);
+    expect(api.registrations).to.have.lengthOf(2);
+    expect(api.removed).to.deep.equal(["/eSCL/WalkupSubscriptions/sub-1"]);
+    expect(request?.contextID).to.equal("sub-2");
+  });
+
+  it("does not touch the subscription when the device is not ready", async () => {
+    const api = new FakeApi();
+    api.probeResult = "refused";
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+    );
+    api.events.push(httpError(403));
+
+    const error = await rejectionOf(listener.waitForScan());
+
+    expect(error).to.be.instanceOf(Error);
+    expect(error).to.not.be.instanceOf(PermanentScanListenerError);
+    expect((error as Error).message).to.match(/not ready/i);
+    expect(api.registrations).to.have.lengthOf(1);
+    expect(api.removed).to.be.empty;
+  });
+
+  it("fails permanently when the device stops serving the walkup route", async () => {
+    const api = new FakeApi();
+    api.probeResult = "missing";
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+    );
+    api.events.push(httpError(404));
+
+    const error = await rejectionOf(listener.waitForScan());
+
+    expect(error).to.be.instanceOf(PermanentScanListenerError);
+    expect((error as Error).message).to.match(/no longer/i);
+    expect(api.registrations).to.have.lengthOf(1);
+  });
+
+  it("keeps the subscription when the device cannot be reached", async () => {
+    const api = new FakeApi();
+    api.probeResult = "unreachable";
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+    );
+    api.events.push(httpError(404));
+
+    const error = await rejectionOf(listener.waitForScan());
+
+    expect((error as Error).message).to.match(/could not reach/i);
+    expect(api.registrations).to.have.lengthOf(1);
+    expect(api.removed).to.be.empty;
+  });
+
+  it("re-registers even when deleting the stale subscription fails", async () => {
+    const api = new FakeApi();
+    api.removeError = httpError(403);
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+    );
+    api.events.push(httpError(403));
+    api.events.push(await scanRequested());
+
+    const request = await listener.waitForScan();
+
+    expect(api.registrations).to.have.lengthOf(2);
+    expect(request).to.not.be.null;
+  });
+
+  it("fails permanently when a fresh subscription is still refused", async () => {
+    const api = new FakeApi();
+    api.alwaysExpired = true;
+    api.expiredError = httpError(403);
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+    );
+
+    const error = await rejectionOf(listener.waitForScan());
+
+    expect(error).to.be.instanceOf(PermanentScanListenerError);
+    expect((error as Error).message).to.match(/giving up/);
     expect(api.registrations).to.have.lengthOf(2);
   });
 
@@ -288,3 +411,12 @@ describe("mapShortcut", () => {
     expect(mapShortcut("Paperless")).to.equal(KnownShortcut.SavePDF);
   });
 });
+
+async function rejectionOf(promise: Promise<unknown>): Promise<unknown> {
+  try {
+    await promise;
+  } catch (error) {
+    return error;
+  }
+  expect.fail("Expected the promise to reject");
+}

@@ -8,7 +8,11 @@ import type {
   RegistrationConfig,
   ScanTarget,
 } from "../type/scanTargetDefinitions.js";
-import type { ScanListener, ScanRequest } from "./ScanListener.js";
+import {
+  PermanentScanListenerError,
+  type ScanListener,
+  type ScanRequest,
+} from "./ScanListener.js";
 import { getLoggerForFile } from "../logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -71,6 +75,26 @@ export default class EsclWalkupScanListener implements ScanListener {
     this.subscriptionURI = null;
   }
 
+  /**
+   * Best effort: the subscription may already be gone (the printer rebooted
+   * and now answers 403 on the stale id), and failing to delete it must not
+   * prevent the re-registration that follows.
+   */
+  private async removeSubscriptionQuietly(
+    subscriptionURI: string,
+  ): Promise<void> {
+    try {
+      await this.api.removeEsclWalkupSubscription(subscriptionURI);
+      logger.debug(
+        `Removed the stale eSCL walkup subscription: ${subscriptionURI}`,
+      );
+    } catch (error) {
+      logger.debug(
+        `Could not remove the stale eSCL walkup subscription ${subscriptionURI}: ${String(error)}`,
+      );
+    }
+  }
+
   private async nextEvent(
     timeoutSeconds = EVENT_TIMEOUT_SECONDS,
   ): Promise<EsclWalkupEvent | null> {
@@ -86,16 +110,37 @@ export default class EsclWalkupScanListener implements ScanListener {
           throw error;
         }
 
-        this.invalidateSubscription();
         if (attempt === MAX_SUBSCRIPTION_ATTEMPTS - 1) {
-          throw new Error(
-            "The eSCL walkup subscription keeps expiring after re-registering; giving up.",
+          throw new PermanentScanListenerError(
+            "The printer keeps rejecting the eSCL walkup subscription after re-registering; giving up.",
             { cause: error },
           );
         }
 
+        // A rejected subscription is either stale (the printer rebooted and
+        // forgot it) or a sign that the device is not ready to talk walkup.
+        // Only the former is worth a DELETE + POST: hammering a booting
+        // printer with registrations does not help.
+        const probe = await this.api.probeEsclWalkup();
+        if (probe === "missing") {
+          throw new PermanentScanListenerError(
+            "The printer no longer serves /eSCL/WalkupSubscriptions; eSCL scan-to-computer is unavailable on this device.",
+            { cause: error },
+          );
+        }
+        if (probe !== "supported") {
+          throw new Error(
+            probe === "refused"
+              ? "The printer is not ready for eSCL walkup yet; keeping the current subscription and retrying."
+              : "Could not reach the printer to check the eSCL walkup subscription; keeping the current subscription and retrying.",
+            { cause: error },
+          );
+        }
+
+        this.invalidateSubscription();
+        await this.removeSubscriptionQuietly(subscriptionURI);
         logger.warn(
-          "The eSCL walkup subscription expired; registering it again.",
+          "The eSCL walkup subscription was rejected; registering it again.",
         );
       }
     }

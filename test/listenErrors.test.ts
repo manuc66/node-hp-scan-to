@@ -3,6 +3,7 @@ import { expect } from "chai";
 import { AxiosError, type AxiosResponse } from "axios";
 import { CertificatePinError } from "../src/PrinterHttpsAgent.js";
 import { isRetryableListenerError } from "../src/commands/listenCmd.js";
+import { PermanentScanListenerError } from "../src/scanListeners/ScanListener.js";
 
 function httpError(status: number): AxiosError {
   return new AxiosError(
@@ -44,6 +45,14 @@ describe("isRetryableListenerError", () => {
 
   it("treats unknown errors as retryable", () => {
     expect(isRetryableListenerError(new Error("unexpected"))).to.be.true;
+  });
+
+  it("does not retry permanent listener errors", () => {
+    expect(
+      isRetryableListenerError(
+        new PermanentScanListenerError("walkup is no longer available"),
+      ),
+    ).to.be.false;
   });
 
   it("does not retry certificate pin failures", () => {
