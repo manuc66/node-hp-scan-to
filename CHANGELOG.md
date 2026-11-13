@@ -22,7 +22,9 @@ All notable changes to this project are documented in this file.
   certificate's SHA-256 fingerprint to pin and verify it.
   Walkup support is probed before `listen` selects this protocol, so devices
   that only implement eSCL scanning keep working with `single-scan` and
-  `adf-autoscan` instead of being mistaken for walkup devices.
+  `adf-autoscan` instead of being mistaken for walkup devices. `listen` also
+  retries capability detection for up to 60 s while the printer boots, so a
+  transient 403 does not pin it to the HP protocol until a restart.
 - **Nix flake** (`flake.nix` + `packaging/nix/package.nix`): installs the
   self-contained Linux binary shipped with each release (x86_64/aarch64) and
   provides a default configuration under
