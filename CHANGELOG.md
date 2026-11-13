@@ -8,6 +8,13 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- **`--reveal` opens the file manager on a finished scan**: once the scan has
+  been delivered, the file still on disk is shown in the system file manager
+  with the file selected (`open -R` on macOS, `explorer.exe /select,` on
+  Windows, the freedesktop `FileManager1` D-Bus call with an `xdg-open`
+  fallback on Linux). Off by default; skipped in containers and on Linux
+  without a graphical session, one window per scan rather than one per page,
+  and nothing is revealed when the scan was removed after its upload.
 - **eSCL walkup ("Scan to Computer") for devices without `DiscoveryTree.xml`**:
   printers whose firmware only implements the standard eSCL endpoints can now
   run in `listen` mode. The app registers a walkup subscription on
