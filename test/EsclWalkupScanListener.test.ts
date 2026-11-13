@@ -2,6 +2,7 @@ import { describe, it } from "mocha";
 import { expect } from "chai";
 import os from "node:os";
 import { AxiosError, type AxiosResponse } from "axios";
+import { delay } from "../src/delay.js";
 import type DeviceClient from "../src/DeviceClient.js";
 import EsclWalkupEvent from "../src/hpModels/EsclWalkupEvent.js";
 import { KnownShortcut } from "../src/type/KnownShortcut.js";
@@ -59,6 +60,8 @@ class FakeApi {
   readonly removed: string[] = [];
   alwaysExpired = false;
   expiredError: AxiosError = notFoundError();
+  alwaysUnavailable = false;
+  eventDelayMs = 0;
   probeResult: EsclWalkupProbeResult = EsclWalkupProbe.Supported;
   probeCalls = 0;
   removeError: Error | null = null;
@@ -72,6 +75,12 @@ class FakeApi {
   }
 
   async getEsclWalkupEvent(): Promise<EsclWalkupEvent | null> {
+    if (this.eventDelayMs > 0) {
+      await delay(this.eventDelayMs);
+    }
+    if (this.alwaysUnavailable) {
+      throw httpError(503);
+    }
     if (this.alwaysExpired) {
       throw this.expiredError;
     }
@@ -283,6 +292,74 @@ describe("EsclWalkupScanListener", () => {
 
     expect(error).to.be.instanceOf(PermanentScanListenerError);
     expect((error as Error).message).to.match(/giving up/);
+    expect(api.registrations).to.have.lengthOf(2);
+  });
+
+  it("recovers from a wedged event channel", async () => {
+    const api = new FakeApi();
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+    );
+    api.events.push(httpError(503));
+    api.events.push(httpError(503));
+    api.events.push(httpError(503));
+    api.events.push(await scanRequested());
+
+    const request = await listener.waitForScan();
+
+    expect(api.probeCalls).to.equal(1);
+    expect(api.registrations).to.have.lengthOf(2);
+    expect(api.removed).to.deep.equal(["/eSCL/WalkupSubscriptions/sub-1"]);
+    expect(request?.contextID).to.equal("sub-2");
+  });
+
+  it("retries a single 503 without re-registering", async () => {
+    const api = new FakeApi();
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+    );
+    api.events.push(httpError(503));
+    api.events.push(await scanRequested());
+
+    const request = await listener.waitForScan();
+
+    expect(request).to.not.be.null;
+    expect(api.registrations).to.have.lengthOf(1);
+    expect(api.removed).to.be.empty;
+  });
+
+  it("treats a slow 503 as a transient device error", async () => {
+    const api = new FakeApi();
+    api.eventDelayMs = 20;
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+      60_000,
+      10,
+    );
+    api.events.push(httpError(503));
+
+    const error = await rejectionOf(listener.waitForScan());
+
+    expect(error).to.not.be.instanceOf(PermanentScanListenerError);
+    expect(api.registrations).to.have.lengthOf(1);
+    expect(api.removed).to.be.empty;
+  });
+
+  it("gives up when a fresh subscription is still wedged", async () => {
+    const api = new FakeApi();
+    api.alwaysUnavailable = true;
+    const listener = new EsclWalkupScanListener(
+      api as unknown as DeviceClient,
+      configs,
+    );
+
+    const error = await rejectionOf(listener.waitForScan());
+
+    expect(error).to.be.instanceOf(PermanentScanListenerError);
+    expect((error as Error).message).to.match(/503/);
     expect(api.registrations).to.have.lengthOf(2);
   });
 

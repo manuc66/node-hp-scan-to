@@ -22,6 +22,28 @@ const EVENT_TIMEOUT_SECONDS = 100;
 const MAX_SHORTCUTS = 5;
 const MAX_SUBSCRIPTION_ATTEMPTS = 2;
 const DEFAULT_NEXT_PAGE_TIMEOUT_MS = 60_000;
+/** Consecutive immediate 503s that identify a wedged event channel. */
+const MAX_CONSECUTIVE_EVENT_UNAVAILABLE = 3;
+/**
+ * A wedged channel answers 503 in milliseconds, before the long poll can run.
+ * A later 503 is the device being temporarily busy, not a stale subscription.
+ */
+const WEDGE_FAST_FAILURE_MS = 1000;
+
+/**
+ * Internal signal: `/Event` answered 503 immediately several times in a row,
+ * which on HP firmware means the subscription is unusable until it is
+ * deleted and created again.
+ */
+class EsclEventChannelWedgedError extends Error {
+  constructor(subscriptionURI: string, options?: ErrorOptions) {
+    super(
+      `The eSCL walkup event channel for ${subscriptionURI} answered 503 repeatedly`,
+      options,
+    );
+    this.name = "EsclEventChannelWedgedError";
+  }
+}
 
 /**
  * eSCL walkup implementation used by newer HP firmware:
@@ -40,6 +62,7 @@ export default class EsclWalkupScanListener implements ScanListener {
     private readonly api: DeviceClient,
     private readonly registrationConfigs: RegistrationConfig[],
     private readonly nextPageTimeoutMs = DEFAULT_NEXT_PAGE_TIMEOUT_MS,
+    private readonly wedgeFastFailureMs = WEDGE_FAST_FAILURE_MS,
   ) {
     this.scanTargets = registrationConfigs.map((config) => ({
       ...config,
@@ -96,24 +119,66 @@ export default class EsclWalkupScanListener implements ScanListener {
     }
   }
 
-  private async nextEvent(
-    timeoutSeconds = EVENT_TIMEOUT_SECONDS,
+  /**
+   * A subscription left behind by a killed process makes HP firmware answer
+   * 503 on every `/Event` poll within a few milliseconds. Retry a couple of
+   * times first so a one-off 503 (or a busy device) does not cost a
+   * re-registration, then let the caller recover the subscription.
+   */
+  private async getEventOrDetectWedge(
+    subscriptionURI: string,
+    timeoutSeconds: number,
   ): Promise<EsclWalkupEvent | null> {
-    for (let attempt = 0; attempt < MAX_SUBSCRIPTION_ATTEMPTS; attempt++) {
-      const subscriptionURI = await this.getSubscriptionURI();
+    for (let attempt = 1; ; attempt++) {
+      const startedAt = Date.now();
       try {
         return await this.api.getEsclWalkupEvent(
           subscriptionURI,
           timeoutSeconds,
         );
       } catch (error) {
-        if (!DeviceClient.isSubscriptionExpired(error)) {
+        const elapsedMs = Date.now() - startedAt;
+        if (
+          !DeviceClient.isServiceUnavailable(error) ||
+          elapsedMs >= this.wedgeFastFailureMs
+        ) {
+          throw error;
+        }
+
+        if (attempt >= MAX_CONSECUTIVE_EVENT_UNAVAILABLE) {
+          throw new EsclEventChannelWedgedError(subscriptionURI, {
+            cause: error,
+          });
+        }
+
+        logger.debug(
+          `The eSCL event channel answered 503 after ${elapsedMs} ms; retrying (${attempt}/${MAX_CONSECUTIVE_EVENT_UNAVAILABLE}).`,
+        );
+      }
+    }
+  }
+
+  private async nextEvent(
+    timeoutSeconds = EVENT_TIMEOUT_SECONDS,
+  ): Promise<EsclWalkupEvent | null> {
+    for (let attempt = 0; attempt < MAX_SUBSCRIPTION_ATTEMPTS; attempt++) {
+      const subscriptionURI = await this.getSubscriptionURI();
+      try {
+        return await this.getEventOrDetectWedge(
+          subscriptionURI,
+          timeoutSeconds,
+        );
+      } catch (error) {
+        const wedged = error instanceof EsclEventChannelWedgedError;
+        if (!wedged && !DeviceClient.isSubscriptionExpired(error)) {
           throw error;
         }
 
         if (attempt === MAX_SUBSCRIPTION_ATTEMPTS - 1) {
           throw new PermanentScanListenerError(
-            "The printer keeps rejecting the eSCL walkup subscription after re-registering; giving up.",
+            wedged
+              ? "The printer keeps answering 503 on the eSCL walkup event channel after re-registering; giving up."
+              : "The printer keeps rejecting the eSCL walkup subscription after re-registering; giving up.",
             { cause: error },
           );
         }

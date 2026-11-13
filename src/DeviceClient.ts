@@ -167,6 +167,10 @@ export default class DeviceClient {
     return DeviceClient.isHttpStatus(error, [403, 404, 410]);
   }
 
+  static isServiceUnavailable(error: unknown): boolean {
+    return DeviceClient.isHttpStatus(error, [503]);
+  }
+
   private rememberEsclBaseUrlFrom(uri: string): void {
     if (this.esclBaseUrlPromise !== null || !/^https?:\/\//.test(uri)) {
       return;
