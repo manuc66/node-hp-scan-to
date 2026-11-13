@@ -10,6 +10,10 @@ import EsclWalkupScanListener, {
   mapShortcut,
 } from "../src/scanListeners/EsclWalkupScanListener.js";
 import { PermanentScanListenerError } from "../src/scanListeners/ScanListener.js";
+import {
+  EsclWalkupProbe,
+  type EsclWalkupProbeResult,
+} from "../src/type/EsclWalkupProbe.js";
 
 function event(xml: string): Promise<EsclWalkupEvent> {
   return EsclWalkupEvent.create(xml);
@@ -55,8 +59,7 @@ class FakeApi {
   readonly removed: string[] = [];
   alwaysExpired = false;
   expiredError: AxiosError = notFoundError();
-  probeResult: "supported" | "missing" | "refused" | "unreachable" =
-    "supported";
+  probeResult: EsclWalkupProbeResult = EsclWalkupProbe.Supported;
   probeCalls = 0;
   removeError: Error | null = null;
 
@@ -203,7 +206,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("does not touch the subscription when the device is not ready", async () => {
     const api = new FakeApi();
-    api.probeResult = "refused";
+    api.probeResult = EsclWalkupProbe.Refused;
     const listener = new EsclWalkupScanListener(
       api as unknown as DeviceClient,
       configs,
@@ -221,7 +224,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("fails permanently when the device stops serving the walkup route", async () => {
     const api = new FakeApi();
-    api.probeResult = "missing";
+    api.probeResult = EsclWalkupProbe.Missing;
     const listener = new EsclWalkupScanListener(
       api as unknown as DeviceClient,
       configs,
@@ -237,7 +240,7 @@ describe("EsclWalkupScanListener", () => {
 
   it("keeps the subscription when the device cannot be reached", async () => {
     const api = new FakeApi();
-    api.probeResult = "unreachable";
+    api.probeResult = EsclWalkupProbe.Unreachable;
     const listener = new EsclWalkupScanListener(
       api as unknown as DeviceClient,
       configs,

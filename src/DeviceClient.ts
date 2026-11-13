@@ -35,6 +35,10 @@ import type { IScanJobSettings } from "./hpModels/IScanJobSettings.js";
 import EsclScanImageInfo from "./hpModels/EsclScanImageInfo.js";
 import EsclWalkupEvent from "./hpModels/EsclWalkupEvent.js";
 import EsclWalkupSubscription from "./hpModels/EsclWalkupSubscription.js";
+import {
+  EsclWalkupProbe,
+  type EsclWalkupProbeResult,
+} from "./type/EsclWalkupProbe.js";
 import PathHelper from "./PathHelper.js";
 import { getLoggerForFile } from "./logger.js";
 import {
@@ -49,16 +53,6 @@ export interface DeviceClientOptions {
   /** SHA-256 fingerprint of the printer's eSCL HTTPS certificate. */
   esclCertificateFingerprint?: string;
 }
-
-/**
- * Outcome of probing `/eSCL/WalkupSubscriptions`:
- * - `supported`: the device implements the walkup extension;
- * - `missing`: the route does not exist (404);
- * - `refused`: the device answers 401/403 (booting, access control, ...);
- * - `unreachable`: any other status or a network error.
- */
-export type EsclWalkupProbeResult =
-  "supported" | "missing" | "refused" | "unreachable";
 
 export default class DeviceClient {
   readonly deviceIP: string;
@@ -824,26 +818,26 @@ export default class DeviceClient {
         validateStatus: () => true,
       });
       if (response.status === 200 || response.status === 405) {
-        return "supported";
+        return EsclWalkupProbe.Supported;
       }
       if (response.status === 404) {
-        return "missing";
+        return EsclWalkupProbe.Missing;
       }
       if (response.status === 401 || response.status === 403) {
-        return "refused";
+        return EsclWalkupProbe.Refused;
       }
-      return "unreachable";
+      return EsclWalkupProbe.Unreachable;
     } catch (error) {
       if (error instanceof CertificatePinError) {
         throw error;
       }
       logger.debug(`Could not probe eSCL walkup support: ${String(error)}`);
-      return "unreachable";
+      return EsclWalkupProbe.Unreachable;
     }
   }
 
   async supportsEsclWalkup(): Promise<boolean> {
-    return (await this.probeEsclWalkup()) === "supported";
+    return (await this.probeEsclWalkup()) === EsclWalkupProbe.Supported;
   }
 
   async registerEsclWalkupSubscription(

@@ -13,6 +13,7 @@ import {
   type ScanListener,
   type ScanRequest,
 } from "./ScanListener.js";
+import { EsclWalkupProbe } from "../type/EsclWalkupProbe.js";
 import { getLoggerForFile } from "../logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
@@ -122,15 +123,15 @@ export default class EsclWalkupScanListener implements ScanListener {
         // Only the former is worth a DELETE + POST: hammering a booting
         // printer with registrations does not help.
         const probe = await this.api.probeEsclWalkup();
-        if (probe === "missing") {
+        if (probe === EsclWalkupProbe.Missing) {
           throw new PermanentScanListenerError(
             "The printer no longer serves /eSCL/WalkupSubscriptions; eSCL scan-to-computer is unavailable on this device.",
             { cause: error },
           );
         }
-        if (probe !== "supported") {
+        if (probe !== EsclWalkupProbe.Supported) {
           throw new Error(
-            probe === "refused"
+            probe === EsclWalkupProbe.Refused
               ? "The printer is not ready for eSCL walkup yet; keeping the current subscription and retrying."
               : "Could not reach the printer to check the eSCL walkup subscription; keeping the current subscription and retrying.",
             { cause: error },
