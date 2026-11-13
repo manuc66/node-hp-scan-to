@@ -14,8 +14,9 @@ All notable changes to this project are documented in this file.
   `/eSCL/WalkupSubscriptions` (HTTP or the device's self-signed HTTPS
   endpoint), long-polls the printer panel events, and maps the selected
   shortcut to a scan job. This covers the HP OfficeJet Pro 8120e / 8122e
-  series. Auto-detected when the device does not serve `DiscoveryTree.xml`;
-  `--prefer-eSCL` remains available to force eSCL on dual-protocol devices.
+  series. Auto-detected from the device's eSCL endpoints, whether or not it
+  serves `DiscoveryTree.xml`; `--prefer-eSCL` remains available to force eSCL
+  on dual-protocol devices.
   When the eSCL endpoint is HTTPS-only, its self-signed certificate is
   accepted by default with a warning; set `ESCL_CERT_FINGERPRINT` to the
   certificate's SHA-256 fingerprint to pin and verify it.

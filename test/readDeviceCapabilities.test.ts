@@ -121,6 +121,76 @@ describe("readDeviceCapabilities", () => {
     );
   });
 
+  it("auto-detects eSCL walkup when the tree advertises eSCL, without --prefer-eSCL", async () => {
+    nock("http://127.0.0.1")
+      .get("/DevMgmt/DiscoveryTree.xml")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<ledm:DiscoveryTree xmlns:ledm="http://www.hp.com/schemas/imaging/con/ledm/discoverytree/2009/03/12" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">
+  <ledm:SupportedIfc>
+    <dd:ResourceType>eSCL:eSclManifest</dd:ResourceType>
+    <ledm:ManifestURI>/eSCL/eSclManifest.xml</ledm:ManifestURI>
+  </ledm:SupportedIfc>
+</ledm:DiscoveryTree>`,
+      );
+
+    nock("http://127.0.0.1")
+      .get("/eSCL/eSclManifest.xml")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<man:Manifest xmlns:man="http://www.hp.com/schemas/imaging/con/ledm/manifest/2009/04/30" xmlns:map="http://www.hp.com/schemas/imaging/con/ledm/resourcemap/2009/04/30" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:scan="http://www.hp.com/schemas/imaging/con/ledm/scanjobmanifest/2009/04/30">
+  <map:ResourceMap>
+    <map:ResourceLink>
+      <dd:ResourceURI>http://127.0.0.1</dd:ResourceURI>
+    </map:ResourceLink>
+    <map:ResourceNode>
+      <map:ResourceType>
+        <scan:ScanResourceType>ScannerCapabilities</scan:ScanResourceType>
+      </map:ResourceType>
+      <map:ResourceLink>
+        <dd:ResourceURI>/eSCL/ScannerCapabilities.xml</dd:ResourceURI>
+      </map:ResourceLink>
+    </map:ResourceNode>
+  </map:ResourceMap>
+</man:Manifest>`,
+      );
+
+    nock("http://127.0.0.1")
+      .get("/eSCL/ScannerCapabilities.xml")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<scan:ScannerCapabilities xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <scan:Platen>
+    <scan:PlatenInputCaps>
+      <scan:MaxWidth>2550</scan:MaxWidth>
+      <scan:MaxHeight>3508</scan:MaxHeight>
+    </scan:PlatenInputCaps>
+  </scan:Platen>
+</scan:ScannerCapabilities>`,
+      );
+
+    nock("http://127.0.0.1")
+      .get("/eSCL/ScannerStatus")
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<scan:ScannerStatus xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <pwg:State>Idle</pwg:State>
+</scan:ScannerStatus>`,
+      );
+    nock("http://127.0.0.1").get("/eSCL/WalkupSubscriptions").reply(200);
+
+    const caps = await readDeviceCapabilities(api, false, true);
+
+    expect(caps.isEscl).to.be.true;
+    expect(caps.createWalkupScanListener?.(api, [])).to.be.instanceOf(
+      EsclWalkupScanListener,
+    );
+  });
+
   it("detects eSCL support when preferred", async () => {
     nock("http://127.0.0.1")
       .get("/DevMgmt/DiscoveryTree.xml")

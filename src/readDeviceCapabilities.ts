@@ -64,9 +64,7 @@ async function getScanCaps(
 
 async function resolveWalkupScanListener(
   api: DeviceClient,
-  discoveryTree: DiscoveryTree,
   scanCaps: IScanCaps | null,
-  preferEscl: boolean,
   detectWalkup: boolean,
   hpScanToComp: boolean | null,
   userActionTimeout: number | null,
@@ -89,9 +87,12 @@ async function resolveWalkupScanListener(
       );
   }
 
+  // Walkup is orthogonal to the scan protocol: an eSCL device can expose the
+  // subscription extension whether or not its DiscoveryTree advertises eSCL.
+  // HP walkup manifests were already handled above, so probe the standard
+  // endpoint whenever the device scans over eSCL.
   if (
     scanCaps?.isEscl === true &&
-    (preferEscl || !discoveryTree.hasScanInterface) &&
     (await api.supportsEsclWalkup())
   ) {
     logger.info("Using eSCL walkup listener.");
@@ -207,9 +208,7 @@ export async function readDeviceCapabilities(
 
   const createWalkupScanListener = await resolveWalkupScanListener(
     api,
-    discoveryTree,
     scanCaps,
-    preferEscl,
     detectWalkup,
     hpScanToComp,
     userActionTimeout,
