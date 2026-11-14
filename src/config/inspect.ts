@@ -37,6 +37,15 @@ export interface ResolveViewTarget {
   config: Record<string, unknown>;
 }
 
+/** Keeps the host of a credential-bearing URL, drops its path and query. */
+function redactUrl(value: string): string {
+  try {
+    return `${new URL(value).origin}/***`;
+  } catch {
+    return "***";
+  }
+}
+
 function redact(config: FileConfig): Record<string, unknown> {
   const output: Record<string, unknown> = { ...config };
   for (const key of SECRET_KEYS) {
@@ -44,6 +53,14 @@ function redact(config: FileConfig): Record<string, unknown> {
       output[key] = "***";
     }
   }
+
+  // The webhook URL is the credential for n8n, Make and Zapier workloads: the
+  // token lives in the path. Keep the host so the target is still identifiable.
+  const webhookUrl = output["webhook_url"];
+  if (typeof webhookUrl === "string") {
+    output["webhook_url"] = redactUrl(webhookUrl);
+  }
+
   return output;
 }
 

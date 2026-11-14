@@ -31,6 +31,4 @@ export interface ResolvedProgramConfig {
   printers: [ResolvedPrinter, ...ResolvedPrinter[]];
   /** True when the file declared its own `printers` block. */
   explicitPrinters: boolean;
-  /** Non-fatal configuration remarks, logged once at startup. */
-  warnings: string[];
 }

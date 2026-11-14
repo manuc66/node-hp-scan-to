@@ -182,7 +182,15 @@ function resolvePrinter(
       Object.assign(merged, settings);
     }
 
-    const config = parseProfile(withoutNulls(merged));
+    let config: FileConfig;
+    try {
+      config = parseProfile(withoutNulls(merged));
+    } catch (error) {
+      throw new Error(
+        `Invalid configuration for printer "${descriptor.id}", profile "${name}": ${(error as Error).message}`,
+        { cause: error },
+      );
+    }
     cache.set(name, config);
     return config;
   };
@@ -249,6 +257,5 @@ export function resolveConfig(raw: unknown): ResolvedProgramConfig {
   return {
     printers: [first, ...rest],
     explicitPrinters: rawPrinters !== undefined,
-    warnings: [],
   };
 }

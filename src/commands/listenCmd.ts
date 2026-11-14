@@ -129,7 +129,9 @@ export async function listenCmd(
     targets.map((target) => target.registration),
   );
 
-  let scanCount = 0;
+  // Each label keeps its own sequence: a target writing to its own directory
+  // must not inherit the scan number reached by another target.
+  const scanCounts = new Map<string, number>();
   let keepActive = true;
   let errorCount = 0;
   let retryDelayMs = DEFAULT_LISTEN_RETRY_DELAY_MS;
@@ -179,6 +181,7 @@ export async function listenCmd(
           );
         }
 
+        const scanCount = scanCounts.get(selectedScanTarget.label) ?? 0;
         const r = await processScanWithDestination(
           api,
           selectedScanTarget,
@@ -193,7 +196,7 @@ export async function listenCmd(
           frontOfDoubleSidedScanContext,
         );
 
-        scanCount = r.scanCount;
+        scanCounts.set(selectedScanTarget.label, r.scanCount);
         frontOfDoubleSidedScanContext = r.frontOfDoubleSidedScanContext;
 
         lastScanTarget = selectedScanTarget;

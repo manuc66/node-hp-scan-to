@@ -15,6 +15,9 @@ const LEGACY_DUPLEX_KEYS = [
   "emulated_duplex_assembly_mode",
 ] as const;
 
+/** Registration keys that belong to a target, never to a printer entry. */
+const REGISTRATION_KEYS = new Set<string>(["label", ...LEGACY_DUPLEX_KEYS]);
+
 const targetSchema = z
   .strictObject({
     // Only emulated duplex is a registration choice; a real duplex scan is
@@ -59,10 +62,21 @@ const printerSettingsSchema = z.strictObject(
   ) as Pick<typeof configSchema.shape, (typeof PRINTER_DEVICE_KEYS)[number]>,
 );
 
-const printerSchema = z.strictObject({
-  ...printerSettingsSchema.shape,
-  targets: targetsSchema,
-});
+const printerSchema = z
+  .strictObject({
+    ...printerSettingsSchema.shape,
+    targets: targetsSchema,
+  })
+  .superRefine((printer, ctx) => {
+    if (printer.ip === undefined && printer.name === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ip"],
+        message:
+          'a printer requires "ip" or "name": without either, the app falls back to discovering the default model on the network',
+      });
+    }
+  });
 
 const printersSchema = z
   .record(z.string().min(1), printerSchema)
@@ -111,7 +125,9 @@ export const rawConfigSchema = z
           ctx.addIssue({
             code: "custom",
             path: [key],
-            message: `${key} cannot be used with printers: set it inside each printers.<id> entry`,
+            message: REGISTRATION_KEYS.has(key)
+              ? `${key} cannot be used with printers: the labels and the emulated duplex are declared per target (each target key is a label; use duplex: "emulated")`
+              : `${key} cannot be used with printers: set it inside each printers.<id> entry`,
           });
         }
       }

@@ -80,7 +80,6 @@ describe("resolveConfig - legacy configuration compatibility", () => {
 
     expect(resolved.printers).to.have.length(1);
     expect(resolved.printers[0].id).to.equal("default");
-    expect(resolved.warnings).to.deep.equal([]);
   });
 
   it("carries every legacy key into the effective profile unchanged", () => {
@@ -138,6 +137,15 @@ describe("resolveConfig - legacy configuration compatibility", () => {
     expect(() => resolveConfig({ paper_size: "A4", width: 100 })).to.throw(
       /width\/height with paper_size/,
     );
+  });
+
+  it("names the printer and profile in a merged validation error", () => {
+    expect(() =>
+      resolveConfig({
+        profiles: { broken: { paper_size: "A4", width: 100 } },
+        targets: { X: { profile: "broken" } },
+      }),
+    ).to.throw(/printer "default", profile "broken"/);
   });
 });
 
@@ -572,6 +580,34 @@ describe("resolveConfig - printers", () => {
     expect(() =>
       resolveConfig({ printers: { p: { ip: "1.2.3.4" } } }),
     ).to.throw(/printers\.p\.targets/);
+  });
+
+  it("requires an ip or a name on each printer entry", () => {
+    expect(() =>
+      resolveConfig({ printers: { p: { targets: { X: {} } } } }),
+    ).to.throw(/requires "ip" or "name"/);
+
+    expect(() =>
+      resolveConfig({
+        printers: { p: { name: "Officejet", targets: { X: {} } } },
+      }),
+    ).to.not.throw();
+  });
+
+  it("points labels and emulated duplex at the target level", () => {
+    expect(() =>
+      resolveConfig({
+        label: "Host",
+        printers: { p: { ip: "1.2.3.4", targets: { X: {} } } },
+      }),
+    ).to.throw(/target key/i);
+
+    expect(() =>
+      resolveConfig({
+        add_emulated_duplex: true,
+        printers: { p: { ip: "1.2.3.4", targets: { X: {} } } },
+      }),
+    ).to.throw(/duplex: "emulated"/);
   });
 
   it("rejects an empty printers block", () => {

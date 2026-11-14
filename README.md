@@ -1001,7 +1001,7 @@ List of supported environment variables and their meaning, or correspondence wit
 
 - To enable debug logs set the environment variable `CMDLINE` to `-D`
 
-- `PRINTER` and `TARGET` select entries from a configuration file mounted in the container (for example `-v ./config:/app/config:ro`, or `NODE_CONFIG_DIR` pointing at another directory). With either variable set, the entrypoint no longer adds the default `-d /scan`, so each target uses the `directory` from the file; an explicit `DIR` still overrides it for the whole run. Without these variables the container behaves exactly as before and writes to `/scan`. The environment variables cannot describe several printers: run one container per printer, each with its own `PRINTER`.
+- `PRINTER` and `TARGET` select entries from a configuration file mounted in the container (for example `-v ./config:/app/config:ro`, or `NODE_CONFIG_DIR` pointing at another directory). With either variable set, the entrypoint no longer adds the default `-d /scan`, so each target uses the `directory` from the file; an explicit `DIR` still overrides it for the whole run. Without these variables the container behaves exactly as before and writes to `/scan`. The environment variables cannot describe several printers: run one container per printer, each with its own `PRINTER`. When the mounted file declares `printers` or `targets`, remove `IP`, `NAME` and `LABEL` from the container environment: the address and the labels come from the file, and keeping them is rejected at startup instead of silently overriding the file. `TARGET` is only accepted by `listen`, `single-scan` and `adf-autoscan`.
 
 #### Example for Docker
 

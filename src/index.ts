@@ -28,7 +28,6 @@ async function main() {
   logger.debug({ env: process.env["NODE_ENV"] }, "Environment detected");
 
   const resolvedConfig = resolveConfig(config.util.toObject());
-  resolvedConfig.warnings.forEach((warning) => logger.warn(warning));
 
   const program = setupProgram(resolvedConfig);
 

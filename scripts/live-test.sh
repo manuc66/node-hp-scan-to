@@ -8,7 +8,8 @@
 # --destructive also runs `clear-registrations`, which removes all walkup
 # scan targets registered on the device. The multi-target and multi-printer
 # steps below register extra labels on the device; run with --destructive to
-# clear them afterwards.
+# clear them afterwards. Devices may cap the number of destinations, in which
+# case the multi-target step reports a warning rather than a failure.
 set -euo pipefail
 
 IP="${SCANNER_IP:-}"
@@ -149,10 +150,15 @@ fi
 rc=0
 NODE_CONFIG_DIR="$CFG" timeout 8 $BIN listen \
   >"$WORK/multi-listen.log" 2>&1 || rc=$?
-if [ "$rc" -eq 0 ] || [ "$rc" -eq 124 ]; then
+if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ]; then
+  bad "listen failed with a targets block (rc=$rc, see $WORK/multi-listen.log)"
+elif grep -q "scan-to-pc-smoke-a" "$WORK/multi-listen.log" &&
+  grep -q "scan-to-pc-smoke-b" "$WORK/multi-listen.log"; then
   ok "listen registered both targets"
 else
-  bad "listen failed with a targets block (rc=$rc, see $WORK/multi-listen.log)"
+  # eSCL listeners do not log the labels, and some devices cap the number of
+  # destinations. The configuration was already checked with config resolve.
+  warn "listen started; both labels were not observed in the log (destination limit? see $WORK/multi-listen.log)"
 fi
 
 if NODE_CONFIG_DIR="$CFG" timeout 60 $BIN single-scan --target "scan-to-pc-smoke-b" \

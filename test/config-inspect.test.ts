@@ -24,6 +24,27 @@ describe("config resolve view", () => {
     expect(target.config["paperless_token"]).to.equal("***");
   });
 
+  it("keeps only the origin of the webhook URL", () => {
+    const view = buildResolveView(
+      resolveConfig({
+        webhook_url:
+          "https://hooks.example.tld/services/T000/B000/secret-token",
+      }),
+    );
+
+    expect(view.printers[0].targets[0].config["webhook_url"]).to.equal(
+      "https://hooks.example.tld/***",
+    );
+  });
+
+  it("masks an unparsable webhook URL", () => {
+    const view = buildResolveView(
+      resolveConfig({ webhook_url: "not a valid url" }),
+    );
+
+    expect(view.printers[0].targets[0].config["webhook_url"]).to.equal("***");
+  });
+
   it("shows emulated duplex targets and their assembly mode", () => {
     const view = buildResolveView(
       resolveConfig({

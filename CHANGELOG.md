@@ -19,7 +19,9 @@ All notable changes to this project are documented in this file.
   rejected with the list of choices. `config resolve` prints the effective
   configuration with secrets redacted. Docker gains `PRINTER` and `TARGET`;
   when either is set the entrypoint no longer forces `-d /scan`, so each
-  target keeps the `directory` from the file. Existing flat configuration
+  target keeps the `directory` from the file, and a file that declares
+  `printers` or `targets` must not also set `IP`, `NAME` or `LABEL`
+  (`TARGET` applies to the scan commands only). Existing flat configuration
   files, the existing CLI flags and containers without `PRINTER`/`TARGET`
   keep their current behaviour unchanged.
 - **eSCL walkup ("Scan to Computer") for devices without `DiscoveryTree.xml`**:
