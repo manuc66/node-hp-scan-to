@@ -1152,6 +1152,54 @@ Precedence, highest first: **CLI flag → config file → built-in default**. (T
 
 Keys and types are validated at startup against [`src/type/FileConfig.ts`](src/type/FileConfig.ts). `paper_size` and `paper_dim` are mutually exclusive, as are `width`/`height` and `paper_size`/`paper_dim`.
 
+**Several destinations and printers.** The flat layout above still describes one printer with one pipeline. To register several labels, share a pipeline, or serve several printers from one file, add `targets`, `profiles`, `defaults` and `printers`:
+
+```json
+{
+  "defaults": { "resolution": 300, "pattern": "scan_yyyy-mm-dd_HHMMSS" },
+
+  "profiles": {
+    "paperless": {
+      "extends": "default",
+      "mode": "Gray",
+      "paperless_post_document_url": "https://paperless.example.tld/api/documents/post_document/",
+      "paperless_token_file": "/run/secrets/paperless_token"
+    },
+    "archive": {
+      "extends": "default",
+      "directory": "/mnt/archive",
+      "keep_files": true
+    }
+  },
+
+  "printers": {
+    "officejet": {
+      "ip": "192.168.0.5",
+      "targets": {
+        "Paperless": { "profile": "paperless" },
+        "Archive locale": { "profile": "archive" },
+        "Paperless duplex": {
+          "profile": "paperless",
+          "duplex": "emulated",
+          "assembly_mode": "document-wise"
+        }
+      }
+    }
+  }
+}
+```
+
+- The targets of a printer are the labels shown on its screen; each one selects a `profile`, which holds the scan settings, output directory, delivery integrations, retention and post-commands. `duplex: "emulated"` (with an optional `assembly_mode`) registers the emulated-duplex label, replacing `add_emulated_duplex`.
+- `defaults` applies to every profile. A profile can inherit another with `extends` (here `default` is the implicit profile built from the top-level scan keys) and unset an inherited value with `null`, which is how a local-only pipeline can extend a Paperless one.
+- `printers` replaces the flat device keys: put `ip`/`name`, `prefer_escl` and the polling intervals in each printer entry. A top-level `targets` block declares the labels of the single implicit printer.
+- Select what a run uses: `--printer <id>` on any command, `--target <label>` on `listen`, `single-scan` and `adf-autoscan`. With several printers, run one process per printer (the Docker image does that with the `PRINTER` environment variable). A missing selector is only accepted when the choice is unambiguous; otherwise the error lists the configured ids or labels.
+- `config resolve` prints the effective configuration, after `defaults`, `extends` and `null`, with secret values redacted. Use it to check what a target really inherited, or when reporting an issue:
+
+```sh
+npx node-hp-scan-to config resolve
+npx node-hp-scan-to config resolve --printer officejet --target "Archive locale"
+```
+
 ## Troubleshooting
 
 **The printer no longer lists the app as a destination.** HP devices sometimes drop a registered target. Restart the app; if the entry is stale on the printer, clear the registrations and let the app register itself again:

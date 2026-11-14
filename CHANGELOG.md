@@ -8,6 +8,20 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- **Several scan destinations and printers from one configuration file**:
+  `targets` declares the labels registered on a printer, `profiles` holds the
+  scan settings and delivery integrations (shared between printers, with
+  `extends` and `null` to unset an inherited value), `defaults` holds the
+  settings common to every profile, and `printers` declares several devices.
+  The CLI only selects what the file declares (`--target <label>`,
+  `--printer <id>`), so it never becomes a second configuration language;
+  when several targets or printers are possible without a selector the run is
+  rejected with the list of choices. `config resolve` prints the effective
+  configuration with secrets redacted. Docker gains `PRINTER` and `TARGET`;
+  when either is set the entrypoint no longer forces `-d /scan`, so each
+  target keeps the `directory` from the file. Existing flat configuration
+  files, the existing CLI flags and containers without `PRINTER`/`TARGET`
+  keep their current behaviour unchanged.
 - **eSCL walkup ("Scan to Computer") for devices without `DiscoveryTree.xml`**:
   printers whose firmware only implements the standard eSCL endpoints can now
   run in `listen` mode. The app registers a walkup subscription on

@@ -34,6 +34,7 @@ import type {
 import { discoverCmd } from "./commands/discoverCmd.js";
 import type { FileConfig } from "./type/FileConfig.js";
 import type { ResolvedProgramConfig } from "./config/types.js";
+import { buildResolveView, formatResolveView } from "./config/inspect.js";
 import {
   buildListenTargets,
   selectListenTargets,
@@ -1282,6 +1283,33 @@ function createClearRegistrationsCliCmd(resolvedConfig: ResolvedProgramConfig) {
     });
 }
 
+function createConfigCliCmd(resolvedConfig: ResolvedProgramConfig) {
+  return new Command("config")
+    .description("Inspect the resolved configuration")
+    .addCommand(
+      new Command("resolve")
+        .description(
+          "Print the effective configuration of each printer and target (secrets redacted)",
+        )
+        .addOption(
+          new Option("--target <label>", "Only show the target with this label"),
+        )
+        .action((options, cmd) => {
+          // extra-typings does not model the root command's options on a
+          // nested subcommand, although optsWithGlobals() collects them.
+          const all = cmd.optsWithGlobals() as {
+            target?: string;
+            printer?: string;
+          };
+          const view = buildResolveView(resolvedConfig, {
+            ...(all.printer !== undefined && { printer: all.printer }),
+            ...(options.target !== undefined && { target: options.target }),
+          });
+          process.stdout.write(`${formatResolveView(view)}\n`);
+        }),
+    );
+}
+
 function createDiscoverCliCmd() {
   return new Command("discover")
     .description(
@@ -1381,5 +1409,8 @@ export function setupProgram(resolvedConfig: ResolvedProgramConfig) {
 
   const cmdDiscover = createDiscoverCliCmd();
   program.addCommand(cmdDiscover);
+
+  const cmdConfig = createConfigCliCmd(resolvedConfig);
+  program.addCommand(cmdConfig);
   return program;
 }
