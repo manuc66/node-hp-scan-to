@@ -35,6 +35,7 @@ import type {
 } from "./type/scanConfigs.js";
 import { discoverCmd } from "./commands/discoverCmd.js";
 import type { FileConfig } from "./type/FileConfig.js";
+import type { ResolvedProgramConfig } from "./config/types.js";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
 import type { Server as NetServer } from "node:net";
 import { ScanMode } from "./type/scanMode.js";
@@ -1330,7 +1331,12 @@ function createProgram() {
 
 type ProgramOption = ReturnType<ReturnType<typeof createProgram>["opts"]>;
 
-export function setupProgram(fileConfig: FileConfig) {
+export function setupProgram(resolvedConfig: ResolvedProgramConfig) {
+  // Commands still consume one effective configuration: the resolver currently
+  // yields a single printer with one pipeline (plus the optional emulated
+  // duplex label). Multi-target wiring will read the resolved targets instead.
+  const fileConfig: FileConfig = resolvedConfig.printers[0].targets[0].config;
+
   const program = createProgram();
 
   program.hook("preAction", (thisCommand) => {

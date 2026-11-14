@@ -1,0 +1,134 @@
+import { describe, it } from "mocha";
+import { expect } from "chai";
+import os from "node:os";
+import { configSchema } from "../src/type/FileConfig.js";
+import { DuplexAssemblyMode } from "../src/type/DuplexAssemblyMode.js";
+import { resolveConfig } from "../src/config/resolve.js";
+
+// A legacy flat configuration that exercises every key group (device, scan,
+// output, integrations, post-processing, health check). The resolver must carry
+// all of them into the effective profile without dropping or rewriting one:
+// this is the contract that keeps the existing configuration files working.
+const richLegacyConfig = {
+  ip: "192.168.1.5",
+  name: "Officejet 6500 E710n-z",
+  label: "Officejet",
+  deviceUpPollingInterval: 2000,
+  debug: true,
+  directory: "/var/lib/scans",
+  tempDirectory: "/var/lib/tmp",
+  pattern: "scan_yyyy-mm-dd_HHMMss",
+  width: "max",
+  height: "max",
+  resolution: 300,
+  mode: "gray",
+  image_format: "jpeg",
+  paper_size: "A4",
+  paper_orientation: "landscape",
+  prefer_escl: true,
+  add_emulated_duplex: true,
+  emulated_duplex_label: "Officejet duplex",
+  emulated_duplex_assembly_mode: "page-wise",
+  single_scan_duplex: true,
+  single_scan_pdf: true,
+  autoscan_duplex: false,
+  autoscan_pdf: true,
+  autoscan_pollingInterval: 500,
+  autoscan_startScanDelay: 3000,
+  paperless_post_document_url:
+    "https://paperless.example.tld/api/documents/post_document/",
+  paperless_token: "paperless-token",
+  paperless_token_file: "/run/secrets/paperless",
+  paperless_group_multi_page_scan_into_a_pdf: true,
+  paperless_always_send_as_pdf_file: true,
+  nextcloud_url: "https://cloud.example.tld",
+  nextcloud_username: "user",
+  nextcloud_password: "password",
+  nextcloud_password_file: "/run/secrets/nextcloud",
+  nextcloud_upload_folder: "scan",
+  s3_url: "https://s3.example.tld",
+  s3_region: "eu-west-1",
+  s3_access_key_id: "AKIAEXAMPLE",
+  s3_secret_access_key: "s3-secret",
+  s3_secret_access_key_file: "/run/secrets/s3",
+  s3_bucket: "scans",
+  s3_prefix: "inbox",
+  s3_force_path_style: true,
+  s3_session_token: "session-token",
+  webhook_url: "https://hooks.example.tld/scan",
+  webhook_auth: "hmac",
+  webhook_auth_header: "x-signature",
+  webhook_secret: "webhook-secret",
+  webhook_secret_file: "/run/secrets/webhook",
+  webhook_token: "webhook-token",
+  webhook_username: "webhook-user",
+  webhook_password: "webhook-password",
+  webhook_payload: "full",
+  keep_files: false,
+  post_command_pdf: 'gs "{input}" "{output}"',
+  post_command_image: 'exiftool -overwrite_original "{input}"',
+  post_command_timeout: 60000,
+  enableHealthCheck: true,
+  healthCheckPort: 3001,
+};
+
+describe("resolveConfig - legacy configuration compatibility", () => {
+  it("resolves a legacy config to one implicit printer", () => {
+    const resolved = resolveConfig(richLegacyConfig);
+
+    expect(resolved.printers).to.have.length(1);
+    expect(resolved.printers[0].id).to.equal("default");
+    expect(resolved.warnings).to.deep.equal([]);
+  });
+
+  it("carries every legacy key into the effective profile unchanged", () => {
+    const resolved = resolveConfig(richLegacyConfig);
+    const expected = configSchema.parse(richLegacyConfig);
+
+    for (const target of resolved.printers[0].targets) {
+      expect(target.config).to.deep.equal(expected);
+    }
+  });
+
+  it("keeps the label and emulated-duplex registration of the legacy listen command", () => {
+    const targets = resolveConfig(richLegacyConfig).printers[0].targets;
+
+    expect(targets).to.have.length(2);
+    expect(targets[0].label).to.equal("Officejet");
+    expect(targets[0].isDuplexSingleSide).to.equal(false);
+    expect(targets[0].duplexAssemblyMode).to.equal(undefined);
+
+    expect(targets[1].label).to.equal("Officejet duplex");
+    expect(targets[1].isDuplexSingleSide).to.equal(true);
+    expect(targets[1].duplexAssemblyMode).to.equal(
+      DuplexAssemblyMode.PAGE_WISE,
+    );
+  });
+
+  it("defaults the implicit label to the host name and generates the duplex one", () => {
+    const targets = resolveConfig({ add_emulated_duplex: true }).printers[0]
+      .targets;
+
+    expect(targets).to.have.length(2);
+    expect(targets[0].label).to.equal(os.hostname());
+    expect(targets[1].label).to.equal(`${os.hostname()} duplex`);
+    expect(targets[1].duplexAssemblyMode).to.equal(
+      DuplexAssemblyMode.DOCUMENT_WISE,
+    );
+  });
+
+  it("does not add a duplex registration when emulated duplex is disabled", () => {
+    const resolved = resolveConfig({
+      label: "Desk",
+      add_emulated_duplex: false,
+    });
+
+    expect(resolved.printers[0].targets).to.have.length(1);
+  });
+
+  it("keeps the legacy validation error message", () => {
+    expect(() => resolveConfig({ resolution: -1 })).to.throw(
+      /Configuration validation error/,
+    );
+  });
+});
