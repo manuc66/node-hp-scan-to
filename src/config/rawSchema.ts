@@ -2,6 +2,7 @@ import { z } from "zod";
 import { configSchema } from "../type/FileConfig.js";
 import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode.js";
 import { PROFILE_KEYS } from "./keys.js";
+import { DEFAULT_PROFILE } from "./constants.js";
 
 /**
  * Keys that only describe the legacy emulated-duplex registration. Once the
@@ -20,6 +21,8 @@ const targetSchema = z
     // decided by the device (or `single_scan_duplex` / `autoscan_duplex`).
     duplex: z.literal("emulated").optional(),
     assembly_mode: z.enum(Object.values(DuplexAssemblyMode)).optional(),
+    /** Pipeline used by this target; the implicit default profile when omitted. */
+    profile: z.string().min(1).optional(),
   })
   .superRefine((target, ctx) => {
     if (target.assembly_mode !== undefined && target.duplex !== "emulated") {
@@ -57,9 +60,27 @@ export const rawConfigSchema = z
   .strictObject({
     ...configSchema.shape,
     defaults: profileSettingsSchema.optional(),
+    profiles: z.record(z.string().min(1), profileSettingsSchema).optional(),
     targets: targetsSchema.optional(),
   })
   .superRefine((raw, ctx) => {
+    if (raw.profiles !== undefined) {
+      if (Object.hasOwn(raw.profiles, DEFAULT_PROFILE)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["profiles", DEFAULT_PROFILE],
+          message: `profile name "${DEFAULT_PROFILE}" is reserved: use the defaults block instead`,
+        });
+      }
+      if (raw.targets === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["profiles"],
+          message: "profiles require a targets block to be selected",
+        });
+      }
+    }
+
     if (raw.targets === undefined) {
       return;
     }
@@ -79,6 +100,21 @@ export const rawConfigSchema = z
           code: "custom",
           path: [key],
           message: `${key} cannot be used with targets: declare a target with duplex: "emulated" instead`,
+        });
+      }
+    }
+
+    for (const [label, target] of Object.entries(raw.targets)) {
+      const profileName = target.profile ?? DEFAULT_PROFILE;
+      if (
+        profileName !== DEFAULT_PROFILE &&
+        (raw.profiles === undefined ||
+          !Object.hasOwn(raw.profiles, profileName))
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["targets", label, "profile"],
+          message: `unknown profile "${profileName}"`,
         });
       }
     }

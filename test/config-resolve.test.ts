@@ -263,6 +263,96 @@ describe("resolveConfig - defaults", () => {
   });
 });
 
+describe("resolveConfig - profiles", () => {
+  it("resolves each target against its profile on top of defaults", () => {
+    const resolved = resolveConfig({
+      directory: "/flat",
+      defaults: { resolution: 300 },
+      profiles: {
+        paperless: {
+          mode: "gray",
+          paperless_post_document_url:
+            "https://paperless.example.tld/api/documents/post_document/",
+          paperless_token: "token",
+        },
+        archive: { directory: "/archive", keep_files: true },
+      },
+      targets: {
+        Paperless: { profile: "paperless" },
+        Archive: { profile: "archive" },
+        Legacy: {},
+      },
+    });
+
+    const [paperless, archive, legacy] = resolved.printers[0].targets;
+
+    expect(paperless.config.resolution).to.equal(300);
+    expect(paperless.config.mode).to.equal(ScanMode.Gray);
+    expect(paperless.config.paperless_token).to.equal("token");
+    // Flat keys describe the implicit default profile only: a named profile
+    // inherits `defaults`, not the historical file.
+    expect(paperless.config.directory).to.equal(undefined);
+
+    expect(archive.config.directory).to.equal("/archive");
+    expect(archive.config.keep_files).to.equal(true);
+    expect(archive.config.resolution).to.equal(300);
+
+    expect(legacy.config.directory).to.equal("/flat");
+    expect(legacy.config.resolution).to.equal(300);
+  });
+
+  it("accepts an explicit reference to the implicit default profile", () => {
+    const target = resolveConfig({
+      directory: "/flat",
+      targets: { X: { profile: "default" } },
+    }).printers[0].targets[0];
+
+    expect(target.config.directory).to.equal("/flat");
+  });
+
+  it("shares one effective config between targets using the same profile", () => {
+    const targets = resolveConfig({
+      profiles: { a: { resolution: 300 } },
+      targets: { X: { profile: "a" }, Y: { profile: "a" } },
+    }).printers[0].targets;
+
+    expect(targets[0].config).to.equal(targets[1].config);
+  });
+
+  it("rejects a target referencing an unknown profile", () => {
+    expect(() =>
+      resolveConfig({
+        profiles: { a: {} },
+        targets: { X: { profile: "b" } },
+      }),
+    ).to.throw(/unknown profile "b"/);
+  });
+
+  it("rejects the reserved default profile", () => {
+    expect(() =>
+      resolveConfig({
+        profiles: { default: { resolution: 300 } },
+        targets: { X: {} },
+      }),
+    ).to.throw(/reserved/);
+  });
+
+  it("requires targets to select a profile", () => {
+    expect(() =>
+      resolveConfig({ profiles: { a: { resolution: 300 } } }),
+    ).to.throw(/targets/);
+  });
+
+  it("rejects printer keys inside a profile", () => {
+    expect(() =>
+      resolveConfig({
+        profiles: { a: { ip: "192.168.1.5" } },
+        targets: { X: { profile: "a" } },
+      }),
+    ).to.throw(/unrecognized/i);
+  });
+});
+
 describe("resolveConfig - key ownership", () => {
   it("classifies every configuration key exactly once", () => {
     const schemaKeys = Object.keys(configSchema.shape).sort();

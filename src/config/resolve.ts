@@ -7,14 +7,12 @@ import {
   type RawConfig,
   type RawTarget,
 } from "./rawSchema.js";
+import { DEFAULT_PROFILE, IMPLICIT_PRINTER_ID } from "./constants.js";
 import type {
   ResolvedPrinter,
   ResolvedProgramConfig,
   ResolvedTarget,
 } from "./types.js";
-
-/** Identifier of the printer described by a flat configuration file. */
-export const IMPLICIT_PRINTER_ID = "default";
 
 function configurationError(error: z.ZodError): Error {
   return new Error(`Configuration validation error: ${z.prettifyError(error)}`);
@@ -61,15 +59,15 @@ function toTarget(
 
 function explicitTargets(
   rawTargets: Record<string, RawTarget>,
-  config: FileConfig,
+  resolveProfile: (name: string) => FileConfig,
 ): [ResolvedTarget, ...ResolvedTarget[]] {
   const entries = Object.entries(rawTargets);
+  const toResolvedTarget = ([label, target]: [string, RawTarget]) =>
+    toTarget(label, target, resolveProfile(target.profile ?? DEFAULT_PROFILE));
+
   // The schema guarantees at least one entry.
-  const [firstLabel, firstTarget] = entries[0];
-  const rest = entries
-    .slice(1)
-    .map(([label, target]) => toTarget(label, target, config));
-  return [toTarget(firstLabel, firstTarget, config), ...rest];
+  const [first, ...rest] = entries;
+  return [toResolvedTarget(first), ...rest.map(toResolvedTarget)];
 }
 
 /**
@@ -110,16 +108,42 @@ function legacyTargets(
  */
 export function resolveConfig(raw: unknown): ResolvedProgramConfig {
   const rawConfig = parseRawConfig(raw);
-  const { targets: rawTargets, defaults: rawDefaults, ...flat } = rawConfig;
+  const {
+    targets: rawTargets,
+    defaults: rawDefaults,
+    profiles: rawProfiles,
+    ...flat
+  } = rawConfig;
 
   // `defaults` is the explicit shared base: it sits above the flat settings so
   // it can override the `config/default.json` shipped with the application.
-  const config = parseProfile({ ...flat, ...(rawDefaults ?? {}) });
+  const defaults = rawDefaults ?? {};
+  const profiles = rawProfiles ?? {};
+
+  // Targets sharing a profile share the same effective configuration object.
+  const cache = new Map<string, FileConfig>();
+  const resolveProfile = (name: string): FileConfig => {
+    const cached = cache.get(name);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    // Flat keys describe the implicit default profile only. A named profile
+    // inherits `defaults`; getting the historical settings on top of it is
+    // what `extends` will express.
+    const config = parseProfile(
+      name === DEFAULT_PROFILE
+        ? { ...flat, ...defaults }
+        : { ...defaults, ...profiles[name] },
+    );
+    cache.set(name, config);
+    return config;
+  };
 
   const targets =
     rawTargets === undefined
-      ? legacyTargets(config)
-      : explicitTargets(rawTargets, config);
+      ? legacyTargets(resolveProfile(DEFAULT_PROFILE))
+      : explicitTargets(rawTargets, resolveProfile);
 
   const printer: ResolvedPrinter = { id: IMPLICIT_PRINTER_ID, targets };
 
