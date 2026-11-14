@@ -4,7 +4,7 @@ import type { RegistrationConfig } from "../type/scanTargetDefinitions.js";
 import type { ResolvedPrinter, ResolvedTarget } from "./types.js";
 
 /** A label to register on the device, with the pipeline it scans with. */
-export interface ListenTarget {
+export interface ResolvedListenTarget {
   registration: RegistrationConfig;
   config: FileConfig;
 }
@@ -20,7 +20,7 @@ export interface ListenRegistrationOptions {
   emulatedDuplexLabel: string | undefined;
 }
 
-function toListenTarget(target: ResolvedTarget): ListenTarget {
+function toListenTarget(target: ResolvedTarget): ResolvedListenTarget {
   return {
     registration: {
       label: target.label,
@@ -50,7 +50,7 @@ function asNonEmpty<T>(targets: T[]): [T, ...T[]] {
 export function buildListenTargets(
   printer: ResolvedPrinter,
   options: ListenRegistrationOptions,
-): [ListenTarget, ...ListenTarget[]] {
+): [ResolvedListenTarget, ...ResolvedListenTarget[]] {
   if (printer.explicitTargets) {
     if (
       options.label !== undefined ||
@@ -100,19 +100,63 @@ export function buildListenTargets(
 }
 
 /**
- * The single pipeline a `single-scan` or `adf-autoscan` run must use.
+ * The pipeline `single-scan` and `adf-autoscan` must use.
  *
  * Those commands do not register labels, so they cannot pick a target by
- * itself. Until a selector exists, refuse to guess when several are configured
+ * themselves: the label must be given when several targets are configured,
  * rather than silently scanning with the first one.
  */
-export function selectSingleTarget(printer: ResolvedPrinter): ResolvedTarget {
+export function selectTarget(
+  printer: ResolvedPrinter,
+  label: string | undefined,
+): ResolvedTarget {
+  if (label !== undefined) {
+    const target = printer.targets.find(
+      (candidate) => candidate.label === label,
+    );
+    if (target === undefined) {
+      throw new Error(
+        `unknown target "${label}"; configured targets: ${listTargetLabels(printer)}`,
+      );
+    }
+    return target;
+  }
+
   if (printer.targets.length === 1) {
     return printer.targets[0];
   }
 
-  const labels = printer.targets.map((target) => target.label).join(", ");
   throw new Error(
-    `several scan targets are configured (${labels}); selecting one is not supported yet`,
+    `several scan targets are configured (${listTargetLabels(printer)}); use --target <label>`,
   );
+}
+
+/**
+ * The registrations `listen` has to create, optionally narrowed to one label
+ * with `--target`.
+ */
+export function selectListenTargets(
+  targets: [ResolvedListenTarget, ...ResolvedListenTarget[]],
+  label: string | undefined,
+): [ResolvedListenTarget, ...ResolvedListenTarget[]] {
+  if (label === undefined) {
+    return targets;
+  }
+
+  const selected = targets.filter(
+    (target) => target.registration.label === label,
+  );
+  if (selected.length === 0) {
+    throw new Error(
+      `unknown target "${label}"; configured targets: ${targets
+        .map((target) => target.registration.label)
+        .join(", ")}`,
+    );
+  }
+
+  return asNonEmpty(selected);
+}
+
+function listTargetLabels(printer: ResolvedPrinter): string {
+  return printer.targets.map((target) => target.label).join(", ");
 }

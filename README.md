@@ -460,6 +460,7 @@ Webhook Options:
   --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
 
 Device Control Screen Options:
+  --target <label>                                                 Restrict the run to the configured target with this label (default: every target for listen, the only one for single-scan and adf-autoscan)
   -l, --label <label>                                              The label to display on the device (the default is the hostname)
   --add-emulated-duplex [mode]                                     Enable emulated duplex scanning, with optional assembly mode (default: document-wise) (choices: "page-wise", "document-wise", "reverse-front", "reverse-both")
   --emulated-duplex-label <label>                                  The emulated duplex label to display on the device (the default is to suffix the main label with duplex)
@@ -573,6 +574,9 @@ Webhook Options:
   --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
   --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
+
+Device Control Screen Options:
+  --target <label>                                                 Restrict the run to the configured target with this label (default: every target for listen, the only one for single-scan and adf-autoscan)
 
 Auto-scan Options:
   --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
@@ -696,6 +700,9 @@ Webhook Options:
   --webhook-username <webhook_username>                            Basic auth username sent as Authorization: Basic
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
   --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
+
+Device Control Screen Options:
+  --target <label>                                                 Restrict the run to the configured target with this label (default: every target for listen, the only one for single-scan and adf-autoscan)
 
 Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name

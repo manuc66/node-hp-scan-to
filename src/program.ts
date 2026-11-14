@@ -33,11 +33,12 @@ import type {
 } from "./type/scanConfigs.js";
 import { discoverCmd } from "./commands/discoverCmd.js";
 import type { FileConfig } from "./type/FileConfig.js";
-import type {
-  ResolvedPrinter,
-  ResolvedProgramConfig,
-} from "./config/types.js";
-import { buildListenTargets, selectSingleTarget } from "./config/select.js";
+import type { ResolvedPrinter, ResolvedProgramConfig } from "./config/types.js";
+import {
+  buildListenTargets,
+  selectListenTargets,
+  selectTarget,
+} from "./config/select.js";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
 import type { Server as NetServer } from "node:net";
 import { ScanMode } from "./type/scanMode.js";
@@ -385,6 +386,12 @@ function setupScanParameters(commandName: string) {
       )
         .choices(["full", "minimal"])
         .helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--target <label>",
+        "Restrict the run to the configured target with this label (default: every target for listen, the only one for single-scan and adf-autoscan)",
+      ).helpGroup(HelpGroupsHeadings.deviceControlScreen),
     );
 }
 
@@ -1039,11 +1046,14 @@ function createListenCliCmd(printer: ResolvedPrinter) {
 
       // Each label keeps its own pipeline; the CLI scan flag overrides apply to
       // every selected target for this run.
-      const listenTargets: ListenTarget[] = buildListenTargets(printer, {
-        label: options.label,
-        addEmulatedDuplex: options.addEmulatedDuplex,
-        emulatedDuplexLabel: options.emulatedDuplexLabel,
-      }).map((target) => ({
+      const listenTargets: ListenTarget[] = selectListenTargets(
+        buildListenTargets(printer, {
+          label: options.label,
+          addEmulatedDuplex: options.addEmulatedDuplex,
+          emulatedDuplexLabel: options.emulatedDuplexLabel,
+        }),
+        options.target,
+      ).map((target) => ({
         registration: target.registration,
         scanConfig: getScanConfiguration(options, target.config),
       }));
@@ -1102,7 +1112,7 @@ function createAdfAutoscanCliCmd(printer: ResolvedPrinter) {
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
-      const fileConfig = selectSingleTarget(printer).config;
+      const fileConfig = selectTarget(printer, options.target).config;
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
@@ -1176,7 +1186,7 @@ function createSingleScanCliCmd(printer: ResolvedPrinter) {
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
-      const fileConfig = selectSingleTarget(printer).config;
+      const fileConfig = selectTarget(printer, options.target).config;
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
