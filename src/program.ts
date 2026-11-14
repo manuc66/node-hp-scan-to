@@ -249,6 +249,12 @@ function setupScanParameters(commandName: string) {
     )
     .addOption(
       new Option(
+        "--reveal",
+        "Open the system file manager on each scan that stays on disk, with the file selected (desktop sessions only; skipped in containers and headless sessions) (default: false)",
+      ).helpGroup(HelpGroupsHeadings.ouput),
+    )
+    .addOption(
+      new Option(
         "--nextcloud-url <nextcloud_url>",
         "The nextcloud url (example: https://domain.tld)",
       ).helpGroup(HelpGroupsHeadings.nextcloud),
@@ -980,6 +986,7 @@ export function getScanConfiguration(
     options.postCommandTimeout,
     fileConfig.post_command_timeout,
   );
+  const reveal = getConfiguredValue(options.reveal, fileConfig.reveal, false);
 
   const scanConfig: ScanConfig = {
     resolution,
@@ -999,6 +1006,7 @@ export function getScanConfiguration(
     ...(postCommandImage !== undefined && { postCommandImage }),
     ...(postCommandPdf !== undefined && { postCommandPdf }),
     ...(postCommandTimeout !== undefined && { postCommandTimeout }),
+    ...(reveal && { reveal }),
   };
   return scanConfig;
 }

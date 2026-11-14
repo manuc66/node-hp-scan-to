@@ -34,6 +34,7 @@ import {
 import { uploadFilesToNextcloud } from "./nextcloud/nextcloud.js";
 import { uploadFilesToS3 } from "./s3/s3.js";
 import { getLoggerForFile } from "./logger.js";
+import { revealFirstKept } from "./reveal.js";
 
 const logger = getLoggerForFile(import.meta.url);
 
@@ -420,6 +421,10 @@ async function handlePdfPostProcessing(
       webhookConfig,
     );
   }
+  // After the cleanup, so a PDF that was uploaded and removed is not revealed.
+  if (scanConfig.reveal && pdfFilePath !== null) {
+    await revealFirstKept([pdfFilePath]);
+  }
   return { uploadSucceeded: failures.length === 0, failures };
 }
 
@@ -676,6 +681,13 @@ async function handleImagePostProcessing(
       nextcloudConfig,
       s3Config,
       webhookConfig,
+    );
+  }
+  // After the cleanup, and once per scan: the first page still on disk opens
+  // its folder, rather than one window per page.
+  if (scanConfig.reveal) {
+    await revealFirstKept(
+      scanJobContent.elements.map((element) => element.path),
     );
   }
   return { uploadSucceeded: failures.length === 0, failures };

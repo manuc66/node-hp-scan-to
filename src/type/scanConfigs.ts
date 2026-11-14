@@ -25,6 +25,7 @@ export interface ScanConfig {
   postCommandImage?: PostCommand; // External command run on delivered image pages
   postCommandPdf?: PostCommand; // External command run on generated PDFs
   postCommandTimeout?: number; // Timeout for the post-commands, in milliseconds
+  reveal?: boolean; // Open the file manager on each scan kept on disk
 }
 export type AdfAutoScanConfig = ScanConfig & {
   isDuplex: boolean;

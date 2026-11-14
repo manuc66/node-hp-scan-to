@@ -159,6 +159,7 @@ export const configSchema = z
       .positive()
       .max(MAX_POST_PROCESSING_TIMEOUT_MS)
       .optional(), // Timeout for the post-commands, in milliseconds
+    reveal: z.boolean().optional(), // Open the file manager on each scan kept on disk
 
     ///
     /// Health Check

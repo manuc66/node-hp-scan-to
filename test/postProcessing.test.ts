@@ -17,6 +17,9 @@ import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "url";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
+import type { ChildProcess } from "node:child_process";
+import { EventEmitter } from "node:events";
+import { revealRuntime } from "../src/reveal.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1055,6 +1058,108 @@ describe("postProcessing", () => {
       } finally {
         await fs.rm(secondPath, { force: true });
       }
+    });
+  });
+
+  describe("reveal", () => {
+    const original = { ...revealRuntime };
+    let revealed: string[][];
+
+    beforeEach(() => {
+      revealed = [];
+      revealRuntime.platform = "darwin";
+      revealRuntime.inDocker = () => false;
+      revealRuntime.lastRevealAt = new Map();
+      revealRuntime.spawn = (_program, args) => {
+        revealed.push(args);
+        const child = new EventEmitter() as unknown as ChildProcess;
+        child.unref = () => child;
+        return child;
+      };
+      scanConfig.reveal = true;
+    });
+
+    afterEach(() => {
+      Object.assign(revealRuntime, original);
+    });
+
+    it("reveals the generated pdf when it stays on disk", async () => {
+      await postProcessing(
+        scanConfig,
+        tempFolder,
+        tempFolder,
+        1,
+        scanJobContent,
+        new Date(),
+        true,
+      );
+
+      const pdfs = (await fs.readdir(tempFolder)).filter((f) =>
+        f.endsWith(".pdf"),
+      );
+      expect(pdfs).to.have.length(1);
+      expect(revealed).to.deep.equal([
+        ["-R", path.join(tempFolder, pdfs[0] ?? "")],
+      ]);
+    });
+
+    it("does not reveal a pdf the cleanup removed after its upload", async () => {
+      scanConfig.paperlessConfig = paperlessConfig();
+      scanConfig.nextcloudConfig = nextcloudConfig();
+      mockPaperlessSuccess();
+      mockNextcloudFolderExists();
+      nock(nextcloudUrl)
+        .intercept(/\/remote\.php\/dav\/files\/scanner\/scan\/.+\.pdf$/, "PUT")
+        .reply(201);
+
+      const result = await postProcessing(
+        scanConfig,
+        tempFolder,
+        tempFolder,
+        1,
+        scanJobContent,
+        new Date(),
+        true,
+      );
+
+      expect(result.uploadSucceeded).to.equal(true);
+      expect(revealed).to.deep.equal([]);
+    });
+
+    it("reveals an image scan once, on its first page", async () => {
+      const secondPath = path.join(tempFolder, "post_processing_sample_2.jpg");
+      await fs.writeFile(secondPath, "fake-jpg-content");
+      scanJobContent = {
+        elements: [scanPage, { ...scanPage, pageNumber: 2, path: secondPath }],
+      };
+
+      await postProcessing(
+        scanConfig,
+        tempFolder,
+        tempFolder,
+        1,
+        scanJobContent,
+        new Date(),
+        false,
+      );
+
+      expect(revealed).to.deep.equal([["-R", filePath]]);
+    });
+
+    it("does not reveal anything when the option is off", async () => {
+      scanConfig.reveal = false;
+
+      await postProcessing(
+        scanConfig,
+        tempFolder,
+        tempFolder,
+        1,
+        scanJobContent,
+        new Date(),
+        true,
+      );
+
+      expect(revealed).to.deep.equal([]);
     });
   });
 });

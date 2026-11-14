@@ -29,6 +29,10 @@ info:
 
     Every event carries an `idempotency-key` header (the event `id`), so a
     consumer can deduplicate a replay.
+
+    The event is a metadata notification: delivering it never removes the scan.
+    Retention follows the delivery targets and `--keep-files`, so a local
+    `files[].path` may already be stale when the consumer handles the event.
   version: 1.0.0
   contact:
     name: node-hp-scan-to

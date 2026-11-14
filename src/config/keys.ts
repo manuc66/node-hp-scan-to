@@ -87,6 +87,7 @@ export const PROFILE_KEYS = [
   "webhook_password",
   "webhook_payload",
   "keep_files",
+  "reveal",
   "post_command_image",
   "post_command_pdf",
   "post_command_timeout",

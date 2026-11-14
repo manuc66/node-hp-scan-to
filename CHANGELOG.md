@@ -24,6 +24,13 @@ All notable changes to this project are documented in this file.
   (`TARGET` applies to the scan commands only). Existing flat configuration
   files, the existing CLI flags and containers without `PRINTER`/`TARGET`
   keep their current behaviour unchanged.
+- **`--reveal` opens the file manager on a finished scan**: once the scan has
+  been delivered, the file still on disk is shown in the system file manager
+  with the file selected (`open -R` on macOS, `explorer.exe /select,` on
+  Windows, the freedesktop `FileManager1` D-Bus call with an `xdg-open`
+  fallback on Linux). Off by default; skipped in containers and on Linux
+  without a graphical session, one window per scan rather than one per page,
+  and nothing is revealed when the scan was removed after its upload.
 - **eSCL walkup ("Scan to Computer") for devices without `DiscoveryTree.xml`**:
   printers whose firmware only implements the standard eSCL endpoints can now
   run in `listen` mode. The app registers a walkup subscription on
@@ -38,7 +45,9 @@ All notable changes to this project are documented in this file.
   certificate's SHA-256 fingerprint to pin and verify it.
   Walkup support is probed before `listen` selects this protocol, so devices
   that only implement eSCL scanning keep working with `single-scan` and
-  `adf-autoscan` instead of being mistaken for walkup devices.
+  `adf-autoscan` instead of being mistaken for walkup devices. `listen` also
+  retries capability detection for up to 60 s while the printer boots, so a
+  transient 403 does not pin it to the HP protocol until a restart.
 - **Nix flake** (`flake.nix` + `packaging/nix/package.nix`): installs the
   self-contained Linux binary shipped with each release (x86_64/aarch64) and
   provides a default configuration under

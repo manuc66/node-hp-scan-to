@@ -30,6 +30,8 @@ the next scan event or trip the printer's `userActionTimeout` /
   Files a command writes beside the scan are detected here and delivered with
   it (S3 and Nextcloud only, see the
   [README](../#files-created-beside-the-scan)).
+  With `--reveal`, the scan still on disk after the cleanup is then shown in
+  the system file manager (see the [README](../#revealing-the-scan)).
 - **FIFO processing queue** (`src/queue/processingQueue.ts`): each captured
   scan is enqueued and drained in order by a single background worker, in
   memory. Order is preserved; capture returns to the printer immediately. If

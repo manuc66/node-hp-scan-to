@@ -3,7 +3,7 @@ import type {
   ScanTarget,
 } from "../type/scanTargetDefinitions.js";
 import DeviceClient from "../DeviceClient.js";
-import { readDeviceCapabilities } from "../readDeviceCapabilities.js";
+import { readDeviceCapabilitiesWithRetry } from "../readDeviceCapabilities.js";
 import type { ScanContent } from "../type/ScanContent.js";
 import {
   isPdf,
@@ -117,7 +117,7 @@ export async function listenCmd(
     });
   }
 
-  const deviceCapabilities = await readDeviceCapabilities(
+  const deviceCapabilities = await readDeviceCapabilitiesWithRetry(
     api,
     targets[0].scanConfig.preferEscl,
     true,

@@ -6,6 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import DeviceClient from "../src/DeviceClient.js";
+import { DeviceNotReadyError } from "../src/type/DeviceNotReadyError.js";
 import { ScanPlexMode } from "../src/hpModels/ScanPlexMode.js";
 
 const scannerStatus = `<?xml version="1.0"?>
@@ -362,6 +363,88 @@ describe("DeviceClient Retry-After", () => {
     expect(DeviceClient.getRetryAfterMs(new Error("network"))).to.be.null;
   });
 });
+
+describe("DeviceClient well-known eSCL capabilities probe", () => {
+  const scannerCaps = `<?xml version="1.0" encoding="UTF-8"?>
+<scan:ScannerCapabilities xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm">
+  <scan:Platen>
+    <scan:PlatenInputCaps>
+      <scan:MaxWidth>2550</scan:MaxWidth>
+      <scan:MaxHeight>3508</scan:MaxHeight>
+    </scan:PlatenInputCaps>
+  </scan:Platen>
+</scan:ScannerCapabilities>`;
+
+  it("returns the capabilities when an endpoint answers", async () => {
+    mockEsclBaseDetection();
+    nock("http://127.0.0.1")
+      .get("/eSCL/ScanCapabilities")
+      .reply(200, scannerCaps);
+
+    const caps =
+      await new DeviceClient("127.0.0.1").getEsclScanCapsFromWellKnownPath();
+
+    expect(caps?.platenMaxWidth).to.equal(2550);
+  });
+
+  it("returns null when every candidate is missing", async () => {
+    mockEsclBaseDetection();
+    nock("http://127.0.0.1").get("/eSCL/ScanCapabilities").reply(404);
+    nock("http://127.0.0.1").get("/eSCL/ScannerCapabilities").reply(405);
+
+    const caps =
+      await new DeviceClient("127.0.0.1").getEsclScanCapsFromWellKnownPath();
+
+    expect(caps).to.be.null;
+  });
+
+  it("throws DeviceNotReadyError when a candidate is not ready", async () => {
+    mockEsclBaseDetection();
+    nock("http://127.0.0.1").get("/eSCL/ScanCapabilities").reply(404);
+    nock("http://127.0.0.1").get("/eSCL/ScannerCapabilities").reply(403);
+
+    const error = await rejectionOf(
+      new DeviceClient("127.0.0.1").getEsclScanCapsFromWellKnownPath(),
+    );
+
+    expect(error).to.be.instanceOf(DeviceNotReadyError);
+  });
+
+  it("throws DeviceNotReadyError on a server error", async () => {
+    mockEsclBaseDetection();
+    nock("http://127.0.0.1").get("/eSCL/ScanCapabilities").reply(503);
+    nock("http://127.0.0.1").get("/eSCL/ScannerCapabilities").reply(404);
+
+    const error = await rejectionOf(
+      new DeviceClient("127.0.0.1").getEsclScanCapsFromWellKnownPath(),
+    );
+
+    expect(error).to.be.instanceOf(DeviceNotReadyError);
+  });
+
+  it("throws DeviceNotReadyError on a network error", async () => {
+    mockEsclBaseDetection();
+    nock("http://127.0.0.1")
+      .get("/eSCL/ScanCapabilities")
+      .replyWithError("connection refused");
+    nock("http://127.0.0.1").get("/eSCL/ScannerCapabilities").reply(404);
+
+    const error = await rejectionOf(
+      new DeviceClient("127.0.0.1").getEsclScanCapsFromWellKnownPath(),
+    );
+
+    expect(error).to.be.instanceOf(DeviceNotReadyError);
+  });
+});
+
+async function rejectionOf(promise: Promise<unknown>): Promise<unknown> {
+  try {
+    await promise;
+  } catch (error) {
+    return error;
+  }
+  expect.fail("Expected the promise to reject");
+}
 
 async function expectRejects(
   promise: Promise<unknown>,

@@ -1,4 +1,7 @@
 import type DeviceClient from "./DeviceClient.js";
+import { AxiosError } from "axios";
+import { DeviceNotReadyError } from "./type/DeviceNotReadyError.js";
+import { retry } from "./retry.js";
 import type ScanCaps from "./hpModels/ScanCaps.js";
 import type DiscoveryTree from "./type/DiscoveryTree.js";
 import type EsclScanCaps from "./hpModels/EsclScanCaps.js";
@@ -12,6 +15,35 @@ import EsclWalkupScanListener from "./scanListeners/EsclWalkupScanListener.js";
 import { getLoggerForFile } from "./logger.js";
 
 const logger = getLoggerForFile(import.meta.url);
+
+/**
+ * Probe the standard eSCL capability endpoints. A device that is reachable but
+ * not ready yet only matters when eSCL is the only scan interface; when the
+ * tree advertises another interface, keep it and let the caller fall back.
+ */
+async function probeWellKnownEsclCaps(
+  api: DeviceClient,
+  discoveryTree: DiscoveryTree,
+): Promise<EsclScanCaps | null> {
+  try {
+    const caps = await api.getEsclScanCapsFromWellKnownPath();
+    if (caps !== null) {
+      logger.info("eSCL capabilities discovered via well-known endpoint.");
+    }
+    return caps;
+  } catch (error) {
+    if (
+      error instanceof DeviceNotReadyError &&
+      discoveryTree.hasScanInterface
+    ) {
+      logger.debug(
+        `eSCL capabilities are not ready; keeping the advertised scan interface (${error.message})`,
+      );
+      return null;
+    }
+    throw error;
+  }
+}
 
 async function getScanCaps(
   api: DeviceClient,
@@ -46,10 +78,7 @@ async function getScanCaps(
         ? "Probing the well-known eSCL capabilities endpoints because eSCL is preferred."
         : "The device advertises no scan interface; probing the well-known eSCL capabilities endpoints.",
     );
-    eSclScanCaps = await api.getEsclScanCapsFromWellKnownPath();
-    if (eSclScanCaps !== null) {
-      logger.info("eSCL capabilities discovered via well-known endpoint.");
-    }
+    eSclScanCaps = await probeWellKnownEsclCaps(api, discoveryTree);
   }
 
   if (preferEscl && eSclScanCaps !== null) {
@@ -252,4 +281,70 @@ export async function readDeviceCapabilities(
     createScanJobSettings,
     submitScanJob,
   };
+}
+
+const CAPABILITY_RETRY_TIMEOUT_MS = 60_000;
+const CAPABILITY_RETRY_DELAY_MS = 2_000;
+
+export interface CapabilityRetryOptions {
+  /** How long to keep retrying before surfacing the last error. */
+  timeoutMs?: number;
+  /** Delay between two detection attempts. */
+  retryDelayMs?: number;
+}
+
+/**
+ * Errors that mean "the device is reachable but its services are not up yet".
+ * 404/405 are handled by the probe itself and never end up here, so a 403 is
+ * the boot signature reported in #1831 rather than an access-control failure
+ * we could fix by waiting; a genuine permission error still fails after the
+ * bounded retry window.
+ */
+function isNotReadyError(error: unknown): boolean {
+  if (error instanceof DeviceNotReadyError) {
+    return true;
+  }
+  if (!(error instanceof AxiosError)) {
+    return false;
+  }
+  const status = error.response?.status ?? error.status;
+  if (status === undefined) {
+    return true;
+  }
+  return (
+    status === 401 ||
+    status === 403 ||
+    status === 408 ||
+    status === 429 ||
+    status >= 500
+  );
+}
+
+/**
+ * Detect capabilities, retrying while the printer answers on the network but
+ * its HTTP/eSCL services are still booting. `listen` starts as soon as the
+ * container is up, which is typically before the printer is ready.
+ */
+export async function readDeviceCapabilitiesWithRetry(
+  api: DeviceClient,
+  preferEscl: boolean,
+  detectWalkup = false,
+  options: CapabilityRetryOptions = {},
+): Promise<DeviceCapabilities> {
+  return await retry(
+    () => readDeviceCapabilities(api, preferEscl, detectWalkup),
+    {
+      timeoutMs: options.timeoutMs ?? CAPABILITY_RETRY_TIMEOUT_MS,
+      delayMs: options.retryDelayMs ?? CAPABILITY_RETRY_DELAY_MS,
+      shouldRetry: isNotReadyError,
+      onRetry: (_error, attempt) => {
+        if (attempt === 1) {
+          logger.warn(
+            "The printer is reachable but its services are not ready yet; retrying capability detection.",
+          );
+        }
+      },
+      sleep: (ms) => api.delay(ms),
+    },
+  );
 }
