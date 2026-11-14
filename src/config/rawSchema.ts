@@ -44,6 +44,14 @@ const targetsSchema = z
     message: "targets must declare at least one target",
   });
 
+// `targets` is required on a printer entry. A dedicated schema gives a useful
+// message instead of Zod's generic "expected record, received undefined".
+const requiredTargetsSchema = z
+  .custom((value) => value !== undefined, {
+    message: "a printer requires a targets block (the labels to register)",
+  })
+  .pipe(targetsSchema);
+
 // Device-level keys accepted inside a `printers.<id>` entry. The legacy
 // registration keys (`label`, `add_emulated_duplex`, ...) are excluded: there,
 // the target names are the labels.
@@ -65,7 +73,7 @@ const printerSettingsSchema = z.strictObject(
 const printerSchema = z
   .strictObject({
     ...printerSettingsSchema.shape,
-    targets: targetsSchema,
+    targets: requiredTargetsSchema,
   })
   .superRefine((printer, ctx) => {
     if (printer.ip === undefined && printer.name === undefined) {
@@ -103,6 +111,168 @@ export const profileSchema = z.strictObject({
   extends: z.string().min(1).optional(),
 });
 
+const rawConfigShape = {
+  ...configSchema.shape,
+  defaults: defaultsSchema.optional(),
+  profiles: z.record(z.string().min(1), profileSchema).optional(),
+  targets: targetsSchema.optional(),
+  printers: printersSchema.optional(),
+};
+
+const rawConfigObjectSchema = z.strictObject(rawConfigShape);
+
+export type RawConfig = z.infer<typeof rawConfigObjectSchema>;
+export type RawTarget = z.infer<typeof targetSchema>;
+export type RawProfile = z.infer<typeof profileSchema>;
+export type RawDefaults = z.infer<typeof defaultsSchema>;
+
+function addPrinterConflicts(raw: RawConfig, ctx: z.RefinementCtx): void {
+  if (raw.printers === undefined) {
+    return;
+  }
+
+  for (const key of PRINTER_KEYS) {
+    if (raw[key] === undefined) {
+      continue;
+    }
+    ctx.addIssue({
+      code: "custom",
+      path: [key],
+      message: REGISTRATION_KEYS.has(key)
+        ? `${key} cannot be used with printers: the labels and the emulated duplex are declared per target (each target key is a label; use duplex: "emulated")`
+        : `${key} cannot be used with printers: set it inside each printers.<id> entry`,
+    });
+  }
+
+  if (raw.targets !== undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["targets"],
+      message:
+        "targets cannot be used with printers: declare the targets inside each printers.<id> entry",
+    });
+  }
+}
+
+function addExtendsIssue(
+  name: string,
+  profiles: Record<string, RawProfile>,
+  ctx: z.RefinementCtx,
+): void {
+  const seen = new Set<string>([name]);
+  let parent = profiles[name].extends;
+  while (parent !== undefined && parent !== DEFAULT_PROFILE) {
+    if (seen.has(parent)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["profiles", name, "extends"],
+        message: `profile "${name}" has a circular extends chain`,
+      });
+      return;
+    }
+    if (!Object.hasOwn(profiles, parent)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["profiles", name, "extends"],
+        message: `unknown profile "${parent}"`,
+      });
+      return;
+    }
+    seen.add(parent);
+    parent = profiles[parent].extends;
+  }
+}
+
+function addProfileIssues(raw: RawConfig, ctx: z.RefinementCtx): void {
+  if (raw.profiles === undefined) {
+    return;
+  }
+
+  if (Object.hasOwn(raw.profiles, DEFAULT_PROFILE)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["profiles", DEFAULT_PROFILE],
+      message: `profile name "${DEFAULT_PROFILE}" is reserved: use the defaults block instead`,
+    });
+  }
+
+  if (raw.targets === undefined && raw.printers === undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["profiles"],
+      message: "profiles require a targets or printers block to be selected",
+    });
+  }
+
+  for (const name of Object.keys(raw.profiles)) {
+    addExtendsIssue(name, raw.profiles, ctx);
+  }
+}
+
+function addUnknownProfileIssues(
+  targets: Record<string, RawTarget>,
+  path: readonly string[],
+  profiles: Record<string, RawProfile> | undefined,
+  ctx: z.RefinementCtx,
+): void {
+  for (const [label, target] of Object.entries(targets)) {
+    const profileName = target.profile ?? DEFAULT_PROFILE;
+    if (profileName === DEFAULT_PROFILE) {
+      continue;
+    }
+    if (profiles !== undefined && Object.hasOwn(profiles, profileName)) {
+      continue;
+    }
+    ctx.addIssue({
+      code: "custom",
+      path: [...path, label, "profile"],
+      message: `unknown profile "${profileName}"`,
+    });
+  }
+}
+
+function addTargetIssues(raw: RawConfig, ctx: z.RefinementCtx): void {
+  if (raw.targets === undefined) {
+    return;
+  }
+
+  if (raw.label !== undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["label"],
+      message:
+        "label cannot be used with targets: each target key is already a label",
+    });
+  }
+
+  for (const key of LEGACY_DUPLEX_KEYS) {
+    if (raw[key] !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: [key],
+        message: `${key} cannot be used with targets: declare a target with duplex: "emulated" instead`,
+      });
+    }
+  }
+
+  addUnknownProfileIssues(raw.targets, ["targets"], raw.profiles, ctx);
+}
+
+function addPrinterTargetIssues(raw: RawConfig, ctx: z.RefinementCtx): void {
+  if (raw.printers === undefined) {
+    return;
+  }
+
+  for (const [printerId, printer] of Object.entries(raw.printers)) {
+    addUnknownProfileIssues(
+      printer.targets,
+      ["printers", printerId, "targets"],
+      raw.profiles,
+      ctx,
+    );
+  }
+}
+
 /**
  * The on-disk configuration file, before the profiles are resolved.
  *
@@ -110,132 +280,9 @@ export const profileSchema = z.strictObject({
  * exactly as it did before. `targets` lists the labels registered on the
  * implicit printer; its keys are the labels shown on the device.
  */
-export const rawConfigSchema = z
-  .strictObject({
-    ...configSchema.shape,
-    defaults: defaultsSchema.optional(),
-    profiles: z.record(z.string().min(1), profileSchema).optional(),
-    targets: targetsSchema.optional(),
-    printers: printersSchema.optional(),
-  })
-  .superRefine((raw, ctx) => {
-    if (raw.printers !== undefined) {
-      for (const key of PRINTER_KEYS) {
-        if (raw[key] !== undefined) {
-          ctx.addIssue({
-            code: "custom",
-            path: [key],
-            message: REGISTRATION_KEYS.has(key)
-              ? `${key} cannot be used with printers: the labels and the emulated duplex are declared per target (each target key is a label; use duplex: "emulated")`
-              : `${key} cannot be used with printers: set it inside each printers.<id> entry`,
-          });
-        }
-      }
-
-      if (raw.targets !== undefined) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["targets"],
-          message:
-            "targets cannot be used with printers: declare the targets inside each printers.<id> entry",
-        });
-      }
-    }
-
-    if (raw.profiles !== undefined) {
-      if (Object.hasOwn(raw.profiles, DEFAULT_PROFILE)) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["profiles", DEFAULT_PROFILE],
-          message: `profile name "${DEFAULT_PROFILE}" is reserved: use the defaults block instead`,
-        });
-      }
-      if (raw.targets === undefined && raw.printers === undefined) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["profiles"],
-          message:
-            "profiles require a targets or printers block to be selected",
-        });
-      }
-
-      for (const name of Object.keys(raw.profiles)) {
-        const seen = new Set<string>([name]);
-        let parent = raw.profiles[name].extends;
-        while (parent !== undefined && parent !== DEFAULT_PROFILE) {
-          if (seen.has(parent)) {
-            ctx.addIssue({
-              code: "custom",
-              path: ["profiles", name, "extends"],
-              message: `profile "${name}" has a circular extends chain`,
-            });
-            break;
-          }
-          if (!Object.hasOwn(raw.profiles, parent)) {
-            ctx.addIssue({
-              code: "custom",
-              path: ["profiles", name, "extends"],
-              message: `unknown profile "${parent}"`,
-            });
-            break;
-          }
-          seen.add(parent);
-          parent = raw.profiles[parent].extends;
-        }
-      }
-    }
-
-    const checkTargets = (
-      targets: Record<string, RawTarget>,
-      path: readonly string[],
-    ): void => {
-      for (const [label, target] of Object.entries(targets)) {
-        const profileName = target.profile ?? DEFAULT_PROFILE;
-        if (
-          profileName !== DEFAULT_PROFILE &&
-          (raw.profiles === undefined ||
-            !Object.hasOwn(raw.profiles, profileName))
-        ) {
-          ctx.addIssue({
-            code: "custom",
-            path: [...path, label, "profile"],
-            message: `unknown profile "${profileName}"`,
-          });
-        }
-      }
-    };
-
-    if (raw.targets !== undefined) {
-      if (raw.label !== undefined) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["label"],
-          message:
-            "label cannot be used with targets: each target key is already a label",
-        });
-      }
-
-      for (const key of LEGACY_DUPLEX_KEYS) {
-        if (raw[key] !== undefined) {
-          ctx.addIssue({
-            code: "custom",
-            path: [key],
-            message: `${key} cannot be used with targets: declare a target with duplex: "emulated" instead`,
-          });
-        }
-      }
-
-      checkTargets(raw.targets, ["targets"]);
-    }
-
-    if (raw.printers !== undefined) {
-      for (const [printerId, printer] of Object.entries(raw.printers)) {
-        checkTargets(printer.targets, ["printers", printerId, "targets"]);
-      }
-    }
-  });
-
-export type RawConfig = z.infer<typeof rawConfigSchema>;
-export type RawTarget = z.infer<typeof targetSchema>;
-export type RawProfile = z.infer<typeof profileSchema>;
-export type RawDefaults = z.infer<typeof defaultsSchema>;
+export const rawConfigSchema = rawConfigObjectSchema.superRefine((raw, ctx) => {
+  addPrinterConflicts(raw, ctx);
+  addProfileIssues(raw, ctx);
+  addTargetIssues(raw, ctx);
+  addPrinterTargetIssues(raw, ctx);
+});
