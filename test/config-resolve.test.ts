@@ -579,7 +579,7 @@ describe("resolveConfig - printers", () => {
   it("rejects a printer without targets", () => {
     expect(() =>
       resolveConfig({ printers: { p: { ip: "1.2.3.4" } } }),
-    ).to.throw(/printers\.p\.targets/);
+    ).to.throw(/requires a targets block/);
   });
 
   it("requires an ip or a name on each printer entry", () => {
