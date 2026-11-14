@@ -131,4 +131,98 @@ describe("resolveConfig - legacy configuration compatibility", () => {
       /Configuration validation error/,
     );
   });
+
+  it("still applies the cross-field paper rules to the effective profile", () => {
+    expect(() => resolveConfig({ paper_size: "A4", width: 100 })).to.throw(
+      /width\/height with paper_size/,
+    );
+  });
+});
+
+describe("resolveConfig - targets of the implicit printer", () => {
+  it("registers every label of a targets block with the shared settings", () => {
+    const resolved = resolveConfig({
+      directory: "/scans",
+      resolution: 300,
+      targets: {
+        Paperless: {},
+        "Archive locale": { duplex: "emulated", assembly_mode: "page-wise" },
+      },
+    });
+
+    expect(resolved.printers).to.have.length(1);
+    const targets = resolved.printers[0].targets;
+    expect(targets.map((target) => target.label)).to.deep.equal([
+      "Paperless",
+      "Archive locale",
+    ]);
+
+    expect(targets[0].isDuplexSingleSide).to.equal(false);
+    expect(targets[0].config.directory).to.equal("/scans");
+    expect(targets[0].config.resolution).to.equal(300);
+
+    expect(targets[1].isDuplexSingleSide).to.equal(true);
+    expect(targets[1].duplexAssemblyMode).to.equal(
+      DuplexAssemblyMode.PAGE_WISE,
+    );
+    expect(targets[1].config).to.deep.equal(targets[0].config);
+  });
+
+  it("defaults the emulated duplex assembly mode to document-wise", () => {
+    const targets = resolveConfig({ targets: { D: { duplex: "emulated" } } })
+      .printers[0].targets;
+
+    expect(targets[0].duplexAssemblyMode).to.equal(
+      DuplexAssemblyMode.DOCUMENT_WISE,
+    );
+  });
+
+  it("keeps the printer settings alongside targets", () => {
+    const targets = resolveConfig({
+      ip: "192.168.1.5",
+      prefer_escl: true,
+      targets: { X: {} },
+    }).printers[0].targets;
+
+    expect(targets[0].config.ip).to.equal("192.168.1.5");
+    expect(targets[0].config.prefer_escl).to.equal(true);
+  });
+
+  it("rejects assembly_mode on a target that is not emulated duplex", () => {
+    expect(() =>
+      resolveConfig({ targets: { X: { assembly_mode: "page-wise" } } }),
+    ).to.throw(/assembly_mode/);
+  });
+
+  it("rejects a targets block combined with the legacy label", () => {
+    expect(() =>
+      resolveConfig({ label: "Legacy", targets: { X: {} } }),
+    ).to.throw(/label/);
+  });
+
+  const legacyDuplexKeys = {
+    add_emulated_duplex: true,
+    emulated_duplex_label: "Legacy duplex",
+    emulated_duplex_assembly_mode: "page-wise",
+  } as const;
+
+  for (const [key, value] of Object.entries(legacyDuplexKeys)) {
+    it(`rejects a targets block combined with ${key}`, () => {
+      expect(() =>
+        resolveConfig({ [key]: value, targets: { X: {} } }),
+      ).to.throw(key);
+    });
+  }
+
+  it("rejects an empty targets block", () => {
+    expect(() => resolveConfig({ targets: {} })).to.throw(
+      /at least one target/,
+    );
+  });
+
+  it("rejects unknown keys inside a target", () => {
+    expect(() => resolveConfig({ targets: { X: { foo: true } } })).to.throw(
+      /unrecognized/i,
+    );
+  });
 });
