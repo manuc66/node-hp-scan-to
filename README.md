@@ -966,6 +966,8 @@ List of supported environment variables and their meaning, or correspondence wit
 | `PAPERLESS_TOKEN`             | Paperless-ngx API token (either this or `PAPERLESS_TOKEN_FILE` is required; file takes precedence)         | Example: `xxxxxxxxxxxx...`                                                    |
 | `PAPERLESS_TOKEN_FILE`        | File containing paperless-ngx API token (either this or `PAPERLESS_TOKEN` is required; takes precedence) | Example: `./paperless_token.secret` (preferred for Docker Compose secrets)    |
 | `PATTERN`                     | Pattern to use                                                                                                | `-p` / `--pattern`                                                            |
+| `PRINTER`                     | Select a printer declared in the mounted configuration file (one container per printer for multi-printer files). When set, the entrypoint no longer forces `-d /scan`. | `--printer` |
+| `TARGET`                      | Restrict the run to one target (label) declared in the mounted configuration file. When set, the entrypoint no longer forces `-d /scan`. | `--target` |
 | `PGID`                        | ID of the group that will run the program                                                                     |                                                                               |
 | `PUID`                        | ID of the user that will run the program                                                                      |                                                                               |
 | `RESOLUTION`                  | Resolution setting                                                                                            | `-r` / `--resolution`                                                         |
@@ -997,6 +999,8 @@ List of supported environment variables and their meaning, or correspondence wit
 - The name shown on the printer’s display is the hostname of the Docker container, which defaults to a random value. You can override it by setting the `hostname` or using the `LABEL` environment variable.
 
 - To enable debug logs set the environment variable `CMDLINE` to `-D`
+
+- `PRINTER` and `TARGET` select entries from a configuration file mounted in the container (for example `-v ./config:/app/config:ro`, or `NODE_CONFIG_DIR` pointing at another directory). With either variable set, the entrypoint no longer adds the default `-d /scan`, so each target uses the `directory` from the file; an explicit `DIR` still overrides it for the whole run. Without these variables the container behaves exactly as before and writes to `/scan`. The environment variables cannot describe several printers: run one container per printer, each with its own `PRINTER`.
 
 #### Example for Docker
 
