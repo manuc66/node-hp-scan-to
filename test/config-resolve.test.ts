@@ -353,6 +353,106 @@ describe("resolveConfig - profiles", () => {
   });
 });
 
+describe("resolveConfig - extends", () => {
+  it("inherits a profile chain and lets the child override the parent", () => {
+    const config = resolveConfig({
+      defaults: { resolution: 150 },
+      profiles: {
+        base: { directory: "/base", mode: "color" },
+        paperless: {
+          extends: "base",
+          mode: "gray",
+          paperless_token: "token",
+        },
+      },
+      targets: { P: { profile: "paperless" } },
+    }).printers[0].targets[0].config;
+
+    expect(config.directory).to.equal("/base");
+    expect(config.mode).to.equal(ScanMode.Gray);
+    expect(config.resolution).to.equal(150);
+    expect(config.paperless_token).to.equal("token");
+  });
+
+  it("inherits the legacy flat settings through the default profile", () => {
+    const config = resolveConfig({
+      directory: "/flat",
+      resolution: 200,
+      profiles: { p: { extends: "default", resolution: 600 } },
+      targets: { X: { profile: "p" } },
+    }).printers[0].targets[0].config;
+
+    expect(config.directory).to.equal("/flat");
+    expect(config.resolution).to.equal(600);
+  });
+
+  it("rejects an unknown parent profile", () => {
+    expect(() =>
+      resolveConfig({
+        profiles: { p: { extends: "nope" } },
+        targets: { X: { profile: "p" } },
+      }),
+    ).to.throw(/unknown profile "nope"/);
+  });
+
+  it("rejects an extends cycle", () => {
+    expect(() =>
+      resolveConfig({
+        profiles: { a: { extends: "b" }, b: { extends: "a" } },
+        targets: { X: { profile: "a" } },
+      }),
+    ).to.throw(/circular|cycle/i);
+  });
+
+  it("rejects extends in defaults", () => {
+    expect(() => resolveConfig({ defaults: { extends: "a" } })).to.throw(
+      /unrecognized/i,
+    );
+  });
+});
+
+describe("resolveConfig - null unsets inherited keys", () => {
+  it("removes an inherited key from a profile", () => {
+    const config = resolveConfig({
+      directory: "/flat",
+      paperless_token: "token",
+      profiles: {
+        local: {
+          extends: "default",
+          paperless_token: null,
+          directory: "/archive",
+        },
+      },
+      targets: { L: { profile: "local" } },
+    }).printers[0].targets[0].config;
+
+    expect(config.paperless_token).to.equal(undefined);
+    expect(config.directory).to.equal("/archive");
+  });
+
+  it("removes a defaults key for the default profile", () => {
+    const config = resolveConfig({
+      directory: "/flat",
+      defaults: { directory: null },
+    }).printers[0].targets[0].config;
+
+    expect(config.directory).to.equal(undefined);
+  });
+
+  it("lets a child profile restore a key its parent unset", () => {
+    const config = resolveConfig({
+      paperless_token: "flat-token",
+      profiles: {
+        base: { extends: "default", paperless_token: null },
+        pipeline: { extends: "base", paperless_token: "profile-token" },
+      },
+      targets: { X: { profile: "pipeline" } },
+    }).printers[0].targets[0].config;
+
+    expect(config.paperless_token).to.equal("profile-token");
+  });
+});
+
 describe("resolveConfig - key ownership", () => {
   it("classifies every configuration key exactly once", () => {
     const schemaKeys = Object.keys(configSchema.shape).sort();

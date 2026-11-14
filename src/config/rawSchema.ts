@@ -41,13 +41,24 @@ const targetsSchema = z
     message: "targets must declare at least one target",
   });
 
-// A partial pipeline: every profile key is optional, and only pipeline keys
-// are accepted. Cross-field rules wait for the merged profile.
-const profileShape = Object.fromEntries(
-  PROFILE_KEYS.map((key) => [key, configSchema.shape[key]]),
-) as Pick<typeof configSchema.shape, (typeof PROFILE_KEYS)[number]>;
+// A partial pipeline: every profile key is optional and may be set to `null`
+// to unset an inherited value. Cross-field rules wait for the merged profile.
+const nullableProfileShape = Object.fromEntries(
+  PROFILE_KEYS.map((key) => [key, configSchema.shape[key].nullable()]),
+) as {
+  [K in (typeof PROFILE_KEYS)[number]]: z.ZodNullable<
+    (typeof configSchema.shape)[K]
+  >;
+};
 
-export const profileSettingsSchema = z.strictObject(profileShape);
+/** Settings shared by every profile through `defaults`. */
+export const defaultsSchema = z.strictObject(nullableProfileShape);
+
+/** A named profile: shared settings plus its parent in the inheritance chain. */
+export const profileSchema = z.strictObject({
+  ...nullableProfileShape,
+  extends: z.string().min(1).optional(),
+});
 
 /**
  * The on-disk configuration file, before the profiles are resolved.
@@ -59,8 +70,8 @@ export const profileSettingsSchema = z.strictObject(profileShape);
 export const rawConfigSchema = z
   .strictObject({
     ...configSchema.shape,
-    defaults: profileSettingsSchema.optional(),
-    profiles: z.record(z.string().min(1), profileSettingsSchema).optional(),
+    defaults: defaultsSchema.optional(),
+    profiles: z.record(z.string().min(1), profileSchema).optional(),
     targets: targetsSchema.optional(),
   })
   .superRefine((raw, ctx) => {
@@ -78,6 +89,31 @@ export const rawConfigSchema = z
           path: ["profiles"],
           message: "profiles require a targets block to be selected",
         });
+      }
+
+      for (const name of Object.keys(raw.profiles)) {
+        const seen = new Set<string>([name]);
+        let parent = raw.profiles[name].extends;
+        while (parent !== undefined && parent !== DEFAULT_PROFILE) {
+          if (seen.has(parent)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["profiles", name, "extends"],
+              message: `profile "${name}" has a circular extends chain`,
+            });
+            break;
+          }
+          if (!Object.hasOwn(raw.profiles, parent)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["profiles", name, "extends"],
+              message: `unknown profile "${parent}"`,
+            });
+            break;
+          }
+          seen.add(parent);
+          parent = raw.profiles[parent].extends;
+        }
       }
     }
 
@@ -122,3 +158,5 @@ export const rawConfigSchema = z
 
 export type RawConfig = z.infer<typeof rawConfigSchema>;
 export type RawTarget = z.infer<typeof targetSchema>;
+export type RawProfile = z.infer<typeof profileSchema>;
+export type RawDefaults = z.infer<typeof defaultsSchema>;

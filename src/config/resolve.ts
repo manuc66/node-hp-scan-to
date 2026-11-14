@@ -5,6 +5,7 @@ import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode.js";
 import {
   rawConfigSchema,
   type RawConfig,
+  type RawProfile,
   type RawTarget,
 } from "./rawSchema.js";
 import { DEFAULT_PROFILE, IMPLICIT_PRINTER_ID } from "./constants.js";
@@ -38,6 +39,38 @@ function parseProfile(input: unknown): FileConfig {
     throw configurationError(result.error);
   }
   return result.data;
+}
+
+/**
+ * Drops the keys a profile explicitly unset with `null`, once the whole
+ * inheritance chain has been merged. A later profile can still set the key
+ * again: only the final value decides.
+ */
+function withoutNulls(input: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(input).filter(([, value]) => value !== null),
+  );
+}
+
+/** Profile names to merge, root first; `default` is the implicit root. */
+function profileChain(
+  name: string,
+  profiles: Record<string, RawProfile>,
+): string[] {
+  const chain = [name];
+  if (name === DEFAULT_PROFILE) {
+    return chain;
+  }
+
+  let parent = profiles[name].extends;
+  while (parent !== undefined) {
+    chain.unshift(parent);
+    if (parent === DEFAULT_PROFILE) {
+      break;
+    }
+    parent = profiles[parent].extends;
+  }
+  return chain;
 }
 
 function toTarget(
@@ -128,14 +161,21 @@ export function resolveConfig(raw: unknown): ResolvedProgramConfig {
       return cached;
     }
 
-    // Flat keys describe the implicit default profile only. A named profile
-    // inherits `defaults`; getting the historical settings on top of it is
-    // what `extends` will express.
-    const config = parseProfile(
-      name === DEFAULT_PROFILE
-        ? { ...flat, ...defaults }
-        : { ...defaults, ...profiles[name] },
-    );
+    // `defaults` is the shared base. The implicit `default` profile adds the
+    // flat settings below `defaults`; a named profile adds its extends chain
+    // on top, and `null` in a profile unsets the value inherited so far.
+    const merged: Record<string, unknown> = { ...defaults };
+    for (const profileName of profileChain(name, profiles)) {
+      if (profileName === DEFAULT_PROFILE) {
+        Object.assign(merged, flat, defaults);
+        continue;
+      }
+      const settings = { ...profiles[profileName] };
+      delete settings.extends;
+      Object.assign(merged, settings);
+    }
+
+    const config = parseProfile(withoutNulls(merged));
     cache.set(name, config);
     return config;
   };
