@@ -82,3 +82,59 @@ describe("CLI target selector", () => {
     );
   });
 });
+
+const twoPrinters = {
+  printers: {
+    officejet: { ip: "127.0.0.1", targets: { A: {} } },
+    deskjet: { ip: "127.0.0.2", targets: { B: {} } },
+  },
+};
+
+describe("CLI printer selector", () => {
+  it("is available as a global option", () => {
+    const program = setupProgram(resolveConfig({}));
+    program.parseOptions(["--printer", "officejet"]);
+
+    expect(program.opts().printer).to.equal("officejet");
+  });
+
+  it("rejects an unknown printer", async () => {
+    await parseExpectingError(
+      twoPrinters,
+      ["single-scan", "--printer", "nope"],
+      /unknown printer "nope".*officejet, deskjet/,
+    );
+  });
+
+  it("asks for a printer when several are configured", async () => {
+    await parseExpectingError(
+      twoPrinters,
+      ["listen"],
+      /several printers are configured.*--printer/,
+    );
+  });
+
+  it("rejects --address with a printers block", async () => {
+    await parseExpectingError(
+      twoPrinters,
+      ["single-scan", "--printer", "officejet", "--address", "127.0.0.9"],
+      /--address and --name cannot be used/,
+    );
+  });
+
+  it("rejects --name with a printers block", async () => {
+    await parseExpectingError(
+      twoPrinters,
+      ["single-scan", "--printer", "officejet", "--name", "Officejet"],
+      /--address and --name cannot be used/,
+    );
+  });
+
+  it("keeps --address working with a flat configuration", async () => {
+    await parseExpectingError(
+      { label: "Only one" },
+      ["single-scan", "--address", "127.0.0.1", "--target", "Nope"],
+      /unknown target "Nope"/,
+    );
+  });
+});

@@ -29,6 +29,8 @@ export interface ResolvedPrinter {
 /** The whole configuration file, normalised for the runtime. */
 export interface ResolvedProgramConfig {
   printers: [ResolvedPrinter, ...ResolvedPrinter[]];
+  /** True when the file declared its own `printers` block. */
+  explicitPrinters: boolean;
   /** Non-fatal configuration remarks, logged once at startup. */
   warnings: string[];
 }

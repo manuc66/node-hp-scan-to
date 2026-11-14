@@ -469,6 +469,7 @@ Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                                                Name of the device to lookup for on the network
   -D, --debug                                                      Enable debug
+  --printer <id>                                                   Select the configured printer to use (default: the only one)
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
@@ -586,6 +587,7 @@ Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                                                Name of the device to lookup for on the network
   -D, --debug                                                      Enable debug
+  --printer <id>                                                   Select the configured printer to use (default: the only one)
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
@@ -616,6 +618,7 @@ Global Options:
   -a, --address <ip>                       IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                        Name of the device to lookup for on the network
   -D, --debug                              Enable debug
+  --printer <id>                           Select the configured printer to use (default: the only one)
   --health-check                           Start an http health check endpoint
   --health-check-port <health-check-port>  Define the port for the HTTP health check endpoint
 ```
@@ -708,6 +711,7 @@ Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                                                Name of the device to lookup for on the network
   -D, --debug                                                      Enable debug
+  --printer <id>                                                   Select the configured printer to use (default: the only one)
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```

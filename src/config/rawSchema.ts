@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { configSchema } from "../type/FileConfig.js";
 import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode.js";
-import { PROFILE_KEYS } from "./keys.js";
+import { PROFILE_KEYS, PRINTER_KEYS } from "./keys.js";
 import { DEFAULT_PROFILE } from "./constants.js";
 
 /**
@@ -41,6 +41,35 @@ const targetsSchema = z
     message: "targets must declare at least one target",
   });
 
+// Device-level keys accepted inside a `printers.<id>` entry. The legacy
+// registration keys (`label`, `add_emulated_duplex`, ...) are excluded: there,
+// the target names are the labels.
+const PRINTER_DEVICE_KEYS = [
+  "ip",
+  "name",
+  "prefer_escl",
+  "deviceUpPollingInterval",
+  "autoscan_pollingInterval",
+  "autoscan_startScanDelay",
+] as const;
+
+const printerSettingsSchema = z.strictObject(
+  Object.fromEntries(
+    PRINTER_DEVICE_KEYS.map((key) => [key, configSchema.shape[key]]),
+  ) as Pick<typeof configSchema.shape, (typeof PRINTER_DEVICE_KEYS)[number]>,
+);
+
+const printerSchema = z.strictObject({
+  ...printerSettingsSchema.shape,
+  targets: targetsSchema,
+});
+
+const printersSchema = z
+  .record(z.string().min(1), printerSchema)
+  .refine((printers) => Object.keys(printers).length > 0, {
+    message: "printers must declare at least one printer",
+  });
+
 // A partial pipeline: every profile key is optional and may be set to `null`
 // to unset an inherited value. Cross-field rules wait for the merged profile.
 const nullableProfileShape = Object.fromEntries(
@@ -73,8 +102,30 @@ export const rawConfigSchema = z
     defaults: defaultsSchema.optional(),
     profiles: z.record(z.string().min(1), profileSchema).optional(),
     targets: targetsSchema.optional(),
+    printers: printersSchema.optional(),
   })
   .superRefine((raw, ctx) => {
+    if (raw.printers !== undefined) {
+      for (const key of PRINTER_KEYS) {
+        if (raw[key] !== undefined) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: `${key} cannot be used with printers: set it inside each printers.<id> entry`,
+          });
+        }
+      }
+
+      if (raw.targets !== undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["targets"],
+          message:
+            "targets cannot be used with printers: declare the targets inside each printers.<id> entry",
+        });
+      }
+    }
+
     if (raw.profiles !== undefined) {
       if (Object.hasOwn(raw.profiles, DEFAULT_PROFILE)) {
         ctx.addIssue({
@@ -83,11 +134,12 @@ export const rawConfigSchema = z
           message: `profile name "${DEFAULT_PROFILE}" is reserved: use the defaults block instead`,
         });
       }
-      if (raw.targets === undefined) {
+      if (raw.targets === undefined && raw.printers === undefined) {
         ctx.addIssue({
           code: "custom",
           path: ["profiles"],
-          message: "profiles require a targets block to be selected",
+          message:
+            "profiles require a targets or printers block to be selected",
         });
       }
 
@@ -117,41 +169,52 @@ export const rawConfigSchema = z
       }
     }
 
-    if (raw.targets === undefined) {
-      return;
-    }
+    const checkTargets = (
+      targets: Record<string, RawTarget>,
+      path: readonly string[],
+    ): void => {
+      for (const [label, target] of Object.entries(targets)) {
+        const profileName = target.profile ?? DEFAULT_PROFILE;
+        if (
+          profileName !== DEFAULT_PROFILE &&
+          (raw.profiles === undefined ||
+            !Object.hasOwn(raw.profiles, profileName))
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            path: [...path, label, "profile"],
+            message: `unknown profile "${profileName}"`,
+          });
+        }
+      }
+    };
 
-    if (raw.label !== undefined) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["label"],
-        message:
-          "label cannot be used with targets: each target key is already a label",
-      });
-    }
-
-    for (const key of LEGACY_DUPLEX_KEYS) {
-      if (raw[key] !== undefined) {
+    if (raw.targets !== undefined) {
+      if (raw.label !== undefined) {
         ctx.addIssue({
           code: "custom",
-          path: [key],
-          message: `${key} cannot be used with targets: declare a target with duplex: "emulated" instead`,
+          path: ["label"],
+          message:
+            "label cannot be used with targets: each target key is already a label",
         });
       }
+
+      for (const key of LEGACY_DUPLEX_KEYS) {
+        if (raw[key] !== undefined) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: `${key} cannot be used with targets: declare a target with duplex: "emulated" instead`,
+          });
+        }
+      }
+
+      checkTargets(raw.targets, ["targets"]);
     }
 
-    for (const [label, target] of Object.entries(raw.targets)) {
-      const profileName = target.profile ?? DEFAULT_PROFILE;
-      if (
-        profileName !== DEFAULT_PROFILE &&
-        (raw.profiles === undefined ||
-          !Object.hasOwn(raw.profiles, profileName))
-      ) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["targets", label, "profile"],
-          message: `unknown profile "${profileName}"`,
-        });
+    if (raw.printers !== undefined) {
+      for (const [printerId, printer] of Object.entries(raw.printers)) {
+        checkTargets(printer.targets, ["printers", printerId, "targets"]);
       }
     }
   });

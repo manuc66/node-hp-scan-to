@@ -33,10 +33,11 @@ import type {
 } from "./type/scanConfigs.js";
 import { discoverCmd } from "./commands/discoverCmd.js";
 import type { FileConfig } from "./type/FileConfig.js";
-import type { ResolvedPrinter, ResolvedProgramConfig } from "./config/types.js";
+import type { ResolvedProgramConfig } from "./config/types.js";
 import {
   buildListenTargets,
   selectListenTargets,
+  selectPrinter,
   selectTarget,
 } from "./config/select.js";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
@@ -1012,9 +1013,28 @@ function getDeviceUpPollingInterval(
   );
 }
 
+/**
+ * `--address` / `--name` describe the device of a flat configuration file.
+ * Once the file declares printers, the addressing belongs to each entry:
+ * accepting both would allow two sources of truth to target different devices.
+ */
+function assertFlatAddressingAllowed(
+  config: ResolvedProgramConfig,
+  options: { address?: string | undefined; name?: string | undefined },
+): void {
+  if (
+    config.explicitPrinters &&
+    (options.address !== undefined || options.name !== undefined)
+  ) {
+    throw new Error(
+      "--address and --name cannot be used with a printers block: set printers.<id>.ip or .name and select the printer with --printer",
+    );
+  }
+}
+
 export type ListenOptions = ReturnType<ReturnType<typeof createListenCliCmd>["opts"]>;
 
-function createListenCliCmd(printer: ResolvedPrinter) {
+function createListenCliCmd(resolvedConfig: ResolvedProgramConfig) {
   return setupScanParameters("listen")
     .description("Listen the device for new scan job to save to this target")
     .addOption(
@@ -1039,6 +1059,8 @@ function createListenCliCmd(printer: ResolvedPrinter) {
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
+      assertFlatAddressingAllowed(resolvedConfig, options);
+      const printer = selectPrinter(resolvedConfig, options.printer);
       const fileConfig = printer.targets[0].config;
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
@@ -1081,7 +1103,7 @@ export type AdfAutoscanOptions = ReturnType<
   ReturnType<typeof createAdfAutoscanCliCmd>["opts"]
 >;
 
-function createAdfAutoscanCliCmd(printer: ResolvedPrinter) {
+function createAdfAutoscanCliCmd(resolvedConfig: ResolvedProgramConfig) {
   return setupScanParameters("adf-autoscan")
     .description(
       "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
@@ -1112,6 +1134,8 @@ function createAdfAutoscanCliCmd(printer: ResolvedPrinter) {
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
+      assertFlatAddressingAllowed(resolvedConfig, options);
+      const printer = selectPrinter(resolvedConfig, options.printer);
       const fileConfig = selectTarget(printer, options.target).config;
 
       const ip = await getDeviceIp(options, fileConfig);
@@ -1169,7 +1193,7 @@ export type SingleScanOptions = ReturnType<
   ReturnType<typeof createSingleScanCliCmd>["opts"]
 >;
 
-function createSingleScanCliCmd(printer: ResolvedPrinter) {
+function createSingleScanCliCmd(resolvedConfig: ResolvedProgramConfig) {
   return setupScanParameters("single-scan")
     .description("Trigger a new scan job")
     .addOption(
@@ -1186,6 +1210,8 @@ function createSingleScanCliCmd(printer: ResolvedPrinter) {
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
+      assertFlatAddressingAllowed(resolvedConfig, options);
+      const printer = selectPrinter(resolvedConfig, options.printer);
       const fileConfig = selectTarget(printer, options.target).config;
 
       const ip = await getDeviceIp(options, fileConfig);
@@ -1227,11 +1253,13 @@ function createSingleScanCliCmd(printer: ResolvedPrinter) {
     });
 }
 
-function createClearRegistrationsCliCmd(printer: ResolvedPrinter) {
+function createClearRegistrationsCliCmd(resolvedConfig: ResolvedProgramConfig) {
   return new Command<[], ProgramOption>("clear-registrations")
     .description("Clear the list or registered target on the device")
     .action(async (_, cmd) => {
       const options: ProgramOption = cmd.optsWithGlobals();
+      assertFlatAddressingAllowed(resolvedConfig, options);
+      const printer = selectPrinter(resolvedConfig, options.printer);
       // Clearing registrations is device-wide; any target's config carries the
       // same addressing and polling settings.
       const fileConfig = printer.targets[0].config;
@@ -1303,6 +1331,12 @@ function createProgram() {
     .option("-D, --debug", "Enable debug")
     .addOption(
       new Option(
+        "--printer <id>",
+        "Select the configured printer to use (default: the only one)",
+      ).helpGroup(HelpGroupsHeadings.network),
+    )
+    .addOption(
+      new Option(
         "--health-check",
         "Start an http health check endpoint",
       ).helpGroup(HelpGroupsHeadings.healthCheck),
@@ -1318,35 +1352,30 @@ function createProgram() {
 type ProgramOption = ReturnType<ReturnType<typeof createProgram>["opts"]>;
 
 export function setupProgram(resolvedConfig: ResolvedProgramConfig) {
-  // While the file format only describes one printer, the resolver produces a
-  // single entry. Its targets carry the effective configuration each command
-  // consumes.
-  const printer = resolvedConfig.printers[0];
-
   const program = createProgram();
 
   program.hook("preAction", (thisCommand) => {
     const isDebug = getConfiguredValue(
       thisCommand.opts().debug,
-      printer.targets[0].config.debug,
+      resolvedConfig.printers[0].targets[0].config.debug,
       false,
     );
     setDebugLevel(isDebug);
   });
 
-  const cmdListen = createListenCliCmd(printer);
+  const cmdListen = createListenCliCmd(resolvedConfig);
   cmdListen.optsWithGlobals();
   program.addCommand(cmdListen, { isDefault: true });
 
-  const cmdAdfAutoscan = createAdfAutoscanCliCmd(printer);
+  const cmdAdfAutoscan = createAdfAutoscanCliCmd(resolvedConfig);
   cmdAdfAutoscan.optsWithGlobals();
   program.addCommand(cmdAdfAutoscan);
 
-  const cmdSingleScan = createSingleScanCliCmd(printer);
+  const cmdSingleScan = createSingleScanCliCmd(resolvedConfig);
   cmdSingleScan.optsWithGlobals();
   program.addCommand(cmdSingleScan);
 
-  const cmdClearRegistrations = createClearRegistrationsCliCmd(printer);
+  const cmdClearRegistrations = createClearRegistrationsCliCmd(resolvedConfig);
   cmdClearRegistrations.optsWithGlobals();
   program.addCommand(cmdClearRegistrations);
 

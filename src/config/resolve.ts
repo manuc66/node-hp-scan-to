@@ -9,6 +9,7 @@ import {
   type RawTarget,
 } from "./rawSchema.js";
 import { DEFAULT_PROFILE, IMPLICIT_PRINTER_ID } from "./constants.js";
+import { GLOBAL_KEYS, PRINTER_KEYS, PROFILE_KEYS } from "./keys.js";
 import type {
   ResolvedPrinter,
   ResolvedProgramConfig,
@@ -130,28 +131,34 @@ function legacyTargets(
   return targets;
 }
 
-/**
- * Normalises the configuration file into the shape the runtime consumes: one
- * entry per printer, one entry per label registered on it.
- *
- * Today a single implicit printer is supported, either described by the legacy
- * flat keys or by a `targets` block on top of them. The `profiles` / `printers`
- * layouts will be resolved here as well, keeping `program.ts` and the scan
- * pipeline unaware of the on-disk format.
- */
-export function resolveConfig(raw: unknown): ResolvedProgramConfig {
-  const rawConfig = parseRawConfig(raw);
-  const {
-    targets: rawTargets,
-    defaults: rawDefaults,
-    profiles: rawProfiles,
-    ...flat
-  } = rawConfig;
+interface PrinterDescriptor {
+  id: string;
+  fields: Record<string, unknown>;
+  targets: Record<string, RawTarget> | undefined;
+  explicitTargets: boolean;
+}
 
-  // `defaults` is the explicit shared base: it sits above the flat settings so
-  // it can override the `config/default.json` shipped with the application.
-  const defaults = rawDefaults ?? {};
-  const profiles = rawProfiles ?? {};
+/** Copies the defined keys of `source` into a plain merge layer. */
+function pick(
+  source: object,
+  keys: readonly string[],
+): Record<string, unknown> {
+  const record = source as Record<string, unknown>;
+  return Object.fromEntries(
+    keys
+      .filter((key) => record[key] !== undefined)
+      .map((key) => [key, record[key]]),
+  );
+}
+
+function resolvePrinter(
+  descriptor: PrinterDescriptor,
+  globals: Record<string, unknown>,
+  flatProfile: Record<string, unknown>,
+  defaults: Record<string, unknown>,
+  profiles: Record<string, RawProfile>,
+): ResolvedPrinter {
+  const shared = { ...globals, ...descriptor.fields };
 
   // Targets sharing a profile share the same effective configuration object.
   const cache = new Map<string, FileConfig>();
@@ -164,10 +171,10 @@ export function resolveConfig(raw: unknown): ResolvedProgramConfig {
     // `defaults` is the shared base. The implicit `default` profile adds the
     // flat settings below `defaults`; a named profile adds its extends chain
     // on top, and `null` in a profile unsets the value inherited so far.
-    const merged: Record<string, unknown> = { ...defaults };
+    const merged: Record<string, unknown> = { ...shared, ...defaults };
     for (const profileName of profileChain(name, profiles)) {
       if (profileName === DEFAULT_PROFILE) {
-        Object.assign(merged, flat, defaults);
+        Object.assign(merged, flatProfile, defaults);
         continue;
       }
       const settings = { ...profiles[profileName] };
@@ -181,15 +188,67 @@ export function resolveConfig(raw: unknown): ResolvedProgramConfig {
   };
 
   const targets =
-    rawTargets === undefined
+    descriptor.targets === undefined
       ? legacyTargets(resolveProfile(DEFAULT_PROFILE))
-      : explicitTargets(rawTargets, resolveProfile);
+      : explicitTargets(descriptor.targets, resolveProfile);
 
-  const printer: ResolvedPrinter = {
-    id: IMPLICIT_PRINTER_ID,
-    explicitTargets: rawTargets !== undefined,
+  return {
+    id: descriptor.id,
+    explicitTargets: descriptor.explicitTargets,
     targets,
   };
+}
 
-  return { printers: [printer], warnings: [] };
+/**
+ * Normalises the configuration file into the shape the runtime consumes: one
+ * entry per printer, one entry per label registered on it.
+ *
+ * Both layouts are supported: the legacy flat file (one implicit printer) and
+ * the `printers` block. `profiles` and `defaults` are shared by every printer;
+ * device settings are layered under the profile selected by each target.
+ */
+export function resolveConfig(raw: unknown): ResolvedProgramConfig {
+  const rawConfig = parseRawConfig(raw);
+  const {
+    targets: rawTargets,
+    defaults: rawDefaults,
+    profiles: rawProfiles,
+    printers: rawPrinters,
+    ...flat
+  } = rawConfig;
+
+  const defaults = rawDefaults ?? {};
+  const profiles = rawProfiles ?? {};
+  const globals = pick(flat, GLOBAL_KEYS);
+  // Flat pipeline keys describe the implicit `default` profile, which every
+  // printer can use without repeating it.
+  const flatProfile = pick(flat, PROFILE_KEYS);
+
+  const descriptors: PrinterDescriptor[] =
+    rawPrinters === undefined
+      ? [
+          {
+            id: IMPLICIT_PRINTER_ID,
+            fields: pick(flat, PRINTER_KEYS),
+            targets: rawTargets,
+            explicitTargets: rawTargets !== undefined,
+          },
+        ]
+      : Object.entries(rawPrinters).map(([id, printer]) => ({
+          id,
+          fields: pick(printer, PRINTER_KEYS),
+          targets: printer.targets,
+          explicitTargets: true,
+        }));
+
+  const printers = descriptors.map((descriptor) =>
+    resolvePrinter(descriptor, globals, flatProfile, defaults, profiles),
+  );
+
+  const [first, ...rest] = printers;
+  return {
+    printers: [first, ...rest],
+    explicitPrinters: rawPrinters !== undefined,
+    warnings: [],
+  };
 }

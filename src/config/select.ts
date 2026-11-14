@@ -1,7 +1,11 @@
 import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode.js";
 import type { FileConfig } from "../type/FileConfig.js";
 import type { RegistrationConfig } from "../type/scanTargetDefinitions.js";
-import type { ResolvedPrinter, ResolvedTarget } from "./types.js";
+import type {
+  ResolvedPrinter,
+  ResolvedProgramConfig,
+  ResolvedTarget,
+} from "./types.js";
 
 /** A label to register on the device, with the pipeline it scans with. */
 export interface ResolvedListenTarget {
@@ -159,4 +163,37 @@ export function selectListenTargets(
 
 function listTargetLabels(printer: ResolvedPrinter): string {
   return printer.targets.map((target) => target.label).join(", ");
+}
+
+/**
+ * The single printer a command run applies to.
+ *
+ * The CLI never describes a printer: it only selects one from the file. With
+ * several printers configured, the process therefore handles one device and
+ * the deployment runs one process per printer (the Docker image does that with
+ * `PRINTER`).
+ */
+export function selectPrinter(
+  config: ResolvedProgramConfig,
+  id: string | undefined,
+): ResolvedPrinter {
+  const listId = () => config.printers.map((printer) => printer.id).join(", ");
+
+  if (id !== undefined) {
+    const printer = config.printers.find((candidate) => candidate.id === id);
+    if (printer === undefined) {
+      throw new Error(
+        `unknown printer "${id}"; configured printers: ${listId()}`,
+      );
+    }
+    return printer;
+  }
+
+  if (config.printers.length === 1) {
+    return config.printers[0];
+  }
+
+  throw new Error(
+    `several printers are configured (${listId()}); use --printer <id> and run one process per printer`,
+  );
 }

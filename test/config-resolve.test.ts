@@ -465,3 +465,129 @@ describe("resolveConfig - key ownership", () => {
     expect(classified).to.deep.equal(schemaKeys);
   });
 });
+
+describe("resolveConfig - printers", () => {
+  const twoPrinters = {
+    defaults: { resolution: 300 },
+    profiles: {
+      paperless: {
+        paperless_token: "token",
+        paperless_post_document_url:
+          "https://paperless.example.tld/api/documents/post_document/",
+      },
+    },
+    printers: {
+      officejet: {
+        ip: "192.168.1.5",
+        targets: { Scan: { profile: "paperless" } },
+      },
+      deskjet: {
+        name: "Deskjet 3520 series",
+        prefer_escl: true,
+        targets: { Archive: {} },
+      },
+    },
+  };
+
+  it("resolves one entry per configured printer", () => {
+    const resolved = resolveConfig(twoPrinters);
+
+    expect(resolved.explicitPrinters).to.equal(true);
+    expect(resolved.printers.map((printer) => printer.id)).to.deep.equal([
+      "officejet",
+      "deskjet",
+    ]);
+    expect(resolved.printers[0].explicitTargets).to.equal(true);
+  });
+
+  it("gives each target its printer settings on top of the shared profile", () => {
+    const [officejet, deskjet] = resolveConfig(twoPrinters).printers;
+
+    expect(officejet.targets[0].config.ip).to.equal("192.168.1.5");
+    expect(officejet.targets[0].config.resolution).to.equal(300);
+    expect(officejet.targets[0].config.paperless_token).to.equal("token");
+
+    expect(deskjet.targets[0].config.name).to.equal("Deskjet 3520 series");
+    expect(deskjet.targets[0].config.prefer_escl).to.equal(true);
+    expect(deskjet.targets[0].config.ip).to.equal(undefined);
+  });
+
+  it("lets the flat profile keys serve as the default pipeline", () => {
+    const resolved = resolveConfig({
+      directory: "/flat",
+      printers: { p: { ip: "1.2.3.4", targets: { X: {} } } },
+    });
+
+    expect(resolved.printers[0].targets[0].config.directory).to.equal("/flat");
+  });
+
+  it("keeps the global settings with printers", () => {
+    const resolved = resolveConfig({
+      debug: true,
+      enableHealthCheck: true,
+      healthCheckPort: 3001,
+      printers: { p: { ip: "1.2.3.4", targets: { X: {} } } },
+    });
+    const config = resolved.printers[0].targets[0].config;
+
+    expect(config.debug).to.equal(true);
+    expect(config.enableHealthCheck).to.equal(true);
+    expect(config.healthCheckPort).to.equal(3001);
+  });
+
+  const topLevelPrinterKeys = {
+    ip: "192.168.1.5",
+    name: "Officejet",
+    label: "Host",
+    prefer_escl: true,
+    deviceUpPollingInterval: 1000,
+    add_emulated_duplex: true,
+    emulated_duplex_label: "Duplex",
+    emulated_duplex_assembly_mode: "page-wise",
+    autoscan_pollingInterval: 1000,
+    autoscan_startScanDelay: 1000,
+  } as const;
+
+  for (const [key, value] of Object.entries(topLevelPrinterKeys)) {
+    it(`rejects the top-level ${key} next to printers`, () => {
+      expect(() =>
+        resolveConfig({
+          [key]: value,
+          printers: { p: { ip: "1.2.3.4", targets: { X: {} } } },
+        }),
+      ).to.throw(key);
+    });
+  }
+
+  it("rejects a top-level targets block next to printers", () => {
+    expect(() =>
+      resolveConfig({
+        targets: { X: {} },
+        printers: { p: { ip: "1.2.3.4", targets: { Y: {} } } },
+      }),
+    ).to.throw(/targets cannot be used with printers/);
+  });
+
+  it("rejects a printer without targets", () => {
+    expect(() =>
+      resolveConfig({ printers: { p: { ip: "1.2.3.4" } } }),
+    ).to.throw(/printers\.p\.targets/);
+  });
+
+  it("rejects an empty printers block", () => {
+    expect(() => resolveConfig({ printers: {} })).to.throw(
+      /at least one printer/,
+    );
+  });
+
+  it("rejects an unknown profile referenced from a printer target", () => {
+    expect(() =>
+      resolveConfig({
+        profiles: { a: {} },
+        printers: {
+          p: { ip: "1.2.3.4", targets: { X: { profile: "b" } } },
+        },
+      }),
+    ).to.throw(/unknown profile "b"/);
+  });
+});

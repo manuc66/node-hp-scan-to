@@ -4,6 +4,7 @@ import { resolveConfig } from "../src/config/resolve.js";
 import {
   buildListenTargets,
   selectListenTargets,
+  selectPrinter,
   selectTarget,
   type ListenRegistrationOptions,
 } from "../src/config/select.js";
@@ -219,5 +220,37 @@ describe("selectListenTargets", () => {
     expect(() => selectListenTargets(targets, "Nope")).to.throw(
       /unknown target "Nope".*Host, Host duplex/,
     );
+  });
+});
+
+describe("selectPrinter", () => {
+  const config = resolveConfig({
+    printers: {
+      officejet: { ip: "192.168.1.5", targets: { Scan: {} } },
+      deskjet: { ip: "192.168.1.6", targets: { Archive: {} } },
+    },
+  });
+
+  it("returns the only implicit printer", () => {
+    const single = resolveConfig({ label: "Host" });
+
+    expect(selectPrinter(single, undefined).id).to.equal("default");
+  });
+
+  it("selects a configured printer by id", () => {
+    const printer = selectPrinter(config, "deskjet");
+
+    expect(printer.id).to.equal("deskjet");
+    expect(printer.targets[0].config.ip).to.equal("192.168.1.6");
+  });
+
+  it("rejects an unknown id and lists the configured printers", () => {
+    expect(() => selectPrinter(config, "nope")).to.throw(
+      /unknown printer "nope".*officejet, deskjet/,
+    );
+  });
+
+  it("requires a selector when several printers are configured", () => {
+    expect(() => selectPrinter(config, undefined)).to.throw(/--printer/);
   });
 });
