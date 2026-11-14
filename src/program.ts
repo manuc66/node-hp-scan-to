@@ -3,7 +3,6 @@
 
 "use strict";
 
-import os from "node:os";
 // default-import + destructure: this dependency is CommonJS and some loaders
 // (tsx) do not expose its named exports to ESM consumers
 import bonjourService from "bonjour-service";
@@ -22,8 +21,7 @@ import type {
 import { startHealthCheckServer } from "./healthcheck.js";
 import fs from "node:fs";
 import { Command, Option } from "@commander-js/extra-typings";
-import type { RegistrationConfig } from "./type/scanTargetDefinitions.js";
-import { listenCmd } from "./commands/listenCmd.js";
+import { listenCmd, type ListenTarget } from "./commands/listenCmd.js";
 import { adfAutoscanCmd } from "./commands/adfAutoscanCmd.js";
 import { singleScanCmd } from "./commands/singleScanCmd.js";
 import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd.js";
@@ -35,7 +33,11 @@ import type {
 } from "./type/scanConfigs.js";
 import { discoverCmd } from "./commands/discoverCmd.js";
 import type { FileConfig } from "./type/FileConfig.js";
-import type { ResolvedProgramConfig } from "./config/types.js";
+import type {
+  ResolvedPrinter,
+  ResolvedProgramConfig,
+} from "./config/types.js";
+import { buildListenTargets, selectSingleTarget } from "./config/select.js";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
 import type { Server as NetServer } from "node:net";
 import { ScanMode } from "./type/scanMode.js";
@@ -1005,7 +1007,7 @@ function getDeviceUpPollingInterval(
 
 export type ListenOptions = ReturnType<ReturnType<typeof createListenCliCmd>["opts"]>;
 
-function createListenCliCmd(configFile: FileConfig) {
+function createListenCliCmd(printer: ResolvedPrinter) {
   return setupScanParameters("listen")
     .description("Listen the device for new scan job to save to this target")
     .addOption(
@@ -1030,67 +1032,36 @@ function createListenCliCmd(configFile: FileConfig) {
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
-      const ip = await getDeviceIp(options, configFile);
-      const isDebug = getIsDebug(options, configFile);
+      const fileConfig = printer.targets[0].config;
+      const ip = await getDeviceIp(options, fileConfig);
+      const isDebug = getIsDebug(options, fileConfig);
       const api = new DeviceClient(ip, isDebug);
 
-      const registrationConfigs: RegistrationConfig[] = [];
-
-      const registrationConfig: RegistrationConfig = {
-        label: getConfiguredValue(
-          options.label,
-          configFile.label,
-          os.hostname(),
-        ),
-        isDuplexSingleSide: false,
-      };
-      registrationConfigs.push(registrationConfig);
-
-      if (
-        getConfiguredValue(
-          options.addEmulatedDuplex === undefined ? undefined : true,
-          configFile.add_emulated_duplex,
-          false,
-        )
-      ) {
-        registrationConfigs.push({
-          label: getConfiguredValue(
-            options.emulatedDuplexLabel,
-            configFile.emulated_duplex_label,
-            `${registrationConfig.label} duplex`,
-          ),
-          isDuplexSingleSide: true,
-          duplexAssemblyMode: getConfiguredValue(
-            options.addEmulatedDuplex === true
-              ? DuplexAssemblyMode.DOCUMENT_WISE
-              : options.addEmulatedDuplex,
-            configFile.emulated_duplex_assembly_mode,
-            DuplexAssemblyMode.DOCUMENT_WISE,
-          ),
-        });
-      }
+      // Each label keeps its own pipeline; the CLI scan flag overrides apply to
+      // every selected target for this run.
+      const listenTargets: ListenTarget[] = buildListenTargets(printer, {
+        label: options.label,
+        addEmulatedDuplex: options.addEmulatedDuplex,
+        emulatedDuplexLabel: options.emulatedDuplexLabel,
+      }).map((target) => ({
+        registration: target.registration,
+        scanConfig: getScanConfiguration(options, target.config),
+      }));
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(
         options,
-        configFile,
+        fileConfig,
       );
 
       let healthCheckSrv: NetServer | null = null;
-      const healthCheckSetting = getHealthCheckSetting(options, configFile);
+      const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
       if (healthCheckSetting.isHealthCheckEnabled) {
         healthCheckSrv = startHealthCheckServer(
           healthCheckSetting.healthCheckPort,
         );
       }
 
-      const scanConfig = getScanConfiguration(options, configFile);
-
-      await listenCmd(
-        api,
-        registrationConfigs,
-        scanConfig,
-        deviceUpPollingInterval,
-      );
+      await listenCmd(api, listenTargets, deviceUpPollingInterval);
 
       healthCheckSrv?.close();
     });
@@ -1100,7 +1071,7 @@ export type AdfAutoscanOptions = ReturnType<
   ReturnType<typeof createAdfAutoscanCliCmd>["opts"]
 >;
 
-function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
+function createAdfAutoscanCliCmd(printer: ResolvedPrinter) {
   return setupScanParameters("adf-autoscan")
     .description(
       "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
@@ -1131,6 +1102,7 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
+      const fileConfig = selectSingleTarget(printer).config;
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
@@ -1187,7 +1159,7 @@ export type SingleScanOptions = ReturnType<
   ReturnType<typeof createSingleScanCliCmd>["opts"]
 >;
 
-function createSingleScanCliCmd(fileConfig: FileConfig) {
+function createSingleScanCliCmd(printer: ResolvedPrinter) {
   return setupScanParameters("single-scan")
     .description("Trigger a new scan job")
     .addOption(
@@ -1204,6 +1176,7 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
+      const fileConfig = selectSingleTarget(printer).config;
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
@@ -1244,11 +1217,14 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
     });
 }
 
-function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
+function createClearRegistrationsCliCmd(printer: ResolvedPrinter) {
   return new Command<[], ProgramOption>("clear-registrations")
     .description("Clear the list or registered target on the device")
     .action(async (_, cmd) => {
       const options: ProgramOption = cmd.optsWithGlobals();
+      // Clearing registrations is device-wide; any target's config carries the
+      // same addressing and polling settings.
+      const fileConfig = printer.targets[0].config;
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
@@ -1332,35 +1308,35 @@ function createProgram() {
 type ProgramOption = ReturnType<ReturnType<typeof createProgram>["opts"]>;
 
 export function setupProgram(resolvedConfig: ResolvedProgramConfig) {
-  // Commands still consume one effective configuration: the resolver currently
-  // yields a single printer with one pipeline (plus the optional emulated
-  // duplex label). Multi-target wiring will read the resolved targets instead.
-  const fileConfig: FileConfig = resolvedConfig.printers[0].targets[0].config;
+  // While the file format only describes one printer, the resolver produces a
+  // single entry. Its targets carry the effective configuration each command
+  // consumes.
+  const printer = resolvedConfig.printers[0];
 
   const program = createProgram();
 
   program.hook("preAction", (thisCommand) => {
     const isDebug = getConfiguredValue(
       thisCommand.opts().debug,
-      fileConfig.debug,
+      printer.targets[0].config.debug,
       false,
     );
     setDebugLevel(isDebug);
   });
 
-  const cmdListen = createListenCliCmd(fileConfig);
+  const cmdListen = createListenCliCmd(printer);
   cmdListen.optsWithGlobals();
   program.addCommand(cmdListen, { isDefault: true });
 
-  const cmdAdfAutoscan = createAdfAutoscanCliCmd(fileConfig);
+  const cmdAdfAutoscan = createAdfAutoscanCliCmd(printer);
   cmdAdfAutoscan.optsWithGlobals();
   program.addCommand(cmdAdfAutoscan);
 
-  const cmdSingleScan = createSingleScanCliCmd(fileConfig);
+  const cmdSingleScan = createSingleScanCliCmd(printer);
   cmdSingleScan.optsWithGlobals();
   program.addCommand(cmdSingleScan);
 
-  const cmdClearRegistrations = createClearRegistrationsCliCmd(fileConfig);
+  const cmdClearRegistrations = createClearRegistrationsCliCmd(printer);
   cmdClearRegistrations.optsWithGlobals();
   program.addCommand(cmdClearRegistrations);
 

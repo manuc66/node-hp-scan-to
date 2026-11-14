@@ -21,6 +21,8 @@ export interface ResolvedTarget {
 /** One physical printer and the labels registered on it (at least one). */
 export interface ResolvedPrinter {
   id: string;
+  /** True when the file declared its own `targets` block. */
+  explicitTargets: boolean;
   targets: [ResolvedTarget, ...ResolvedTarget[]];
 }
 

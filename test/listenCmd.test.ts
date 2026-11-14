@@ -1216,8 +1216,12 @@ describe("listenCmd", () => {
     try {
       await listenCmd(
         api,
-        [{ label: "host", isDuplexSingleSide: false }],
-        makeScanConfig(tempDir),
+        [
+          {
+            registration: { label: "host", isDuplexSingleSide: false },
+            scanConfig: makeScanConfig(tempDir),
+          },
+        ],
         1,
       );
     } catch (e) {
@@ -1247,8 +1251,12 @@ describe("listenCmd", () => {
     try {
       await listenCmd(
         api,
-        [{ label: "host", isDuplexSingleSide: false }],
-        makeScanConfig(tempDir),
+        [
+          {
+            registration: { label: "host", isDuplexSingleSide: false },
+            scanConfig: makeScanConfig(tempDir),
+          },
+        ],
         1,
       );
     } catch (e) {
@@ -1287,8 +1295,12 @@ describe("listenCmd", () => {
     try {
       await listenCmd(
         api,
-        [{ label: "host", isDuplexSingleSide: false }],
-        makeScanConfig(tempDir),
+        [
+          {
+            registration: { label: "host", isDuplexSingleSide: false },
+            scanConfig: makeScanConfig(tempDir),
+          },
+        ],
         1,
       );
       expect.fail("Expected listenCmd to reject");
@@ -1320,8 +1332,12 @@ describe("listenCmd", () => {
     try {
       await listenCmd(
         api,
-        [{ label: "host", isDuplexSingleSide: false }],
-        makeScanConfig(tempDir),
+        [
+          {
+            registration: { label: "host", isDuplexSingleSide: false },
+            scanConfig: makeScanConfig(tempDir),
+          },
+        ],
         1,
       );
     } catch (e) {
@@ -1354,8 +1370,12 @@ describe("listenCmd", () => {
     try {
       await listenCmd(
         api,
-        [{ label: "host", isDuplexSingleSide: false }],
-        makeScanConfig(tempDir),
+        [
+          {
+            registration: { label: "host", isDuplexSingleSide: false },
+            scanConfig: makeScanConfig(tempDir),
+          },
+        ],
         1,
       );
     } catch (e) {
@@ -1383,8 +1403,12 @@ describe("listenCmd", () => {
     try {
       await listenCmd(
         api,
-        [{ label: "host", isDuplexSingleSide: false }],
-        makeScanConfig(tempDir),
+        [
+          {
+            registration: { label: "host", isDuplexSingleSide: false },
+            scanConfig: makeScanConfig(tempDir),
+          },
+        ],
         1,
       );
     } catch (e) {

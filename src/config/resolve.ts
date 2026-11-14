@@ -185,7 +185,11 @@ export function resolveConfig(raw: unknown): ResolvedProgramConfig {
       ? legacyTargets(resolveProfile(DEFAULT_PROFILE))
       : explicitTargets(rawTargets, resolveProfile);
 
-  const printer: ResolvedPrinter = { id: IMPLICIT_PRINTER_ID, targets };
+  const printer: ResolvedPrinter = {
+    id: IMPLICIT_PRINTER_ID,
+    explicitTargets: rawTargets !== undefined,
+    targets,
+  };
 
   return { printers: [printer], warnings: [] };
 }

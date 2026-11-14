@@ -36,6 +36,18 @@ const logger = getLoggerForFile(import.meta.url);
 const MAX_LISTEN_ERRORS = 50;
 const DEFAULT_LISTEN_RETRY_DELAY_MS = 1000;
 
+/** A label to register, with the scan pipeline selected for it. */
+export interface ListenTarget {
+  registration: RegistrationConfig;
+  scanConfig: ScanConfig;
+}
+
+interface TargetRuntime {
+  scanConfig: ScanConfig;
+  folder: string;
+  tempFolder: string;
+}
+
 /**
  * Delay before the next `listen` iteration: honour the device's `Retry-After`
  * when it sends one (a 503 typically does) instead of polling at a fixed rate.
@@ -83,31 +95,38 @@ let iteration = 0;
 
 export async function listenCmd(
   api: DeviceClient,
-  registrationConfigs: RegistrationConfig[],
-  scanConfig: ScanConfig,
+  targets: ListenTarget[],
   deviceUpPollingInterval: number,
 ) {
   await api.waitDeviceUp(deviceUpPollingInterval);
   let deviceUp = true;
 
-  const folder = await PathHelper.getTargetFolder(
-    scanConfig.directoryConfig.directory,
-  );
-
-  const tempFolder = await PathHelper.getTempFolder(
-    scanConfig.directoryConfig.tempDirectory,
-  );
+  // Each label may use its own output directory and scan pipeline. Prepare
+  // them once, at startup, so an unwritable folder fails before registering
+  // anything on the device.
+  const runtimeByLabel = new Map<string, TargetRuntime>();
+  for (const target of targets) {
+    runtimeByLabel.set(target.registration.label, {
+      scanConfig: target.scanConfig,
+      folder: await PathHelper.getTargetFolder(
+        target.scanConfig.directoryConfig.directory,
+      ),
+      tempFolder: await PathHelper.getTempFolder(
+        target.scanConfig.directoryConfig.tempDirectory,
+      ),
+    });
+  }
 
   const deviceCapabilities = await readDeviceCapabilities(
     api,
-    scanConfig.preferEscl,
+    targets[0].scanConfig.preferEscl,
     true,
   );
 
   const scanListener = createScanListener(
     api,
     deviceCapabilities,
-    registrationConfigs,
+    targets.map((target) => target.registration),
   );
 
   let scanCount = 0;
@@ -153,14 +172,21 @@ export async function listenCmd(
           continue;
         }
 
+        const runtime = runtimeByLabel.get(selectedScanTarget.label);
+        if (runtime === undefined) {
+          throw new Error(
+            `no configuration for the selected target "${selectedScanTarget.label}"`,
+          );
+        }
+
         const r = await processScanWithDestination(
           api,
           selectedScanTarget,
           lastDuplexMode,
           lastScanTarget,
-          folder,
-          tempFolder,
-          scanConfig,
+          runtime.folder,
+          runtime.tempFolder,
+          runtime.scanConfig,
           deviceCapabilities,
           scanListener,
           scanCount,
