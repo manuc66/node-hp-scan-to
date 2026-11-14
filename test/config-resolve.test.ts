@@ -3,7 +3,9 @@ import { expect } from "chai";
 import os from "node:os";
 import { configSchema } from "../src/type/FileConfig.js";
 import { DuplexAssemblyMode } from "../src/type/DuplexAssemblyMode.js";
+import { ScanMode } from "../src/type/scanMode.js";
 import { resolveConfig } from "../src/config/resolve.js";
+import { GLOBAL_KEYS, PRINTER_KEYS, PROFILE_KEYS } from "../src/config/keys.js";
 
 // A legacy flat configuration that exercises every key group (device, scan,
 // output, integrations, post-processing, health check). The resolver must carry
@@ -224,5 +226,52 @@ describe("resolveConfig - targets of the implicit printer", () => {
     expect(() => resolveConfig({ targets: { X: { foo: true } } })).to.throw(
       /unrecognized/i,
     );
+  });
+});
+
+describe("resolveConfig - defaults", () => {
+  it("applies defaults above the flat settings of the implicit profile", () => {
+    const target = resolveConfig({
+      resolution: 200,
+      defaults: { resolution: 300, mode: "gray" },
+    }).printers[0].targets[0];
+
+    expect(target.config.resolution).to.equal(300);
+    expect(target.config.mode).to.equal(ScanMode.Gray);
+  });
+
+  it("keeps the flat settings that defaults do not override", () => {
+    const target = resolveConfig({
+      directory: "/flat",
+      defaults: { resolution: 300 },
+    }).printers[0].targets[0];
+
+    expect(target.config.directory).to.equal("/flat");
+    expect(target.config.resolution).to.equal(300);
+  });
+
+  it("rejects printer keys inside defaults", () => {
+    expect(() => resolveConfig({ defaults: { ip: "192.168.1.5" } })).to.throw(
+      /unrecognized/i,
+    );
+  });
+
+  it("rejects registration keys inside defaults", () => {
+    expect(() =>
+      resolveConfig({ defaults: { add_emulated_duplex: true } }),
+    ).to.throw(/unrecognized/i);
+  });
+});
+
+describe("resolveConfig - key ownership", () => {
+  it("classifies every configuration key exactly once", () => {
+    const schemaKeys = Object.keys(configSchema.shape).sort();
+    const classified = [
+      ...GLOBAL_KEYS,
+      ...PRINTER_KEYS,
+      ...PROFILE_KEYS,
+    ].sort();
+
+    expect(classified).to.deep.equal(schemaKeys);
   });
 });

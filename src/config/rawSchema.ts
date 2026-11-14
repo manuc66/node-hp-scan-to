@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { configSchema } from "../type/FileConfig.js";
 import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode.js";
+import { PROFILE_KEYS } from "./keys.js";
 
 /**
  * Keys that only describe the legacy emulated-duplex registration. Once the
@@ -37,6 +38,14 @@ const targetsSchema = z
     message: "targets must declare at least one target",
   });
 
+// A partial pipeline: every profile key is optional, and only pipeline keys
+// are accepted. Cross-field rules wait for the merged profile.
+const profileShape = Object.fromEntries(
+  PROFILE_KEYS.map((key) => [key, configSchema.shape[key]]),
+) as Pick<typeof configSchema.shape, (typeof PROFILE_KEYS)[number]>;
+
+export const profileSettingsSchema = z.strictObject(profileShape);
+
 /**
  * The on-disk configuration file, before the profiles are resolved.
  *
@@ -47,6 +56,7 @@ const targetsSchema = z
 export const rawConfigSchema = z
   .strictObject({
     ...configSchema.shape,
+    defaults: profileSettingsSchema.optional(),
     targets: targetsSchema.optional(),
   })
   .superRefine((raw, ctx) => {

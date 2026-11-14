@@ -110,8 +110,11 @@ function legacyTargets(
  */
 export function resolveConfig(raw: unknown): ResolvedProgramConfig {
   const rawConfig = parseRawConfig(raw);
-  const { targets: rawTargets, ...flat } = rawConfig;
-  const config = parseProfile(flat);
+  const { targets: rawTargets, defaults: rawDefaults, ...flat } = rawConfig;
+
+  // `defaults` is the explicit shared base: it sits above the flat settings so
+  // it can override the `config/default.json` shipped with the application.
+  const config = parseProfile({ ...flat, ...(rawDefaults ?? {}) });
 
   const targets =
     rawTargets === undefined
