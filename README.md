@@ -64,6 +64,7 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
   - [Run with Kubernetes](#run-with-kubernetes)
   - [Paperless-ngx](#paperless-ngx)
   - [Configure](#configure)
+    - [One configuration file or one per printer](#one-configuration-file-or-one-per-printer)
 - [Troubleshooting](#troubleshooting)
 - [Build Source Code](#build-source-code)
   - [Debugging](#debugging)
@@ -1199,6 +1200,46 @@ Keys and types are validated at startup against [`src/type/FileConfig.ts`](src/t
 npx node-hp-scan-to config resolve
 npx node-hp-scan-to config resolve --printer officejet --target "Archive locale"
 ```
+
+#### One configuration file or one per printer
+
+A single file declaring `printers`, `profiles` and `defaults` is the recommended layout when one person manages the printers and they share delivery targets or credentials: the Paperless/S3/webhook settings are written once, and `--printer <id>` selects the instance to run. The file is shared; the processes are not — still one process per printer.
+
+Keep one flat file per printer (the historical layout, without `printers`) when:
+
+- different people administer the printers, or their secrets must not share the same file permissions;
+- a change to one printer must never be able to break another one at restart;
+- the shared file becomes hard to read, or a printer needs instance-specific overrides that do not belong in a shared profile.
+
+Both layouts run with one process per printer. Validate a change with `config resolve` before restarting (and in CI), then restart one instance at a time.
+
+Shared file, one systemd instance per printer:
+
+```ini
+# /etc/systemd/system/node-hp-scan-to@.service
+[Service]
+Environment=NODE_CONFIG_DIR=/etc/node-hp-scan-to
+ExecStart=/usr/bin/node-hp-scan-to listen --printer %i
+Restart=always
+RestartSec=5
+```
+
+```sh
+systemctl enable --now node-hp-scan-to@officejet node-hp-scan-to@deskjet
+```
+
+Separate file per printer, each instance with its own `NODE_CONFIG_DIR`:
+
+```ini
+# /etc/systemd/system/node-hp-scan-to@.service
+[Service]
+Environment=NODE_CONFIG_DIR=/etc/node-hp-scan-to/%i
+ExecStart=/usr/bin/node-hp-scan-to listen
+Restart=always
+RestartSec=5
+```
+
+Here `/etc/node-hp-scan-to/officejet/default.json` is a flat configuration file for that printer (no `printers` block), and `local.json` in the same directory stays private to that instance. With a shared file, per-printer overrides belong in the printer entry or a profile, because `local.json` applies to every instance. In Docker Compose, use the same split: one service per printer, either mounting the shared configuration and setting `PRINTER`, or mounting a per-service directory.
 
 ## Troubleshooting
 
