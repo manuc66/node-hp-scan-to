@@ -6,7 +6,9 @@
 #   SCANNER_IP=<printer-ip> ./scripts/live-test.sh [--destructive]
 #
 # --destructive also runs `clear-registrations`, which removes all walkup
-# scan targets registered on the device.
+# scan targets registered on the device. The multi-target and multi-printer
+# steps below register extra labels on the device; run with --destructive to
+# clear them afterwards.
 set -euo pipefail
 
 IP="${SCANNER_IP:-}"
@@ -112,6 +114,107 @@ if grep -Eq '^\{"level":' "$WORK/json.log"; then
   ok "LOG_FORMAT=json emits JSON lines"
 else
   bad "LOG_FORMAT=json did not emit JSON lines"
+fi
+
+echo "--- multi-target configuration"
+CFG="$WORK/config"
+mkdir -p "$CFG" "$WORK/multi-default" "$WORK/multi-archive"
+cat >"$CFG/default.json" <<JSON
+{
+  "ip": "$IP",
+  "directory": "$WORK/multi-default",
+  "profiles": {
+    "archive": { "directory": "$WORK/multi-archive" }
+  },
+  "targets": {
+    "scan-to-pc-smoke-a": {},
+    "scan-to-pc-smoke-b": { "profile": "archive" }
+  }
+}
+JSON
+
+if NODE_CONFIG_DIR="$CFG" timeout 20 $BIN config resolve \
+  >"$WORK/resolve.json" 2>"$WORK/resolve.log"; then
+  if grep -q '"scan-to-pc-smoke-a"' "$WORK/resolve.json" &&
+    grep -q '"scan-to-pc-smoke-b"' "$WORK/resolve.json" &&
+    grep -q "$WORK/multi-archive" "$WORK/resolve.json"; then
+    ok "config resolve shows both targets and their pipelines"
+  else
+    bad "config resolve is missing a target or its profile (see $WORK/resolve.json)"
+  fi
+else
+  bad "config resolve failed (see $WORK/resolve.log)"
+fi
+
+rc=0
+NODE_CONFIG_DIR="$CFG" timeout 8 $BIN listen \
+  >"$WORK/multi-listen.log" 2>&1 || rc=$?
+if [ "$rc" -eq 0 ] || [ "$rc" -eq 124 ]; then
+  ok "listen registered both targets"
+else
+  bad "listen failed with a targets block (rc=$rc, see $WORK/multi-listen.log)"
+fi
+
+if NODE_CONFIG_DIR="$CFG" timeout 60 $BIN single-scan --target "scan-to-pc-smoke-b" \
+  >"$WORK/multi-scan.log" 2>&1; then
+  COUNT="$(find "$WORK/multi-archive" -type f 2>/dev/null | wc -l)"
+  if [ "$COUNT" -ge 1 ]; then
+    ok "single-scan --target used the selected pipeline ($COUNT file(s))"
+  else
+    bad "single-scan --target wrote nothing to the profile directory"
+  fi
+else
+  bad "single-scan --target failed (see $WORK/multi-scan.log)"
+fi
+
+if NODE_CONFIG_DIR="$CFG" timeout 20 $BIN single-scan \
+  >"$WORK/multi-ambiguous.log" 2>&1; then
+  bad "single-scan without --target should have been rejected"
+else
+  if grep -q -- "--target" "$WORK/multi-ambiguous.log"; then
+    ok "ambiguous target selection rejected"
+  else
+    bad "ambiguous target selection error does not mention --target"
+  fi
+fi
+
+echo "--- multi-printer configuration"
+PCFG="$WORK/config-printers"
+mkdir -p "$PCFG" "$WORK/printer-scan"
+cat >"$PCFG/default.json" <<JSON
+{
+  "profiles": {
+    "smoke": { "directory": "$WORK/printer-scan" }
+  },
+  "printers": {
+    "smoke": {
+      "ip": "$IP",
+      "targets": {
+        "scan-to-pc-printer-smoke": { "profile": "smoke" }
+      }
+    }
+  }
+}
+JSON
+
+if NODE_CONFIG_DIR="$PCFG" timeout 20 $BIN config resolve --printer smoke \
+  >"$WORK/resolve-printers.json" 2>"$WORK/resolve-printers.log"; then
+  if grep -q '"scan-to-pc-printer-smoke"' "$WORK/resolve-printers.json"; then
+    ok "config resolve --printer shows the printer target"
+  else
+    bad "config resolve --printer is missing the printer target (see $WORK/resolve-printers.json)"
+  fi
+else
+  bad "config resolve --printer failed (see $WORK/resolve-printers.log)"
+fi
+
+rc=0
+NODE_CONFIG_DIR="$PCFG" timeout 8 $BIN listen --printer smoke \
+  >"$WORK/printers-listen.log" 2>&1 || rc=$?
+if [ "$rc" -eq 0 ] || [ "$rc" -eq 124 ]; then
+  ok "listen --printer registered the configured printer"
+else
+  bad "listen --printer failed (rc=$rc, see $WORK/printers-listen.log)"
 fi
 
 if [ "${1:-}" = "--destructive" ]; then
