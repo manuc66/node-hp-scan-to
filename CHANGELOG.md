@@ -101,6 +101,9 @@ All notable changes to this project are documented in this file.
   Configured with the new `--webhook-*` CLI options, the matching `webhook_*`
   config file keys or the `WEBHOOK_*` environment variables (Docker). The
   event contract is described in `protocol_doc/webhook/openapi.yaml`.
+  `metadata.job.count` counts the device jobs behind the scan, not its pages:
+  a 3-page ADF scan reports 1, while a multi-page platen session or an
+  emulated duplex scan runs several jobs; `pages` lists one descriptor per page.
 
 ### Changed
 

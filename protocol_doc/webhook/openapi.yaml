@@ -283,7 +283,13 @@ components:
           $ref: '#/components/schemas/JobState'
         count:
           type: integer
-          description: Number of device jobs that produced the scan.
+          description: |
+            Number of device jobs that produced the scan, not the number of
+            pages: a 3-page ADF scan is one job and reports `count: 1`. It is
+            above 1 when several device jobs make up one scan, such as a
+            multi-page platen session (one job per page) or an emulated duplex
+            scan (a front pass and a back pass). The page count is the length of
+            the event's `pages` array.
     JobState:
       type: string
       enum: [Completed, Processing, Canceled, Blocked]
