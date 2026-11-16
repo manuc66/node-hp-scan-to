@@ -62,9 +62,12 @@ osslsigncode verify \
 ```
 
 A tag run uses `release-signing`, which SignPath Foundation requires to be
-approved manually. The certificate is issued by SignPath Foundation; while it
-is still in `CSR PENDING` state, the policy is `INVALID` and only
-`test-signing` can be used.
+approved manually. The SignPath project must therefore keep the approval
+process enabled on `release-signing` (with a maintainer as approver) and
+origin verification enabled, as stated in the README's code signing policy.
+The certificate is issued by SignPath Foundation; while it is still in
+`CSR PENDING` state, the policy is `INVALID` and only `test-signing` can be
+used.
 
 ### macOS packages
 

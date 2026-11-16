@@ -182,7 +182,7 @@ launchctl load ~/Library/LaunchAgents/io.github.manuc66.node-hp-scan-to.plist
 
 Notes:
 
-- **Windows**: SmartScreen may warn about an unsigned executable — click _More info_ → _Run anyway_
+- **Windows**: SmartScreen may warn about the installer — click _More info_ → _Run anyway_. It is Authenticode-signed through SignPath once the SignPath Foundation certificate is issued (see [Code signing policy](#code-signing-policy)); before that it is unsigned.
 - **macOS**: the app is unsigned and un-notarized, so Gatekeeper may block it on first run. Either right-click → _Open_, or clear the quarantine flag with `xattr -cr /Applications/node-hp-scan-to.app`
 
 ### Using Debian / RPM packages
@@ -1145,7 +1145,7 @@ Free code signing provided by [SignPath.io](https://about.signpath.io), certific
 - **Authors and reviewers**: [manuc66](https://github.com/manuc66). Changes from anyone else go through a pull request reviewed by a maintainer before merge.
 - **Approvers**: [manuc66](https://github.com/manuc66). Every signing request is approved manually before a release is signed.
 
-The only Authenticode-signed artifact is the Windows installer (`setup-node-hp-scan-to-v*.exe`) attached to each [release](https://github.com/manuc66/node-hp-scan-to/releases). It is built by the `Publish` workflow from this repository, and only that CI-built installer is submitted to SignPath; the private key stays in SignPath's hardware security module and is never available to the project. Linux, macOS and npm artifacts are not Authenticode-signed.
+Windows installers (`setup-node-hp-scan-to-v*.exe`) are the only artifacts signed with Authenticode. They are built by the `Publish` workflow from this repository, and only that CI-built installer is submitted to SignPath; the private key stays in SignPath's hardware security module and is never available to the project. The certificate is issued by SignPath Foundation, so releases ship the installer unsigned until it is issued. Linux, macOS and npm artifacts are not Authenticode-signed.
 
 This program does not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it. It sends no telemetry or analytics and contacts no project-operated server. Precisely:
 

@@ -85,8 +85,8 @@ jobs:
             PRERELEASE=true
           fi
           # VIProductVersion only accepts four numeric components, so strip the
-          # pre-release suffix and pad the missing field.
-          PRODUCTVERSION="$(printf '%s' "${VERSION%%-*}" | awk -F. '{printf "%d.%d.%d.%d", $1, $2, $3, 0}')"
+          # pre-release suffix, pad a three-part version and keep a fourth one.
+          PRODUCTVERSION="$(printf '%s' "${VERSION%%-*}" | awk -F. '{printf "%d.%d.%d.%d", $1, $2, $3, ($4 == "" ? 0 : $4)}')"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
           echo "productversion=$PRODUCTVERSION" >> "$GITHUB_OUTPUT"
@@ -200,7 +200,9 @@ jobs:
       - name: Download the unsigned installer
         # The artifact is named after the installer file (see the upload step
         # in `binaries`), so pattern + merge-multiple flatten it into release/.
-        uses: actions/download-artifact@v8
+        # Pinned by commit: like every action in this job, it runs with the
+        # SignPath token in its environment.
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           pattern: setup-node-hp-scan-to-v${{ needs.binaries.outputs.version }}.exe
           path: release
@@ -236,7 +238,8 @@ jobs:
       - name: Upload the Windows installer for the release job
         # When signing is disabled this uploads the unsigned installer, so the
         # release job always receives exactly one .exe from this job.
-        uses: actions/upload-artifact@v7
+        # Pinned by commit: see the download step above.
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: windows-installer
           path: release/*.exe
