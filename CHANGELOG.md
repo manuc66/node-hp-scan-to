@@ -143,6 +143,13 @@ All notable changes to this project are documented in this file.
   `persist-credentials` explicitly (`false` except for the release job that
   pushes the Nix/Homebrew bump), so the workflow `GITHUB_TOKEN` is not left
   in the git configuration for later steps and third-party actions to read.
+- **Windows installer signing metadata**: the NSIS installer now carries a
+  Windows version resource (product name and version), and the `Publish`
+  workflow pins the SignPath artifact configuration (`windows-installer`)
+  while passing it the release version, so a signing request is checked
+  against the metadata that was actually built. The Authenticode signature
+  itself only appears once the SignPath Foundation certificate is issued;
+  until then releases keep shipping the unsigned installer.
 
 ### Fixed
 

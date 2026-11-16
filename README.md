@@ -65,6 +65,7 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
   - [Run with Kubernetes](#run-with-kubernetes)
   - [Paperless-ngx](#paperless-ngx)
   - [Configure](#configure)
+- [Code signing policy](#code-signing-policy)
 - [Troubleshooting](#troubleshooting)
 - [Build Source Code](#build-source-code)
   - [Debugging](#debugging)
@@ -1136,6 +1137,23 @@ Keep your own settings out of the tracked file: `config/local.json` is read on t
 Precedence, highest first: **CLI flag → config file → built-in default**. (The Docker image's environment variables are translated into CLI flags by its entrypoint, so from the app's point of view they are flags; `CMDLINE` is appended last and therefore wins over them.)
 
 Keys and types are validated at startup against [`src/type/FileConfig.ts`](src/type/FileConfig.ts). `paper_size` and `paper_dim` are mutually exclusive, as are `width`/`height` and `paper_size`/`paper_dim`.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+- **Authors and reviewers**: [manuc66](https://github.com/manuc66). Changes from anyone else go through a pull request reviewed by a maintainer before merge.
+- **Approvers**: [manuc66](https://github.com/manuc66). Every signing request is approved manually before a release is signed.
+
+The only Authenticode-signed artifact is the Windows installer (`setup-node-hp-scan-to-v*.exe`) attached to each [release](https://github.com/manuc66/node-hp-scan-to/releases). It is built by the `Publish` workflow from this repository, and only that CI-built installer is submitted to SignPath; the private key stays in SignPath's hardware security module and is never available to the project. Linux, macOS and npm artifacts are not Authenticode-signed.
+
+This program does not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it. It sends no telemetry or analytics and contacts no project-operated server. Precisely:
+
+- `discover`, and `-n/--name` when resolving a printer by name, browse mDNS/Bonjour services with multicast DNS on the local network (UDP 5353);
+- the printer is then contacted directly over HTTP or HTTPS. An address passed with `-a/--address` is used as given, so it may be on another subnet, behind a VPN, or any other address reachable from the host — it is not restricted to the local network;
+- scans are uploaded only to the targets explicitly configured (Paperless-ngx, Nextcloud, S3, webhook), and post-processing runs only the command configured.
+
+See [Scope and Limitations](#scope-and-limitations) and the Linux networking notes above for the exact ports and endpoints.
 
 ## Troubleshooting
 

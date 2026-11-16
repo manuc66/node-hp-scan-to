@@ -84,8 +84,12 @@ jobs:
           if [[ "$VERSION" == *-* ]]; then
             PRERELEASE=true
           fi
+          # VIProductVersion only accepts four numeric components, so strip the
+          # pre-release suffix and pad the missing field.
+          PRODUCTVERSION="$(printf '%s' "${VERSION%%-*}" | awk -F. '{printf "%d.%d.%d.%d", $1, $2, $3, 0}')"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "productversion=$PRODUCTVERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build binaries
         run: ./scripts/build-binaries.sh "v${{ steps.ver.outputs.version }}"
@@ -127,7 +131,10 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq nsis
           cd packaging/windows
-          makensis -DVERSION="${{ steps.ver.outputs.version }}" installer.nsi
+          makensis \
+            -DVERSION="${{ steps.ver.outputs.version }}" \
+            -DPRODUCTVERSION="${{ steps.ver.outputs.productversion }}" \
+            installer.nsi
 
       - name: Upload unsigned installer for SignPath
         id: upload-unsigned-installer
@@ -146,6 +153,12 @@ jobs:
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
           project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'node-hp-scan-to' }}
           signing-policy-slug: ${{ env.SIGNPATH_SIGNING_POLICY_SLUG }}
+          # Pinned to the configuration checked in below, so the repository
+          # describes exactly what gets signed instead of relying on whatever
+          # the project's default configuration happens to be.
+          artifact-configuration-slug: windows-installer
+          parameters: |
+            version: "${{ steps.ver.outputs.version }}"
           github-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1800
