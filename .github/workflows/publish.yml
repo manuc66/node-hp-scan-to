@@ -146,10 +146,11 @@ jobs:
       - name: Upload unsigned installer for the signing job
         # Always uploaded: the sign-windows job needs the artifact even when
         # signing is disabled, so the same job can publish it unsigned.
+        # With archive: false, upload-artifact names the artifact after the
+        # file itself; sign-windows downloads it by that exact name.
         id: upload-unsigned-installer
         uses: actions/upload-artifact@v7
         with:
-          name: unsigned-windows-installer
           path: release/setup-node-hp-scan-to-v${{ steps.ver.outputs.version }}.exe
           if-no-files-found: error
           archive: false
@@ -197,10 +198,13 @@ jobs:
       SIGNPATH_SIGNING_POLICY_SLUG: ${{ startsWith(github.ref, 'refs/tags/v') && 'release-signing' || 'test-signing' }}
     steps:
       - name: Download the unsigned installer
+        # The artifact is named after the installer file (see the upload step
+        # in `binaries`), so pattern + merge-multiple flatten it into release/.
         uses: actions/download-artifact@v8
         with:
-          name: unsigned-windows-installer
+          pattern: setup-node-hp-scan-to-v${{ needs.binaries.outputs.version }}.exe
           path: release
+          merge-multiple: true
 
       - name: Sign installer with SignPath
         if: env.SIGNPATH_API_TOKEN != ''
