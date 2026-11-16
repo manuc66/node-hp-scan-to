@@ -45,9 +45,9 @@ jobs:
   binaries:
     name: Binaries and packages
     runs-on: ubuntu-latest
-    env:
-      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
-      SIGNPATH_SIGNING_POLICY_SLUG: ${{ startsWith(github.ref, 'refs/tags/v') && 'release-signing' || 'test-signing' }}
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      installer-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -84,11 +84,17 @@ jobs:
           if [[ "$VERSION" == *-* ]]; then
             PRERELEASE=true
           fi
+          # VIProductVersion only accepts four numeric components, so strip the
+          # pre-release suffix, pad a three-part version and keep a fourth one.
+          PRODUCTVERSION="$(printf '%s' "${VERSION%%-*}" | awk -F. '{printf "%d.%d.%d.%d", $1, $2, $3, ($4 == "" ? 0 : $4)}')"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "productversion=$PRODUCTVERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build binaries
-        run: ./scripts/build-binaries.sh "v${{ steps.ver.outputs.version }}"
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: ./scripts/build-binaries.sh "v$VERSION"
 
       - name: Install nfpm
         # The release tarball is fetched from GitHub, so its SHA-512 is
@@ -109,7 +115,9 @@ jobs:
         # Pre-release versions (e.g. 1.11.0-rc.1) do not map to valid
         # deb/rpm/apk versions, so packages are only built for stable tags.
         if: steps.ver.outputs.prerelease != 'true'
-        run: ./scripts/build-packages.sh "v${{ steps.ver.outputs.version }}"
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: ./scripts/build-packages.sh "v$VERSION"
 
       - name: Stage Windows installer inputs
         run: |
@@ -124,38 +132,28 @@ jobs:
           echo "${WINSW_SHA512}  packaging/windows/staging/WinSW-x64.exe" | sha512sum -c -
 
       - name: Build Windows installer
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          PRODUCTVERSION: ${{ steps.ver.outputs.productversion }}
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq nsis
           cd packaging/windows
-          makensis -DVERSION="${{ steps.ver.outputs.version }}" installer.nsi
+          makensis \
+            -DVERSION="$VERSION" \
+            -DPRODUCTVERSION="$PRODUCTVERSION" \
+            installer.nsi
 
-      - name: Upload unsigned installer for SignPath
+      - name: Upload unsigned installer for the signing job
+        # Always uploaded: the sign-windows job needs the artifact even when
+        # signing is disabled, so the same job can publish it unsigned.
+        # With archive: false, upload-artifact names the artifact after the
+        # file itself; sign-windows downloads it by that exact name.
         id: upload-unsigned-installer
-        if: env.SIGNPATH_API_TOKEN != ''
         uses: actions/upload-artifact@v7
         with:
           path: release/setup-node-hp-scan-to-v${{ steps.ver.outputs.version }}.exe
           if-no-files-found: error
           archive: false
-
-      - name: Sign installer with SignPath
-        if: env.SIGNPATH_API_TOKEN != ''
-        uses: signpath/github-action-submit-signing-request@v3
-        with:
-          api-token: ${{ env.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'node-hp-scan-to' }}
-          signing-policy-slug: ${{ env.SIGNPATH_SIGNING_POLICY_SLUG }}
-          github-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
-          wait-for-completion: true
-          wait-for-completion-timeout-in-seconds: 1800
-          skip-decompress: true
-          output-artifact-directory: release-signed
-
-      - name: Move signed installer into place
-        if: env.SIGNPATH_API_TOKEN != ''
-        run: |
-          mv release-signed/setup-node-hp-scan-to-*.exe release/
 
       - name: Upload darwin x64 binary for the macOS job
         # The .app/.pkg/.dmg are built natively on a macOS runner, but the
@@ -183,7 +181,68 @@ jobs:
             release/*.deb
             release/*.apk
             release/*.rpm
-            release/*.exe
+          if-no-files-found: error
+
+  sign-windows:
+    name: Sign Windows installer
+    runs-on: ubuntu-latest
+    needs: binaries
+    # The SignPath API token lives in this job only: it downloads the installer
+    # built by `binaries`, signs it, and publishes the result. No build, test
+    # or dependency-install step can read it.
+    permissions:
+      actions: read
+      contents: read
+    env:
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+      SIGNPATH_SIGNING_POLICY_SLUG: ${{ startsWith(github.ref, 'refs/tags/v') && 'release-signing' || 'test-signing' }}
+    steps:
+      - name: Download the unsigned installer
+        # The artifact is named after the installer file (see the upload step
+        # in `binaries`), so pattern + merge-multiple flatten it into release/.
+        # Pinned by commit: like every action in this job, it runs with the
+        # SignPath token in its environment.
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: setup-node-hp-scan-to-v${{ needs.binaries.outputs.version }}.exe
+          path: release
+          merge-multiple: true
+
+      - name: Sign installer with SignPath
+        if: env.SIGNPATH_API_TOKEN != ''
+        # Pinned by commit: this action receives the API token. The tag `v3`
+        # is mutable, the SHA is not.
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3
+        with:
+          api-token: ${{ env.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'node-hp-scan-to' }}
+          signing-policy-slug: ${{ env.SIGNPATH_SIGNING_POLICY_SLUG }}
+          # Pinned to the configuration checked in below, so the repository
+          # describes exactly what gets signed instead of relying on whatever
+          # the project's default configuration happens to be.
+          artifact-configuration-slug: windows-installer
+          parameters: |
+            version: "${{ needs.binaries.outputs.version }}"
+          github-artifact-id: ${{ needs.binaries.outputs.installer-artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1800
+          skip-decompress: true
+          output-artifact-directory: release-signed
+
+      - name: Move signed installer into place
+        if: env.SIGNPATH_API_TOKEN != ''
+        run: |
+          mv release-signed/setup-node-hp-scan-to-*.exe release/
+
+      - name: Upload the Windows installer for the release job
+        # When signing is disabled this uploads the unsigned installer, so the
+        # release job always receives exactly one .exe from this job.
+        # Pinned by commit: see the download step above.
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: windows-installer
+          path: release/*.exe
           if-no-files-found: error
 
   macos:
@@ -241,6 +300,8 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN"
 
       - name: Build macOS packages
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
         run: |
           if [ -n "$MACOS_SIGNING_IDENTITY" ] || [ -n "$MACOS_CERT_BASE64" ]; then
             if [ -z "$MACOS_SIGNING_IDENTITY" ] && [ -n "$MACOS_CERT_BASE64" ]; then
@@ -256,7 +317,7 @@ jobs:
               export MACOS_INSTALLER_IDENTITY
             fi
           fi
-          ./scripts/build-macos-packages.sh "v${{ steps.ver.outputs.version }}"
+          ./scripts/build-macos-packages.sh "v$VERSION"
 
       - name: Upload macOS artifacts for the release job
         uses: actions/upload-artifact@v7
@@ -270,7 +331,7 @@ jobs:
   release:
     name: Assemble, sign checks and attach release assets
     runs-on: ubuntu-latest
-    needs: [binaries, macos]
+    needs: [binaries, sign-windows, macos]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -283,6 +344,12 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: release-binaries
+          path: release
+
+      - name: Download the Windows installer
+        uses: actions/download-artifact@v8
+        with:
+          name: windows-installer
           path: release
 
       - name: Download macOS artifacts
@@ -393,16 +460,17 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
         env:
           RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+          VERSION: ${{ steps.ver.outputs.version }}
         run: |
-          ./scripts/update-nix-hashes.sh "v${{ steps.ver.outputs.version }}"
-          ./scripts/update-homebrew-cask.sh "v${{ steps.ver.outputs.version }}"
+          ./scripts/update-nix-hashes.sh "v$VERSION"
+          ./scripts/update-homebrew-cask.sh "v$VERSION"
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
           git fetch origin master:master
           git checkout master
           git add packaging/nix/package.nix packaging/homebrew/node-hp-scan-to.rb
           if ! git diff --cached --quiet; then
-            git commit -m "chore(release): bump Nix flake and Homebrew cask to v${{ steps.ver.outputs.version }}"
+            git commit -m "chore(release): bump Nix flake and Homebrew cask to v$VERSION"
             if [ -n "$RELEASE_PAT" ]; then
               git push "https://x-access-token:${RELEASE_PAT}@github.com/${GITHUB_REPOSITORY}.git" master
             else

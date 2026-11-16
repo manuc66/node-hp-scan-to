@@ -22,6 +22,25 @@ SetCompressor /SOLID lzma
   !define VERSION "0.0.0-dev"
 !endif
 
+; Windows version resource: SignPath Foundation requires the product name and
+; product version to be set and enforced by the signing artifact configuration
+; (packaging/windows/signpath/artifact-configuration.xml). VIProductVersion
+; only accepts four numeric components, so the release workflow passes
+; PRODUCTVERSION (e.g. "1.11.2.0"); a bare `makensis` run falls back to
+; "0.0.0.0" while ProductVersion keeps the readable VERSION, pre-release
+; suffix included.
+!ifndef PRODUCTVERSION
+  !define PRODUCTVERSION "0.0.0.0"
+!endif
+
+VIProductVersion "${PRODUCTVERSION}"
+VIAddVersionKey "ProductName" "${DISPLAY}"
+VIAddVersionKey "ProductVersion" "${VERSION}"
+VIAddVersionKey "FileVersion" "${PRODUCTVERSION}"
+VIAddVersionKey "CompanyName" "${PUBLISHER}"
+VIAddVersionKey "FileDescription" "${DISPLAY} installer"
+VIAddVersionKey "LegalCopyright" "MIT License"
+
 Name "${DISPLAY}"
 OutFile "..\..\release\setup-${APPNAME}-v${VERSION}.exe"
 InstallDir "$LOCALAPPDATA\Programs\${APPNAME}"

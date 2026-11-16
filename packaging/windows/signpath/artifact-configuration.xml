@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration for the Windows installer.
+
+  Upload this file to the SignPath project as the artifact configuration with
+  the slug "windows-installer" (this file).  The Publish workflow passes that
+  slug and the release version as a signing-request parameter, so this file is
+  the source of truth for what gets signed.
+
+  SignPath Foundation requires the product metadata to be set and enforced:
+  packaging/windows/installer.nsi writes the same ProductName and
+  ProductVersion values, and the attributes below make SignPath reject any
+  installer whose metadata does not match.
+
+  The workflow uploads the installer with `archive: false`, so the root
+  element is the PE file itself rather than a <zip-file>.
+
+  Do not set `description` or `description-url` on <authenticode-sign>: the
+  Open Source Code Signing subscription enforces an automatically generated
+  description, and SignPath rejects the configuration if either attribute is
+  present.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <pe-file
+    path="setup-node-hp-scan-to-v${version}.exe"
+    product-name="node-hp-scan-to"
+    product-version="${version}"
+  >
+    <authenticode-sign />
+  </pe-file>
+</artifact-configuration>
