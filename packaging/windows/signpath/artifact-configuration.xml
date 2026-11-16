@@ -14,6 +14,11 @@
 
   The workflow uploads the installer with `archive: false`, so the root
   element is the PE file itself rather than a <zip-file>.
+
+  Do not set `description` or `description-url` on <authenticode-sign>: the
+  Open Source Code Signing subscription enforces an automatically generated
+  description, and SignPath rejects the configuration if either attribute is
+  present.
 -->
 <artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
   <parameters>
@@ -24,9 +29,6 @@
     product-name="node-hp-scan-to"
     product-version="${version}"
   >
-    <authenticode-sign
-      description="node-hp-scan-to installer"
-      description-url="https://github.com/manuc66/node-hp-scan-to"
-    />
+    <authenticode-sign />
   </pe-file>
 </artifact-configuration>
