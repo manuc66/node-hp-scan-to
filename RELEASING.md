@@ -41,9 +41,15 @@ the `version` parameter, and the configuration enforces the `ProductName` /
 `ProductVersion` metadata written by `packaging/windows/installer.nsi` (a
 SignPath Foundation requirement).
 
-When `SIGNPATH_API_TOKEN` is unset, the upload and signing steps are skipped
-and the installer ships unsigned. Once it is set, a failing signing request
-fails the release instead of silently publishing an unsigned installer.
+The token is scoped to the dedicated `sign-windows` job, which only downloads
+the installer built by `binaries`, signs it, and publishes it. No build, test
+or dependency-install step can read it, and the SignPath action is pinned by
+commit rather than by tag.
+
+When `SIGNPATH_API_TOKEN` is unset, `sign-windows` publishes the installer
+unchanged and it ships unsigned. Once the secret is set, a failing signing
+request fails the release instead of silently publishing an unsigned
+installer.
 
 Validate the whole signing chain without publishing:
 

@@ -147,9 +147,11 @@ All notable changes to this project are documented in this file.
   Windows version resource (product name and version), and the `Publish`
   workflow pins the SignPath artifact configuration (`windows-installer`)
   while passing it the release version, so a signing request is checked
-  against the metadata that was actually built. The Authenticode signature
-  itself only appears once the SignPath Foundation certificate is issued;
-  until then releases keep shipping the unsigned installer.
+  against the metadata that was actually built. Signing runs in a dedicated
+  job that is the only place the SignPath API token is available, and the
+  signing action is pinned by commit. The Authenticode signature itself only
+  appears once the SignPath Foundation certificate is issued; until then
+  releases keep shipping the unsigned installer.
 
 ### Fixed
 
