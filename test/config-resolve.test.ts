@@ -594,6 +594,26 @@ describe("resolveConfig - printers", () => {
     ).to.not.throw();
   });
 
+  it("rejects blank printer addresses", () => {
+    expect(() =>
+      resolveConfig({ printers: { p: { name: "", targets: { X: {} } } } }),
+    ).to.throw(/name must not be empty/);
+
+    expect(() =>
+      resolveConfig({
+        printers: { p: { name: "   ", targets: { X: {} } } },
+      }),
+    ).to.throw(/name must not be empty/);
+
+    expect(() =>
+      resolveConfig({
+        printers: {
+          p: { ip: "", name: "Officejet", targets: { X: {} } },
+        },
+      }),
+    ).to.throw(/ip must not be empty/);
+  });
+
   it("points labels and emulated duplex at the target level", () => {
     expect(() =>
       resolveConfig({

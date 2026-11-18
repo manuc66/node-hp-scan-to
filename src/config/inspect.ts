@@ -21,6 +21,13 @@ const SECRET_KEYS = [
   "webhook_password",
 ] as const;
 
+/** URLs that may carry credentials in their userinfo part. */
+const CREDENTIAL_URL_KEYS = [
+  "nextcloud_url",
+  "s3_url",
+  "paperless_post_document_url",
+] as const;
+
 export interface ResolveView {
   printers: ResolveViewPrinter[];
 }
@@ -46,6 +53,21 @@ function redactUrl(value: string): string {
   }
 }
 
+/** Drops the userinfo of a URL while keeping the rest of it intact. */
+function redactUrlUserinfo(value: string): string {
+  try {
+    const url = new URL(value);
+    if (url.username === "" && url.password === "") {
+      return value;
+    }
+    url.username = "";
+    url.password = "";
+    return url.toString();
+  } catch {
+    return "***";
+  }
+}
+
 function redact(config: FileConfig): Record<string, unknown> {
   const output: Record<string, unknown> = { ...config };
   for (const key of SECRET_KEYS) {
@@ -59,6 +81,15 @@ function redact(config: FileConfig): Record<string, unknown> {
   const webhookUrl = output["webhook_url"];
   if (typeof webhookUrl === "string") {
     output["webhook_url"] = redactUrl(webhookUrl);
+  }
+
+  // Other endpoints should not carry credentials in the URL (they have their
+  // own username/password fields), but strip them if they do.
+  for (const key of CREDENTIAL_URL_KEYS) {
+    const value = output[key];
+    if (typeof value === "string") {
+      output[key] = redactUrlUserinfo(value);
+    }
   }
 
   return output;

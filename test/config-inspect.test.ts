@@ -45,6 +45,41 @@ describe("config resolve view", () => {
     expect(view.printers[0].targets[0].config["webhook_url"]).to.equal("***");
   });
 
+  it("strips credentials embedded in URLs", () => {
+    const view = buildResolveView(
+      resolveConfig({
+        nextcloud_url:
+          "https://user:pass@cloud.example/remote.php/dav/files/user",
+        s3_url: "https://key:secret@s3.example/bucket",
+        paperless_post_document_url: "https://user:pass@paperless.example/api/",
+      }),
+    );
+    const config = view.printers[0].targets[0].config;
+
+    expect(config["nextcloud_url"]).to.equal(
+      "https://cloud.example/remote.php/dav/files/user",
+    );
+    expect(config["s3_url"]).to.equal("https://s3.example/bucket");
+    expect(config["paperless_post_document_url"]).to.equal(
+      "https://paperless.example/api/",
+    );
+  });
+
+  it("keeps URLs without embedded credentials unchanged", () => {
+    const url = "https://cloud.example/remote.php/dav/files/user";
+    const view = buildResolveView(resolveConfig({ nextcloud_url: url }));
+
+    expect(view.printers[0].targets[0].config["nextcloud_url"]).to.equal(url);
+  });
+
+  it("masks an unparsable credential URL", () => {
+    const view = buildResolveView(
+      resolveConfig({ nextcloud_url: "not a valid url" }),
+    );
+
+    expect(view.printers[0].targets[0].config["nextcloud_url"]).to.equal("***");
+  });
+
   it("shows emulated duplex targets and their assembly mode", () => {
     const view = buildResolveView(
       resolveConfig({

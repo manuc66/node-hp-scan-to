@@ -76,7 +76,27 @@ const printerSchema = z
     targets: requiredTargetsSchema,
   })
   .superRefine((printer, ctx) => {
-    if (printer.ip === undefined && printer.name === undefined) {
+    const ip = printer.ip?.trim();
+    const name = printer.name?.trim();
+
+    if (printer.ip !== undefined && ip === "") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ip"],
+        message: "ip must not be empty",
+      });
+    }
+    if (printer.name !== undefined && name === "") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["name"],
+        message: "name must not be empty",
+      });
+    }
+    if (
+      (ip === undefined || ip === "") &&
+      (name === undefined || name === "")
+    ) {
       ctx.addIssue({
         code: "custom",
         path: ["ip"],
