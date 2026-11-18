@@ -8,6 +8,22 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- **Several scan destinations and printers from one configuration file**:
+  `targets` declares the labels registered on a printer, `profiles` holds the
+  scan settings and delivery integrations (shared between printers, with
+  `extends` and `null` to unset an inherited value), `defaults` holds the
+  settings common to every profile, and `printers` declares several devices.
+  The CLI only selects what the file declares (`--target <label>`,
+  `--printer <id>`), so it never becomes a second configuration language;
+  when several targets or printers are possible without a selector the run is
+  rejected with the list of choices. `config resolve` prints the effective
+  configuration with secrets redacted. Docker gains `PRINTER` and `TARGET`;
+  when either is set the entrypoint no longer forces `-d /scan`, so each
+  target keeps the `directory` from the file, and a file that declares
+  `printers` or `targets` must not also set `IP`, `NAME` or `LABEL`
+  (`TARGET` applies to the scan commands only). Existing flat configuration
+  files, the existing CLI flags and containers without `PRINTER`/`TARGET`
+  keep their current behaviour unchanged.
 - **`--reveal` opens the file manager on a finished scan**: once the scan has
   been delivered, the file still on disk is shown in the system file manager
   with the file selected (`open -R` on macOS, `explorer.exe /select,` on

@@ -2,7 +2,7 @@ import { describe, it, beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
 import nock from "nock";
 import { readFile } from "fs/promises";
-import { setupProgram } from "../src/program.js";
+import { setupProgram } from "./helpers/program.js";
 import type { FileConfig } from "../src/type/FileConfig.js";
 
 // Drives the CLI wiring of the discover command (option defaults, action and

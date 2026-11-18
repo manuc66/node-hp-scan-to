@@ -1,6 +1,7 @@
 import { describe, it } from "mocha";
 import { expect } from "chai";
-import { getScanConfiguration, setupProgram } from "../src/program.js";
+import { getScanConfiguration } from "../src/program.js";
+import { setupProgram } from "./helpers/program.js";
 import type { ListenOptions } from "../src/program.js";
 import { configSchema } from "../src/type/FileConfig.js";
 
