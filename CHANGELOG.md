@@ -136,6 +136,13 @@ All notable changes to this project are documented in this file.
   `config/local.json`, which the `config` package merges over the default and
   git now ignores, or in a directory of your own via `NODE_CONFIG_DIR`; the
   README documents both.
+- **`listen` now says why a flatbed page session ended**: when the printer
+  reports `ScanPagesComplete`, an unexpected walkup event, a next-page event
+  without its WalkupScanToComp companion, or when the printer-declared
+  `UserActionTimeout` expires, the log states which of these happened, how
+  long after the page it happened and which limit applied. All of these used
+  to end the scan silently, which made a document split over two files
+  impossible to explain from the logs.
 
 ### Security
 

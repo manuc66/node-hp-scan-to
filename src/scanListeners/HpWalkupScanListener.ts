@@ -13,6 +13,9 @@ import {
 } from "../listening.js";
 import { tryGetDestination } from "../scanProcessing.js";
 import type { ScanListener, ScanRequest } from "./ScanListener.js";
+import { getLoggerForFile } from "../logger.js";
+
+const logger = getLoggerForFile(import.meta.url);
 
 /**
  * Adapter for the HP-proprietary WalkupScan and WalkupScanToComp protocols.
@@ -94,6 +97,9 @@ export default class HpWalkupScanListener implements ScanListener {
       return null;
     }
 
+    // Timestamp of the end of the page just scanned: waitScanNewPageRequest
+    // reports the session end relative to it, not to its own short poll.
+    const pageCompletedAt = Date.now();
     const nextEvent = await waitForScanEventFromTarget(
       this.api,
       {
@@ -105,6 +111,12 @@ export default class HpWalkupScanListener implements ScanListener {
       this.userActionTimeout,
     );
     if (nextEvent?.compEventURI === undefined) {
+      if (nextEvent !== undefined) {
+        const elapsed = ((Date.now() - pageCompletedAt) / 1000).toFixed(1);
+        logger.info(
+          `Printer closed the flatbed session (next scan event without WalkupScanToComp event) ${elapsed}s after the page; finalizing the scan`,
+        );
+      }
       return null;
     }
 
@@ -112,6 +124,7 @@ export default class HpWalkupScanListener implements ScanListener {
       this.api,
       nextEvent.compEventURI,
       this.userActionTimeout,
+      pageCompletedAt,
     );
     if (!startNewScanJob) {
       return null;
