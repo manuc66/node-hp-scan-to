@@ -6,7 +6,10 @@
 #   SCANNER_IP=<printer-ip> ./scripts/live-test.sh [--destructive]
 #
 # --destructive also runs `clear-registrations`, which removes all walkup
-# scan targets registered on the device.
+# scan targets registered on the device. The multi-target and multi-printer
+# steps below register extra labels on the device; run with --destructive to
+# clear them afterwards. Devices may cap the number of destinations, in which
+# case the multi-target step reports a warning rather than a failure.
 set -euo pipefail
 
 IP="${SCANNER_IP:-}"
@@ -28,7 +31,7 @@ echo "### E2E against $IP"
 
 echo "--- single-scan"
 mkdir -p "$WORK/single"
-if timeout 60 $BIN --address "$IP" single-scan -d "$WORK/single" >"$WORK/single.log" 2>&1; then
+if timeout -k 5 60 $BIN --address "$IP" single-scan -d "$WORK/single" >"$WORK/single.log" 2>&1; then
   ok "single-scan ran"
 else
   bad "single-scan failed (see $WORK/single.log)"
@@ -43,7 +46,7 @@ fi
 echo "--- single-scan --pdf with pdf post-command"
 mkdir -p "$WORK/pdf"
 PDFS=0
-if timeout 60 $BIN --address "$IP" single-scan -d "$WORK/pdf" --pdf \
+if timeout -k 5 60 $BIN --address "$IP" single-scan -d "$WORK/pdf" --pdf \
   --post-command-pdf 'cp "{input}" "{output}"' >"$WORK/pdf.log" 2>&1; then
   PDFS="$(find "$WORK/pdf" -name '*.pdf' 2>/dev/null | wc -l)"
   if [ "$PDFS" -ge 1 ]; then
@@ -58,7 +61,7 @@ fi
 echo "--- discover"
 found=0
 for _ in 1 2 3; do
-  if timeout 30 $BIN discover --timeout 8 2>/dev/null | grep -q "$IP"; then
+  if timeout -k 5 30 $BIN discover --timeout 8 2>/dev/null | grep -q "$IP"; then
     found=1
     break
   fi
@@ -84,7 +87,7 @@ kill "$HPID" 2>/dev/null || true
 
 echo "--- listen --prefer-eSCL (brief: waits for the panel)"
 rc=0
-timeout 8 $BIN --address "$IP" listen --prefer-eSCL \
+timeout -k 5 8 $BIN --address "$IP" listen --prefer-eSCL \
   >"$WORK/listen-escl.log" 2>&1 || rc=$?
 if [ "$rc" -eq 0 ] || [ "$rc" -eq 124 ]; then
   ok "listen --prefer-eSCL started and registered its target"
@@ -96,7 +99,7 @@ echo "--- adf-autoscan (brief: waits for the feeder)"
 mkdir -p "$WORK/adf"
 # exit 124 = killed by timeout while waiting for the feeder: expected.
 rc=0
-timeout 8 $BIN --address "$IP" adf-autoscan -d "$WORK/adf" \
+timeout -k 5 8 $BIN --address "$IP" adf-autoscan -d "$WORK/adf" \
   >"$WORK/adf.log" 2>&1 || rc=$?
 if [ "$rc" -eq 0 ] || [ "$rc" -eq 124 ]; then
   ok "adf-autoscan started (waiting for feeder)"
@@ -106,7 +109,7 @@ fi
 
 echo "--- json output"
 mkdir -p "$WORK/json"
-timeout 20 $BIN --address "$IP" single-scan -d "$WORK/json" \
+timeout -k 5 20 $BIN --address "$IP" single-scan -d "$WORK/json" \
   >"$WORK/json.log" 2>&1 || true
 if grep -Eq '^\{"level":' "$WORK/json.log"; then
   ok "LOG_FORMAT=json emits JSON lines"
@@ -114,9 +117,135 @@ else
   bad "LOG_FORMAT=json did not emit JSON lines"
 fi
 
+echo "--- multi-target configuration"
+CFG="$WORK/config"
+mkdir -p "$CFG" "$WORK/multi-default" "$WORK/multi-archive"
+cat >"$CFG/default.json" <<JSON
+{
+  "ip": "$IP",
+  "directory": "$WORK/multi-default",
+  "profiles": {
+    "archive": { "directory": "$WORK/multi-archive" }
+  },
+  "targets": {
+    "scan-to-pc-smoke-a": {},
+    "scan-to-pc-smoke-b": { "profile": "archive" }
+  }
+}
+JSON
+
+if NODE_CONFIG_DIR="$CFG" timeout -k 5 20 $BIN config resolve \
+  >"$WORK/resolve.json" 2>"$WORK/resolve.log"; then
+  if grep -q '"scan-to-pc-smoke-a"' "$WORK/resolve.json" &&
+    grep -q '"scan-to-pc-smoke-b"' "$WORK/resolve.json" &&
+    grep -q "$WORK/multi-archive" "$WORK/resolve.json"; then
+    ok "config resolve shows both targets and their pipelines"
+  else
+    bad "config resolve is missing a target or its profile (see $WORK/resolve.json)"
+  fi
+else
+  bad "config resolve failed (see $WORK/resolve.log)"
+fi
+
+rc=0
+NODE_CONFIG_DIR="$CFG" timeout -k 5 8 $BIN listen \
+  >"$WORK/multi-listen.log" 2>&1 || rc=$?
+if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ]; then
+  bad "listen failed with a targets block (rc=$rc, see $WORK/multi-listen.log)"
+elif grep -q "scan-to-pc-smoke-a" "$WORK/multi-listen.log" &&
+  grep -q "scan-to-pc-smoke-b" "$WORK/multi-listen.log"; then
+  ok "listen registered both targets"
+else
+  # eSCL listeners do not log the labels, and some devices cap the number of
+  # destinations. The configuration was already checked with config resolve.
+  warn "listen started; both labels were not observed in the log (destination limit? see $WORK/multi-listen.log)"
+fi
+
+if NODE_CONFIG_DIR="$CFG" timeout -k 5 60 $BIN single-scan --target "scan-to-pc-smoke-b" \
+  >"$WORK/multi-scan.log" 2>&1; then
+  COUNT="$(find "$WORK/multi-archive" -type f 2>/dev/null | wc -l)"
+  if [ "$COUNT" -ge 1 ]; then
+    ok "single-scan --target used the selected pipeline ($COUNT file(s))"
+  else
+    bad "single-scan --target wrote nothing to the profile directory"
+  fi
+else
+  bad "single-scan --target failed (see $WORK/multi-scan.log)"
+fi
+
+echo "--- listen removes its walkup destination on shutdown"
+UNREG_LABEL="e2e-unregister-$$"
+rc=0
+timeout -k 5 8 $BIN --address "$IP" listen --label "$UNREG_LABEL" \
+  >"$WORK/listen-unregister.log" 2>&1 || rc=$?
+if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ]; then
+  bad "listen failed (rc=$rc, see $WORK/listen-unregister.log)"
+else
+  # SIGTERM went through the shutdown handler: the destination must be gone.
+  sleep 1
+  DESTINATIONS="$(curl -sf "http://$IP/WalkupScanToComp/WalkupScanToCompDestinations" || true)"
+  if [ -z "$DESTINATIONS" ]; then
+    warn "no HP walkup destinations endpoint (eSCL-only device?); un-registration not checked"
+  elif printf '%s' "$DESTINATIONS" | grep -q "$UNREG_LABEL"; then
+    bad "walkup destination '$UNREG_LABEL' is still registered after listen stopped"
+  else
+    ok "walkup destination removed after listen stopped"
+  fi
+fi
+
+if NODE_CONFIG_DIR="$CFG" timeout -k 5 20 $BIN single-scan \
+  >"$WORK/multi-ambiguous.log" 2>&1; then
+  bad "single-scan without --target should have been rejected"
+else
+  if grep -q -- "--target" "$WORK/multi-ambiguous.log"; then
+    ok "ambiguous target selection rejected"
+  else
+    bad "ambiguous target selection error does not mention --target"
+  fi
+fi
+
+echo "--- multi-printer configuration"
+PCFG="$WORK/config-printers"
+mkdir -p "$PCFG" "$WORK/printer-scan"
+cat >"$PCFG/default.json" <<JSON
+{
+  "profiles": {
+    "smoke": { "directory": "$WORK/printer-scan" }
+  },
+  "printers": {
+    "smoke": {
+      "ip": "$IP",
+      "targets": {
+        "scan-to-pc-printer-smoke": { "profile": "smoke" }
+      }
+    }
+  }
+}
+JSON
+
+if NODE_CONFIG_DIR="$PCFG" timeout -k 5 20 $BIN config resolve --printer smoke \
+  >"$WORK/resolve-printers.json" 2>"$WORK/resolve-printers.log"; then
+  if grep -q '"scan-to-pc-printer-smoke"' "$WORK/resolve-printers.json"; then
+    ok "config resolve --printer shows the printer target"
+  else
+    bad "config resolve --printer is missing the printer target (see $WORK/resolve-printers.json)"
+  fi
+else
+  bad "config resolve --printer failed (see $WORK/resolve-printers.log)"
+fi
+
+rc=0
+NODE_CONFIG_DIR="$PCFG" timeout -k 5 8 $BIN listen --printer smoke \
+  >"$WORK/printers-listen.log" 2>&1 || rc=$?
+if [ "$rc" -eq 0 ] || [ "$rc" -eq 124 ]; then
+  ok "listen --printer registered the configured printer"
+else
+  bad "listen --printer failed (rc=$rc, see $WORK/printers-listen.log)"
+fi
+
 if [ "${1:-}" = "--destructive" ]; then
   echo "--- clear-registrations (destructive)"
-  if timeout 30 $BIN --address "$IP" clear-registrations \
+  if timeout -k 5 30 $BIN --address "$IP" clear-registrations \
     >"$WORK/clear.log" 2>&1; then
     ok "clear-registrations ran"
   else

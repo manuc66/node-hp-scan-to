@@ -3,6 +3,7 @@ import { expect } from "chai";
 import {
   waitForScanEvent,
   waitForScanEventFromTarget,
+  waitScanNewPageRequest,
   waitScanRequest,
 } from "../src/listening.js";
 import DeviceClient from "../src/DeviceClient.js";
@@ -131,7 +132,7 @@ describe("waitForScanEventFromTarget (graceful finalize)", () => {
     };
     const result = await waitForScanEventFromTarget(
       api,
-      scanTarget as never,
+      scanTarget,
       "etag-0",
       60,
     );
@@ -143,7 +144,7 @@ describe("waitForScanEventFromTarget (graceful finalize)", () => {
     api.getEvents = async () => ({
       etag: "e",
       eventTable: { events: [] },
-    }) as never;
+    });
     const scanTarget = {
       label: "T",
       resourceURI: "/WalkupScan/WalkupScanDestinations/T",
@@ -152,10 +153,83 @@ describe("waitForScanEventFromTarget (graceful finalize)", () => {
     };
     const result = await waitForScanEventFromTarget(
       api,
-      scanTarget as never,
+      scanTarget,
       "etag-0",
       1,
     );
     expect(result).to.be.undefined;
+  });
+});
+
+describe("waitScanNewPageRequest", () => {
+  let api: DeviceClient;
+  const originalSetTimeout = globalThis.setTimeout;
+
+  function compEvent(eventType: EventType): never {
+    return { eventType } as never;
+  }
+
+  beforeEach(() => {
+    api = new DeviceClient("127.0.0.1", false);
+    globalThis.setTimeout = ((
+      cb: (...args: unknown[]) => void,
+      _ms?: number,
+      ...args: unknown[]
+    ) => {
+      cb(...args);
+      return originalSetTimeout(() => undefined, 0);
+    }) as typeof setTimeout;
+  });
+
+  afterEach(() => {
+    globalThis.setTimeout = originalSetTimeout;
+  });
+
+  it("starts a new scan job when the printer requests another page", async () => {
+    api.getWalkupScanToCompEvent = async () =>
+      compEvent(EventType.ScanNewPageRequested);
+
+    expect(await waitScanNewPageRequest(api, "uri", 5)).to.be.true;
+  });
+
+  it("keeps waiting while the printer stays on ScanRequested", async () => {
+    let calls = 0;
+    api.getWalkupScanToCompEvent = async () => {
+      calls++;
+      return calls < 3
+        ? compEvent(EventType.ScanRequested)
+        : compEvent(EventType.ScanNewPageRequested);
+    };
+
+    expect(await waitScanNewPageRequest(api, "uri", 5)).to.be.true;
+    expect(calls).to.be.eq(3);
+  });
+
+  it("ends the session as soon as the printer reports ScanPagesComplete", async () => {
+    let calls = 0;
+    api.getWalkupScanToCompEvent = async () => {
+      calls++;
+      return compEvent(EventType.ScanPagesComplete);
+    };
+
+    expect(await waitScanNewPageRequest(api, "uri", 5)).to.be.false;
+    expect(calls).to.be.eq(1);
+  });
+
+  it("ends the session when the user action timeout is exhausted", async () => {
+    let calls = 0;
+    api.getWalkupScanToCompEvent = async () => {
+      calls++;
+      return compEvent(EventType.ScanRequested);
+    };
+
+    expect(await waitScanNewPageRequest(api, "uri", 2)).to.be.false;
+    expect(calls).to.be.eq(2);
+  });
+
+  it("ends the session on an unexpected event type", async () => {
+    api.getWalkupScanToCompEvent = async () => compEvent("Bogus" as EventType);
+
+    expect(await waitScanNewPageRequest(api, "uri", 5)).to.be.false;
   });
 });

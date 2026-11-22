@@ -45,8 +45,9 @@ Guidelines for agent contributors working on this repository.
 ## Live end-to-end testing
 
 - Main flows (single-scan, listen, adf-autoscan, clear-registrations,
-  discover, healthcheck, log formats, debug) can be smoke-tested against a
-  real printer with `scripts/live-test.sh`.
+  discover, healthcheck, log formats, debug, multi-target and multi-printer
+  configuration) can be smoke-tested against a real printer with
+  `scripts/live-test.sh`.
 - Usage: `pnpm build && SCANNER_IP=<printer-ip> pnpm e2e`
   (`--destructive` also runs `clear-registrations`).
 - Any feature that touches a main flow should extend this script so the

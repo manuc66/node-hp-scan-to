@@ -24,9 +24,23 @@ if [ -n "$NAME" ]; then
     ARGS+=("-n" "$NAME")
 fi
 
+# Select a printer/target declared in the mounted configuration file. The CLI
+# only selects what the file defines; it never describes a printer itself.
+if [ -n "$PRINTER" ]; then
+    ARGS+=("--printer" "$PRINTER")
+fi
+
+if [ -n "$TARGET" ]; then
+    ARGS+=("--target" "$TARGET")
+fi
+
+# In legacy mode no directory was configured through the file, so keep the
+# historical /scan volume default. Once a printer or target is selected, the
+# configuration owns the output directory: forcing /scan would flatten the
+# per-target directories.
 if [ -n "$DIR" ]; then
     ARGS+=("-d" "$DIR")
-else
+elif [ -z "$PRINTER" ] && [ -z "$TARGET" ]; then
     ARGS+=("-d" "/scan")
 fi
 

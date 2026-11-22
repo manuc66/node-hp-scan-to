@@ -5,10 +5,8 @@
 
 import fs from "fs";
 import path from "path";
-import type { Config } from "config";
-import z from "zod";
 import commitInfo from "./commitInfo.json" with { type: "json" };
-import { configSchema, type FileConfig } from "./type/FileConfig.js";
+import { resolveConfig } from "./config/resolve.js";
 import { setupProgram } from "./program.js";
 import logger, { getLoggerForFile } from "./logger.js";
 
@@ -24,23 +22,14 @@ if (
 
 const { default: config } = await import("config");
 
-const validateConfig = (config: Config) => {
-  const result = configSchema.safeParse(config.util.toObject());
-  if (!result.success) {
-    const errors = z.prettifyError(result.error);
-    throw new Error(`Configuration validation error: ${errors}`);
-  }
-  return result.data;
-};
-
 async function main() {
   const logger = getLoggerForFile(import.meta.url);
   logger.info(`Running with Git commit ID: ${commitInfo.commitId}`);
   logger.debug({ env: process.env["NODE_ENV"] }, "Environment detected");
 
-  const fileConfig: FileConfig = validateConfig(config);
+  const resolvedConfig = resolveConfig(config.util.toObject());
 
-  const program = setupProgram(fileConfig);
+  const program = setupProgram(resolvedConfig);
 
   await program.parseAsync(process.argv);
 }

@@ -46,8 +46,10 @@ export async function waitForScanEventFromTarget(
   afterEtag: string,
   userActionTimeout: number | null = null,
 ): Promise<IEvent | undefined> {
-  logger.info("Waiting for additional pages or scan completion...");
   const timeoutMs = resolveUserActionTimeoutMs(userActionTimeout);
+  const limit =
+    timeoutMs === null ? "no app limit" : `app limit ${timeoutMs / 1000}s`;
+  logger.info(`Waiting for additional pages or scan completion (${limit})...`);
   return (
     await waitForScanEventInternal(
       api,
@@ -218,11 +220,17 @@ export async function registerWalkupScanDestination(
   return scanTargets;
 }
 
+function elapsedSeconds(startedAt: number): string {
+  return ((Date.now() - startedAt) / 1000).toFixed(1);
+}
+
 export async function waitScanNewPageRequest(
   api: HpWalkupDevice,
   compEventURI: string,
   userActionTimeout: number | null = null,
+  since: number = Date.now(),
 ): Promise<boolean> {
+  const pollingStartedAt = Date.now();
   let startNewScanJob = false;
   let wait = true;
   const waitMax = userActionTimeout ?? 50;
@@ -240,12 +248,23 @@ export async function waitScanNewPageRequest(
       wait = false;
     } else if (eventType === EventType.ScanPagesComplete) {
       wait = false;
+      logger.info(
+        `Printer closed the flatbed session (ScanPagesComplete) ${elapsedSeconds(since)}s after the page; ` +
+          `the app limit is ${waitMax}s, so this end comes from the printer; finalizing the scan`,
+      );
     } else if (eventType === EventType.ScanRequested) {
       logger.info(`Waiting for user input (attempt ${i} of ${waitMax})`);
     } else {
       wait = false;
-      logger.warn(`Unknown eventType: ${eventTypeStr}`);
+      logger.warn(
+        `Printer reported an unexpected walkup event (${eventTypeStr}) ${elapsedSeconds(since)}s after the page; finalizing the scan`,
+      );
     }
+  }
+  if (wait) {
+    logger.warn(
+      `No additional page requested in ${elapsedSeconds(pollingStartedAt)}s (app timeout); finalizing the scan`,
+    );
   }
   return startNewScanJob;
 }

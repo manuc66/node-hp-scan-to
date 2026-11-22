@@ -1,7 +1,7 @@
 import { describe, it } from "mocha";
 import fs from "node:fs";
 import path from "node:path";
-import { setupProgram } from "../src/program.js";
+import { setupProgram } from "./helpers/program.js";
 import { Help } from "@commander-js/extra-typings";
 import { expect } from "chai";
 

@@ -1,6 +1,6 @@
 import { describe, it } from "mocha";
 import { expect } from "chai";
-import { setupProgram } from "../src/program.js";
+import { setupProgram } from "./helpers/program.js";
 import type { FileConfig } from "../src/type/FileConfig.js";
 
 function parseSubcommandOptions(

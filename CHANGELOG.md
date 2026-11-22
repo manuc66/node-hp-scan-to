@@ -8,6 +8,22 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- **Several scan destinations and printers from one configuration file**:
+  `targets` declares the labels registered on a printer, `profiles` holds the
+  scan settings and delivery integrations (shared between printers, with
+  `extends` and `null` to unset an inherited value), `defaults` holds the
+  settings common to every profile, and `printers` declares several devices.
+  The CLI only selects what the file declares (`--target <label>`,
+  `--printer <id>`), so it never becomes a second configuration language;
+  when several targets or printers are possible without a selector the run is
+  rejected with the list of choices. `config resolve` prints the effective
+  configuration with secrets redacted. Docker gains `PRINTER` and `TARGET`;
+  when either is set the entrypoint no longer forces `-d /scan`, so each
+  target keeps the `directory` from the file, and a file that declares
+  `printers` or `targets` must not also set `IP`, `NAME` or `LABEL`
+  (`TARGET` applies to the scan commands only). Existing flat configuration
+  files, the existing CLI flags and containers without `PRINTER`/`TARGET`
+  keep their current behaviour unchanged.
 - **`--reveal` opens the file manager on a finished scan**: once the scan has
   been delivered, the file still on disk is shown in the system file manager
   with the file selected (`open -R` on macOS, `explorer.exe /select,` on
@@ -123,6 +139,20 @@ All notable changes to this project are documented in this file.
   `config/local.json`, which the `config` package merges over the default and
   git now ignores, or in a directory of your own via `NODE_CONFIG_DIR`; the
   README documents both.
+- **`listen` now says why a flatbed page session ended**: when the printer
+  reports `ScanPagesComplete`, an unexpected walkup event, a next-page event
+  without its WalkupScanToComp companion, or when the printer-declared
+  `UserActionTimeout` expires, the log states which of these happened, how
+  long after the page it happened and which limit applied. All of these used
+  to end the scan silently, which made a document split over two files
+  impossible to explain from the logs.
+- **`listen` un-registers its HP walkup destination when it stops**: on
+  Ctrl-C/SIGTERM, and on any other exit, the printer no longer keeps a
+  destination that nobody is listening to. The removal is best effort (a
+  printer that refuses it, or a destination already removed, does not delay
+  the exit) and every target is registered again on the next start;
+  `clear-registrations` still removes them by hand. eSCL walkup subscriptions
+  were already removed on shutdown.
 
 ### Security
 
@@ -146,6 +176,13 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- **A flatbed scan is no longer lost when adding the next page fails**: when
+  the printer rejects the job for an extra page (503 while it is still busy)
+  or the event channel drops between pages, `listen` now keeps the pages it
+  already downloaded and saves the document instead of aborting the whole
+  scan. `listen` also exits within 5 seconds on Ctrl-C/SIGTERM even when the
+  printer does not answer the eSCL subscription removal (a second Ctrl-C exits
+  immediately), so a stopped session cannot linger and compete with a new one.
 - **Flatbed multi-page scans no longer crash when the printer drops the idle
   connection**: `waitForScanEventFromTarget` (the wait between pages on the
   platen) now finalizes the current scan instead of propagating the

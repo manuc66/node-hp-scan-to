@@ -65,6 +65,7 @@ Unlike the original HP program, `node-hp-scan-to` is cross-platform and can be r
   - [Run with Kubernetes](#run-with-kubernetes)
   - [Paperless-ngx](#paperless-ngx)
   - [Configure](#configure)
+    - [One configuration file or one per printer](#one-configuration-file-or-one-per-printer)
 - [Troubleshooting](#troubleshooting)
 - [Build Source Code](#build-source-code)
   - [Debugging](#debugging)
@@ -450,6 +451,7 @@ Webhook Options:
   --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
 
 Device Control Screen Options:
+  --target <label>                                                 Restrict the run to the configured target with this label (default: every target for listen, the only one for single-scan and adf-autoscan)
   -l, --label <label>                                              The label to display on the device (the default is the hostname)
   --add-emulated-duplex [mode]                                     Enable emulated duplex scanning, with optional assembly mode (default: document-wise) (choices: "page-wise", "document-wise", "reverse-front", "reverse-both")
   --emulated-duplex-label <label>                                  The emulated duplex label to display on the device (the default is to suffix the main label with duplex)
@@ -458,6 +460,7 @@ Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                                                Name of the device to lookup for on the network
   -D, --debug                                                      Enable debug
+  --printer <id>                                                   Select the configured printer to use (default: the only one)
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
@@ -565,6 +568,9 @@ Webhook Options:
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
   --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
 
+Device Control Screen Options:
+  --target <label>                                                 Restrict the run to the configured target with this label (default: every target for listen, the only one for single-scan and adf-autoscan)
+
 Auto-scan Options:
   --pollingInterval <pollingInterval>                              Time interval in millisecond between each lookup for content in the automatic document feeder
   --start-scan-delay <startScanDelay>                              Once document are detected to be in the adf, this specify the wait delay in millisecond before triggering the scan
@@ -573,6 +579,7 @@ Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                                                Name of the device to lookup for on the network
   -D, --debug                                                      Enable debug
+  --printer <id>                                                   Select the configured printer to use (default: the only one)
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
@@ -603,6 +610,7 @@ Global Options:
   -a, --address <ip>                       IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                        Name of the device to lookup for on the network
   -D, --debug                              Enable debug
+  --printer <id>                           Select the configured printer to use (default: the only one)
   --health-check                           Start an http health check endpoint
   --health-check-port <health-check-port>  Define the port for the HTTP health check endpoint
 ```
@@ -689,10 +697,14 @@ Webhook Options:
   --webhook-password <webhook_password>                            Basic auth password for webhook-username
   --webhook-payload <webhook_payload>                              What the event carries: full (scanner IP, printer destination label, local file paths) or minimal (no identifying field, never a filesystem path) (choices: "full", "minimal")
 
+Device Control Screen Options:
+  --target <label>                                                 Restrict the run to the configured target with this label (default: every target for listen, the only one for single-scan and adf-autoscan)
+
 Global Options:
   -a, --address <ip>                                               IP address of the device, when specified, the ip will be used instead of the name
   -n, --name <name>                                                Name of the device to lookup for on the network
   -D, --debug                                                      Enable debug
+  --printer <id>                                                   Select the configured printer to use (default: the only one)
   --health-check                                                   Start an http health check endpoint
   --health-check-port <health-check-port>                          Define the port for the HTTP health check endpoint
 ```
@@ -955,6 +967,8 @@ List of supported environment variables and their meaning, or correspondence wit
 | `PAPERLESS_TOKEN`             | Paperless-ngx API token (either this or `PAPERLESS_TOKEN_FILE` is required; file takes precedence)         | Example: `xxxxxxxxxxxx...`                                                    |
 | `PAPERLESS_TOKEN_FILE`        | File containing paperless-ngx API token (either this or `PAPERLESS_TOKEN` is required; takes precedence) | Example: `./paperless_token.secret` (preferred for Docker Compose secrets)    |
 | `PATTERN`                     | Pattern to use                                                                                                | `-p` / `--pattern`                                                            |
+| `PRINTER`                     | Select a printer declared in the mounted configuration file (one container per printer for multi-printer files). When set, the entrypoint no longer forces `-d /scan`. | `--printer` |
+| `TARGET`                      | Restrict the run to one target (label) declared in the mounted configuration file. When set, the entrypoint no longer forces `-d /scan`. | `--target` |
 | `PGID`                        | ID of the group that will run the program                                                                     |                                                                               |
 | `PUID`                        | ID of the user that will run the program                                                                      |                                                                               |
 | `RESOLUTION`                  | Resolution setting                                                                                            | `-r` / `--resolution`                                                         |
@@ -986,6 +1000,8 @@ List of supported environment variables and their meaning, or correspondence wit
 - The name shown on the printer’s display is the hostname of the Docker container, which defaults to a random value. You can override it by setting the `hostname` or using the `LABEL` environment variable.
 
 - To enable debug logs set the environment variable `CMDLINE` to `-D`
+
+- `PRINTER` and `TARGET` select entries from a configuration file mounted in the container (for example `-v ./config:/app/config:ro`, or `NODE_CONFIG_DIR` pointing at another directory). With either variable set, the entrypoint no longer adds the default `-d /scan`, so each target uses the `directory` from the file; an explicit `DIR` still overrides it for the whole run. Without these variables the container behaves exactly as before and writes to `/scan`. The environment variables cannot describe several printers: run one container per printer, each with its own `PRINTER`. When the mounted file declares `printers` or `targets`, remove `IP`, `NAME` and `LABEL` from the container environment: the address and the labels come from the file, and keeping them is rejected at startup instead of silently overriding the file. `TARGET` is only accepted by `listen`, `single-scan` and `adf-autoscan`.
 
 #### Example for Docker
 
@@ -1136,6 +1152,94 @@ Keep your own settings out of the tracked file: `config/local.json` is read on t
 Precedence, highest first: **CLI flag → config file → built-in default**. (The Docker image's environment variables are translated into CLI flags by its entrypoint, so from the app's point of view they are flags; `CMDLINE` is appended last and therefore wins over them.)
 
 Keys and types are validated at startup against [`src/type/FileConfig.ts`](src/type/FileConfig.ts). `paper_size` and `paper_dim` are mutually exclusive, as are `width`/`height` and `paper_size`/`paper_dim`.
+
+**Several destinations and printers.** The flat layout above still describes one printer with one pipeline. To register several labels, share a pipeline, or serve several printers from one file, add `targets`, `profiles`, `defaults` and `printers`:
+
+```json
+{
+  "defaults": { "resolution": 300, "pattern": "scan_yyyy-mm-dd_HHMMSS" },
+
+  "profiles": {
+    "paperless": {
+      "extends": "default",
+      "mode": "Gray",
+      "paperless_post_document_url": "https://paperless.example.tld/api/documents/post_document/",
+      "paperless_token_file": "/run/secrets/paperless_token"
+    },
+    "archive": {
+      "extends": "default",
+      "directory": "/mnt/archive",
+      "keep_files": true
+    }
+  },
+
+  "printers": {
+    "officejet": {
+      "ip": "192.168.0.5",
+      "targets": {
+        "Paperless": { "profile": "paperless" },
+        "Archive locale": { "profile": "archive" },
+        "Paperless duplex": {
+          "profile": "paperless",
+          "duplex": "emulated",
+          "assembly_mode": "document-wise"
+        }
+      }
+    }
+  }
+}
+```
+
+- The targets of a printer are the labels shown on its screen; each one selects a `profile`, which holds the scan settings, output directory, delivery integrations, retention and post-commands. `duplex: "emulated"` (with an optional `assembly_mode`) registers the emulated-duplex label, replacing `add_emulated_duplex`.
+- `defaults` applies to every profile. A profile can inherit another with `extends` (here `default` is the implicit profile built from the top-level scan keys) and unset an inherited value with `null`, which is how a local-only pipeline can extend a Paperless one.
+- `printers` replaces the flat device keys: put `ip`/`name`, `prefer_escl` and the polling intervals in each printer entry. A top-level `targets` block declares the labels of the single implicit printer.
+- Select what a run uses: `--printer <id>` on any command, `--target <label>` on `listen`, `single-scan` and `adf-autoscan`. With several printers, run one process per printer (the Docker image does that with the `PRINTER` environment variable). A missing selector is only accepted when the choice is unambiguous; otherwise the error lists the configured ids or labels.
+- `config resolve` prints the effective configuration, after `defaults`, `extends` and `null`, with secret values redacted. Use it to check what a target really inherited, or when reporting an issue:
+
+```sh
+npx node-hp-scan-to config resolve
+npx node-hp-scan-to config resolve --printer officejet --target "Archive locale"
+```
+
+#### One configuration file or one per printer
+
+A single file declaring `printers`, `profiles` and `defaults` is the recommended layout when one person manages the printers and they share delivery targets or credentials: the Paperless/S3/webhook settings are written once, and `--printer <id>` selects the instance to run. The file is shared; the processes are not — still one process per printer.
+
+Keep one flat file per printer (the historical layout, without `printers`) when:
+
+- different people administer the printers, or their secrets must not share the same file permissions;
+- a change to one printer must never be able to break another one at restart;
+- the shared file becomes hard to read, or a printer needs instance-specific overrides that do not belong in a shared profile.
+
+Both layouts run with one process per printer. Validate a change with `config resolve` before restarting (and in CI), then restart one instance at a time.
+
+Shared file, one systemd instance per printer:
+
+```ini
+# /etc/systemd/system/node-hp-scan-to@.service
+[Service]
+Environment=NODE_CONFIG_DIR=/etc/node-hp-scan-to
+ExecStart=/usr/bin/node-hp-scan-to listen --printer %i
+Restart=always
+RestartSec=5
+```
+
+```sh
+systemctl enable --now node-hp-scan-to@officejet node-hp-scan-to@deskjet
+```
+
+Separate file per printer, each instance with its own `NODE_CONFIG_DIR`:
+
+```ini
+# /etc/systemd/system/node-hp-scan-to@.service
+[Service]
+Environment=NODE_CONFIG_DIR=/etc/node-hp-scan-to/%i
+ExecStart=/usr/bin/node-hp-scan-to listen
+Restart=always
+RestartSec=5
+```
+
+Here `/etc/node-hp-scan-to/officejet/default.json` is a flat configuration file for that printer (no `printers` block), and `local.json` in the same directory stays private to that instance. With a shared file, per-printer overrides belong in the printer entry or a profile, because `local.json` applies to every instance. In Docker Compose, use the same split: one service per printer, either mounting the shared configuration and setting `PRINTER`, or mounting a per-service directory.
 
 ## Troubleshooting
 

@@ -30,7 +30,13 @@ class FakeApi {
   initialEvent: IEvent = scanEvent();
   nextEvent: IEvent = scanEvent();
   compEventType: EventType = EventType.ScanRequested;
+  /** Type returned from the second comp-event read onwards; null = same. */
+  nextCompEventType: EventType | null = null;
   readonly callOrder: string[] = [];
+  readonly removedDestinations: string[] = [];
+  failRemovalFor: string | null = null;
+  private registrations = 0;
+  private compEventReads = 0;
 
   async getWalkupScanDestinations(): Promise<{ destinations: never[] }> {
     return { destinations: [] };
@@ -41,11 +47,21 @@ class FakeApi {
   }
 
   async registerWalkupScanDestination(): Promise<string> {
-    return "/WalkupScan/Destinations/1";
+    this.registrations++;
+    return `/WalkupScan/Destinations/${this.registrations}`;
   }
 
   async registerWalkupScanToCompDestination(): Promise<string> {
-    return "/WalkupScan/Destinations/1";
+    this.registrations++;
+    return `/WalkupScan/Destinations/${this.registrations}`;
+  }
+
+  async removeDestinationByUri(resourceURI: string): Promise<boolean> {
+    this.removedDestinations.push(resourceURI);
+    if (this.failRemovalFor === resourceURI) {
+      throw new Error("remove failed");
+    }
+    return true;
   }
 
   async getEvents(afterEtag = ""): Promise<EtagEventTable> {
@@ -67,7 +83,12 @@ class FakeApi {
 
   async getWalkupScanToCompEvent(): Promise<{ eventType: EventType }> {
     this.callOrder.push("getWalkupScanToCompEvent");
-    return { eventType: this.compEventType };
+    this.compEventReads++;
+    const eventType =
+      this.compEventReads > 1 && this.nextCompEventType !== null
+        ? this.nextCompEventType
+        : this.compEventType;
+    return { eventType };
   }
 }
 
@@ -173,12 +194,66 @@ describe("HpWalkupScanListener", () => {
 
   it("ends the session when the next event completes the pages", async () => {
     const api = new FakeApi();
-    api.compEventType = EventType.ScanPagesComplete;
+    // The scan starts normally, then the printer closes the page session:
+    // the listener must stop instead of returning a new request.
+    api.compEventType = EventType.ScanRequested;
+    api.nextCompEventType = EventType.ScanPagesComplete;
     const listener = makeListener(api, false, 1);
 
-    await listener.waitForScan();
+    const request = await listener.waitForScan();
     const next = await listener.waitForNextPage();
 
+    expect(request).to.not.be.null;
     expect(next).to.be.null;
+    expect(
+      api.callOrder.filter((c) => c === "getWalkupScanToCompEvent"),
+    ).to.have.lengthOf(2);
+  });
+
+  it("removes the registered destination on dispose so the printer stops listing the host", async () => {
+    const api = new FakeApi();
+    const listener = makeListener(api);
+
+    await listener.waitForScan();
+    await listener.dispose();
+
+    expect(api.removedDestinations).to.deep.equal([
+      "/WalkupScan/Destinations/1",
+    ]);
+
+    // Idempotent: a second dispose (finally + signal) removes nothing twice.
+    await listener.dispose();
+    expect(api.removedDestinations).to.have.lengthOf(1);
+  });
+
+  it("does nothing on dispose when no destination was registered", async () => {
+    const api = new FakeApi();
+    const listener = makeListener(api);
+
+    await listener.dispose();
+
+    expect(api.removedDestinations).to.deep.equal([]);
+  });
+
+  it("removes the other destinations when one removal fails", async () => {
+    const api = new FakeApi();
+    api.failRemovalFor = "/WalkupScan/Destinations/2";
+    const listener = new HpWalkupScanListener(
+      api,
+      [
+        { label: "host1", isDuplexSingleSide: false },
+        { label: "host2", isDuplexSingleSide: false },
+      ],
+      false,
+      null,
+    );
+
+    await listener.waitForScan();
+    await listener.dispose();
+
+    expect(api.removedDestinations).to.deep.equal([
+      "/WalkupScan/Destinations/1",
+      "/WalkupScan/Destinations/2",
+    ]);
   });
 });

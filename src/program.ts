@@ -3,7 +3,6 @@
 
 "use strict";
 
-import os from "node:os";
 // default-import + destructure: this dependency is CommonJS and some loaders
 // (tsx) do not expose its named exports to ESM consumers
 import bonjourService from "bonjour-service";
@@ -22,8 +21,7 @@ import type {
 import { startHealthCheckServer } from "./healthcheck.js";
 import fs from "node:fs";
 import { Command, Option } from "@commander-js/extra-typings";
-import type { RegistrationConfig } from "./type/scanTargetDefinitions.js";
-import { listenCmd } from "./commands/listenCmd.js";
+import { listenCmd, type ListenTarget } from "./commands/listenCmd.js";
 import { adfAutoscanCmd } from "./commands/adfAutoscanCmd.js";
 import { singleScanCmd } from "./commands/singleScanCmd.js";
 import { clearRegistrationsCmd } from "./commands/clearRegistrationsCmd.js";
@@ -35,6 +33,14 @@ import type {
 } from "./type/scanConfigs.js";
 import { discoverCmd } from "./commands/discoverCmd.js";
 import type { FileConfig } from "./type/FileConfig.js";
+import type { ResolvedProgramConfig } from "./config/types.js";
+import { buildResolveView, formatResolveView } from "./config/inspect.js";
+import {
+  buildListenTargets,
+  selectListenTargets,
+  selectPrinter,
+  selectTarget,
+} from "./config/select.js";
 import { HelpGroupsHeadings } from "./type/helpGroupsHeadings.js";
 import type { Server as NetServer } from "node:net";
 import { ScanMode } from "./type/scanMode.js";
@@ -388,6 +394,12 @@ function setupScanParameters(commandName: string) {
       )
         .choices(["full", "minimal"])
         .helpGroup(HelpGroupsHeadings.webhook),
+    )
+    .addOption(
+      new Option(
+        "--target <label>",
+        "Restrict the run to the configured target with this label (default: every target for listen, the only one for single-scan and adf-autoscan)",
+      ).helpGroup(HelpGroupsHeadings.deviceControlScreen),
     );
 }
 
@@ -1010,9 +1022,28 @@ function getDeviceUpPollingInterval(
   );
 }
 
+/**
+ * `--address` / `--name` describe the device of a flat configuration file.
+ * Once the file declares printers, the addressing belongs to each entry:
+ * accepting both would allow two sources of truth to target different devices.
+ */
+function assertFlatAddressingAllowed(
+  config: ResolvedProgramConfig,
+  options: { address?: string | undefined; name?: string | undefined },
+): void {
+  if (
+    config.explicitPrinters &&
+    (options.address !== undefined || options.name !== undefined)
+  ) {
+    throw new Error(
+      "--address and --name cannot be used with a printers block: set printers.<id>.ip or .name and select the printer with --printer",
+    );
+  }
+}
+
 export type ListenOptions = ReturnType<ReturnType<typeof createListenCliCmd>["opts"]>;
 
-function createListenCliCmd(configFile: FileConfig) {
+function createListenCliCmd(resolvedConfig: ResolvedProgramConfig) {
   return setupScanParameters("listen")
     .description("Listen the device for new scan job to save to this target")
     .addOption(
@@ -1037,67 +1068,41 @@ function createListenCliCmd(configFile: FileConfig) {
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
-      const ip = await getDeviceIp(options, configFile);
-      const isDebug = getIsDebug(options, configFile);
+      assertFlatAddressingAllowed(resolvedConfig, options);
+      const printer = selectPrinter(resolvedConfig, options.printer);
+      const fileConfig = printer.targets[0].config;
+      const ip = await getDeviceIp(options, fileConfig);
+      const isDebug = getIsDebug(options, fileConfig);
       const api = new DeviceClient(ip, isDebug);
 
-      const registrationConfigs: RegistrationConfig[] = [];
-
-      const registrationConfig: RegistrationConfig = {
-        label: getConfiguredValue(
-          options.label,
-          configFile.label,
-          os.hostname(),
-        ),
-        isDuplexSingleSide: false,
-      };
-      registrationConfigs.push(registrationConfig);
-
-      if (
-        getConfiguredValue(
-          options.addEmulatedDuplex === undefined ? undefined : true,
-          configFile.add_emulated_duplex,
-          false,
-        )
-      ) {
-        registrationConfigs.push({
-          label: getConfiguredValue(
-            options.emulatedDuplexLabel,
-            configFile.emulated_duplex_label,
-            `${registrationConfig.label} duplex`,
-          ),
-          isDuplexSingleSide: true,
-          duplexAssemblyMode: getConfiguredValue(
-            options.addEmulatedDuplex === true
-              ? DuplexAssemblyMode.DOCUMENT_WISE
-              : options.addEmulatedDuplex,
-            configFile.emulated_duplex_assembly_mode,
-            DuplexAssemblyMode.DOCUMENT_WISE,
-          ),
-        });
-      }
+      // Each label keeps its own pipeline; the CLI scan flag overrides apply to
+      // every selected target for this run.
+      const listenTargets: ListenTarget[] = selectListenTargets(
+        buildListenTargets(printer, {
+          label: options.label,
+          addEmulatedDuplex: options.addEmulatedDuplex,
+          emulatedDuplexLabel: options.emulatedDuplexLabel,
+        }),
+        options.target,
+      ).map((target) => ({
+        registration: target.registration,
+        scanConfig: getScanConfiguration(options, target.config),
+      }));
 
       const deviceUpPollingInterval = getDeviceUpPollingInterval(
         options,
-        configFile,
+        fileConfig,
       );
 
       let healthCheckSrv: NetServer | null = null;
-      const healthCheckSetting = getHealthCheckSetting(options, configFile);
+      const healthCheckSetting = getHealthCheckSetting(options, fileConfig);
       if (healthCheckSetting.isHealthCheckEnabled) {
         healthCheckSrv = startHealthCheckServer(
           healthCheckSetting.healthCheckPort,
         );
       }
 
-      const scanConfig = getScanConfiguration(options, configFile);
-
-      await listenCmd(
-        api,
-        registrationConfigs,
-        scanConfig,
-        deviceUpPollingInterval,
-      );
+      await listenCmd(api, listenTargets, deviceUpPollingInterval);
 
       healthCheckSrv?.close();
     });
@@ -1107,7 +1112,7 @@ export type AdfAutoscanOptions = ReturnType<
   ReturnType<typeof createAdfAutoscanCliCmd>["opts"]
 >;
 
-function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
+function createAdfAutoscanCliCmd(resolvedConfig: ResolvedProgramConfig) {
   return setupScanParameters("adf-autoscan")
     .description(
       "Automatically trigger a new scan job to this target once paper is detected in the automatic document feeder (adf)",
@@ -1138,6 +1143,9 @@ function createAdfAutoscanCliCmd(fileConfig: FileConfig) {
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
+      assertFlatAddressingAllowed(resolvedConfig, options);
+      const printer = selectPrinter(resolvedConfig, options.printer);
+      const fileConfig = selectTarget(printer, options.target).config;
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
@@ -1194,7 +1202,7 @@ export type SingleScanOptions = ReturnType<
   ReturnType<typeof createSingleScanCliCmd>["opts"]
 >;
 
-function createSingleScanCliCmd(fileConfig: FileConfig) {
+function createSingleScanCliCmd(resolvedConfig: ResolvedProgramConfig) {
   return setupScanParameters("single-scan")
     .description("Trigger a new scan job")
     .addOption(
@@ -1211,6 +1219,9 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
     )
     .action(async (_, cmd) => {
       const options = cmd.optsWithGlobals();
+      assertFlatAddressingAllowed(resolvedConfig, options);
+      const printer = selectPrinter(resolvedConfig, options.printer);
+      const fileConfig = selectTarget(printer, options.target).config;
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
@@ -1251,11 +1262,16 @@ function createSingleScanCliCmd(fileConfig: FileConfig) {
     });
 }
 
-function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
+function createClearRegistrationsCliCmd(resolvedConfig: ResolvedProgramConfig) {
   return new Command<[], ProgramOption>("clear-registrations")
     .description("Clear the list or registered target on the device")
     .action(async (_, cmd) => {
       const options: ProgramOption = cmd.optsWithGlobals();
+      assertFlatAddressingAllowed(resolvedConfig, options);
+      const printer = selectPrinter(resolvedConfig, options.printer);
+      // Clearing registrations is device-wide; any target's config carries the
+      // same addressing and polling settings.
+      const fileConfig = printer.targets[0].config;
 
       const ip = await getDeviceIp(options, fileConfig);
       const isDebug = getIsDebug(options, fileConfig);
@@ -1273,6 +1289,33 @@ function createClearRegistrationsCliCmd(fileConfig: FileConfig) {
 
       healthCheckSrv?.close();
     });
+}
+
+function createConfigCliCmd(resolvedConfig: ResolvedProgramConfig) {
+  return new Command("config")
+    .description("Inspect the resolved configuration")
+    .addCommand(
+      new Command("resolve")
+        .description(
+          "Print the effective configuration of each printer and target (secrets redacted)",
+        )
+        .addOption(
+          new Option("--target <label>", "Only show the target with this label"),
+        )
+        .action((options, cmd) => {
+          // extra-typings does not model the root command's options on a
+          // nested subcommand, although optsWithGlobals() collects them.
+          const all = cmd.optsWithGlobals() as {
+            target?: string;
+            printer?: string;
+          };
+          const view = buildResolveView(resolvedConfig, {
+            ...(all.printer !== undefined && { printer: all.printer }),
+            ...(options.target !== undefined && { target: options.target }),
+          });
+          process.stdout.write(`${formatResolveView(view)}\n`);
+        }),
+    );
 }
 
 function createDiscoverCliCmd() {
@@ -1324,6 +1367,12 @@ function createProgram() {
     .option("-D, --debug", "Enable debug")
     .addOption(
       new Option(
+        "--printer <id>",
+        "Select the configured printer to use (default: the only one)",
+      ).helpGroup(HelpGroupsHeadings.network),
+    )
+    .addOption(
+      new Option(
         "--health-check",
         "Start an http health check endpoint",
       ).helpGroup(HelpGroupsHeadings.healthCheck),
@@ -1338,35 +1387,38 @@ function createProgram() {
 
 type ProgramOption = ReturnType<ReturnType<typeof createProgram>["opts"]>;
 
-export function setupProgram(fileConfig: FileConfig) {
+export function setupProgram(resolvedConfig: ResolvedProgramConfig) {
   const program = createProgram();
 
   program.hook("preAction", (thisCommand) => {
     const isDebug = getConfiguredValue(
       thisCommand.opts().debug,
-      fileConfig.debug,
+      resolvedConfig.printers[0].targets[0].config.debug,
       false,
     );
     setDebugLevel(isDebug);
   });
 
-  const cmdListen = createListenCliCmd(fileConfig);
+  const cmdListen = createListenCliCmd(resolvedConfig);
   cmdListen.optsWithGlobals();
   program.addCommand(cmdListen, { isDefault: true });
 
-  const cmdAdfAutoscan = createAdfAutoscanCliCmd(fileConfig);
+  const cmdAdfAutoscan = createAdfAutoscanCliCmd(resolvedConfig);
   cmdAdfAutoscan.optsWithGlobals();
   program.addCommand(cmdAdfAutoscan);
 
-  const cmdSingleScan = createSingleScanCliCmd(fileConfig);
+  const cmdSingleScan = createSingleScanCliCmd(resolvedConfig);
   cmdSingleScan.optsWithGlobals();
   program.addCommand(cmdSingleScan);
 
-  const cmdClearRegistrations = createClearRegistrationsCliCmd(fileConfig);
+  const cmdClearRegistrations = createClearRegistrationsCliCmd(resolvedConfig);
   cmdClearRegistrations.optsWithGlobals();
   program.addCommand(cmdClearRegistrations);
 
   const cmdDiscover = createDiscoverCliCmd();
   program.addCommand(cmdDiscover);
+
+  const cmdConfig = createConfigCliCmd(resolvedConfig);
+  program.addCommand(cmdConfig);
   return program;
 }

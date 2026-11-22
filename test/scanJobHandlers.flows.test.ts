@@ -7,7 +7,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import DeviceClient from "../src/DeviceClient.js";
-import { executeScanJob } from "../src/scanJobHandlers.js";
+import { executeScanJob, executeScanJobs } from "../src/scanJobHandlers.js";
+import type { ScanListener } from "../src/scanListeners/ScanListener.js";
 import { HpScanJobHandler } from "../src/scanJobs/HpScanJobHandler.js";
 import { JobState, PageState } from "../src/hpModels/Job.js";
 import type Job from "../src/hpModels/Job.js";
@@ -476,6 +477,153 @@ describe("scanJobHandlers flows", () => {
 
       expect(jobState).to.equal(JobState.Completed);
       expect(scanJobContent.elements).to.have.lengthOf(1);
+    });
+
+    describe("platen multi-page continuation", () => {
+      function multiPageCapabilities(submit: () => Promise<string>) {
+        return deviceCapabilities({
+          isEscl: true,
+          supportsMultiItemScanFromPlaten: true,
+          submitScanJob: submit,
+          userActionTimeout: 1,
+        });
+      }
+
+      async function scanOneCompletedPage(
+        nextPage: () => Promise<unknown>,
+        submit: () => Promise<string>,
+      ): Promise<ScanContent> {
+        const jpegBody = await fsPromises.readFile(
+          path.resolve(__dirname, "./asset/adf_bytes_scan.jpg"),
+        );
+        mockEsclPage(jpegBody);
+        nock("http://127.0.0.1")
+          .get("/eSCL/ScanJobs/1/NextDocument")
+          .reply(404);
+        nock("http://127.0.0.1")
+          .get("/eSCL/ScannerStatus")
+          .reply(200, await readAsset("eSCL_ScannerStatus_scanning.xml"))
+          .get("/eSCL/ScannerStatus")
+          .reply(200, await readAsset("eSCL_ScannerStatus_completed.xml"));
+
+        const api = new DeviceClient("127.0.0.1", false);
+        const scanJobContent: ScanContent = { elements: [] };
+        const scanListener = {
+          waitForNextPage: nextPage,
+        } as unknown as ScanListener;
+
+        await executeScanJobs(
+          api,
+          jpegSettings(),
+          InputSource.Platen,
+          tempDir,
+          tempDir,
+          0,
+          scanJobContent,
+          multiPageCapabilities(submit),
+          scanListener,
+          "scan",
+          PageCountingStrategy.Normal,
+        );
+
+        return scanJobContent;
+      }
+
+      it("keeps the pages already scanned when the next page job is rejected", async () => {
+        let submits = 0;
+        const scanJobContent = await scanOneCompletedPage(
+          async () => ({ label: "host" }),
+          async () => {
+            submits++;
+            if (submits > 1) {
+              throw new Error("Request failed with status code 503");
+            }
+            return "http://127.0.0.1/eSCL/ScanJobs/1";
+          },
+        );
+
+        expect(submits).to.equal(2);
+        expect(scanJobContent.elements).to.have.lengthOf(1);
+      });
+
+      it("keeps the pages already scanned when waiting for the next page fails", async () => {
+        let waits = 0;
+        const scanJobContent = await scanOneCompletedPage(
+          async () => {
+            waits++;
+            throw new Error("Connection lost while waiting for scan event");
+          },
+          async () => "http://127.0.0.1/eSCL/ScanJobs/1",
+        );
+
+        expect(waits).to.equal(1);
+        expect(scanJobContent.elements).to.have.lengthOf(1);
+      });
+
+      it("keeps the pages already scanned when a following page job is canceled", async () => {
+        let submits = 0;
+        const scanJobContent = await scanOneCompletedPage(
+          async () => ({ label: "host" }),
+          async () => {
+            submits++;
+            if (submits === 2) {
+              // The printer no longer lists job 2 in its scanner status: the
+              // eSCL handler reports the job as canceled instead of completing.
+              nock("http://127.0.0.1")
+                .get("/eSCL/ScannerStatus")
+                .reply(200, await readAsset("eSCL_ScannerStatus_scanning.xml"));
+            }
+            return `http://127.0.0.1/eSCL/ScanJobs/${submits}`;
+          },
+        );
+
+        expect(submits).to.equal(2);
+        expect(scanJobContent.elements).to.have.lengthOf(1);
+      }).timeout(10_000);
+
+      it("appends every page of a multi-page platen scan to the same document", async () => {
+        const jpegBody = await fsPromises.readFile(
+          path.resolve(__dirname, "./asset/adf_bytes_scan.jpg"),
+        );
+        const scanImageInfo = await readAsset("eSCL_ScanImageInfo.xml");
+        let submits = 0;
+        let waits = 0;
+        const scanJobContent = await scanOneCompletedPage(
+          async () => {
+            waits++;
+            return waits === 1 ? { label: "host" } : null;
+          },
+          async () => {
+            submits++;
+            if (submits === 2) {
+              nock("http://127.0.0.1")
+                .get("/eSCL/ScannerStatus")
+                .reply(
+                  200,
+                  await readAsset("eSCL_ScannerStatus_processing.xml"),
+                )
+                .get("/eSCL/ScannerStatus")
+                .reply(
+                  200,
+                  await readAsset("eSCL_ScannerStatus_processing.xml"),
+                );
+              nock("http://127.0.0.1")
+                .get("/eSCL/ScanJobs/2/NextDocument")
+                .reply(200, jpegBody, { "Content-Type": "image/jpeg" })
+                .get("/eSCL/ScanJobs/2/NextDocument")
+                .reply(404);
+              nock("http://127.0.0.1")
+                .get("/eSCL/ScanJobs/2/ScanImageInfo")
+                .reply(200, scanImageInfo);
+            }
+            return `http://127.0.0.1/eSCL/ScanJobs/${submits}`;
+          },
+        );
+
+        expect(submits).to.equal(2);
+        expect(waits).to.equal(2);
+        expect(scanJobContent.elements).to.have.lengthOf(2);
+      }).timeout(15_000);
     });
   });
 

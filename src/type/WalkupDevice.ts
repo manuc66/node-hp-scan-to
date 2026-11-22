@@ -38,6 +38,7 @@ export interface HpWalkupDevice {
   registerWalkupScanToCompDestination(
     destination: Destination,
   ): Promise<string>;
+  removeDestinationByUri(resourceURI: string): Promise<boolean>;
 }
 
 /** Subset of DeviceClient used by the eSCL walkup subscription extension. */
