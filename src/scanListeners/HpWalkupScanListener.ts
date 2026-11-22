@@ -26,6 +26,8 @@ export default class HpWalkupScanListener implements ScanListener {
   /** Target and event of the session being scanned; owned by this listener. */
   private currentRequest: ScanRequest | null = null;
   private currentEvent: IEvent | null = null;
+  /** Destinations registered on the printer, removed again on dispose. */
+  private registeredTargets: ScanTarget[] = [];
 
   constructor(
     private readonly api: HpWalkupDevice,
@@ -43,6 +45,7 @@ export default class HpWalkupScanListener implements ScanListener {
       this.registrationConfigs,
       this.isScanToComp,
     );
+    this.registeredTargets = scanTargets;
 
     let request: ScanRequest | null = null;
     while (request === null) {
@@ -132,5 +135,28 @@ export default class HpWalkupScanListener implements ScanListener {
 
     this.currentEvent = nextEvent;
     return request;
+  }
+
+  /**
+   * Remove the destinations this listener registered, so the printer stops
+   * listing a host that no longer listens. Best effort: a destination that
+   * cannot be removed must not prevent the others from being removed, nor
+   * the shutdown from completing.
+   */
+  async dispose(): Promise<void> {
+    const targets = this.registeredTargets;
+    this.registeredTargets = [];
+    for (const target of targets) {
+      try {
+        await this.api.removeDestinationByUri(target.resourceURI);
+        logger.info(
+          `Removed the walkup destination: ${target.label} (${target.resourceURI})`,
+        );
+      } catch (error) {
+        logger.warn(
+          `Could not remove the walkup destination ${target.label}: ${String(error)}`,
+        );
+      }
+    }
   }
 }

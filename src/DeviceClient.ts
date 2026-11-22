@@ -610,9 +610,15 @@ export default class DeviceClient {
   async removeDestination(
     walkupScanDestination: WalkupScanDestination | WalkupScanToCompDestination,
   ): Promise<boolean> {
-    const path = PathHelper.getPathFromHttpLocation(
-      walkupScanDestination.resourceURI,
-    );
+    return await this.removeDestinationByUri(walkupScanDestination.resourceURI);
+  }
+
+  /**
+   * Remove a walkup destination by its resource URI. `listen` uses it on
+   * shutdown so the printer stops advertising a host that no longer listens.
+   */
+  async removeDestinationByUri(resourceURI: string): Promise<boolean> {
+    const path = PathHelper.getPathFromHttpLocation(resourceURI);
 
     const response = await this.callAxios({
       baseURL: `http://${this.deviceIP}`,
@@ -972,6 +978,9 @@ export default class DeviceClient {
       url: subscriptionURI,
       method: "DELETE",
       responseType: "text",
+      // Cancelling the subscription is a shutdown path: it must not hang
+      // behind a long-poll or an unresponsive device.
+      timeout: 5_000,
     });
 
     if (response.status !== 200 && response.status !== 204) {

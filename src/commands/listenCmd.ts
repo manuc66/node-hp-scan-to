@@ -30,6 +30,7 @@ import { DuplexAssemblyMode } from "../type/DuplexAssemblyMode.js";
 import { getLoggerForFile } from "../logger.js";
 import { CertificatePinError } from "../PrinterHttpsAgent.js";
 import { AxiosError } from "axios";
+import { installListenerShutdownHandler } from "./shutdown.js";
 
 const logger = getLoggerForFile(import.meta.url);
 
@@ -142,16 +143,9 @@ export async function listenCmd(
   let frontOfDoubleSidedScanContext: FrontOfDoubleSidedScanContext | null =
     null;
 
-  let shuttingDown = false;
-  const shutdown = (): void => {
-    if (shuttingDown) {
-      return;
-    }
-    shuttingDown = true;
-    void scanListener.dispose?.().finally(() => process.exit(0));
-  };
-  process.once("SIGINT", shutdown);
-  process.once("SIGTERM", shutdown);
+  // A device that stops answering must not keep the process alive after
+  // Ctrl-C / SIGTERM: the handler always exits, within a bounded delay.
+  const removeShutdownHandler = installListenerShutdownHandler(scanListener);
 
   try {
     while (keepActive) {
@@ -232,8 +226,7 @@ export async function listenCmd(
       throw new ListenCircuitBreakerError();
     }
   } finally {
-    process.off("SIGINT", shutdown);
-    process.off("SIGTERM", shutdown);
+    removeShutdownHandler();
     await scanListener.dispose?.();
   }
 }

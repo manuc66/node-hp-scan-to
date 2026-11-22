@@ -103,23 +103,34 @@ export async function executeScanJobs(
     return;
   }
 
-  let nextPage = await scanListener.waitForNextPage();
-  while (nextPage !== null) {
-    jobState = await executeScanJob(
-      api,
-      scanJobSettings,
-      inputSource,
-      folder,
-      tempFolder,
-      scanCount,
-      scanJobContent,
-      filePattern,
-      pageCountingStrategy,
-      deviceCapabilities,
-    );
-    if (jobState !== JobState.Completed) {
-      return;
+  // Pages already downloaded live in scanJobContent. A failure while adding
+  // another page (the printer answers 503 while it is still busy, or the
+  // event channel drops) must not throw them away: keep them and let the
+  // caller assemble the document with what was scanned.
+  try {
+    let nextPage = await scanListener.waitForNextPage();
+    while (nextPage !== null) {
+      jobState = await executeScanJob(
+        api,
+        scanJobSettings,
+        inputSource,
+        folder,
+        tempFolder,
+        scanCount,
+        scanJobContent,
+        filePattern,
+        pageCountingStrategy,
+        deviceCapabilities,
+      );
+      if (jobState !== JobState.Completed) {
+        return;
+      }
+      nextPage = await scanListener.waitForNextPage();
     }
-    nextPage = await scanListener.waitForNextPage();
+  } catch (error) {
+    logger.warn(
+      { err: error },
+      `Could not add another page; keeping the ${scanJobContent.elements.length} page(s) already scanned.`,
+    );
   }
 }

@@ -143,6 +143,13 @@ All notable changes to this project are documented in this file.
   long after the page it happened and which limit applied. All of these used
   to end the scan silently, which made a document split over two files
   impossible to explain from the logs.
+- **`listen` un-registers its HP walkup destination when it stops**: on
+  Ctrl-C/SIGTERM, and on any other exit, the printer no longer keeps a
+  destination that nobody is listening to. The removal is best effort (a
+  printer that refuses it, or a destination already removed, does not delay
+  the exit) and every target is registered again on the next start;
+  `clear-registrations` still removes them by hand. eSCL walkup subscriptions
+  were already removed on shutdown.
 
 ### Security
 
@@ -166,6 +173,13 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- **A flatbed scan is no longer lost when adding the next page fails**: when
+  the printer rejects the job for an extra page (503 while it is still busy)
+  or the event channel drops between pages, `listen` now keeps the pages it
+  already downloaded and saves the document instead of aborting the whole
+  scan. `listen` also exits within 5 seconds on Ctrl-C/SIGTERM even when the
+  printer does not answer the eSCL subscription removal (a second Ctrl-C exits
+  immediately), so a stopped session cannot linger and compete with a new one.
 - **Flatbed multi-page scans no longer crash when the printer drops the idle
   connection**: `waitForScanEventFromTarget` (the wait between pages on the
   platen) now finalizes the current scan instead of propagating the
